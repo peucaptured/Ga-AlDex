@@ -5,6 +5,7 @@ import re
 import requests
 import json
 import unicodedata
+from io import StringIO
 
 # Configuração da Página
 st.set_page_config(
@@ -13,7 +14,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- ARQUIVO DE SAVE ---
+# --- ARQUIVO DE SAVE LOCAL (Temporário da Sessão) ---
 SAVE_FILE = "save_data.json"
 
 def load_user_data():
@@ -32,12 +33,16 @@ def save_user_data(data):
     with open(SAVE_FILE, "w") as f:
         json.dump(data, f)
 
-user_data = load_user_data()
+# Carrega dados iniciais
+if 'user_data' not in st.session_state:
+    st.session_state['user_data'] = load_user_data()
+
+user_data = st.session_state['user_data']
 
 # --- FUNÇÕES DE AJUDA ---
 
 def normalize_text(text):
-    """Remove acentos e deixa minúsculo para comparação"""
+    """Remove acentos e deixa minúsculo"""
     if not isinstance(text, str): return str(text)
     return unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
 
@@ -69,14 +74,16 @@ def get_official_pokemon_map():
         return {}
 
 def get_image_from_name(user_name, name_map):
-    # Se não tiver nome, retorna pokebola
     if not isinstance(user_name, str): return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
     
-    # 1. Limpeza básica (remove acentos, pontos, espaços)
-    clean = normalize_text(user_name).replace('.', '').replace("'", '').replace(' ', '-').replace('♀', '-f').replace('♂', '-m')
+    # 1. TRATAMENTO DE GÊNERO (CRUCIAL: Fazer ANTES de normalizar)
+    # Substitui os símbolos por texto antes que a normalização os apague
+    pre_clean = user_name.replace('♀', '-f').replace('♂', '-m')
     
-    # --- AQUI ESTÁ A CORREÇÃO ---
-    # 2. Casos Específicos (A API exige nomes compostos para estes)
+    # 2. Limpeza padrão
+    clean = normalize_text(pre_clean).replace('.', '').replace("'", '').replace(' ', '-')
+    
+    # 3. Exceções Manuais (Nomes Oficiais da API)
     if clean == 'mimikyu': clean = 'mimikyu-disguised'
     if clean == 'aegislash': clean = 'aegislash-blade'
     if clean == 'giratina': clean = 'giratina-origin'
@@ -84,9 +91,11 @@ def get_image_from_name(user_name, name_map):
     if clean == 'pumpkaboo': clean = 'pumpkaboo-average'
     if clean == 'gourgeist': clean = 'gourgeist-average'
     if clean == 'lycanroc': clean = 'lycanroc-midday'
-    # ---------------------------
+    if clean == 'deoxys': clean = 'deoxys-normal'
+    if clean == 'wormadam': clean = 'wormadam-plant'
+    if clean == 'shaymin': clean = 'shaymin-land'
 
-    # 3. Tratamento de sufixos de região (Alola, Galar, Hisui)
+    # 4. Sufixos Regionais
     if clean.endswith('-a'): clean = clean[:-2] + '-alola'
     if clean.endswith('-g'): clean = clean[:-2] + '-galar'
     if clean.endswith('-h'): clean = clean[:-2] + '-hisui'
@@ -94,15 +103,11 @@ def get_image_from_name(user_name, name_map):
     if clean.startswith('a-'): clean = clean[2:] + '-alola'
     if clean.startswith('h-'): clean = clean[2:] + '-hisui'
 
-    # 4. Busca o ID no mapa da API
     p_id = name_map.get(clean)
-    
-    # 5. Se não achou, tenta tirar o sufixo (ex: tentar achar base se a forma não existir)
     if not p_id:
         base_name = clean.split('-')[0]
         p_id = name_map.get(base_name)
 
-    # Retorna o Link Oficial ou a Pokébola de erro
     if p_id:
         return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{p_id}.png"
     else:
@@ -114,11 +119,8 @@ def extract_strategies(text):
     matches = re.findall(pattern, text)
     return matches
 
-# --- CALCULADORA DE PODER (COM TETO DE 15) ---
 def calculate_power_level(row, cols_map):
     score = 0
-    
-    # 1. RARIDADE
     rarity = normalize_text(row.get('Raridade', ''))
     if 'trio' in rarity: score += 10
     elif 'fóssil' in rarity or 'fossil' in rarity: score += 7
@@ -126,7 +128,6 @@ def calculate_power_level(row, cols_map):
     elif 'raro' in rarity: score += 3
     else: score += 1
     
-    # 2. TIPOS
     types = str(row.get('Tipo', '')).split('/')
     for t in types:
         t = normalize_text(t)
@@ -134,7 +135,6 @@ def calculate_power_level(row, cols_map):
         elif t in ['steel', 'ice', 'dark', 'fighting', 'fairy', 'poison', 'metal', 'gelo', 'noturno', 'lutador', 'fada', 'veneno']: score += 2
         else: score += 1
         
-    # 3. ESTÁGIO EVOLUTIVO
     try:
         col_estagio = cols_map.get('estagio')
         if col_estagio:
@@ -142,7 +142,6 @@ def calculate_power_level(row, cols_map):
             score += 0 if pd.isna(val) else val
     except: pass
 
-    # 4. EVOLUÇÃO
     try:
         col_evolucao = cols_map.get('evolucao')
         if col_evolucao:
@@ -150,29 +149,22 @@ def calculate_power_level(row, cols_map):
             score += 0 if pd.isna(val) else val
     except: pass
     
-    # --- REGRA DE WORLD BUILDING: TETO DE 15 ---
     final_score = int(score)
-    if final_score > 15:
-        final_score = 15
-        
+    if final_score > 15: final_score = 15
     return final_score
 
-# --- CARREGAMENTO DE DADOS ROBUSTO ---
 def load_excel_data():
     file_name = "pokedex.xlsx"
     if not os.path.exists(file_name): return None, None
     try:
         df = pd.read_excel(file_name)
         df.columns = [c.strip() for c in df.columns]
-        
-        # Mapeamento Inteligente
         cols_map = {}
         for col in df.columns:
             norm_col = normalize_text(col)
             if 'estagio' in norm_col: cols_map['estagio'] = col
             if 'evolucao' in norm_col or 'evolution' in norm_col: cols_map['evolucao'] = col
 
-        # Tratamento
         df['Região'] = df['Região'].fillna('Desconhecida').astype(str)
         df['Biomas'] = df['Biomas'].fillna('Desconhecido').astype(str)
         df['Nome'] = df['Nome'].fillna('Desconhecido')
@@ -181,10 +173,7 @@ def load_excel_data():
             df['Nº'] = df['Nº'].astype(str).str.replace('#', '')
             
         df['Codigos_Estrategia'] = df['Viabilidade'].apply(extract_strategies)
-        
-        # Calcula Poder
         df['Nivel_Poder'] = df.apply(lambda row: calculate_power_level(row, cols_map), axis=1)
-        
         return df, cols_map
     except Exception as e:
         st.error(f"Erro ao ler Excel: {e}")
@@ -192,7 +181,6 @@ def load_excel_data():
 
 api_name_map = get_official_pokemon_map()
 
-# Carregamento com State
 if 'df_data' not in st.session_state:
     st.session_state['df_data'], st.session_state['cols_map'] = load_excel_data()
 
@@ -208,19 +196,39 @@ if df is None:
 else:
     st.sidebar.title("📱 Menu")
     
-    if st.sidebar.button("🔄 Recarregar Dados Excel"):
+    if st.sidebar.button("🔄 Recarregar Excel"):
         st.session_state['df_data'], st.session_state['cols_map'] = load_excel_data()
         st.rerun()
 
     page = st.sidebar.radio("Ir para:", ["Pokédex (Busca)", "Trainer Hub (Meus Pokémons)"])
     st.sidebar.markdown("---")
-
-    if page == "Pokédex (Busca)":
-        if not cols_map.get('estagio') or not cols_map.get('evolucao'):
-            with st.expander("⚠️ Aviso de Colunas", expanded=True):
-                st.warning("Não encontrei as colunas 'Estágio' ou 'Evolução' exatas.")
-                st.write("Estou procurando algo parecido com 'Estagio' e 'Evolucao'.")
     
+    # --- SISTEMA DE SAVE/LOAD ---
+    st.sidebar.subheader("💾 Gerenciar Save")
+    
+    # 1. Upload de Save
+    uploaded_save = st.sidebar.file_uploader("Carregar Save (.json)", type=["json"])
+    if uploaded_save is not None:
+        try:
+            # Lê o arquivo enviado
+            loaded_json = json.load(uploaded_save)
+            # Atualiza a sessão e o arquivo local
+            st.session_state['user_data'] = loaded_json
+            user_data = st.session_state['user_data'] # Atualiza variável local
+            save_user_data(user_data)
+            st.sidebar.success("Save carregado com sucesso!")
+        except Exception as e:
+            st.sidebar.error("Erro ao carregar save.")
+
+    # 2. Download de Save
+    st.sidebar.download_button(
+        label="⬇️ Baixar Save Atual",
+        data=json.dumps(st.session_state['user_data'], indent=4),
+        file_name="meu_save_pokemon.json",
+        mime="application/json",
+    )
+    st.sidebar.markdown("---")
+
     # ==============================================================================
     # PÁGINA 1: POKEDEX
     # ==============================================================================
@@ -238,7 +246,6 @@ else:
         min_p, max_p = int(df['Nivel_Poder'].min()), int(df['Nivel_Poder'].max())
         power_range = st.sidebar.slider("⚡ Nível de Poder", min_p, max_p, (min_p, max_p))
         
-        st.sidebar.markdown("---")
         st.sidebar.subheader("⚔️ Estratégia")
         sel_func = st.sidebar.selectbox("Função", ["Todos", "C - Controlador", "F - Finalizador", "S - Suporte"])
         sel_style = st.sidebar.selectbox("Estilo", ["Todos", "O - Ofensivo", "D - Defensivo", "F - Furtivo", "I - Incompleto", "C - Completo"])
@@ -283,28 +290,16 @@ else:
                     st.markdown(f"### #{dex_num} {p_name}")
                     tags_html = "".join([f"<span style='background-color:#444;color:white;padding:2px 5px;border-radius:4px;margin-right:5px;font-size:0.8em'>{c}</span>" for c in row['Codigos_Estrategia']])
                     
-                    # CORES DE NÍVEL AJUSTADAS PARA A ESCALA DE 15
-                    if power >= 13:
-                        p_color = "#D32F2F" # Vermelho Forte (Top Tier)
-                    elif power >= 8:
-                        p_color = "#F57C00" # Laranja (Mid Tier)
-                    else:
-                        p_color = "#388E3C" # Verde (Low Tier)
+                    if power >= 13: p_color = "#D32F2F"
+                    elif power >= 8: p_color = "#F57C00"
+                    else: p_color = "#388E3C"
 
                     power_badge = f"<span style='background-color:{p_color};color:white;padding:2px 8px;border-radius:10px;font-weight:bold;font-size:0.8em'>⚡ NP: {power}</span>"
-                    
                     st.markdown(f"**{row['Tipo']}** | {power_badge} {tags_html}", unsafe_allow_html=True)
                     
                     with st.expander("📖 Detalhes"):
                         st.markdown(f"**📍 Região:** {row['Região']} | **🌿 Bioma:** {row['Biomas']}")
                         st.info(row['Descrição da Pokedex'])
-                        
-                        if st.checkbox("Mostrar cálculo", key=f"calc_{dex_num}"):
-                            # Mostra o cálculo bruto antes do corte
-                            st.caption("Nota: Se a soma passar de 15, o valor será cortado para 15.")
-                            st.caption(f"Base Raridade + Tipos: +{calculate_power_level(row, {'no_evo':True})}")
-                            st.caption(f"Estágio: +{row.get(cols_map.get('estagio'), 0)}")
-                            st.caption(f"Evolução: +{row.get(cols_map.get('evolucao'), 0)}")
                         
                         viab = str(row['Viabilidade']).replace("PARCEIROS:", "\n\n**👥 PARCEIROS:**").replace("Explicação:", "\n\n**💡 EXPLICAÇÃO:**").replace("Habilidade:", "**✨ Habilidade:**")
                         for code in row['Codigos_Estrategia']:
