@@ -11,92 +11,142 @@ import re
 # Configuração da Página
 st.set_page_config(
     page_title="Pokedex RPG Cloud",
-    page_icon="☁️",
+    page_icon="🔒",
     layout="wide"
 )
 
-# --- CONEXÃO COM GOOGLE SHEETS (NUVEM - MODO SEGURO) ---
+# --- CONEXÃO COM GOOGLE SHEETS ---
 def get_google_sheet():
     try:
-        # Pega as credenciais dos Secrets
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds_dict = st.secrets["gcp_service_account"]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
-        # Abre a planilha
         sheet = client.open("SaveData_RPG").sheet1
         return sheet
     except Exception as e:
-        st.error(f"Erro Crítico de Conexão: {e}")
+        st.error(f"Erro de Conexão: {e}")
         st.stop()
 
-def load_data_cloud(trainer_name):
+# --- SISTEMA DE LOGIN SEGURO ---
+def authenticate_user(name, password):
+    """
+    Retorna:
+    - O JSON dos dados se login OK.
+    - "WRONG_PASS" se senha errada.
+    - "NOT_FOUND" se usuário não existe.
+    """
+    try:
+        sheet = get_google_sheet()
+        # Procura o nome exato na planilha
+        cell = sheet.find(name) 
+        
+        # Pega a linha inteira (Nome, Dados, Senha)
+        row_values = sheet.row_values(cell.row)
+        
+        # Estrutura esperada: [Nome, JSON, Senha]
+        # Pode ser que a senha não exista ainda (índice 2)
+        if len(row_values) < 3:
+            return "WRONG_PASS" # Usuário corrompido ou sem senha
+            
+        stored_password = str(row_values[2]) # Coluna C (índice 2)
+        stored_data = row_values[1]          # Coluna B (índice 1)
+        
+        if stored_password == str(password):
+            return json.loads(stored_data)
+        else:
+            return "WRONG_PASS"
+            
+    except gspread.exceptions.CellNotFound:
+        return "NOT_FOUND"
+    except Exception as e:
+        st.error(f"Erro na autenticação: {e}")
+        return None
+
+def register_new_user(name, password):
     try:
         sheet = get_google_sheet()
         
-        # LÓGICA NOVA: findall não dá erro, retorna lista vazia se não achar
-        cells = sheet.findall(trainer_name)
-        
-        if not cells:
-            # Lista vazia = Treinador não encontrado -> Retorna Novo Perfil
-            return {"seen": [], "caught": [], "party": [], "notes": {}}
-        else:
-            # Encontrou! Pega a primeira ocorrência
-            cell = cells[0]
-            # A coluna 2 é onde está o JSON
-            json_str = sheet.cell(cell.row, 2).value
-            if not json_str: return {"seen": [], "caught": [], "party": [], "notes": {}}
-            return json.loads(json_str)
+        # Verifica se já existe para não duplicar
+        try:
+            sheet.find(name)
+            return "EXISTS"
+        except:
+            pass # Não existe, pode criar
             
+        empty_data = json.dumps({"seen": [], "caught": [], "party": [], "notes": {}})
+        # Adiciona: Coluna A (Nome), Coluna B (Dados), Coluna C (Senha)
+        sheet.append_row([name, empty_data, str(password)])
+        return "SUCCESS"
     except Exception as e:
-        st.error(f"Erro ao buscar dados: {e}")
-        return None
+        st.error(f"Erro ao criar usuário: {e}")
+        return "ERROR"
 
 def save_data_cloud(trainer_name, data):
     try:
         sheet = get_google_sheet()
         json_str = json.dumps(data)
-        
-        # LÓGICA NOVA: findall para verificar existência
-        cells = sheet.findall(trainer_name)
-        
-        if cells:
-            # Se achou, atualiza a célula da linha encontrada, coluna 2
-            sheet.update_cell(cells[0].row, 2, json_str)
-        else:
-            # Se não achou, cria nova linha no final
-            sheet.append_row([trainer_name, json_str])
-            
+        cell = sheet.find(trainer_name)
+        # Atualiza apenas a coluna 2 (Dados), preservando a senha na 3
+        sheet.update_cell(cell.row, 2, json_str)
         return True
     except Exception as e:
-        st.error(f"Erro ao salvar na nuvem: {e}")
+        st.error(f"Erro ao salvar: {e}")
         return False
 
 # --- TELA DE LOGIN ---
 if 'trainer_name' not in st.session_state:
-    st.title("☁️ Acesso à Pokédex RPG (Google Sheets)")
-    st.markdown("Digite seu nome para carregar seu save da Nuvem.")
+    st.title("🔒 Acesso Seguro à Pokédex RPG")
     
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        name_input = st.text_input("Nome do Treinador")
+    tab_login, tab_register = st.tabs(["🔑 Entrar", "📝 Criar Conta"])
     
-    if st.button("Entrar / Criar Novo"):
-        if name_input:
-            with st.spinner("Conectando ao Satélite..."):
-                user_data = load_data_cloud(name_input)
-                if user_data is not None:
-                    st.session_state['trainer_name'] = name_input
-                    st.session_state['user_data'] = user_data
-                    st.rerun()
-    st.stop() 
+    # ABA DE LOGIN
+    with tab_login:
+        l_user = st.text_input("Nome do Treinador", key="l_user")
+        l_pass = st.text_input("Senha", type="password", key="l_pass")
+        
+        if st.button("Entrar", type="primary"):
+            if l_user and l_pass:
+                with st.spinner("Verificando credenciais..."):
+                    result = authenticate_user(l_user, l_pass)
+                    
+                    if result == "WRONG_PASS":
+                        st.error("🚫 Senha incorreta!")
+                    elif result == "NOT_FOUND":
+                        st.warning("Usuário não encontrado. Crie uma conta na aba ao lado.")
+                    elif isinstance(result, dict):
+                        # Sucesso!
+                        st.session_state['trainer_name'] = l_user
+                        st.session_state['user_data'] = result
+                        st.rerun()
+    
+    # ABA DE REGISTRO
+    with tab_register:
+        st.info("Crie um novo usuário com senha para proteger seu time.")
+        r_user = st.text_input("Escolha seu Nome", key="r_user")
+        r_pass = st.text_input("Escolha sua Senha", type="password", key="r_pass")
+        
+        if st.button("Criar Conta"):
+            if r_user and r_pass:
+                with st.spinner("Registrando na Silph Co..."):
+                    res = register_new_user(r_user, r_pass)
+                    if res == "SUCCESS":
+                        st.success("Conta criada! Vá na aba 'Entrar' para fazer login.")
+                    elif res == "EXISTS":
+                        st.error("Esse nome de treinador já existe.")
+                    else:
+                        st.error("Erro ao criar conta.")
+            else:
+                st.warning("Preencha nome e senha.")
 
-# --- DAQUI PRA BAIXO: RESTO DO APP ---
+    st.stop() # Bloqueia o resto do app
+
+# --- APP PRINCIPAL (SÓ CARREGA SE LOGADO) ---
 
 user_data = st.session_state['user_data']
 trainer_name = st.session_state['trainer_name']
 
-# --- FUNÇÕES AUXILIARES ---
+# --- FUNÇÕES DO APP (Normalização, Imagem, Poder) ---
 
 def normalize_text(text):
     if not isinstance(text, str): return str(text)
@@ -104,11 +154,9 @@ def normalize_text(text):
 
 def get_image_from_name(user_name, name_map):
     if not isinstance(user_name, str): return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
-    
     pre_clean = user_name.replace('♀', '-f').replace('♂', '-m')
     clean = normalize_text(pre_clean).replace('.', '').replace("'", '').replace(' ', '-')
     
-    # Exceções
     if clean == 'mimikyu': clean = 'mimikyu-disguised'
     if clean == 'aegislash': clean = 'aegislash-blade'
     if clean == 'giratina': clean = 'giratina-origin'
@@ -120,7 +168,6 @@ def get_image_from_name(user_name, name_map):
     if clean == 'wormadam': clean = 'wormadam-plant'
     if clean == 'shaymin': clean = 'shaymin-land'
 
-    # Sufixos
     if clean.endswith('-a'): clean = clean[:-2] + '-alola'
     if clean.endswith('-g'): clean = clean[:-2] + '-galar'
     if clean.endswith('-h'): clean = clean[:-2] + '-hisui'
@@ -224,16 +271,16 @@ if 'df_data' not in st.session_state:
 df = st.session_state['df_data']
 cols_map = st.session_state.get('cols_map', {})
 
-# --- INTERFACE PRINCIPAL ---
+# --- INTERFACE ---
 
 st.sidebar.title("📱 Menu")
 st.sidebar.markdown(f"**Treinador:** {trainer_name}")
 
 if st.sidebar.button("💾 Salvar na Nuvem"):
     if save_data_cloud(trainer_name, user_data):
-        st.sidebar.success("Salvo com sucesso!")
+        st.sidebar.success("Salvo!")
 
-if st.sidebar.button("🚪 Sair (Logout)"):
+if st.sidebar.button("🚪 Sair"):
     del st.session_state['trainer_name']
     st.rerun()
 
@@ -326,17 +373,15 @@ if page == "Pokédex (Busca)":
                 is_seen = dex_num in user_data["seen"]
                 is_caught = dex_num in user_data["caught"]
                 
-                # Checkbox Visto
                 if st.checkbox("👁️ Visto", value=is_seen, key=f"seen_{dex_num}"):
                     if dex_num not in user_data["seen"]:
                         user_data["seen"].append(dex_num)
-                        save_data_cloud(trainer_name, user_data) # Salva auto
+                        save_data_cloud(trainer_name, user_data)
                 else:
                     if dex_num in user_data["seen"]:
                         user_data["seen"].remove(dex_num)
                         save_data_cloud(trainer_name, user_data)
 
-                # Checkbox Capturado
                 if st.checkbox("🔴 Capturado", value=is_caught, key=f"caught_{dex_num}"):
                     if dex_num not in user_data["caught"]:
                         user_data["caught"].append(dex_num)
