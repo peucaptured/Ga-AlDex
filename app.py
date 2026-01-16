@@ -15,31 +15,41 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONEXÃO COM GOOGLE SHEETS (NUVEM) ---
+# --- CONEXÃO COM GOOGLE SHEETS (NUVEM - MODO SEGURO) ---
 def get_google_sheet():
-    # Pega as credenciais que você colocou nos Secrets
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds_dict = st.secrets["gcp_service_account"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    client = gspread.authorize(creds)
-    # Abre a planilha pelo nome exato que você criou no Google
-    sheet = client.open("SaveData_RPG").sheet1
-    return sheet
+    try:
+        # Pega as credenciais dos Secrets
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds_dict = st.secrets["gcp_service_account"]
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
+        # Abre a planilha
+        sheet = client.open("SaveData_RPG").sheet1
+        return sheet
+    except Exception as e:
+        st.error(f"Erro Crítico de Conexão: {e}")
+        st.stop()
 
 def load_data_cloud(trainer_name):
     try:
         sheet = get_google_sheet()
-        # Tenta achar o nome do treinador na Coluna 1
-        try:
-            cell = sheet.find(trainer_name)
-            # Se achou, pega o conteúdo da Coluna 2 (JSON)
-            json_str = sheet.cell(cell.row, 2).value
-            return json.loads(json_str)
-        except gspread.exceptions.CellNotFound:
-            # Se não achou, retorna um perfil novo vazio
+        
+        # LÓGICA NOVA: findall não dá erro, retorna lista vazia se não achar
+        cells = sheet.findall(trainer_name)
+        
+        if not cells:
+            # Lista vazia = Treinador não encontrado -> Retorna Novo Perfil
             return {"seen": [], "caught": [], "party": [], "notes": {}}
+        else:
+            # Encontrou! Pega a primeira ocorrência
+            cell = cells[0]
+            # A coluna 2 é onde está o JSON
+            json_str = sheet.cell(cell.row, 2).value
+            if not json_str: return {"seen": [], "caught": [], "party": [], "notes": {}}
+            return json.loads(json_str)
+            
     except Exception as e:
-        st.error(f"Erro ao conectar na nuvem: {e}")
+        st.error(f"Erro ao buscar dados: {e}")
         return None
 
 def save_data_cloud(trainer_name, data):
@@ -47,23 +57,25 @@ def save_data_cloud(trainer_name, data):
         sheet = get_google_sheet()
         json_str = json.dumps(data)
         
-        try:
-            cell = sheet.find(trainer_name)
-            # Se o treinador já existe, atualiza a célula da Coluna 2
-            sheet.update_cell(cell.row, 2, json_str)
-        except gspread.exceptions.CellNotFound:
-            # Se não existe, cria uma nova linha
+        # LÓGICA NOVA: findall para verificar existência
+        cells = sheet.findall(trainer_name)
+        
+        if cells:
+            # Se achou, atualiza a célula da linha encontrada, coluna 2
+            sheet.update_cell(cells[0].row, 2, json_str)
+        else:
+            # Se não achou, cria nova linha no final
             sheet.append_row([trainer_name, json_str])
             
         return True
     except Exception as e:
-        st.error(f"Erro ao salvar: {e}")
+        st.error(f"Erro ao salvar na nuvem: {e}")
         return False
 
-# --- TELA DE LOGIN (BLOQUEIA O RESTO SE NÃO LOGAR) ---
+# --- TELA DE LOGIN ---
 if 'trainer_name' not in st.session_state:
-    st.title("🔐 Acesso à Pokédex RPG (Nuvem)")
-    st.markdown("Digite seu nome para carregar seu save do Google Sheets.")
+    st.title("☁️ Acesso à Pokédex RPG (Google Sheets)")
+    st.markdown("Digite seu nome para carregar seu save da Nuvem.")
     
     col1, col2 = st.columns([1, 2])
     with col1:
@@ -77,14 +89,14 @@ if 'trainer_name' not in st.session_state:
                     st.session_state['trainer_name'] = name_input
                     st.session_state['user_data'] = user_data
                     st.rerun()
-    st.stop() # Para o código aqui até a pessoa logar
+    st.stop() 
 
-# --- DAQUI PRA BAIXO: SÓ CARREGA DEPOIS DO LOGIN ---
+# --- DAQUI PRA BAIXO: RESTO DO APP ---
 
 user_data = st.session_state['user_data']
 trainer_name = st.session_state['trainer_name']
 
-# --- FUNÇÕES AUXILIARES (PODER, IMAGEM, ETC) ---
+# --- FUNÇÕES AUXILIARES ---
 
 def normalize_text(text):
     if not isinstance(text, str): return str(text)
@@ -93,11 +105,10 @@ def normalize_text(text):
 def get_image_from_name(user_name, name_map):
     if not isinstance(user_name, str): return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
     
-    # Tratamento de Gênero
     pre_clean = user_name.replace('♀', '-f').replace('♂', '-m')
     clean = normalize_text(pre_clean).replace('.', '').replace("'", '').replace(' ', '-')
     
-    # Exceções Manuais
+    # Exceções
     if clean == 'mimikyu': clean = 'mimikyu-disguised'
     if clean == 'aegislash': clean = 'aegislash-blade'
     if clean == 'giratina': clean = 'giratina-origin'
