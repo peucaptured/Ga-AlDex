@@ -8,6 +8,24 @@ import unicodedata
 import os
 import re
 
+# ================================
+# FIREBASE - TESTE DE CONEXÃO
+# ================================
+import firebase_admin
+from firebase_admin import credentials, firestore, storage
+
+def init_firebase():
+    if not firebase_admin._apps:
+        cred = credentials.Certificate(st.secrets["firebase_service_account"])
+        firebase_admin.initialize_app(cred, {
+            "storageBucket": "batalhas-de-gaal.firebasestorage.app"
+        })
+
+    db = firestore.client()
+    bucket = storage.bucket()
+    return db, bucket
+
+
 # Configuração da Página
 st.set_page_config(
     page_title="Pokedex RPG Cloud",
@@ -319,6 +337,26 @@ if st.sidebar.button("🔄 Recarregar Excel"):
 st.sidebar.markdown("---")
 page = st.sidebar.radio("Ir para:", ["Pokédex (Busca)", "Trainer Hub (Meus Pokémons)"])
 
+# --- BOTÃO DE TESTE DO FIREBASE (TEMPORÁRIO) ---
+st.sidebar.markdown("---")
+if st.sidebar.button("🧪 Testar Firebase"):
+    try:
+        db, bucket = init_firebase()
+
+        # cria doc de teste
+        ref = db.collection("firebase_test").document("ping")
+        ref.set({"status": "ok"})
+
+        data = ref.get().to_dict()
+
+        st.sidebar.success("Firebase conectado com sucesso!")
+        st.sidebar.write(data)
+
+    except Exception as e:
+        st.sidebar.error("Erro ao conectar no Firebase")
+        st.sidebar.exception(e)
+
+
 # ==============================================================================
 # PÁGINA 1: POKEDEX (COM FILTRO DE TIPO EXCLUSIVO/COMBINADO)
 # ==============================================================================
@@ -566,5 +604,6 @@ elif page == "Trainer Hub (Meus Pokémons)":
         st.markdown(f"### Progresso da Pokédex")
         st.progress(min(vistos / total, 1.0))
         st.write(f"**{vistos}** de **{total}** Pokémons registrados.")
+
 
 
