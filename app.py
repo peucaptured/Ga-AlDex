@@ -207,7 +207,6 @@ def render_battle_grid(size, biome, units, obstacles):
 
     return fig
 
-# --- CÓDIGO DE LOGIN E DADOS MANTIDO IGUAL ---
 # --- FUNÇÕES DE LOGIN/DADOS ---
 
 def find_user_row(sheet, name):
@@ -562,4 +561,5 @@ elif page == "⚔️ Arena de Batalha (PvP)":
             with tab_gm:
                 if st.button("🔥 Fogo"): battle['obstacles'].append({"x":4,"y":4,"icon":"🔥","name":"Fogo","type":"hazard"}); st.rerun()
                 if st.button("🧹 Limpar Tudo"): st.session_state['battle_state']['active'] = False; st.rerun()
+
 
