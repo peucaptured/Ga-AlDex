@@ -140,19 +140,38 @@ def get_official_pokemon_map():
 
 def load_excel_data():
     file_name = "pokedex.xlsx"
-    if not os.path.exists(file_name): return None, None
+    if not os.path.exists(file_name):
+        st.error(f"🚨 Arquivo '{file_name}' não encontrado no GitHub!")
+        return None, None
     try:
         df = pd.read_excel(file_name)
-        df.columns = [c.strip() for c in df.columns]
-        df['Região'] = df['Região'].fillna('Desconhecida').astype(str)
-        df['Biomas'] = df['Biomas'].fillna('Desconhecido').astype(str)
-        df['Nome'] = df['Nome'].fillna('Desconhecido')
-        df['Viabilidade'] = df['Viabilidade'].fillna('Sem dados.')
-        if 'Nº' in df.columns: df['Nº'] = df['Nº'].astype(str).str.replace('#', '')
-        df['Nivel_Poder'] = pd.to_numeric(df.get('Nivel_Poder', 1), errors='coerce').fillna(1)
+        
+        # Limpa nomes das colunas (tira espaços extras)
+        df.columns = [str(c).strip() for c in df.columns]
+        
+        # --- BLINDAGEM DE COLUNAS ---
+        # Se a coluna não existir, cria ela vazia para não travar o App
+        required_cols = ['Região', 'Biomas', 'Nome', 'Nº', 'Tipo', 'Nivel_Poder', 'Viabilidade']
+        for col in required_cols:
+            if col not in df.columns:
+                df[col] = "Desconhecido" # Cria coluna dummy
+            
+            # Força converter para texto (String) para evitar o erro da linha 381
+            df[col] = df[col].astype(str).replace('nan', 'Desconhecido')
+
+        # Tratamento do Número (remove #)
+        df['Nº'] = df['Nº'].str.replace('#', '', regex=False)
+        
+        # Tratamento numérico seguro
+        df['Nivel_Poder'] = pd.to_numeric(df['Nivel_Poder'], errors='coerce').fillna(1)
+        
+        # Estratégia
         df['Codigos_Estrategia'] = df['Viabilidade'].apply(lambda x: re.findall(r'([CFS][ODFIC][RL])', str(x)))
+        
         return df, {}
-    except: return None, None
+    except Exception as e:
+        st.error(f"🚨 Erro ao ler o Excel: {e}")
+        return None, None
 
 # ==============================================================================
 # FUNÇÕES DA ENGINE DE BATALHA (MAPAS E GRID)
@@ -378,7 +397,14 @@ if page == "Pokédex":
     search_query = st.sidebar.text_input("Buscar (Nome ou Nº)", "")
     
     # --- CORREÇÃO AQUI: Adicionado str() para evitar erro com células vazias ---
-    all_regions = sorted(list(set([r.strip() for region in df['Região'].unique() for r in str(region).split('/')])))
+  # --- BLOCO CORRIGIDO (Proteção contra tabela vazia) ---
+    if df is not None and 'Região' in df.columns:
+        # Só tenta ler se a tabela existir
+        all_regions = sorted(list(set([r.strip() for region in df['Região'].unique() for r in str(region).split('/')])))
+    else:
+        # Se deu erro no Excel, cria uma lista vazia pra não travar o site
+        all_regions = []
+
     selected_regions = st.sidebar.multiselect("Região", all_regions)
     
     if selected_regions:
@@ -727,5 +753,6 @@ elif page == "⚔️ Arena de Batalha (PvP)":
             with tab_gm:
                 if st.button("🔥 Fogo"): battle['obstacles'].append({"x":4,"y":4,"icon":"🔥","name":"Fogo","type":"hazard"}); st.rerun()
                 if st.button("🧹 Limpar Tudo"): st.session_state['battle_state']['active'] = False; st.rerun()
+
 
 
