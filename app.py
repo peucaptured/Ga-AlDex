@@ -475,42 +475,38 @@ if page == "Pokédex":
                         save_data_cloud(trainer_name, user_data)
             st.divider()
 # ==============================================================================
-# PÁGINA 2: TRAINER HUB (RESTAURADO)
+# PÁGINA 2: TRAINER HUB (SEM LIMITE DE 6 POKEMONS)
 # ==============================================================================
 elif page == "Trainer Hub":
     st.title("🏕️ Hub do Treinador")
     
     # --- SEÇÃO 1: VISUALIZAÇÃO DO TIME (PARTY) ---
-    st.subheader("🐺 Seu Time (Party)")
+    st.subheader(f"🐺 Seu Time ({len(user_data.get('party', []))} Pokémons)")
     
-    # Garante que a lista existe
     if "party" not in user_data: user_data["party"] = []
     current_party = user_data["party"]
     
-    # Cria 6 colunas para os slots do time
-    cols = st.columns(6)
-    for i in range(6):
-        with cols[i]:
-            if i < len(current_party):
-                p_dex_num = current_party[i] # O user_data salva o Nº do pokemon
-                
-                # Tenta achar o nome correspondente no Excel para pegar a imagem
-                # (Procura no DataFrame onde a coluna Nº é igual ao salvo)
-                pokemon_row = df[df['Nº'] == str(p_dex_num)]
-                
-                if not pokemon_row.empty:
-                    p_name = pokemon_row.iloc[0]['Nome']
-                    img = get_image_from_name(p_name, api_name_map)
-                    st.image(img, use_container_width=True)
-                    st.caption(f"**{p_name}**")
-                else:
-                    # Se não achar por algum motivo, mostra só o numero
-                    st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=50)
-                    st.caption(f"#{p_dex_num}")
-            else:
-                # Slot Vazio
-                st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=50, style={'opacity':0.3})
-                st.caption("Vazio")
+    if not current_party:
+        st.info("Seu time está vazio.")
+    else:
+        # Lógica para exibir em grades de 6 em 6 (quebra de linha automática)
+        # Se tiver 7 pokemons, cria 2 linhas. Se tiver 13, cria 3 linhas...
+        cols_per_row = 6
+        for i in range(0, len(current_party), cols_per_row):
+            cols = st.columns(cols_per_row)
+            batch = current_party[i:i+cols_per_row]
+            
+            for j, p_dex_num in enumerate(batch):
+                with cols[j]:
+                    pokemon_row = df[df['Nº'] == str(p_dex_num)]
+                    if not pokemon_row.empty:
+                        p_name = pokemon_row.iloc[0]['Nome']
+                        img = get_image_from_name(p_name, api_name_map)
+                        st.image(img, use_container_width=True)
+                        st.caption(f"**{p_name}**")
+                    else:
+                        st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=50)
+                        st.caption(f"#{p_dex_num}")
 
     st.divider()
 
@@ -520,23 +516,16 @@ elif page == "Trainer Hub":
     # LADO ESQUERDO: ADICIONAR AO TIME
     with c1:
         st.markdown("### 📥 Adicionar ao Time")
-        # Pega lista de capturados
         caught_list = user_data.get("caught", [])
-        
-        # Filtra: Só mostra quem NÃO está no time atual
         available_to_add = [p for p in caught_list if p not in current_party]
         
-        if len(current_party) >= 6:
-            st.warning("Seu time está cheio (6/6).")
-            st.info("Remova alguém ao lado antes de adicionar.")
-        elif not available_to_add:
-            st.info("Você não tem Pokémon no PC (Capturados) para adicionar.")
+        # REMOVIDO O IF QUE BLOQUEAVA EM 6
+        if not available_to_add:
+            st.info("Você não tem Pokémon no PC para adicionar.")
         else:
-            # Cria uma lista bonita "Nº - Nome" para o selectbox
             options_map = {}
             display_options = []
             for num in available_to_add:
-                # Tenta buscar o nome
                 row = df[df['Nº'] == str(num)]
                 name = row.iloc[0]['Nome'] if not row.empty else "Desconhecido"
                 label = f"#{num} - {name}"
@@ -558,7 +547,6 @@ elif page == "Trainer Hub":
         if not current_party:
             st.info("Seu time está vazio.")
         else:
-            # Cria lista bonita para remover
             party_map = {}
             party_display = []
             for num in current_party:
@@ -583,7 +571,6 @@ elif page == "Trainer Hub":
     with st.expander("📝 Caderneta de Anotações", expanded=False):
         st.write("Guarde informações sobre quests, locais ou estratégias.")
         current_notes = user_data.get("notes", "")
-        # Se notes for dicionário (versão antiga), converte pra string, senão usa string
         if isinstance(current_notes, dict): current_notes = ""
         
         new_notes = st.text_area("Anotações", value=current_notes, height=200)
@@ -740,4 +727,5 @@ elif page == "⚔️ Arena de Batalha (PvP)":
             with tab_gm:
                 if st.button("🔥 Fogo"): battle['obstacles'].append({"x":4,"y":4,"icon":"🔥","name":"Fogo","type":"hazard"}); st.rerun()
                 if st.button("🧹 Limpar Tudo"): st.session_state['battle_state']['active'] = False; st.rerun()
+
 
