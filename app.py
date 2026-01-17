@@ -7,6 +7,9 @@ import requests
 import unicodedata
 import os
 import re
+import uuid
+from datetime import datetime
+
 
 # ================================
 # FIREBASE - TESTE DE CONEXÃO
@@ -183,6 +186,159 @@ user_data = st.session_state['user_data']
 trainer_name = st.session_state['trainer_name']
 
 # --- FUNÇÕES DO APP ---
+def safe_doc_id(name: str) -> str:
+    # Evita caracteres problemáticos no Firestore doc id
+    if not isinstance(name, str):
+        name = str(name)
+    return re.sub(r"[^a-zA-Z0-9_\-\.]", "_", name).strip("_")[:80] or "user"
+
+def room_id_new() -> str:
+    # curto e fácil de digitar
+    return uuid.uuid4().hex[:8]
+
+def get_user_doc_ref(db, trainer_name: str):
+    return db.collection("users").document(safe_doc_id(trainer_name))
+
+def list_my_rooms(db, trainer_name: str):
+    uref = get_user_doc_ref(db, trainer_name)
+    udoc = uref.get()
+    if not udoc.exists:
+        return []
+    data = udoc.to_dict() or {}
+    return data.get("active_rooms", []) or []
+
+def add_room_to_user(db, trainer_name: str, rid: str):
+    uref = get_user_doc_ref(db, trainer_name)
+    uref.set(
+        {"active_rooms": firestore.ArrayUnion([rid]),
+         "updatedAt": firestore.SERVER_TIMESTAMP},
+        merge=True
+    )
+
+def remove_room_from_user(db, trainer_name: str, rid: str):
+    uref = get_user_doc_ref(db, trainer_name)
+    uref.set(
+        {"active_rooms": firestore.ArrayRemove([rid]),
+         "updatedAt": firestore.SERVER_TIMESTAMP},
+        merge=True
+    )
+
+def create_room(db, trainer_name: str, grid_size: int, theme: str, max_active: int = 5):
+    my_rooms = list_my_rooms(db, trainer_name)
+    if len(my_rooms) >= max_active:
+        return None, f"Você já tem {len(my_rooms)} arenas ativas (limite {max_active}). Finalize/arquive uma para criar outra."
+
+    rid = room_id_new()
+    room_ref = db.collection("rooms").document(rid)
+
+    room_ref.set({
+        "createdAt": firestore.SERVER_TIMESTAMP,
+        "status": "lobby",
+        "gridSize": int(grid_size),
+        "theme": theme,
+        "owner": {"name": trainer_name},
+        "challenger": None,
+        "spectators": [],
+        "turn": "owner",
+        "turnNumber": 1,
+    })
+
+    # estado público inicial (vazio por enquanto)
+    room_ref.collection("public_state").document("state").set({
+        "map": None,
+        "pieces": [],
+        "effects": [],
+        "updatedAt": firestore.SERVER_TIMESTAMP,
+    })
+
+    add_room_to_user(db, trainer_name, rid)
+    return rid, None
+
+def get_room(db, rid: str):
+    ref = db.collection("rooms").document(rid)
+    doc = ref.get()
+    if not doc.exists:
+        return None
+    data = doc.to_dict() or {}
+    data["_id"] = rid
+    return data
+
+def join_room_as_challenger(db, rid: str, trainer_name: str):
+    ref = db.collection("rooms").document(rid)
+    doc = ref.get()
+    if not doc.exists:
+        return "NOT_FOUND"
+
+    data = doc.to_dict() or {}
+    owner = (data.get("owner") or {}).get("name")
+    challenger = (data.get("challenger") or {}).get("name") if isinstance(data.get("challenger"), dict) else data.get("challenger")
+
+    if owner == trainer_name:
+        add_room_to_user(db, trainer_name, rid)
+        return "ALREADY_OWNER"
+
+    if not challenger:
+        ref.update({
+            "challenger": {"name": trainer_name},
+            "status": "running",
+        })
+        add_room_to_user(db, trainer_name, rid)
+        # evento público
+        ref.collection("public_events").add({
+            "type": "join_challenger",
+            "by": trainer_name,
+            "payload": {"room": rid},
+            "ts": firestore.SERVER_TIMESTAMP,
+        })
+        return "OK"
+
+    if challenger == trainer_name:
+        add_room_to_user(db, trainer_name, rid)
+        return "ALREADY_CHALLENGER"
+
+    return "CHALLENGER_TAKEN"
+
+def join_room_as_spectator(db, rid: str, trainer_name: str):
+    ref = db.collection("rooms").document(rid)
+    doc = ref.get()
+    if not doc.exists:
+        return "NOT_FOUND"
+
+    data = doc.to_dict() or {}
+    owner = (data.get("owner") or {}).get("name")
+    challenger = (data.get("challenger") or {}).get("name") if isinstance(data.get("challenger"), dict) else data.get("challenger")
+
+    if trainer_name in [owner, challenger]:
+        add_room_to_user(db, trainer_name, rid)
+        return "PLAYER"
+
+    ref.update({
+        "spectators": firestore.ArrayUnion([trainer_name]),
+    })
+    # evento público
+    ref.collection("public_events").add({
+        "type": "join_spectator",
+        "by": trainer_name,
+        "payload": {"room": rid},
+        "ts": firestore.SERVER_TIMESTAMP,
+    })
+    add_room_to_user(db, trainer_name, rid)
+    return "OK"
+
+def add_public_event(db, rid: str, event_type: str, by: str, payload: dict):
+    db.collection("rooms").document(rid).collection("public_events").add({
+        "type": event_type,
+        "by": by,
+        "payload": payload or {},
+        "ts": firestore.SERVER_TIMESTAMP,
+    })
+
+def list_public_events(db, rid: str, limit: int = 30):
+    q = (db.collection("rooms").document(rid)
+         .collection("public_events")
+         .order_by("ts", direction=firestore.Query.DESCENDING)
+         .limit(limit))
+    return [d.to_dict() for d in q.stream()]
 
 def normalize_text(text):
     if not isinstance(text, str): return str(text)
@@ -341,26 +497,7 @@ if st.sidebar.button("🔄 Recarregar Excel"):
     st.rerun()
 
 st.sidebar.markdown("---")
-page = st.sidebar.radio("Ir para:", ["Pokédex (Busca)", "Trainer Hub (Meus Pokémons)"])
-
-# --- BOTÃO DE TESTE DO FIREBASE (TEMPORÁRIO) ---
-st.sidebar.markdown("---")
-if st.sidebar.button("🧪 Testar Firebase"):
-    try:
-        db, bucket = init_firebase()
-
-        # cria doc de teste
-        ref = db.collection("firebase_test").document("ping")
-        ref.set({"status": "ok"})
-
-        data = ref.get().to_dict()
-
-        st.sidebar.success("Firebase conectado com sucesso!")
-        st.sidebar.write(data)
-
-    except Exception as e:
-        st.sidebar.error("Erro ao conectar no Firebase")
-        st.sidebar.exception(e)
+page = st.sidebar.radio("Ir para:", ["Pokédex (Busca)", "Trainer Hub (Meus Pokémons)", "PvP – Arena Tática"])
 
 
 # ==============================================================================
@@ -610,6 +747,153 @@ elif page == "Trainer Hub (Meus Pokémons)":
         st.markdown(f"### Progresso da Pokédex")
         st.progress(min(vistos / total, 1.0))
         st.write(f"**{vistos}** de **{total}** Pokémons registrados.")
+        
+# PVP ARENA
+
+elif page == "PvP – Arena Tática":
+    st.title("⚔️ PvP – Arena Tática (MVP)")
+    st.caption("Base multiplayer: criar/abrir arena, entrar por código, espectadores e log público (dado vem aqui depois).")
+
+    db, bucket = init_firebase()
+
+    # --- Painel: criar arena ---
+    st.subheader("➕ Criar nova arena")
+    c1, c2, c3 = st.columns([1, 1, 2])
+    with c1:
+        grid = st.selectbox("Tamanho do grid", [4, 6, 8, 10], index=1)
+    with c2:
+        theme_label = st.selectbox("Tema", ["Caverna (com água)", "Floresta"], index=0)
+        theme = "cave_water" if "Caverna" in theme_label else "forest"
+    with c3:
+        st.write("")
+        if st.button("🆕 Criar arena", type="primary"):
+            rid, err = create_room(db, trainer_name, grid, theme, max_active=5)
+            if err:
+                st.error(err)
+            else:
+                st.success(f"Arena criada! Código: **{rid}**")
+                st.session_state["active_room_id"] = rid
+                st.rerun()
+
+    st.markdown("---")
+
+    # --- Minhas arenas ---
+    st.subheader("📌 Minhas arenas")
+    my_rooms = list_my_rooms(db, trainer_name)
+    if not my_rooms:
+        st.info("Você ainda não tem arenas ativas. Crie uma acima.")
+    else:
+        # tenta mostrar infos básicas
+        room_infos = []
+        for rid in my_rooms[:20]:
+            info = get_room(db, rid)
+            if info:
+                status = info.get("status", "?")
+                gs = info.get("gridSize", "?")
+                th = info.get("theme", "?")
+                owner = (info.get("owner") or {}).get("name", "?")
+                chal = (info.get("challenger") or {})
+                chal_name = chal.get("name") if isinstance(chal, dict) else (chal or "")
+                room_infos.append((rid, f"{rid} | {status} | {gs}x{gs} | {th} | owner={owner} | challenger={chal_name or '-'}"))
+
+        labels = [x[1] for x in room_infos] if room_infos else my_rooms
+        chosen = st.selectbox("Abrir arena", labels, index=0)
+        chosen_rid = chosen.split(" | ")[0] if " | " in chosen else chosen
+
+        b1, b2, b3 = st.columns([1, 1, 2])
+        with b1:
+            if st.button("📂 Abrir"):
+                st.session_state["active_room_id"] = chosen_rid
+                st.rerun()
+        with b2:
+            if st.button("🗄️ Arquivar (remover da lista)"):
+                remove_room_from_user(db, trainer_name, chosen_rid)
+                if st.session_state.get("active_room_id") == chosen_rid:
+                    st.session_state.pop("active_room_id", None)
+                st.rerun()
+
+    st.markdown("---")
+
+    # --- Entrar por código (desafiante / espectador) ---
+    st.subheader("🔑 Entrar por código")
+    cc1, cc2, cc3 = st.columns([2, 1, 1])
+    with cc1:
+        code = st.text_input("Código da arena (roomId)", value="")
+    with cc2:
+        if st.button("🥊 Entrar como desafiante"):
+            if not code.strip():
+                st.warning("Digite um código.")
+            else:
+                res = join_room_as_challenger(db, code.strip(), trainer_name)
+                if res == "OK":
+                    st.success("Você entrou como desafiante!")
+                    st.session_state["active_room_id"] = code.strip()
+                    st.rerun()
+                elif res == "CHALLENGER_TAKEN":
+                    st.error("Essa arena já tem desafiante. Entre como espectador.")
+                elif res == "NOT_FOUND":
+                    st.error("Arena não encontrada.")
+                else:
+                    st.info(res)
+    with cc3:
+        if st.button("👀 Entrar como espectador"):
+            if not code.strip():
+                st.warning("Digite um código.")
+            else:
+                res = join_room_as_spectator(db, code.strip(), trainer_name)
+                if res == "OK" or res == "PLAYER":
+                    st.success("Você entrou na arena!")
+                    st.session_state["active_room_id"] = code.strip()
+                    st.rerun()
+                elif res == "NOT_FOUND":
+                    st.error("Arena não encontrada.")
+                else:
+                    st.info(res)
+
+    st.markdown("---")
+
+    # --- Painel da arena ativa ---
+    rid = st.session_state.get("active_room_id")
+    st.subheader("🎮 Arena ativa")
+    if not rid:
+        st.info("Nenhuma arena aberta. Crie ou abra uma arena acima.")
+    else:
+        room = get_room(db, rid)
+        if not room:
+            st.error("Arena ativa não existe mais (ou código inválido).")
+            st.session_state.pop("active_room_id", None)
+        else:
+            owner = (room.get("owner") or {}).get("name")
+            chal = room.get("challenger") or {}
+            chal_name = chal.get("name") if isinstance(chal, dict) else (chal or None)
+
+            st.write(f"**Código:** `{rid}`")
+            st.write(f"**Status:** {room.get('status')}")
+            st.write(f"**Grid:** {room.get('gridSize')}x{room.get('gridSize')}  |  **Tema:** {room.get('theme')}")
+            st.write(f"**Owner:** {owner}  |  **Challenger:** {chal_name or '-'}")
+            st.write(f"**Espectadores:** {len(room.get('spectators') or [])}")
+
+            # (Já prepara o log público — aqui o dado vai aparecer também)
+            st.markdown("### 📜 Log público (todos veem)")
+            events = list_public_events(db, rid, limit=25)
+            if not events:
+                st.caption("Sem eventos ainda.")
+            else:
+                for ev in events:
+                    et = ev.get("type", "?")
+                    by = ev.get("by", "?")
+                    payload = ev.get("payload", {})
+                    st.write(f"- **{et}** — _{by}_ — {payload}")
+
+            # botão de “evento público” de teste (vamos trocar por dado logo)
+            st.markdown("---")
+            c_ev1, c_ev2 = st.columns([1, 3])
+            with c_ev1:
+                if st.button("📣 Ping público"):
+                    add_public_event(db, rid, "ping", trainer_name, {"msg": "olá do servidor"})
+                    st.rerun()
+            with c_ev2:
+                st.caption("Este botão é temporário. Em seguida, ele vira o **Dado público**.")
 
 
 
