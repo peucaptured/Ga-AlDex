@@ -911,19 +911,30 @@ else:
                 f"(por {last_dice.get('by')})"
             )
 
-    role = get_role(room, trainer_name)
-is_player = role in ["owner", "challenger"]
+          role = get_role(room, trainer_name)
+        is_player = role in ["owner", "challenger"]
 
-        
         # --- Botões de dado ---
-       st.markdown("---")
-c1, c2, c3 = st.columns([1, 1, 2])
+        st.markdown("---")
+        c1, c2, c3 = st.columns([1, 1, 2])
 
-with c1:
-    if st.button("🎲 Rolar d20", disabled=not is_player):
-        r = roll_die(db, rid, trainer_name, sides=20)
-        st.success(f"Você rolou: **{r}**")
-        st.rerun()
+        with c1:
+            if st.button("🎲 Rolar d20", disabled=not is_player):
+                r = roll_die(db, rid, trainer_name, sides=20)
+                st.success(f"Você rolou: **{r}**")
+                st.rerun()
+
+        with c2:
+            if st.button("🎲 Rolar d6", disabled=not is_player):
+                r = roll_die(db, rid, trainer_name, sides=6)
+                st.success(f"Você rolou: **{r}**")
+                st.rerun()
+
+        with c3:
+            if is_player:
+                st.caption("A rolagem aparece no **Log público** para jogadores e espectadores.")
+            else:
+                st.caption("Você está como **espectador**.")
 
 with c2:
     if st.button("🎲 Rolar d6", disabled=not is_player):
@@ -949,6 +960,7 @@ with c3:
                 by = ev.get("by", "?")
                 payload = ev.get("payload", {})
                 st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
