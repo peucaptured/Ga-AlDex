@@ -878,97 +878,71 @@ elif page == "PvP – Arena Tática":
                     st.info(res)
 
     st.markdown("---")
+        # --- Painel da arena ativa ---
+    rid = st.session_state.get("active_room_id")
+    st.subheader("🎮 Arena ativa")
 
- # --- Painel da arena ativa ---
-rid = st.session_state.get("active_room_id")
-st.subheader("🎮 Arena ativa")
-
-if not rid:
-    st.info("Nenhuma arena aberta. Crie ou abra uma arena acima.")
-else:
-    room = get_room(db, rid)
-    if not room:
-        st.error("Arena ativa não existe mais (ou código inválido).")
-        st.session_state.pop("active_room_id", None)
+    if not rid:
+        st.info("Nenhuma arena aberta. Crie ou abra uma arena acima.")
     else:
-        owner = (room.get("owner") or {}).get("name")
-        chal = room.get("challenger") or {}
-        chal_name = chal.get("name") if isinstance(chal, dict) else (chal or None)
-
-        st.write(f"**Código:** `{rid}`")
-        st.write(f"**Status:** {room.get('status')}")
-        st.write(f"**Grid:** {room.get('gridSize')}x{room.get('gridSize')}  |  **Tema:** {room.get('theme')}")
-        st.write(f"**Owner:** {owner}  |  **Challenger:** {chal_name or '-'}")
-        st.write(f"**Espectadores:** {len(room.get('spectators') or [])}")
-
-        # --- Última rolagem de dado (destaque) ---
-        last_events = list_public_events(db, rid, limit=10)
-        last_dice = next((e for e in last_events if e.get("type") == "dice"), None)
-        if last_dice:
-            payload = last_dice.get("payload", {})
-            st.info(
-                f"🎲 Última rolagem: **d{payload.get('sides')} = {payload.get('result')}** "
-                f"(por {last_dice.get('by')})"
-            )
-
-          role = get_role(room, trainer_name)
-        is_player = role in ["owner", "challenger"]
-
-        # --- Botões de dado ---
-        st.markdown("---")
-        c1, c2, c3 = st.columns([1, 1, 2])
-
-        with c1:
-            if st.button("🎲 Rolar d20", disabled=not is_player):
-                r = roll_die(db, rid, trainer_name, sides=20)
-                st.success(f"Você rolou: **{r}**")
-                st.rerun()
-
-        with c2:
-            if st.button("🎲 Rolar d6", disabled=not is_player):
-                r = roll_die(db, rid, trainer_name, sides=6)
-                st.success(f"Você rolou: **{r}**")
-                st.rerun()
-
-        with c3:
-            if is_player:
-                st.caption("A rolagem aparece no **Log público** para jogadores e espectadores.")
-            else:
-                st.caption("Você está como **espectador**.")
-
-with c2:
-    if st.button("🎲 Rolar d6", disabled=not is_player):
-        r = roll_die(db, rid, trainer_name, sides=6)
-        st.success(f"Você rolou: **{r}**")
-        st.rerun()
-
-with c3:
-    if is_player:
-        st.caption("A rolagem aparece no **Log público** para jogadores e espectadores.")
-    else:
-        st.caption("Você está como **espectador**: pode ver o log e as rolagens, mas não pode rolar.")
-
-
-        # --- Log público ---
-        st.markdown("### 📜 Log público (todos veem)")
-        events = list_public_events(db, rid, limit=25)
-        if not events:
-            st.caption("Sem eventos ainda.")
+        room = get_room(db, rid)
+        if not room:
+            st.error("Arena ativa não existe mais (ou código inválido).")
+            st.session_state.pop("active_room_id", None)
         else:
-            for ev in events:
-                et = ev.get("type", "?")
-                by = ev.get("by", "?")
-                payload = ev.get("payload", {})
-                st.write(f"- **{et}** — _{by}_ — {payload}")
+            owner = (room.get("owner") or {}).get("name")
+            chal = room.get("challenger") or {}
+            chal_name = chal.get("name") if isinstance(chal, dict) else (chal or None)
 
+            role = get_role(room, trainer_name)
+            is_player = role in ["owner", "challenger"]
 
+            st.write(f"**Código:** `{rid}`")
+            st.write(f"**Status:** {room.get('status')}")
+            st.write(f"**Grid:** {room.get('gridSize')}x{room.get('gridSize')}  |  **Tema:** {room.get('theme')}")
+            st.write(f"**Owner:** {owner}  |  **Challenger:** {chal_name or '-'}")
+            st.write(f"**Espectadores:** {len(room.get('spectators') or [])}")
 
+            # --- Última rolagem de dado ---
+            last_events = list_public_events(db, rid, limit=10)
+            last_dice = next((e for e in last_events if e.get("type") == "dice"), None)
+            if last_dice:
+                payload = last_dice.get("payload", {})
+                st.info(
+                    f"🎲 Última rolagem: **d{payload.get('sides')} = {payload.get('result')}** "
+                    f"(por {last_dice.get('by')})"
+                )
 
+            # --- Botões de dado ---
+            st.markdown("---")
+            c1, c2, c3 = st.columns([1, 1, 2])
 
+            with c1:
+                if st.button("🎲 Rolar d20", disabled=not is_player):
+                    r = roll_die(db, rid, trainer_name, sides=20)
+                    st.success(f"Você rolou: **{r}**")
+                    st.rerun()
 
+            with c2:
+                if st.button("🎲 Rolar d6", disabled=not is_player):
+                    r = roll_die(db, rid, trainer_name, sides=6)
+                    st.success(f"Você rolou: **{r}**")
+                    st.rerun()
 
+            with c3:
+                if is_player:
+                    st.caption("A rolagem aparece no **Log público** para jogadores e espectadores.")
+                else:
+                    st.caption("Você está como **espectador**.")
 
-
-
-
-
+            # --- Log público ---
+            st.markdown("### 📜 Log público (todos veem)")
+            events = list_public_events(db, rid, limit=25)
+            if not events:
+                st.caption("Sem eventos ainda.")
+            else:
+                for ev in events:
+                    et = ev.get("type", "?")
+                    by = ev.get("by", "?")
+                    payload = ev.get("payload", {})
+                    st.write(f"- **{et}** — _{by}_ — {payload}")
