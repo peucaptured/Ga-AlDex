@@ -140,38 +140,19 @@ def get_official_pokemon_map():
 
 def load_excel_data():
     file_name = "pokedex.xlsx"
-    if not os.path.exists(file_name):
-        st.error(f"🚨 Arquivo '{file_name}' não encontrado no GitHub!")
-        return None, None
+    if not os.path.exists(file_name): return None, None
     try:
         df = pd.read_excel(file_name)
-        
-        # Limpa nomes das colunas (tira espaços extras)
-        df.columns = [str(c).strip() for c in df.columns]
-        
-        # --- BLINDAGEM DE COLUNAS ---
-        # Se a coluna não existir, cria ela vazia para não travar o App
-        required_cols = ['Região', 'Biomas', 'Nome', 'Nº', 'Tipo', 'Nivel_Poder', 'Viabilidade']
-        for col in required_cols:
-            if col not in df.columns:
-                df[col] = "Desconhecido" # Cria coluna dummy
-            
-            # Força converter para texto (String) para evitar o erro da linha 381
-            df[col] = df[col].astype(str).replace('nan', 'Desconhecido')
-
-        # Tratamento do Número (remove #)
-        df['Nº'] = df['Nº'].str.replace('#', '', regex=False)
-        
-        # Tratamento numérico seguro
-        df['Nivel_Poder'] = pd.to_numeric(df['Nivel_Poder'], errors='coerce').fillna(1)
-        
-        # Estratégia
+        df.columns = [c.strip() for c in df.columns]
+        df['Região'] = df['Região'].fillna('Desconhecida').astype(str)
+        df['Biomas'] = df['Biomas'].fillna('Desconhecido').astype(str)
+        df['Nome'] = df['Nome'].fillna('Desconhecido')
+        df['Viabilidade'] = df['Viabilidade'].fillna('Sem dados.')
+        if 'Nº' in df.columns: df['Nº'] = df['Nº'].astype(str).str.replace('#', '')
+        df['Nivel_Poder'] = pd.to_numeric(df.get('Nivel_Poder', 1), errors='coerce').fillna(1)
         df['Codigos_Estrategia'] = df['Viabilidade'].apply(lambda x: re.findall(r'([CFS][ODFIC][RL])', str(x)))
-        
         return df, {}
-    except Exception as e:
-        st.error(f"🚨 Erro ao ler o Excel: {e}")
-        return None, None
+    except: return None, None
 
 # ==============================================================================
 # FUNÇÕES DA ENGINE DE BATALHA (MAPAS E GRID)
@@ -390,35 +371,26 @@ st.sidebar.markdown("---")
 page = st.sidebar.radio("Navegação", ["Pokédex", "Trainer Hub", "⚔️ Arena de Batalha (PvP)"])
 
 # ==============================================================================
-# PÁGINA 1: POKEDEX (CORRIGIDA)
+# PÁGINA 1: POKEDEX (RESTAURADA)
 # ==============================================================================
 if page == "Pokédex":
     st.sidebar.header("🔍 Filtros")
     search_query = st.sidebar.text_input("Buscar (Nome ou Nº)", "")
     
-    # --- CORREÇÃO AQUI: Adicionado str() para evitar erro com células vazias ---
-  # --- BLOCO CORRIGIDO (Proteção contra tabela vazia) ---
-    if df is not None and 'Região' in df.columns:
-        # Só tenta ler se a tabela existir
-        all_regions = sorted(list(set([r.strip() for region in df['Região'].unique() for r in str(region).split('/')])))
-    else:
-        # Se deu erro no Excel, cria uma lista vazia pra não travar o site
-        all_regions = []
-
+    # Filtros
+    all_regions = sorted(list(set([r.strip() for region in df['Região'].unique() for r in region.split('/')])))
     selected_regions = st.sidebar.multiselect("Região", all_regions)
     
     if selected_regions:
-        df_for_biomes = df[df['Região'].apply(lambda x: any(reg in str(x) for reg in selected_regions))]
+        df_for_biomes = df[df['Região'].apply(lambda x: any(reg in x for reg in selected_regions))]
         raw_biomes = df_for_biomes['Biomas'].unique()
     else:
         raw_biomes = df['Biomas'].unique()
         
-    # --- CORREÇÃO AQUI TAMBÉM ---
     all_biomes = sorted(list(set([b.strip() for biome in raw_biomes for b in str(biome).split('/')])))
     biomes_clean = [b for b in all_biomes if "toda" not in b.lower() and "ga" not in b.lower()]
     selected_biomes = st.sidebar.multiselect("Bioma", biomes_clean)
 
-    # --- E AQUI ---
     all_types = sorted(list(set([t.strip() for t_str in df['Tipo'].unique() for t in str(t_str).split('/')])))
     selected_types = st.sidebar.multiselect("Tipo Elementar (Combinação)", all_types)
     
@@ -430,9 +402,9 @@ if page == "Pokédex":
     if search_query:
         filtered_df = filtered_df[filtered_df['Nome'].str.contains(search_query, case=False, na=False) | filtered_df['Nº'].str.contains(search_query, case=False, na=False)]
     if selected_regions:
-        filtered_df = filtered_df[filtered_df['Região'].apply(lambda x: any(region in str(x) for region in selected_regions))]
+        filtered_df = filtered_df[filtered_df['Região'].apply(lambda x: any(region in x for region in selected_regions))]
     if selected_biomes:
-        filtered_df = filtered_df[filtered_df['Biomas'].apply(lambda x: ("toda" in str(x).lower() and "ga" in str(x).lower()) or any(b in str(x) for b in selected_biomes))]
+        filtered_df = filtered_df[filtered_df['Biomas'].apply(lambda x: ("toda" in str(x).lower() and "ga" in str(x).lower()) or any(b in x for b in selected_biomes))]
     if selected_types:
         filtered_df = filtered_df[filtered_df['Tipo'].apply(lambda x: all(t in str(x) for t in selected_types))]
     
@@ -500,111 +472,15 @@ if page == "Pokédex":
                         user_data["caught"].remove(dex_num)
                         save_data_cloud(trainer_name, user_data)
             st.divider()
+
 # ==============================================================================
-# PÁGINA 2: TRAINER HUB (SEM LIMITE DE 6 POKEMONS)
+# PÁGINA 2: TRAINER HUB
 # ==============================================================================
 elif page == "Trainer Hub":
     st.title("🏕️ Hub do Treinador")
-    
-    # --- SEÇÃO 1: VISUALIZAÇÃO DO TIME (PARTY) ---
-    st.subheader(f"🐺 Seu Time ({len(user_data.get('party', []))} Pokémons)")
-    
-    if "party" not in user_data: user_data["party"] = []
-    current_party = user_data["party"]
-    
-    if not current_party:
-        st.info("Seu time está vazio.")
-    else:
-        # Lógica para exibir em grades de 6 em 6 (quebra de linha automática)
-        # Se tiver 7 pokemons, cria 2 linhas. Se tiver 13, cria 3 linhas...
-        cols_per_row = 6
-        for i in range(0, len(current_party), cols_per_row):
-            cols = st.columns(cols_per_row)
-            batch = current_party[i:i+cols_per_row]
-            
-            for j, p_dex_num in enumerate(batch):
-                with cols[j]:
-                    pokemon_row = df[df['Nº'] == str(p_dex_num)]
-                    if not pokemon_row.empty:
-                        p_name = pokemon_row.iloc[0]['Nome']
-                        img = get_image_from_name(p_name, api_name_map)
-                        st.image(img, use_container_width=True)
-                        st.caption(f"**{p_name}**")
-                    else:
-                        st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=50)
-                        st.caption(f"#{p_dex_num}")
-
-    st.divider()
-
-    # --- SEÇÃO 2: GERENCIAMENTO DE TIME ---
-    c1, c2 = st.columns(2)
-    
-    # LADO ESQUERDO: ADICIONAR AO TIME
-    with c1:
-        st.markdown("### 📥 Adicionar ao Time")
-        caught_list = user_data.get("caught", [])
-        available_to_add = [p for p in caught_list if p not in current_party]
-        
-        # REMOVIDO O IF QUE BLOQUEAVA EM 6
-        if not available_to_add:
-            st.info("Você não tem Pokémon no PC para adicionar.")
-        else:
-            options_map = {}
-            display_options = []
-            for num in available_to_add:
-                row = df[df['Nº'] == str(num)]
-                name = row.iloc[0]['Nome'] if not row.empty else "Desconhecido"
-                label = f"#{num} - {name}"
-                options_map[label] = num
-                display_options.append(label)
-            
-            selected_label = st.selectbox("Escolha do PC", display_options)
-            
-            if st.button("Entrar no Time"):
-                if selected_label:
-                    real_id = options_map[selected_label]
-                    user_data["party"].append(real_id)
-                    save_data_cloud(trainer_name, user_data)
-                    st.rerun()
-
-    # LADO DIREITO: REMOVER DO TIME
-    with c2:
-        st.markdown("### 📤 Enviar para o PC")
-        if not current_party:
-            st.info("Seu time está vazio.")
-        else:
-            party_map = {}
-            party_display = []
-            for num in current_party:
-                row = df[df['Nº'] == str(num)]
-                name = row.iloc[0]['Nome'] if not row.empty else "Desconhecido"
-                label = f"#{num} - {name}"
-                party_map[label] = num
-                party_display.append(label)
-                
-            remove_label = st.selectbox("Escolha para remover", party_display)
-            
-            if st.button("Remover"):
-                if remove_label:
-                    real_id = party_map[remove_label]
-                    user_data["party"].remove(real_id)
-                    save_data_cloud(trainer_name, user_data)
-                    st.rerun()
-
-    st.divider()
-
-    # --- SEÇÃO 3: BLOCO DE NOTAS ---
-    with st.expander("📝 Caderneta de Anotações", expanded=False):
-        st.write("Guarde informações sobre quests, locais ou estratégias.")
-        current_notes = user_data.get("notes", "")
-        if isinstance(current_notes, dict): current_notes = ""
-        
-        new_notes = st.text_area("Anotações", value=current_notes, height=200)
-        
-        if st.button("Salvar Anotações"):
-            user_data["notes"] = new_notes
-            save_data_cloud(trainer_name, user_data)
-            st.success("Anotações salvas!")
+    st.write(f"Bem-vindo, {trainer_name}!")
+    st.write("Aqui você pode ver seus Pokémon capturados e organizar seu time.")
+    st.info("Funcionalidade em construção. Use a Pokédex ou a Arena!")
 
 # ==============================================================================
 # PÁGINA 3: ARENA DE BATALHA (V3 - COMPLETA)
@@ -753,6 +629,3 @@ elif page == "⚔️ Arena de Batalha (PvP)":
             with tab_gm:
                 if st.button("🔥 Fogo"): battle['obstacles'].append({"x":4,"y":4,"icon":"🔥","name":"Fogo","type":"hazard"}); st.rerun()
                 if st.button("🧹 Limpar Tudo"): st.session_state['battle_state']['active'] = False; st.rerun()
-
-
-
