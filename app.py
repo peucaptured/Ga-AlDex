@@ -28,37 +28,47 @@ def get_google_sheet():
         st.error(f"Erro de Conexão: {e}")
         st.stop()
 
-# --- SISTEMA DE LOGIN SEGURO ---
-def authenticate_user(name, password):
+# --- SISTEMA DE LOGIN SEGURO (CORRIGIDO) ---
+
+def find_user_row(sheet, name):
     """
-    Retorna:
-    - O JSON dos dados se login OK.
-    - "WRONG_PASS" se senha errada.
-    - "NOT_FOUND" se usuário não existe.
+    Procura o usuário APENAS na Coluna 1 (Coluna A).
+    Isso evita bugs de achar o nome em outros lugares.
+    Retorna o número da linha ou None.
     """
     try:
+        # Pega todos os valores da primeira coluna
+        all_names = sheet.col_values(1)
+        # Tenta achar o índice na lista (Python começa em 0, Sheets em 1)
+        # O index lança erro se não achar, então usamos try/except
+        row_index = all_names.index(name) + 1 
+        return row_index
+    except ValueError:
+        return None
+
+def authenticate_user(name, password):
+    try:
         sheet = get_google_sheet()
-        # Procura o nome exato na planilha
-        cell = sheet.find(name) 
+        row_num = find_user_row(sheet, name)
         
-        # Pega a linha inteira (Nome, Dados, Senha)
-        row_values = sheet.row_values(cell.row)
+        if row_num is None:
+            return "NOT_FOUND"
         
-        # Estrutura esperada: [Nome, JSON, Senha]
-        # Pode ser que a senha não exista ainda (índice 2)
+        # Pega a linha exata
+        row_values = sheet.row_values(row_num)
+        
+        # Validação de segurança se a linha estiver quebrada
         if len(row_values) < 3:
-            return "WRONG_PASS" # Usuário corrompido ou sem senha
+            return "WRONG_PASS"
             
-        stored_password = str(row_values[2]) # Coluna C (índice 2)
-        stored_data = row_values[1]          # Coluna B (índice 1)
+        stored_password = str(row_values[2]) # Coluna C
+        stored_data = row_values[1]          # Coluna B
         
         if stored_password == str(password):
             return json.loads(stored_data)
         else:
             return "WRONG_PASS"
             
-    except gspread.exceptions.CellNotFound:
-        return "NOT_FOUND"
     except Exception as e:
         st.error(f"Erro na autenticação: {e}")
         return None
@@ -67,12 +77,9 @@ def register_new_user(name, password):
     try:
         sheet = get_google_sheet()
         
-        # Verifica se já existe para não duplicar
-        try:
-            sheet.find(name)
+        # Verifica APENAS na coluna 1
+        if find_user_row(sheet, name) is not None:
             return "EXISTS"
-        except:
-            pass # Não existe, pode criar
             
         empty_data = json.dumps({"seen": [], "caught": [], "party": [], "notes": {}})
         # Adiciona: Coluna A (Nome), Coluna B (Dados), Coluna C (Senha)
@@ -86,10 +93,16 @@ def save_data_cloud(trainer_name, data):
     try:
         sheet = get_google_sheet()
         json_str = json.dumps(data)
-        cell = sheet.find(trainer_name)
-        # Atualiza apenas a coluna 2 (Dados), preservando a senha na 3
-        sheet.update_cell(cell.row, 2, json_str)
-        return True
+        
+        row_num = find_user_row(sheet, trainer_name)
+        
+        if row_num:
+            # Atualiza apenas a coluna 2 (Dados) dessa linha
+            sheet.update_cell(row_num, 2, json_str)
+            return True
+        else:
+            st.error("Erro crítico: Usuário sumiu da planilha enquanto salvava.")
+            return False
     except Exception as e:
         st.error(f"Erro ao salvar: {e}")
         return False
@@ -115,38 +128,37 @@ if 'trainer_name' not in st.session_state:
                     elif result == "NOT_FOUND":
                         st.warning("Usuário não encontrado. Crie uma conta na aba ao lado.")
                     elif isinstance(result, dict):
-                        # Sucesso!
                         st.session_state['trainer_name'] = l_user
                         st.session_state['user_data'] = result
                         st.rerun()
     
     # ABA DE REGISTRO
     with tab_register:
-        st.info("Crie um novo usuário com senha para proteger seu time.")
+        st.info("Crie um novo usuário. Se apagou o antigo no Excel, pode recriar aqui.")
         r_user = st.text_input("Escolha seu Nome", key="r_user")
         r_pass = st.text_input("Escolha sua Senha", type="password", key="r_pass")
         
         if st.button("Criar Conta"):
             if r_user and r_pass:
-                with st.spinner("Registrando na Silph Co..."):
+                with st.spinner("Registrando..."):
                     res = register_new_user(r_user, r_pass)
                     if res == "SUCCESS":
                         st.success("Conta criada! Vá na aba 'Entrar' para fazer login.")
                     elif res == "EXISTS":
-                        st.error("Esse nome de treinador já existe.")
+                        st.error("Esse nome de treinador já existe na Coluna A da planilha.")
                     else:
                         st.error("Erro ao criar conta.")
             else:
                 st.warning("Preencha nome e senha.")
 
-    st.stop() # Bloqueia o resto do app
+    st.stop() 
 
-# --- APP PRINCIPAL (SÓ CARREGA SE LOGADO) ---
+# --- APP PRINCIPAL ---
 
 user_data = st.session_state['user_data']
 trainer_name = st.session_state['trainer_name']
 
-# --- FUNÇÕES DO APP (Normalização, Imagem, Poder) ---
+# --- FUNÇÕES DO APP ---
 
 def normalize_text(text):
     if not isinstance(text, str): return str(text)
@@ -271,16 +283,16 @@ if 'df_data' not in st.session_state:
 df = st.session_state['df_data']
 cols_map = st.session_state.get('cols_map', {})
 
-# --- INTERFACE ---
+# --- INTERFACE PRINCIPAL ---
 
 st.sidebar.title("📱 Menu")
 st.sidebar.markdown(f"**Treinador:** {trainer_name}")
 
 if st.sidebar.button("💾 Salvar na Nuvem"):
     if save_data_cloud(trainer_name, user_data):
-        st.sidebar.success("Salvo!")
+        st.sidebar.success("Salvo com sucesso!")
 
-if st.sidebar.button("🚪 Sair"):
+if st.sidebar.button("🚪 Sair (Logout)"):
     del st.session_state['trainer_name']
     st.rerun()
 
