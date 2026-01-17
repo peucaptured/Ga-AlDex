@@ -16,16 +16,19 @@ from firebase_admin import credentials, firestore, storage
 
 def init_firebase():
     if not firebase_admin._apps:
-        cred_dict = dict(st.secrets["firebase_service_account"])
+        raw = st.secrets["firebase_service_account"]
+        cred_dict = {k: raw[k] for k in raw.keys()}  # <-- dict puro
+
         cred = credentials.Certificate(cred_dict)
         firebase_admin.initialize_app(cred, {
-            "projectId": cred_dict.get("project_id", "batalhas-de-gaal"),
+            "projectId": cred_dict["project_id"],
             "storageBucket": "batalhas-de-gaal.firebasestorage.app",
         })
 
     db = firestore.client()
     bucket = storage.bucket()
     return db, bucket
+
 
 
 
@@ -607,6 +610,7 @@ elif page == "Trainer Hub (Meus Pokémons)":
         st.markdown(f"### Progresso da Pokédex")
         st.progress(min(vistos / total, 1.0))
         st.write(f"**{vistos}** de **{total}** Pokémons registrados.")
+
 
 
 
