@@ -169,6 +169,7 @@ def get_image_from_name(user_name, name_map):
     pre_clean = user_name.replace('♀', '-f').replace('♂', '-m')
     clean = normalize_text(pre_clean).replace('.', '').replace("'", '').replace(' ', '-')
     
+    # --- LISTA DE EXCEÇÕES E FORMAS (ATUALIZADA) ---
     if clean == 'mimikyu': clean = 'mimikyu-disguised'
     if clean == 'aegislash': clean = 'aegislash-blade'
     if clean == 'giratina': clean = 'giratina-origin'
@@ -179,14 +180,29 @@ def get_image_from_name(user_name, name_map):
     if clean == 'deoxys': clean = 'deoxys-normal'
     if clean == 'wormadam': clean = 'wormadam-plant'
     if clean == 'shaymin': clean = 'shaymin-land'
+    
+    # Correções da 8ª Geração (Seus pedidos)
+    if clean == 'toxtricity': clean = 'toxtricity-amped'
+    if clean == 'eiscue': clean = 'eiscue-ice'
+    if clean == 'indeedee': clean = 'indeedee-male'
+    if clean == 'morpeko': clean = 'morpeko-full-belly'
+    if clean == 'urshifu': clean = 'urshifu-single-strike'
+    
+    # Outras correções úteis
+    if clean == 'basculegion': clean = 'basculegion-male'
+    if clean == 'enamorus': clean = 'enamorus-incarnate'
+    if clean == 'keldeo': clean = 'keldeo-ordinary'
+    if clean == 'meloetta': clean = 'meloetta-aria'
 
+    # Sufixos Regionais
     if clean.endswith('-a'): clean = clean[:-2] + '-alola'
     if clean.endswith('-g'): clean = clean[:-2] + '-galar'
     if clean.endswith('-h'): clean = clean[:-2] + '-hisui'
+    if clean.endswith('-p'): clean = clean[:-2] + '-paldea' # Paldea
     if clean.startswith('g-'): clean = clean[2:] + '-galar'
     if clean.startswith('a-'): clean = clean[2:] + '-alola'
     if clean.startswith('h-'): clean = clean[2:] + '-hisui'
-
+    if clean.startswith('p-'): clean = clean[2:] + '-paldea'
     p_id = name_map.get(clean)
     if not p_id:
         base_name = clean.split('-')[0]
@@ -550,5 +566,6 @@ elif page == "Trainer Hub (Meus Pokémons)":
         st.markdown(f"### Progresso da Pokédex")
         st.progress(min(vistos / total, 1.0))
         st.write(f"**{vistos}** de **{total}** Pokémons registrados.")
+
 
 
