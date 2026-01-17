@@ -772,12 +772,16 @@ elif page == "Trainer Hub (Meus Pokémons)":
 
 elif page == "PvP – Arena Tática":
     st.title("⚔️ PvP – Arena Tática (MVP)")
-    # Recarrega a aba PvP automaticamente a cada 1.5s (apenas nesta página)
-st_autorefresh(interval=1500, key="pvp_refresh")
+    st.caption(
+        "Base multiplayer: criar/abrir arena, entrar por código, espectadores "
+        "e log público (dado visível para todos)."
+    )
 
-    st.caption("Base multiplayer: criar/abrir arena, entrar por código, espectadores e log público (dado vem aqui depois).")
+    # Auto-refresh só nesta aba
+    st_autorefresh(interval=1500, key="pvp_refresh")
 
     db, bucket = init_firebase()
+
 
     # --- Painel: criar arena ---
     st.subheader("➕ Criar nova arena")
@@ -945,6 +949,7 @@ with c3:
                 by = ev.get("by", "?")
                 payload = ev.get("payload", {})
                 st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
