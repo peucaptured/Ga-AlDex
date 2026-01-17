@@ -13,22 +13,21 @@ import base64
 import math
 
 # ==============================================================================
-# CONFIGURAÇÃO E FUNÇÕES DE SISTEMA
+# CONFIGURAÇÃO
 # ==============================================================================
 st.set_page_config(
-    page_title="Pokedex RPG - Battle Engine V3",
+    page_title="Pokedex RPG - Battle Engine V4",
     page_icon="⚔️",
     layout="wide"
 )
 
-def calculate_damage(damage_val, base_const, defense_roll, defense_stat):
-    # Fórmula: (Dano + Constante) - (Dado + Resistência)
-    # Dividido por 5 e arredondado pra cima
-    attack_total = damage_val + base_const
-    defense_total = defense_roll + defense_stat
-    final_val = (attack_total - defense_total) / 5
-    if final_val < 0: final_val = 0
-    return math.ceil(final_val)
+# ==============================================================================
+# 1. FUNÇÕES DE DADOS (BLINDADAS)
+# ==============================================================================
+
+def normalize_text(text):
+    if not isinstance(text, str): return str(text)
+    return unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
 
 def get_google_sheet(sheet_name="SaveData_RPG", tab_index=0):
     try:
@@ -40,7 +39,7 @@ def get_google_sheet(sheet_name="SaveData_RPG", tab_index=0):
         sheet = client.open(sheet_name)
         return sheet.get_worksheet(tab_index)
     except Exception as e:
-        st.error(f"Erro de Conexão: {e}")
+        st.error(f"Erro de Conexão com Google Sheets: {e}")
         st.stop()
 
 def find_user_row(sheet, name):
@@ -83,21 +82,12 @@ def save_data_cloud(trainer_name, data):
         return False
     except: return False
 
-# ==============================================================================
-# FUNÇÕES VISUAIS E DE DADOS (POKEDEX)
-# ==============================================================================
-
-def normalize_text(text):
-    if not isinstance(text, str): return str(text)
-    return unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
-
 def get_image_from_name(user_name, name_map):
     if not isinstance(user_name, str): return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
-    
     pre_clean = user_name.replace('♀', '-f').replace('♂', '-m')
     clean = normalize_text(pre_clean).replace('.', '').replace("'", '').replace(' ', '-')
     
-    # Lista de Exceções de Imagens
+    # Exceções Manuais
     exceptions = {
         'mimikyu': 'mimikyu-disguised', 'aegislash': 'aegislash-blade', 'giratina': 'giratina-origin',
         'wishiwashi': 'wishiwashi-solo', 'pumpkaboo': 'pumpkaboo-average', 'gourgeist': 'gourgeist-average',
@@ -107,27 +97,19 @@ def get_image_from_name(user_name, name_map):
         'basculegion': 'basculegion-male', 'enamorus': 'enamorus-incarnate', 'keldeo': 'keldeo-ordinary',
         'meloetta': 'meloetta-aria'
     }
-    
     if clean in exceptions: clean = exceptions[clean]
-
+    
     if clean.endswith('-a'): clean = clean[:-2] + '-alola'
     if clean.endswith('-g'): clean = clean[:-2] + '-galar'
     if clean.endswith('-h'): clean = clean[:-2] + '-hisui'
     if clean.endswith('-p'): clean = clean[:-2] + '-paldea'
-    if clean.startswith('g-'): clean = clean[2:] + '-galar'
-    if clean.startswith('a-'): clean = clean[2:] + '-alola'
-    if clean.startswith('h-'): clean = clean[2:] + '-hisui'
-    if clean.startswith('p-'): clean = clean[2:] + '-paldea'
-
+    
     p_id = name_map.get(clean)
-    if not p_id:
+    if not p_id: 
         base_name = clean.split('-')[0]
         p_id = name_map.get(base_name)
-
-    if p_id:
-        return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{p_id}.png"
-    else:
-        return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
+    
+    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{p_id}.png" if p_id else "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
 
 @st.cache_data
 def get_official_pokemon_map():
@@ -138,45 +120,68 @@ def get_official_pokemon_map():
         return {p['name']: p['url'].split('/')[-2] for p in data['results']}
     except: return {}
 
+# --- FUNÇÃO DE CARREGAMENTO ULTRA-SEGURA ---
 def load_excel_data():
     file_name = "pokedex.xlsx"
-    if not os.path.exists(file_name): return None, None
+    if not os.path.exists(file_name):
+        st.error(f"🚨 Arquivo {file_name} não encontrado no repositório.")
+        return None, None
     try:
-        df = pd.read_excel(file_name)
+        # Lê o Excel e converte tudo pra string inicialmente para não quebrar
+        df = pd.read_excel(file_name, dtype=str)
+        
+        # Limpa espaços nos nomes das colunas
         df.columns = [c.strip() for c in df.columns]
-        df['Região'] = df['Região'].fillna('Desconhecida').astype(str)
-        df['Biomas'] = df['Biomas'].fillna('Desconhecido').astype(str)
-        df['Nome'] = df['Nome'].fillna('Desconhecido')
-        df['Viabilidade'] = df['Viabilidade'].fillna('Sem dados.')
-        if 'Nº' in df.columns: df['Nº'] = df['Nº'].astype(str).str.replace('#', '')
-        df['Nivel_Poder'] = pd.to_numeric(df.get('Nivel_Poder', 1), errors='coerce').fillna(1)
+        
+        # Garante colunas mínimas
+        cols_needed = ['Região', 'Biomas', 'Nome', 'Nº', 'Tipo', 'Nivel_Poder', 'Viabilidade']
+        for c in cols_needed:
+            if c not in df.columns: df[c] = "Desconhecido"
+        
+        # Tratamento de Nulos
+        df.fillna("Desconhecido", inplace=True)
+        
+        # Limpeza Específica
+        df['Nº'] = df['Nº'].astype(str).str.replace('#', '').str.strip()
+        
+        # Converte Poder para Número (Força bruta)
+        # Qualquer coisa que não for número vira 0
+        df['Nivel_Poder'] = pd.to_numeric(df['Nivel_Poder'], errors='coerce').fillna(0).astype(int)
+        
+        # Processa Estratégia
         df['Codigos_Estrategia'] = df['Viabilidade'].apply(lambda x: re.findall(r'([CFS][ODFIC][RL])', str(x)))
+        
         return df, {}
-    except: return None, None
+    except Exception as e:
+        st.error(f"Erro fatal ao ler Excel: {e}")
+        return None, None
+
+def calculate_damage(damage_val, base_const, defense_roll, defense_stat):
+    attack_total = damage_val + base_const
+    defense_total = defense_roll + defense_stat
+    final_val = (attack_total - defense_total) / 5
+    if final_val < 0: final_val = 0
+    return math.ceil(final_val)
 
 # ==============================================================================
-# FUNÇÕES DA ENGINE DE BATALHA (MAPAS E GRID)
+# 2. ENGINE DE BATALHA
 # ==============================================================================
-
 def generate_procedural_map(size, biome_type):
     obstacles = []
     center = size // 2
     
-    # 1. ARENA DE TERRA BATIDA
     if biome_type == "Terra Batida":
         for _ in range(int(size * 0.5)):
             x, y = random.randint(0, size-1), random.randint(0, size-1)
             if x != center or y != center:
                 obstacles.append({"x": x, "y": y, "icon": "🪨", "name": "Pedra", "type": "wall"})
 
-    # 2. ARENA DE GRAMA
     elif biome_type == "Arena de Grama":
         for x in range(size):
             for y in range(size):
                 if random.random() < 0.2:
                     obstacles.append({"x": x, "y": y, "icon": "🌾", "name": "Grama Alta", "type": "cover"})
 
-    # 3. LAGO NO CENTRO
     elif biome_type == "Lago Central":
         radius = size / 3.5
         for x in range(size):
@@ -187,12 +192,10 @@ def generate_procedural_map(size, biome_type):
                 elif dist < radius + 1:
                     obstacles.append({"x": x, "y": y, "icon": "🔹", "name": "Água Rasa", "type": "water"})
 
-    # 4. RIO
     elif biome_type == "Rio":
         orientation = random.choice(['vert', 'horiz'])
         bridge_pos = random.randint(1, size-2)
         river_line = center + random.randint(-1, 1)
-        
         for i in range(size):
             if orientation == 'vert':
                 obstacles.append({"x": river_line, "y": i, "icon": "🌊", "name": "Rio", "type": "water"})
@@ -207,7 +210,6 @@ def generate_procedural_map(size, biome_type):
                     obstacles.append({"x": i, "y": river_line, "icon": "🌉", "name": "Ponte", "type": "ground"})
                     obstacles.append({"x": i, "y": river_line+1, "icon": "🌉", "name": "Ponte", "type": "ground"})
 
-    # 5. MONTANHA
     elif biome_type == "Montanha":
         for x in range(size):
             for y in range(size):
@@ -219,16 +221,11 @@ def generate_procedural_map(size, biome_type):
                 elif random.random() < 0.1:
                     obstacles.append({"x": x, "y": y, "icon": "🪨", "name": "Pedra", "type": "cover"})
 
-    # 6. PADRÃO
     else:
         icon = "🌲" if biome_type == "Floresta" else "🪨"
         num_obstacles = int((size * size) * 0.15)
         for _ in range(num_obstacles):
-            obstacles.append({
-                "x": random.randint(0, size-1),
-                "y": random.randint(0, size-1),
-                "icon": icon, "name": "Obstáculo", "type": "wall"
-            })
+            obstacles.append({"x": random.randint(0, size-1), "y": random.randint(0, size-1), "icon": icon, "name": "Obstáculo", "type": "wall"})
             
     return obstacles
 
@@ -239,9 +236,7 @@ def render_battle_grid(size, biome, units, obstacles):
         "Lago Central": "#AED581", "Rio": "#C5E1A5", "Arena de Grama": "#33691E"
     }
     bg_color = colors.get(biome, "#F0F0F0")
-
     fig = go.Figure()
-
     fig.update_layout(
         title=f"🏟️ {biome}",
         xaxis=dict(range=[-0.5, size-0.5], showgrid=True, dtick=1, gridcolor='rgba(0,0,0,0.2)', showticklabels=False),
@@ -251,102 +246,49 @@ def render_battle_grid(size, biome, units, obstacles):
         margin=dict(l=10, r=10, t=40, b=10),
         hovermode='closest'
     )
-
     if obstacles:
-        obs_x, obs_y, obs_txt = [], [], []
-        for o in obstacles:
-            obs_x.append(o['x'])
-            obs_y.append(o['y'])
-            obs_txt.append(o['icon'])
-            
-        fig.add_trace(go.Scatter(
-            x=obs_x, y=obs_y,
-            mode='text',
-            text=obs_txt,
-            textfont=dict(size=30),
-            hoverinfo='text',
-            hovertext=[o['name'] for o in obstacles],
-            name='Terreno'
-        ))
-
+        obs_x = [o['x'] for o in obstacles]
+        obs_y = [o['y'] for o in obstacles]
+        obs_txt = [o['icon'] for o in obstacles]
+        fig.add_trace(go.Scatter(x=obs_x, y=obs_y, mode='text', text=obs_txt, textfont=dict(size=30), hoverinfo='text', hovertext=[o['name'] for o in obstacles], name='Terreno'))
     if units:
-        u_x, u_y, u_txt, u_color = [], [], [], []
-        for u in units:
-            u_x.append(u['x'])
-            u_y.append(u['y'])
-            is_trainer = u.get('is_trainer', False)
-            marker = '👤' if is_trainer else '👾'
-            color = 'blue' if is_trainer else 'red'
-            u_txt.append(marker)
-            u_color.append(color)
-
-        fig.add_trace(go.Scatter(
-            x=u_x, y=u_y,
-            mode='markers+text',
-            marker=dict(size=40, color=u_color, opacity=0.5, line=dict(width=2, color='white')),
-            text=u_txt,
-            textfont=dict(size=20),
-            hoverinfo='text',
-            hovertext=[u['name'] for u in units],
-            name='Unidades'
-        ))
-
+        u_x = [u['x'] for u in units]
+        u_y = [u['y'] for u in units]
+        u_txt = ['👤' if u.get('is_trainer') else '👾' for u in units]
+        u_color = ['blue' if u.get('is_trainer') else 'red' for u in units]
+        fig.add_trace(go.Scatter(x=u_x, y=u_y, mode='markers+text', marker=dict(size=40, color=u_color, opacity=0.5, line=dict(width=2, color='white')), text=u_txt, textfont=dict(size=20), hoverinfo='text', hovertext=[u['name'] for u in units], name='Unidades'))
     return fig
 
 # ==============================================================================
-# CARREGAMENTO INICIAL
+# 3. CARREGAMENTO E LOGIN
 # ==============================================================================
-
 api_name_map = get_official_pokemon_map()
 if 'df_data' not in st.session_state:
     st.session_state['df_data'], st.session_state['cols_map'] = load_excel_data()
 df = st.session_state['df_data']
 
-# ==============================================================================
-# TELA DE LOGIN (CORRIGIDA)
-# ==============================================================================
-
 if 'trainer_name' not in st.session_state:
     st.title("🔒 Login Pokedex RPG")
-    
     l_user = st.text_input("Usuário")
     l_pass = st.text_input("Senha", type="password")
-    
-    col_entrar, col_criar = st.columns(2)
-    
-    with col_entrar:
+    c1, c2 = st.columns(2)
+    with c1:
         if st.button("Entrar"):
-            if not l_user or not l_pass:
-                st.warning("Preencha tudo.")
-            else:
-                res = authenticate_user(l_user, l_pass)
-                if res == "NOT_FOUND":
-                    st.error("Usuário não encontrado.")
-                elif res == "WRONG_PASS":
-                    st.error("Senha incorreta.")
-                elif isinstance(res, dict):
-                    st.session_state['trainer_name'] = l_user
-                    st.session_state['user_data'] = res
-                    st.rerun()
-    
-    with col_criar:
+            res = authenticate_user(l_user, l_pass)
+            if isinstance(res, dict):
+                st.session_state['trainer_name'] = l_user
+                st.session_state['user_data'] = res
+                st.rerun()
+            else: st.error("Login falhou.")
+    with c2:
         if st.button("Criar Conta"):
-            if not l_user or not l_pass:
-                st.warning("Digite nome e senha para criar.")
-            else:
-                res = register_new_user(l_user, l_pass)
-                if res == "EXISTS":
-                    st.warning("Usuário já existe.")
-                elif res == "SUCCESS":
-                    st.success("Conta criada! Clique em Entrar.")
-                else:
-                    st.error("Erro ao criar.")
+            if register_new_user(l_user, l_pass) == "SUCCESS": st.success("Criado! Entre agora.")
+            else: st.error("Erro ao criar.")
     st.stop()
 
 # ==============================================================================
-# ÁREA LOGADA - SIDEBAR
+# 4. INTERFACE PRINCIPAL
 # ==============================================================================
-
 user_data = st.session_state['user_data']
 trainer_name = st.session_state['trainer_name']
 
@@ -362,270 +304,273 @@ with st.sidebar.expander("📸 Meu Avatar"):
         base64_str = base64.b64encode(bytes_data).decode()
         user_data['avatar'] = f"data:image/png;base64,{base64_str}"
         save_data_cloud(trainer_name, user_data)
-        st.success("Avatar atualizado!")
-    
-    if user_data.get('avatar'):
-        st.image(user_data['avatar'], width=100, caption="Você em Campo")
+        st.success("Avatar salvo!")
+    if user_data.get('avatar'): st.image(user_data['avatar'], width=100)
 
 st.sidebar.markdown("---")
 page = st.sidebar.radio("Navegação", ["Pokédex", "Trainer Hub", "⚔️ Arena de Batalha (PvP)"])
 
-# ==============================================================================
-# PÁGINA 1: POKEDEX (RESTAURADA)
-# ==============================================================================
+# --- PÁGINA POKEDEX ---
 if page == "Pokédex":
     st.sidebar.header("🔍 Filtros")
     search_query = st.sidebar.text_input("Buscar (Nome ou Nº)", "")
     
-    # Filtros
-    all_regions = sorted(list(set([r.strip() for region in df['Região'].unique() for r in region.split('/')])))
-    selected_regions = st.sidebar.multiselect("Região", all_regions)
-    
-    if selected_regions:
-        df_for_biomes = df[df['Região'].apply(lambda x: any(reg in x for reg in selected_regions))]
-        raw_biomes = df_for_biomes['Biomas'].unique()
+    if df is not None and not df.empty:
+        # TRATAMENTO DE ERRO NA COLUNA REGIÃO (BLINDAGEM)
+        all_regions = []
+        if 'Região' in df.columns:
+            # Força str() em tudo para evitar TypeError
+            raw_regions = [str(r) for r in df['Região'].unique()]
+            all_regions = sorted(list(set([r.strip() for region in raw_regions for r in region.split('/')])))
+        
+        selected_regions = st.sidebar.multiselect("Região", all_regions)
+        
+        if selected_regions:
+            df_biomes = df[df['Região'].apply(lambda x: any(reg in str(x) for reg in selected_regions))]
+            raw_biomes = df_biomes['Biomas'].unique()
+        else:
+            raw_biomes = df['Biomas'].unique()
+            
+        all_biomes = sorted(list(set([b.strip() for biome in raw_biomes for b in str(biome).split('/')])))
+        selected_biomes = st.sidebar.multiselect("Bioma", [b for b in all_biomes if len(b)>1])
+
+        all_types = sorted(list(set([t.strip() for t_str in df['Tipo'].unique() for t in str(t_str).split('/')])))
+        selected_types = st.sidebar.multiselect("Tipo", all_types)
+        
+        # TRATAMENTO DE ERRO NO SLIDER (BLINDAGEM)
+        try:
+            min_p = int(df['Nivel_Poder'].min())
+            max_p = int(df['Nivel_Poder'].max())
+        except:
+            min_p, max_p = 0, 100 # Fallback se der erro
+            
+        if min_p >= max_p: max_p = min_p + 10 # Evita erro de min=max
+        
+        power_range = st.sidebar.slider("⚡ Nível de Poder", min_p, max_p, (min_p, max_p))
+        
+        # Aplicação
+        filtered_df = df.copy()
+        if search_query:
+            filtered_df = filtered_df[filtered_df['Nome'].str.contains(search_query, case=False) | filtered_df['Nº'].str.contains(search_query, case=False)]
+        if selected_regions:
+            filtered_df = filtered_df[filtered_df['Região'].apply(lambda x: any(r in str(x) for r in selected_regions))]
+        if selected_biomes:
+            filtered_df = filtered_df[filtered_df['Biomas'].apply(lambda x: any(b in str(x) for b in selected_biomes))]
+        if selected_types:
+            filtered_df = filtered_df[filtered_df['Tipo'].apply(lambda x: all(t in str(x) for t in selected_types))]
+        filtered_df = filtered_df[(filtered_df['Nivel_Poder'] >= power_range[0]) & (filtered_df['Nivel_Poder'] <= power_range[1])]
+        
+        st.markdown(f"**Resultados:** {len(filtered_df)}")
+        for index, row in filtered_df.iterrows():
+            dex_num = str(row['Nº'])
+            p_name = str(row['Nome'])
+            img_url = get_image_from_name(p_name, api_name_map)
+            power = row['Nivel_Poder']
+            key_s = f"s_{dex_num}_{index}"
+            key_c = f"c_{dex_num}_{index}"
+            
+            with st.container():
+                c1, c2, c3 = st.columns([0.5, 3, 1.5])
+                with c1: st.image(img_url, width=80)
+                with c2:
+                    st.markdown(f"### #{dex_num} {p_name}")
+                    if power >= 13: clr = "#D32F2F"
+                    elif power >= 8: clr = "#F57C00"
+                    else: clr = "#388E3C"
+                    st.markdown(f"<span style='background:{clr};color:white;padding:2px 8px;border-radius:10px'>⚡ {power}</span> **{row['Tipo']}**", unsafe_allow_html=True)
+                    with st.expander("Detalhes"):
+                        st.markdown(f"**📍** {row['Região']} | **🌿** {row['Biomas']}")
+                        st.info(row['Viabilidade'])
+                with c3:
+                    is_seen = dex_num in user_data["seen"]
+                    is_caught = dex_num in user_data["caught"]
+                    if st.checkbox("👁️ Visto", is_seen, key=key_s):
+                        if dex_num not in user_data["seen"]: 
+                            user_data["seen"].append(dex_num)
+                            save_data_cloud(trainer_name, user_data)
+                    else:
+                        if dex_num in user_data["seen"]:
+                            user_data["seen"].remove(dex_num)
+                            save_data_cloud(trainer_name, user_data)
+                    
+                    if st.checkbox("🔴 Capturado", is_caught, key=key_c):
+                        if dex_num not in user_data["caught"]:
+                            user_data["caught"].append(dex_num)
+                            if dex_num not in user_data["seen"]: user_data["seen"].append(dex_num)
+                            save_data_cloud(trainer_name, user_data)
+                            st.rerun()
+                    else:
+                        if dex_num in user_data["caught"]:
+                            user_data["caught"].remove(dex_num)
+                            save_data_cloud(trainer_name, user_data)
+                st.divider()
     else:
-        raw_biomes = df['Biomas'].unique()
-        
-    all_biomes = sorted(list(set([b.strip() for biome in raw_biomes for b in str(biome).split('/')])))
-    biomes_clean = [b for b in all_biomes if "toda" not in b.lower() and "ga" not in b.lower()]
-    selected_biomes = st.sidebar.multiselect("Bioma", biomes_clean)
+        st.warning("Carregando banco de dados...")
 
-    all_types = sorted(list(set([t.strip() for t_str in df['Tipo'].unique() for t in str(t_str).split('/')])))
-    selected_types = st.sidebar.multiselect("Tipo Elementar (Combinação)", all_types)
-    
-    min_p, max_p = int(df['Nivel_Poder'].min()), int(df['Nivel_Poder'].max())
-    power_range = st.sidebar.slider("⚡ Nível de Poder", min_p, max_p, (min_p, max_p))
-    
-    # Aplicação de Filtros
-    filtered_df = df.copy()
-    if search_query:
-        filtered_df = filtered_df[filtered_df['Nome'].str.contains(search_query, case=False, na=False) | filtered_df['Nº'].str.contains(search_query, case=False, na=False)]
-    if selected_regions:
-        filtered_df = filtered_df[filtered_df['Região'].apply(lambda x: any(region in x for region in selected_regions))]
-    if selected_biomes:
-        filtered_df = filtered_df[filtered_df['Biomas'].apply(lambda x: ("toda" in str(x).lower() and "ga" in str(x).lower()) or any(b in x for b in selected_biomes))]
-    if selected_types:
-        filtered_df = filtered_df[filtered_df['Tipo'].apply(lambda x: all(t in str(x) for t in selected_types))]
-    
-    filtered_df = filtered_df[(filtered_df['Nivel_Poder'] >= power_range[0]) & (filtered_df['Nivel_Poder'] <= power_range[1])]
-    
-    # Exibição
-    st.title("📕 Pokédex Universal")
-    st.markdown(f"**Resultados:** {len(filtered_df)}")
-    
-    if filtered_df.empty: 
-        st.warning("Nenhum Pokémon encontrado.")
-    
-    for index, row in filtered_df.iterrows():
-        dex_num = row['Nº']
-        p_name = row['Nome']
-        img_url = get_image_from_name(p_name, api_name_map)
-        power = row['Nivel_Poder']
-        
-        key_seen = f"seen_{dex_num}_{index}"
-        key_caught = f"caught_{dex_num}_{index}"
-        
-        with st.container():
-            c_img, c_info, c_check = st.columns([0.5, 3, 1.5])
-            with c_img: st.image(img_url, width=80)
-            with c_info:
-                st.markdown(f"### #{dex_num} {p_name}")
-                tags_html = "".join([f"<span style='background-color:#444;color:white;padding:2px 5px;border-radius:4px;margin-right:5px;font-size:0.8em'>{c}</span>" for c in row['Codigos_Estrategia']])
-                
-                if power >= 13: p_color = "#D32F2F"
-                elif power >= 8: p_color = "#F57C00"
-                else: p_color = "#388E3C"
-                power_badge = f"<span style='background-color:{p_color};color:white;padding:2px 8px;border-radius:10px;font-weight:bold;font-size:0.8em'>⚡ NP: {power}</span>"
-                st.markdown(f"**{row['Tipo']}** | {power_badge} {tags_html}", unsafe_allow_html=True)
-                
-                with st.expander("📖 Detalhes"):
-                    st.markdown(f"**📍 Região:** {row['Região']} | **🌿 Bioma:** {row['Biomas']}")
-                    st.info(row['Descrição da Pokedex'])
-                    viab = str(row['Viabilidade'])
-                    for code in row['Codigos_Estrategia']:
-                        viab = re.sub(rf'\b{code}\b', f":red[**{code}**]", viab)
-                    st.write(viab)
-
-            with c_check:
-                st.write("") 
-                is_seen = dex_num in user_data["seen"]
-                is_caught = dex_num in user_data["caught"]
-                
-                if st.checkbox("👁️ Visto", value=is_seen, key=key_seen):
-                    if dex_num not in user_data["seen"]:
-                        user_data["seen"].append(dex_num)
-                        save_data_cloud(trainer_name, user_data)
-                else:
-                    if dex_num in user_data["seen"]:
-                        user_data["seen"].remove(dex_num)
-                        save_data_cloud(trainer_name, user_data)
-
-                if st.checkbox("🔴 Capturado", value=is_caught, key=key_caught):
-                    if dex_num not in user_data["caught"]:
-                        user_data["caught"].append(dex_num)
-                        if dex_num not in user_data["seen"]: user_data["seen"].append(dex_num)
-                        save_data_cloud(trainer_name, user_data)
-                        st.rerun()
-                else:
-                    if dex_num in user_data["caught"]:
-                        user_data["caught"].remove(dex_num)
-                        save_data_cloud(trainer_name, user_data)
-            st.divider()
-
-# ==============================================================================
-# PÁGINA 2: TRAINER HUB
-# ==============================================================================
+# --- PÁGINA HUB ---
 elif page == "Trainer Hub":
     st.title("🏕️ Hub do Treinador")
-    st.write(f"Bem-vindo, {trainer_name}!")
-    st.write("Aqui você pode ver seus Pokémon capturados e organizar seu time.")
-    st.info("Funcionalidade em construção. Use a Pokédex ou a Arena!")
-
-# ==============================================================================
-# PÁGINA 3: ARENA DE BATALHA (V3 - COMPLETA)
-# ==============================================================================
-elif page == "⚔️ Arena de Batalha (PvP)":
-    st.title("⚔️ Arena Tática V3 (RPG System)")
+    st.subheader(f"🐺 Seu Time ({len(user_data.get('party', []))})")
     
+    if "party" not in user_data: user_data["party"] = []
+    current_party = user_data["party"]
+    
+    if current_party:
+        cols_per_row = 6
+        for i in range(0, len(current_party), cols_per_row):
+            cols = st.columns(cols_per_row)
+            batch = current_party[i:i+cols_per_row]
+            for j, p_dex_num in enumerate(batch):
+                with cols[j]:
+                    # CORREÇÃO DO ERRO DE TYPE NO HUB (Força tudo para string)
+                    pokemon_rows = df[df['Nº'] == str(p_dex_num)]
+                    if not pokemon_rows.empty:
+                        p_name = pokemon_rows.iloc[0]['Nome']
+                        img = get_image_from_name(p_name, api_name_map)
+                        st.image(img, use_container_width=True)
+                        st.caption(f"**{p_name}**")
+                    else:
+                        st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=50)
+                        st.caption(f"#{p_dex_num}")
+    else: st.info("Time vazio.")
+    
+    st.divider()
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("### 📥 Adicionar")
+        caught = user_data.get("caught", [])
+        avail = [p for p in caught if p not in current_party]
+        if avail:
+            opts = []
+            opt_map = {}
+            for n in avail:
+                r = df[df['Nº'] == str(n)]
+                nm = r.iloc[0]['Nome'] if not r.empty else "?"
+                lb = f"#{n} - {nm}"
+                opts.append(lb)
+                opt_map[lb] = n
+            sel = st.selectbox("PC", opts)
+            if st.button("Adicionar"):
+                user_data["party"].append(opt_map[sel])
+                save_data_cloud(trainer_name, user_data)
+                st.rerun()
+        else: st.info("PC Vazio.")
+        
+    with c2:
+        st.markdown("### 📤 Remover")
+        if current_party:
+            rm_opts = []
+            rm_map = {}
+            for n in current_party:
+                r = df[df['Nº'] == str(n)]
+                nm = r.iloc[0]['Nome'] if not r.empty else "?"
+                lb = f"#{n} - {nm}"
+                rm_opts.append(lb)
+                rm_map[lb] = n
+            sel_rm = st.selectbox("Remover", rm_opts)
+            if st.button("Tirar do Time"):
+                user_data["party"].remove(rm_map[sel_rm])
+                save_data_cloud(trainer_name, user_data)
+                st.rerun()
+    
+    st.divider()
+    with st.expander("📝 Notas"):
+        nts = user_data.get("notes", "")
+        if isinstance(nts, dict): nts = ""
+        new_nts = st.text_area("Anotações", nts, height=150)
+        if st.button("Salvar Notas"):
+            user_data["notes"] = new_nts
+            save_data_cloud(trainer_name, user_data)
+            st.success("Salvo!")
+
+# --- PÁGINA BATALHA ---
+elif page == "⚔️ Arena de Batalha (PvP)":
+    st.title("⚔️ Arena Tática V4")
     if 'battle_state' not in st.session_state:
-        st.session_state['battle_state'] = {
-            "active": False, "grid_size": 8, "units": [], "obstacles": [],
-            "combat_log": ["Batalha iniciada!"]
-        }
+        st.session_state['battle_state'] = {"active": False, "grid_size": 8, "units": [], "obstacles": [], "combat_log": []}
     battle = st.session_state['battle_state']
-
+    
     if not battle['active']:
-        st.subheader("🛠️ Configurar Mapa")
+        st.subheader("Configurar")
         c1, c2 = st.columns(2)
-        biomes_list = ["Terra Batida", "Arena de Grama", "Lago Central", "Rio", "Montanha", "Floresta", "Caverna"]
-        size = c1.select_slider("Tamanho", options=[6, 8, 10, 12, 14], value=8)
-        biome = c2.selectbox("Estilo de Terreno", biomes_list)
-        
-        if st.button("🎲 Gerar Campo de Batalha", type="primary"):
-            obs = generate_procedural_map(size, biome)
-            st.session_state['battle_state']['active'] = True
-            st.session_state['battle_state']['grid_size'] = size
-            st.session_state['battle_state']['biome'] = biome
-            st.session_state['battle_state']['obstacles'] = obs
-            st.session_state['battle_state']['units'] = []
+        sz = c1.select_slider("Tamanho", options=[6, 8, 10, 12, 14], value=8)
+        bio = c2.selectbox("Terreno", ["Terra Batida", "Arena de Grama", "Lago Central", "Rio", "Montanha", "Floresta"])
+        if st.button("Gerar", type="primary"):
+            battle.update({"active": True, "grid_size": sz, "biome": bio, "obstacles": generate_procedural_map(sz, bio), "units": []})
             st.rerun()
-            
     else:
-        st.markdown(f"""
-        <div style="background:#222; border-radius:10px; padding:10px; border:2px solid #444; color:white; display:flex; justify-content:space-between;">
-            <div><h3 style="margin:0; color:#4facfe">{st.session_state['trainer_name']}</h3></div>
-            <div style="font-weight:bold; color:red;">VS</div>
-            <div><h3 style="margin:0; color:#ff6b6b">Oponente</h3></div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        with st.expander("📜 Log de Combate (Últimas Ações)", expanded=True):
-            for msg in reversed(battle['combat_log'][-5:]):
-                st.write(msg)
-
-        c_map, c_panel = st.columns([1.5, 1])
-        
+        with st.expander("📜 Log", expanded=True):
+            for m in reversed(battle['combat_log'][-5:]): st.write(m)
+            
+        c_map, c_painel = st.columns([1.5, 1])
         with c_map:
             fig = render_battle_grid(battle['grid_size'], battle['biome'], battle['units'], battle['obstacles'])
             st.plotly_chart(fig, use_container_width=True)
             
-        with c_panel:
-            tab_calc, tab_move, tab_add, tab_gm = st.tabs(["🧮 Combate", "👣 Mover", "➕ Invocar", "⚙️ Mestre"])
-            
-            with tab_calc:
-                st.subheader("⚔️ Fase de Ataque")
-                my_units = [u for u in battle['units']]
-                if not my_units:
-                    st.warning("Adicione unidades no campo primeiro!")
-                else:
-                    col_atk, col_def = st.columns(2)
-                    attacker_name = col_atk.selectbox("Atacante", [u['name'] for u in my_units], key="sel_atk")
-                    defender_name = col_def.selectbox("Alvo", [u['name'] for u in my_units], key="sel_def")
+        with c_painel:
+            t1, t2, t3, t4 = st.tabs(["⚔️", "👣", "➕", "⚙️"])
+            with t1: # Combate
+                units = battle['units']
+                if units:
+                    at = st.selectbox("Atacante", [u['name'] for u in units], key='at')
+                    df_u = st.selectbox("Alvo", [u['name'] for u in units], key='df')
+                    atk_unit = next((u for u in units if u['name']==at), None)
+                    def_unit = next((u for u in units if u['name']==df_u), None)
                     
-                    attacker = next((u for u in battle['units'] if u['name'] == attacker_name), None)
-                    defender = next((u for u in battle['units'] if u['name'] == defender_name), None)
-
                     st.divider()
-                    st.markdown("🎯 **Teste de Acerto**")
-                    type_atk = st.radio("Tipo de Ataque", ["Distância (vs Dodge)", "Perto (vs Parry)"], horizontal=True)
-                    hit_mod = st.number_input("Bônus de Acerto do Golpe", value=0)
-                    
-                    if st.button("🎲 Rolar Ataque (D20)"):
+                    st.write("🎯 Acerto")
+                    mod = st.number_input("Mod. Ataque", value=0)
+                    tipo = st.radio("Tipo", ["Distancia", "Perto"], horizontal=True)
+                    if st.button("Rolar D20 Ataque"):
                         d20 = random.randint(1, 20)
-                        total_hit = d20 + hit_mod
-                        def_stat = defender['stats']['dodge'] if "Distância" in type_atk else defender['stats']['parry']
-                        target_dc = def_stat + 10
-                        result_msg = "ACERTOU! ✅" if total_hit >= target_dc else "ERROU! ❌"
-                        log = f"⚔️ {attacker_name} atacou {defender_name}! (Rolou {d20} + {hit_mod} = {total_hit}). Resultado: **{result_msg}**"
-                        battle['combat_log'].append(log)
+                        tot = d20 + mod
+                        stat = def_unit['stats']['dodge'] if tipo == "Distancia" else def_unit['stats']['parry']
+                        res = "ACERTOU!" if tot >= (stat+10) else "ERROU!"
+                        battle['combat_log'].append(f"⚔️ {at} atacou {df_u} (D20: {d20}+{mod}={tot}). **{res}**")
                         st.rerun()
-
+                        
                     st.divider()
-                    st.markdown("💥 **Cálculo de Dano**")
-                    dmg_val = st.number_input("Dano do Golpe", min_value=0, value=10)
-                    res_type = st.selectbox("Resistência do Alvo", ["Toughness (+15)", "Will (+10)", "Fortitude (+10)"])
-                    
-                    if st.button("🎲 Calcular Dano (Defensor Rola D20)"):
-                        def_d20 = random.randint(1, 20)
-                        if "Toughness" in res_type:
-                            const = 15
-                            stat_val = defender['stats']['thg']
-                            res_name = "Toughness"
-                        elif "Will" in res_type:
-                            const = 10
-                            stat_val = defender['stats']['will']
-                            res_name = "Will"
-                        else:
-                            const = 10
-                            stat_val = defender['stats']['fort']
-                            res_name = "Fortitude"
-                            
-                        bars_lost = calculate_damage(dmg_val, const, def_d20, stat_val)
-                        defender['hp'] = max(0, defender['hp'] - bars_lost)
-                        log = f"🛡️ {defender_name} defendeu com {res_name} (Rolou {def_d20} + {stat_val}). {attacker_name} causou **{bars_lost} BARRAS DE DANO** 💔."
-                        battle['combat_log'].append(log)
+                    st.write("💥 Dano")
+                    dmg = st.number_input("Dano Base", value=10)
+                    res_t = st.selectbox("Resistência", ["Toughness", "Will", "Fortitude"])
+                    if st.button("Calcular Dano"):
+                        d20_def = random.randint(1, 20)
+                        if res_t == "Toughness": const, st_val = 15, def_unit['stats']['thg']
+                        elif res_t == "Will": const, st_val = 10, def_unit['stats']['will']
+                        else: const, st_val = 10, def_unit['stats']['fort']
+                        
+                        lost = calculate_damage(dmg, const, d20_def, st_val)
+                        def_unit['hp'] = max(0, def_unit['hp'] - lost)
+                        battle['combat_log'].append(f"🛡️ {df_u} defendeu ({res_t} {d20_def}+{st_val}). Tomou **{lost} dano**.")
                         st.rerun()
-
-            with tab_add:
-                st.write("📋 **Registrar Novo Combatente**")
-                add_type = st.radio("Tipo", ["Pokémon", "Treinador"], horizontal=True)
-                c_name, c_hp = st.columns([2, 1])
-                new_name = c_name.text_input("Nome/Apelido")
-                
-                st.caption("🛡️ Atributos Defensivos (Insira Manualmente)")
-                c1, c2, c3, c4, c5 = st.columns(5)
-                v_dodge = c1.number_input("Dodge", value=2)
-                v_parry = c2.number_input("Parry", value=2)
-                v_thg = c3.number_input("Thg", value=2)
-                v_will = c4.number_input("Will", value=2)
-                v_fort = c5.number_input("Fort", value=2)
-                
-                if st.button("📥 Colocar em Campo"):
-                    if new_name:
-                        new_unit = {
-                            "name": new_name,
-                            "x": 0 if add_type == "Treinador" else 1,
-                            "y": 0,
-                            "is_trainer": (add_type == "Treinador"),
-                            "hp": 6,
-                            "stats": {"dodge": v_dodge, "parry": v_parry, "thg": v_thg, "will": v_will, "fort": v_fort}
-                        }
-                        battle['units'].append(new_unit)
-                        st.success(f"{new_name} adicionado!")
-                        st.rerun()
-
-            with tab_move:
-                my_units = battle['units']
-                if my_units:
-                    u_name = st.selectbox("Unidade", [u['name'] for u in my_units], key="mv_sel")
-                    dx = st.number_input("X", 0, battle['grid_size']-1, key="mx")
-                    dy = st.number_input("Y", 0, battle['grid_size']-1, key="my")
-                    if st.button("Mover"):
+            
+            with t2: # Mover
+                if battle['units']:
+                    u_mv = st.selectbox("Quem", [u['name'] for u in battle['units']], key='mv')
+                    mx = st.number_input("X", 0, battle['grid_size']-1)
+                    my = st.number_input("Y", 0, battle['grid_size']-1)
+                    if st.button("Ir"):
                         for u in battle['units']:
-                            if u['name'] == u_name: u['x'], u['y'] = dx, dy
+                            if u['name'] == u_mv: u['x'], u['y'] = mx, my
                         st.rerun()
-
-            with tab_gm:
-                if st.button("🔥 Fogo"): battle['obstacles'].append({"x":4,"y":4,"icon":"🔥","name":"Fogo","type":"hazard"}); st.rerun()
-                if st.button("🧹 Limpar Tudo"): st.session_state['battle_state']['active'] = False; st.rerun()
+            
+            with t3: # Invocar
+                nm = st.text_input("Nome")
+                tp = st.radio("Classe", ["Pokemon", "Treinador"], horizontal=True)
+                c1, c2, c3, c4, c5 = st.columns(5)
+                vd = c1.number_input("Dodge", 0)
+                vp = c2.number_input("Parry", 0)
+                vt = c3.number_input("Thg", 0)
+                vw = c4.number_input("Will", 0)
+                vf = c5.number_input("Fort", 0)
+                if st.button("Adicionar"):
+                    battle['units'].append({
+                        "name": nm, "x":0, "y":0, "is_trainer": (tp=="Treinador"), "hp":6,
+                        "stats": {"dodge":vd, "parry":vp, "thg":vt, "will":vw, "fort":vf}
+                    })
+                    st.rerun()
+            
+            with t4:
+                if st.button("Limpar"):
+                    battle['active'] = False
+                    st.rerun()
