@@ -304,35 +304,30 @@ st.sidebar.markdown("---")
 page = st.sidebar.radio("Ir para:", ["Pokédex (Busca)", "Trainer Hub (Meus Pokémons)"])
 
 # ==============================================================================
-# PÁGINA 1: POKEDEX (COM FILTROS INTELIGENTES E TIPO)
+# PÁGINA 1: POKEDEX (COM FILTRO DE TIPO EXCLUSIVO/COMBINADO)
 # ==============================================================================
 if page == "Pokédex (Busca)":
     st.sidebar.header("🔍 Filtros")
     search_query = st.sidebar.text_input("Buscar (Nome ou Nº)", "")
     
-    # 1. FILTRO DE REGIÃO (O Pai de todos)
-    # Pega todas as regiões únicas
+    # 1. FILTRO DE REGIÃO
     all_regions = sorted(list(set([r.strip() for region in df['Região'].unique() for r in region.split('/')])))
     selected_regions = st.sidebar.multiselect("Região", all_regions)
     
-    # 2. FILTRO DE BIOMA (Inteligente/Cascata)
-    # Se tiver região selecionada, só mostra biomas daquela região
+    # 2. FILTRO DE BIOMA (Cascata)
     if selected_regions:
-        # Cria um DF temporário só pra ver os biomas disponíveis nessas regiões
         df_for_biomes = df[df['Região'].apply(lambda x: any(reg in x for reg in selected_regions))]
         raw_biomes = df_for_biomes['Biomas'].unique()
     else:
-        # Se não tiver região, mostra todos os biomas do mundo
         raw_biomes = df['Biomas'].unique()
         
     all_biomes = sorted(list(set([b.strip() for biome in raw_biomes for b in str(biome).split('/')])))
     biomes_clean = [b for b in all_biomes if "toda" not in b.lower() and "ga" not in b.lower()]
     selected_biomes = st.sidebar.multiselect("Bioma", biomes_clean)
 
-    # 3. FILTRO DE TIPO (NOVO!)
-    # Pega todos os tipos (separando Fogo/Voador em Fogo e Voador)
+    # 3. FILTRO DE TIPO (COMBINADO)
     all_types = sorted(list(set([t.strip() for t_str in df['Tipo'].unique() for t in str(t_str).split('/')])))
-    selected_types = st.sidebar.multiselect("Tipo Elementar", all_types)
+    selected_types = st.sidebar.multiselect("Tipo Elementar (Combinação)", all_types)
     
     # 4. Outros Filtros
     min_p, max_p = int(df['Nivel_Poder'].min()), int(df['Nivel_Poder'].max())
@@ -350,30 +345,25 @@ if page == "Pokédex (Busca)":
     # --- APLICAÇÃO DOS FILTROS ---
     filtered_df = df.copy()
     
-    # Filtro de Texto
     if search_query:
         filtered_df = filtered_df[filtered_df['Nome'].str.contains(search_query, case=False, na=False) | filtered_df['Nº'].str.contains(search_query, case=False, na=False)]
     
-    # Filtro de Região
     if selected_regions:
         filtered_df = filtered_df[filtered_df['Região'].apply(lambda x: any(region in x for region in selected_regions))]
     
-    # Filtro de Bioma
     if selected_biomes:
         filtered_df = filtered_df[filtered_df['Biomas'].apply(lambda x: ("toda" in str(x).lower() and "ga" in str(x).lower()) or any(b in x for b in selected_biomes))]
 
-    # Filtro de TIPO (NOVO!)
+    # --- AQUI MUDOU: LÓGICA 'AND' (E) ---
     if selected_types:
-        # Verifica se algum dos tipos selecionados está na string de tipo do Pokemon
-        filtered_df = filtered_df[filtered_df['Tipo'].apply(lambda x: any(t in str(x) for t in selected_types))]
+        # Usa 'all' em vez de 'any'. O Pokemon precisa ter TODOS os tipos selecionados.
+        filtered_df = filtered_df[filtered_df['Tipo'].apply(lambda x: all(t in str(x) for t in selected_types))]
     
-    # Filtro de Poder
     filtered_df = filtered_df[
         (filtered_df['Nivel_Poder'] >= power_range[0]) & 
         (filtered_df['Nivel_Poder'] <= power_range[1])
     ]
     
-    # Filtro de Estratégia
     if l1 or l2 or l3:
             filtered_df = filtered_df[filtered_df['Codigos_Estrategia'].apply(lambda codes: any(((not l1 or c[0]==l1) and (not l2 or c[1]==l2) and (not l3 or c[2]==l3)) for c in codes))]
 
@@ -381,7 +371,10 @@ if page == "Pokédex (Busca)":
     st.title("📕 Pokédex Universal")
     st.markdown(f"**Resultados:** {len(filtered_df)}")
     
-    if filtered_df.empty: st.warning("Nenhum Pokémon encontrado com essa combinação.")
+    if filtered_df.empty: 
+        st.warning("Nenhum Pokémon encontrado.")
+        if len(selected_types) > 1:
+            st.caption("Dica: Você selecionou múltiplos tipos. O sistema está buscando Pokémons que tenham **TODOS** esses tipos simultaneamente.")
 
     for index, row in filtered_df.iterrows():
         dex_num = row['Nº']
@@ -389,7 +382,7 @@ if page == "Pokédex (Busca)":
         img_url = get_image_from_name(p_name, api_name_map)
         power = row['Nivel_Poder']
         
-        # Chaves Únicas (Correção de Bug)
+        # Chaves Únicas
         key_seen = f"seen_{dex_num}_{index}"
         key_caught = f"caught_{dex_num}_{index}"
         
@@ -557,4 +550,5 @@ elif page == "Trainer Hub (Meus Pokémons)":
         st.markdown(f"### Progresso da Pokédex")
         st.progress(min(vistos / total, 1.0))
         st.write(f"**{vistos}** de **{total}** Pokémons registrados.")
+
 
