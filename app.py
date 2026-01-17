@@ -9,6 +9,8 @@ import os
 import re
 import uuid
 from datetime import datetime
+from streamlit_autorefresh import st_autorefresh
+
 
 
 # ================================
@@ -192,6 +194,17 @@ def roll_die(db, rid: str, by: str, sides: int = 20):
     result = random.randint(1, int(sides))
     add_public_event(db, rid, "dice", by, {"sides": int(sides), "result": int(result)})
     return result
+    
+def get_role(room: dict, trainer_name: str) -> str:
+    owner = (room.get("owner") or {}).get("name")
+    chal = room.get("challenger") or {}
+    chal_name = chal.get("name") if isinstance(chal, dict) else (chal or None)
+
+    if trainer_name == owner:
+        return "owner"
+    if trainer_name == chal_name:
+        return "challenger"
+    return "spectator"
 
 def safe_doc_id(name: str) -> str:
     # Evita caracteres problemáticos no Firestore doc id
@@ -759,6 +772,9 @@ elif page == "Trainer Hub (Meus Pokémons)":
 
 elif page == "PvP – Arena Tática":
     st.title("⚔️ PvP – Arena Tática (MVP)")
+    # Recarrega a aba PvP automaticamente a cada 1.5s (apenas nesta página)
+st_autorefresh(interval=1500, key="pvp_refresh")
+
     st.caption("Base multiplayer: criar/abrir arena, entrar por código, espectadores e log público (dado vem aqui depois).")
 
     db, bucket = init_firebase()
@@ -891,21 +907,32 @@ else:
                 f"(por {last_dice.get('by')})"
             )
 
+    role = get_role(room, trainer_name)
+is_player = role in ["owner", "challenger"]
+
+        
         # --- Botões de dado ---
-        st.markdown("---")
-        c1, c2, c3 = st.columns([1, 1, 2])
-        with c1:
-            if st.button("🎲 Rolar d20"):
-                r = roll_die(db, rid, trainer_name, sides=20)
-                st.success(f"Você rolou: **{r}**")
-                st.rerun()
-        with c2:
-            if st.button("🎲 Rolar d6"):
-                r = roll_die(db, rid, trainer_name, sides=6)
-                st.success(f"Você rolou: **{r}**")
-                st.rerun()
-        with c3:
-            st.caption("A rolagem aparece no **Log público** para jogadores e espectadores.")
+       st.markdown("---")
+c1, c2, c3 = st.columns([1, 1, 2])
+
+with c1:
+    if st.button("🎲 Rolar d20", disabled=not is_player):
+        r = roll_die(db, rid, trainer_name, sides=20)
+        st.success(f"Você rolou: **{r}**")
+        st.rerun()
+
+with c2:
+    if st.button("🎲 Rolar d6", disabled=not is_player):
+        r = roll_die(db, rid, trainer_name, sides=6)
+        st.success(f"Você rolou: **{r}**")
+        st.rerun()
+
+with c3:
+    if is_player:
+        st.caption("A rolagem aparece no **Log público** para jogadores e espectadores.")
+    else:
+        st.caption("Você está como **espectador**: pode ver o log e as rolagens, mas não pode rolar.")
+
 
         # --- Log público ---
         st.markdown("### 📜 Log público (todos veem)")
@@ -918,6 +945,7 @@ else:
                 by = ev.get("by", "?")
                 payload = ev.get("payload", {})
                 st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
