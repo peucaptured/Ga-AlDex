@@ -12,28 +12,24 @@ import random
 import base64
 import math
 
-def calculate_damage(damage_val, base_const, defense_roll, defense_stat):
-    # Fórmula: (Dano + Constante) - (Dado + Resistência)
-    # Dividido por 5 e arredondado pra cima
-    
-    attack_total = damage_val + base_const
-    defense_total = defense_roll + defense_stat
-    
-    final_val = (attack_total - defense_total) / 5
-    
-    # Se o resultado for negativo (defendeu tudo), é 0
-    if final_val < 0: final_val = 0
-    
-    return math.ceil(final_val)
-
-# Configuração da Página
+# ==============================================================================
+# CONFIGURAÇÃO E FUNÇÕES DE SISTEMA
+# ==============================================================================
 st.set_page_config(
-    page_title="Pokedex RPG - Battle Engine V2",
+    page_title="Pokedex RPG - Battle Engine V3",
     page_icon="⚔️",
     layout="wide"
 )
 
-# --- CONEXÃO COM GOOGLE SHEETS (Mesma de antes) ---
+def calculate_damage(damage_val, base_const, defense_roll, defense_stat):
+    # Fórmula: (Dano + Constante) - (Dado + Resistência)
+    # Dividido por 5 e arredondado pra cima
+    attack_total = damage_val + base_const
+    defense_total = defense_roll + defense_stat
+    final_val = (attack_total - defense_total) / 5
+    if final_val < 0: final_val = 0
+    return math.ceil(final_val)
+
 def get_google_sheet(sheet_name="SaveData_RPG", tab_index=0):
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -47,168 +43,6 @@ def get_google_sheet(sheet_name="SaveData_RPG", tab_index=0):
         st.error(f"Erro de Conexão: {e}")
         st.stop()
 
-# --- NOVA LÓGICA DE MAPAS PROCEDURAIS ---
-
-def generate_procedural_map(size, biome_type):
-    """
-    Gera terrenos complexos baseados no bioma escolhido.
-    Retorna uma lista de obstáculos/terrenos.
-    """
-    obstacles = []
-    center = size // 2
-    
-    # 1. ARENA DE TERRA BATIDA (Limpa, poucos obstáculos nas bordas)
-    if biome_type == "Terra Batida":
-        # Apenas alguns caixotes ou pedras nos cantos
-        for _ in range(int(size * 0.5)):
-            x, y = random.randint(0, size-1), random.randint(0, size-1)
-            if x != center or y != center: # Deixa o centro livre
-                obstacles.append({"x": x, "y": y, "icon": "🪨", "name": "Pedra", "type": "wall"})
-
-    # 2. ARENA DE GRAMA (Muitos arbustos para se esconder)
-    elif biome_type == "Arena de Grama":
-        for x in range(size):
-            for y in range(size):
-                # 20% de chance de ter grama alta
-                if random.random() < 0.2:
-                    obstacles.append({"x": x, "y": y, "icon": "🌾", "name": "Grama Alta", "type": "cover"})
-
-    # 3. LAGO NO CENTRO (Água no meio, terra em volta)
-    elif biome_type == "Lago Central":
-        radius = size / 3.5
-        for x in range(size):
-            for y in range(size):
-                dist = math.sqrt((x - center)**2 + (y - center)**2)
-                if dist < radius:
-                    obstacles.append({"x": x, "y": y, "icon": "🌊", "name": "Água Profunda", "type": "water"})
-                elif dist < radius + 1:
-                    # Margem do lago
-                    obstacles.append({"x": x, "y": y, "icon": "🔹", "name": "Água Rasa", "type": "water"})
-
-    # 4. RIO (Corta o mapa de um lado ao outro)
-    elif biome_type == "Rio":
-        # Sorteia se o rio é Vertical ou Horizontal
-        orientation = random.choice(['vert', 'horiz'])
-        bridge_pos = random.randint(1, size-2) # Posição da ponte
-        
-        river_line = center + random.randint(-1, 1) # Onde o rio passa
-        
-        for i in range(size):
-            # Cria a água
-            if orientation == 'vert':
-                obstacles.append({"x": river_line, "y": i, "icon": "🌊", "name": "Rio", "type": "water"})
-                obstacles.append({"x": river_line+1, "y": i, "icon": "🌊", "name": "Rio", "type": "water"})
-                # Ponte
-                if i == bridge_pos:
-                    obstacles.append({"x": river_line, "y": i, "icon": "🌉", "name": "Ponte", "type": "ground"})
-                    obstacles.append({"x": river_line+1, "y": i, "icon": "🌉", "name": "Ponte", "type": "ground"})
-            else:
-                obstacles.append({"x": i, "y": river_line, "icon": "🌊", "name": "Rio", "type": "water"})
-                obstacles.append({"x": i, "y": river_line+1, "icon": "🌊", "name": "Rio", "type": "water"})
-                # Ponte
-                if i == bridge_pos:
-                    obstacles.append({"x": i, "y": river_line, "icon": "🌉", "name": "Ponte", "type": "ground"})
-                    obstacles.append({"x": i, "y": river_line+1, "icon": "🌉", "name": "Ponte", "type": "ground"})
-
-    # 5. MONTANHA (Elevação central)
-    elif biome_type == "Montanha":
-        for x in range(size):
-            for y in range(size):
-                dist = math.sqrt((x - center)**2 + (y - center)**2)
-                if dist < 1.5:
-                    obstacles.append({"x": x, "y": y, "icon": "🏔️", "name": "Pico (Bloqueio)", "type": "wall"})
-                elif dist < 3.0:
-                    obstacles.append({"x": x, "y": y, "icon": "⛰️", "name": "Declive", "type": "rough"})
-                elif random.random() < 0.1:
-                    obstacles.append({"x": x, "y": y, "icon": "🪨", "name": "Pedra Solta", "type": "cover"})
-
-    # 6. PADRÃO (Caverna/Floresta Antiga)
-    else:
-        icon = "🌲" if biome_type == "Floresta" else "🪨"
-        num_obstacles = int((size * size) * 0.15)
-        for _ in range(num_obstacles):
-            obstacles.append({
-                "x": random.randint(0, size-1),
-                "y": random.randint(0, size-1),
-                "icon": icon, "name": "Obstáculo", "type": "wall"
-            })
-            
-    return obstacles
-
-def render_battle_grid(size, biome, units, obstacles):
-    """Renderiza o Grid com cores temáticas"""
-    
-    # Paleta de Cores por Bioma
-    colors = {
-        "Floresta": "#4CAF50", "Caverna": "#3E2723", "Mar": "#0288D1",
-        "Montanha": "#795548", "Pradaria": "#8BC34A", "Terra Batida": "#D7CCC8",
-        "Lago Central": "#AED581", "Rio": "#C5E1A5", "Arena de Grama": "#33691E"
-    }
-    bg_color = colors.get(biome, "#F0F0F0")
-
-    fig = go.Figure()
-
-    # Layout Base
-    fig.update_layout(
-        title=f"🏟️ {biome}",
-        xaxis=dict(range=[-0.5, size-0.5], showgrid=True, dtick=1, gridcolor='rgba(0,0,0,0.2)', showticklabels=False),
-        yaxis=dict(range=[-0.5, size-0.5], showgrid=True, dtick=1, gridcolor='rgba(0,0,0,0.2)', showticklabels=False),
-        plot_bgcolor=bg_color,
-        width=600, height=600,
-        margin=dict(l=10, r=10, t=40, b=10),
-        hovermode='closest'
-    )
-
-    # Camada 1: Terreno/Obstáculos
-    if obstacles:
-        obs_x, obs_y, obs_txt = [], [], []
-        for o in obstacles:
-            obs_x.append(o['x'])
-            obs_y.append(o['y'])
-            obs_txt.append(o['icon'])
-            
-        fig.add_trace(go.Scatter(
-            x=obs_x, y=obs_y,
-            mode='text',
-            text=obs_txt,
-            textfont=dict(size=30), # Ícones grandes
-            hoverinfo='text',
-            hovertext=[o['name'] for o in obstacles],
-            name='Terreno'
-        ))
-
-    # Camada 2: Unidades (Treinadores e Pokemons)
-    if units:
-        # Separa Time A e Time B (Futuramente)
-        # Por enquanto, pinta todos de vermelho, Avatar de Azul
-        u_x, u_y, u_txt, u_color = [], [], [], []
-        
-        for u in units:
-            u_x.append(u['x'])
-            u_y.append(u['y'])
-            # Se for Treinador, usa o ícone de Avatar, senão Bola
-            is_trainer = u.get('is_trainer', False)
-            marker = '👤' if is_trainer else '👾'
-            color = 'blue' if is_trainer else 'red'
-            
-            u_txt.append(marker)
-            u_color.append(color)
-
-        fig.add_trace(go.Scatter(
-            x=u_x, y=u_y,
-            mode='markers+text',
-            marker=dict(size=40, color=u_color, opacity=0.5, line=dict(width=2, color='white')),
-            text=u_txt,
-            textfont=dict(size=20),
-            hoverinfo='text',
-            hovertext=[u['name'] for u in units],
-            name='Unidades'
-        ))
-
-    return fig
-
-# --- FUNÇÕES DE LOGIN/DADOS ---
-
 def find_user_row(sheet, name):
     try:
         all_names = sheet.col_values(1)
@@ -219,7 +53,7 @@ def find_user_row(sheet, name):
 
 def authenticate_user(name, password):
     try:
-        sheet = get_google_sheet("SaveData_RPG", 0) # Aba 0 é Save
+        sheet = get_google_sheet("SaveData_RPG", 0)
         row_num = find_user_row(sheet, name)
         if row_num is None: return "NOT_FOUND"
         row_values = sheet.row_values(row_num)
@@ -249,36 +83,51 @@ def save_data_cloud(trainer_name, data):
         return False
     except: return False
 
+# ==============================================================================
+# FUNÇÕES VISUAIS E DE DADOS (POKEDEX)
+# ==============================================================================
+
 def normalize_text(text):
     if not isinstance(text, str): return str(text)
     return unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
 
 def get_image_from_name(user_name, name_map):
     if not isinstance(user_name, str): return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
+    
     pre_clean = user_name.replace('♀', '-f').replace('♂', '-m')
     clean = normalize_text(pre_clean).replace('.', '').replace("'", '').replace(' ', '-')
     
-    # Exceções comuns
+    # Lista de Exceções de Imagens
     exceptions = {
         'mimikyu': 'mimikyu-disguised', 'aegislash': 'aegislash-blade', 'giratina': 'giratina-origin',
-        'wishiwashi': 'wishiwashi-solo', 'toxtricity': 'toxtricity-amped', 'eiscue': 'eiscue-ice',
+        'wishiwashi': 'wishiwashi-solo', 'pumpkaboo': 'pumpkaboo-average', 'gourgeist': 'gourgeist-average',
+        'lycanroc': 'lycanroc-midday', 'deoxys': 'deoxys-normal', 'wormadam': 'wormadam-plant',
+        'shaymin': 'shaymin-land', 'toxtricity': 'toxtricity-amped', 'eiscue': 'eiscue-ice',
         'indeedee': 'indeedee-male', 'morpeko': 'morpeko-full-belly', 'urshifu': 'urshifu-single-strike',
-        'basculegion': 'basculegion-male', 'enamorus': 'enamorus-incarnate'
+        'basculegion': 'basculegion-male', 'enamorus': 'enamorus-incarnate', 'keldeo': 'keldeo-ordinary',
+        'meloetta': 'meloetta-aria'
     }
-    if clean in exceptions: clean = exceptions[clean]
     
-    # Sufixos Regionais
+    if clean in exceptions: clean = exceptions[clean]
+
     if clean.endswith('-a'): clean = clean[:-2] + '-alola'
     if clean.endswith('-g'): clean = clean[:-2] + '-galar'
     if clean.endswith('-h'): clean = clean[:-2] + '-hisui'
     if clean.endswith('-p'): clean = clean[:-2] + '-paldea'
-    
+    if clean.startswith('g-'): clean = clean[2:] + '-galar'
+    if clean.startswith('a-'): clean = clean[2:] + '-alola'
+    if clean.startswith('h-'): clean = clean[2:] + '-hisui'
+    if clean.startswith('p-'): clean = clean[2:] + '-paldea'
+
     p_id = name_map.get(clean)
-    if not p_id: 
+    if not p_id:
         base_name = clean.split('-')[0]
         p_id = name_map.get(base_name)
-    
-    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{p_id}.png" if p_id else "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
+
+    if p_id:
+        return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{p_id}.png"
+    else:
+        return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
 
 @st.cache_data
 def get_official_pokemon_map():
@@ -295,7 +144,6 @@ def load_excel_data():
     try:
         df = pd.read_excel(file_name)
         df.columns = [c.strip() for c in df.columns]
-        # Tratamento de erros básico
         df['Região'] = df['Região'].fillna('Desconhecida').astype(str)
         df['Biomas'] = df['Biomas'].fillna('Desconhecido').astype(str)
         df['Nome'] = df['Nome'].fillna('Desconhecido')
@@ -306,10 +154,157 @@ def load_excel_data():
         return df, {}
     except: return None, None
 
+# ==============================================================================
+# FUNÇÕES DA ENGINE DE BATALHA (MAPAS E GRID)
+# ==============================================================================
+
+def generate_procedural_map(size, biome_type):
+    obstacles = []
+    center = size // 2
+    
+    # 1. ARENA DE TERRA BATIDA
+    if biome_type == "Terra Batida":
+        for _ in range(int(size * 0.5)):
+            x, y = random.randint(0, size-1), random.randint(0, size-1)
+            if x != center or y != center:
+                obstacles.append({"x": x, "y": y, "icon": "🪨", "name": "Pedra", "type": "wall"})
+
+    # 2. ARENA DE GRAMA
+    elif biome_type == "Arena de Grama":
+        for x in range(size):
+            for y in range(size):
+                if random.random() < 0.2:
+                    obstacles.append({"x": x, "y": y, "icon": "🌾", "name": "Grama Alta", "type": "cover"})
+
+    # 3. LAGO NO CENTRO
+    elif biome_type == "Lago Central":
+        radius = size / 3.5
+        for x in range(size):
+            for y in range(size):
+                dist = math.sqrt((x - center)**2 + (y - center)**2)
+                if dist < radius:
+                    obstacles.append({"x": x, "y": y, "icon": "🌊", "name": "Água Profunda", "type": "water"})
+                elif dist < radius + 1:
+                    obstacles.append({"x": x, "y": y, "icon": "🔹", "name": "Água Rasa", "type": "water"})
+
+    # 4. RIO
+    elif biome_type == "Rio":
+        orientation = random.choice(['vert', 'horiz'])
+        bridge_pos = random.randint(1, size-2)
+        river_line = center + random.randint(-1, 1)
+        
+        for i in range(size):
+            if orientation == 'vert':
+                obstacles.append({"x": river_line, "y": i, "icon": "🌊", "name": "Rio", "type": "water"})
+                obstacles.append({"x": river_line+1, "y": i, "icon": "🌊", "name": "Rio", "type": "water"})
+                if i == bridge_pos:
+                    obstacles.append({"x": river_line, "y": i, "icon": "🌉", "name": "Ponte", "type": "ground"})
+                    obstacles.append({"x": river_line+1, "y": i, "icon": "🌉", "name": "Ponte", "type": "ground"})
+            else:
+                obstacles.append({"x": i, "y": river_line, "icon": "🌊", "name": "Rio", "type": "water"})
+                obstacles.append({"x": i, "y": river_line+1, "icon": "🌊", "name": "Rio", "type": "water"})
+                if i == bridge_pos:
+                    obstacles.append({"x": i, "y": river_line, "icon": "🌉", "name": "Ponte", "type": "ground"})
+                    obstacles.append({"x": i, "y": river_line+1, "icon": "🌉", "name": "Ponte", "type": "ground"})
+
+    # 5. MONTANHA
+    elif biome_type == "Montanha":
+        for x in range(size):
+            for y in range(size):
+                dist = math.sqrt((x - center)**2 + (y - center)**2)
+                if dist < 1.5:
+                    obstacles.append({"x": x, "y": y, "icon": "🏔️", "name": "Pico", "type": "wall"})
+                elif dist < 3.0:
+                    obstacles.append({"x": x, "y": y, "icon": "⛰️", "name": "Declive", "type": "rough"})
+                elif random.random() < 0.1:
+                    obstacles.append({"x": x, "y": y, "icon": "🪨", "name": "Pedra", "type": "cover"})
+
+    # 6. PADRÃO
+    else:
+        icon = "🌲" if biome_type == "Floresta" else "🪨"
+        num_obstacles = int((size * size) * 0.15)
+        for _ in range(num_obstacles):
+            obstacles.append({
+                "x": random.randint(0, size-1),
+                "y": random.randint(0, size-1),
+                "icon": icon, "name": "Obstáculo", "type": "wall"
+            })
+            
+    return obstacles
+
+def render_battle_grid(size, biome, units, obstacles):
+    colors = {
+        "Floresta": "#4CAF50", "Caverna": "#3E2723", "Mar": "#0288D1",
+        "Montanha": "#795548", "Pradaria": "#8BC34A", "Terra Batida": "#D7CCC8",
+        "Lago Central": "#AED581", "Rio": "#C5E1A5", "Arena de Grama": "#33691E"
+    }
+    bg_color = colors.get(biome, "#F0F0F0")
+
+    fig = go.Figure()
+
+    fig.update_layout(
+        title=f"🏟️ {biome}",
+        xaxis=dict(range=[-0.5, size-0.5], showgrid=True, dtick=1, gridcolor='rgba(0,0,0,0.2)', showticklabels=False),
+        yaxis=dict(range=[-0.5, size-0.5], showgrid=True, dtick=1, gridcolor='rgba(0,0,0,0.2)', showticklabels=False),
+        plot_bgcolor=bg_color,
+        width=600, height=600,
+        margin=dict(l=10, r=10, t=40, b=10),
+        hovermode='closest'
+    )
+
+    if obstacles:
+        obs_x, obs_y, obs_txt = [], [], []
+        for o in obstacles:
+            obs_x.append(o['x'])
+            obs_y.append(o['y'])
+            obs_txt.append(o['icon'])
+            
+        fig.add_trace(go.Scatter(
+            x=obs_x, y=obs_y,
+            mode='text',
+            text=obs_txt,
+            textfont=dict(size=30),
+            hoverinfo='text',
+            hovertext=[o['name'] for o in obstacles],
+            name='Terreno'
+        ))
+
+    if units:
+        u_x, u_y, u_txt, u_color = [], [], [], []
+        for u in units:
+            u_x.append(u['x'])
+            u_y.append(u['y'])
+            is_trainer = u.get('is_trainer', False)
+            marker = '👤' if is_trainer else '👾'
+            color = 'blue' if is_trainer else 'red'
+            u_txt.append(marker)
+            u_color.append(color)
+
+        fig.add_trace(go.Scatter(
+            x=u_x, y=u_y,
+            mode='markers+text',
+            marker=dict(size=40, color=u_color, opacity=0.5, line=dict(width=2, color='white')),
+            text=u_txt,
+            textfont=dict(size=20),
+            hoverinfo='text',
+            hovertext=[u['name'] for u in units],
+            name='Unidades'
+        ))
+
+    return fig
+
+# ==============================================================================
+# CARREGAMENTO INICIAL
+# ==============================================================================
+
 api_name_map = get_official_pokemon_map()
 if 'df_data' not in st.session_state:
     st.session_state['df_data'], st.session_state['cols_map'] = load_excel_data()
 df = st.session_state['df_data']
+
+# ==============================================================================
+# TELA DE LOGIN (CORRIGIDA)
+# ==============================================================================
 
 if 'trainer_name' not in st.session_state:
     st.title("🔒 Login Pokedex RPG")
@@ -348,6 +343,10 @@ if 'trainer_name' not in st.session_state:
                     st.error("Erro ao criar.")
     st.stop()
 
+# ==============================================================================
+# ÁREA LOGADA - SIDEBAR
+# ==============================================================================
+
 user_data = st.session_state['user_data']
 trainer_name = st.session_state['trainer_name']
 
@@ -356,7 +355,6 @@ if st.sidebar.button("💾 Salvar Tudo"):
     save_data_cloud(trainer_name, user_data)
     st.sidebar.success("Salvo!")
 
-# --- MENU DE AVATAR ---
 with st.sidebar.expander("📸 Meu Avatar"):
     uploaded_avatar = st.file_uploader("Enviar Foto", type=['png', 'jpg', 'jpeg'])
     if uploaded_avatar:
@@ -370,20 +368,122 @@ with st.sidebar.expander("📸 Meu Avatar"):
         st.image(user_data['avatar'], width=100, caption="Você em Campo")
 
 st.sidebar.markdown("---")
-
-# ... (Menu Lateral e Avatar mantidos) ...
-
 page = st.sidebar.radio("Navegação", ["Pokédex", "Trainer Hub", "⚔️ Arena de Batalha (PvP)"])
 
+# ==============================================================================
+# PÁGINA 1: POKEDEX (RESTAURADA)
+# ==============================================================================
 if page == "Pokédex":
-    st.title("Pokédex")
-    # (Código da Pokedex)
+    st.sidebar.header("🔍 Filtros")
+    search_query = st.sidebar.text_input("Buscar (Nome ou Nº)", "")
+    
+    # Filtros
+    all_regions = sorted(list(set([r.strip() for region in df['Região'].unique() for r in region.split('/')])))
+    selected_regions = st.sidebar.multiselect("Região", all_regions)
+    
+    if selected_regions:
+        df_for_biomes = df[df['Região'].apply(lambda x: any(reg in x for reg in selected_regions))]
+        raw_biomes = df_for_biomes['Biomas'].unique()
+    else:
+        raw_biomes = df['Biomas'].unique()
+        
+    all_biomes = sorted(list(set([b.strip() for biome in raw_biomes for b in str(biome).split('/')])))
+    biomes_clean = [b for b in all_biomes if "toda" not in b.lower() and "ga" not in b.lower()]
+    selected_biomes = st.sidebar.multiselect("Bioma", biomes_clean)
 
-elif page == "Trainer Hub":
-    st.title("Hub")
+    all_types = sorted(list(set([t.strip() for t_str in df['Tipo'].unique() for t in str(t_str).split('/')])))
+    selected_types = st.sidebar.multiselect("Tipo Elementar (Combinação)", all_types)
+    
+    min_p, max_p = int(df['Nivel_Poder'].min()), int(df['Nivel_Poder'].max())
+    power_range = st.sidebar.slider("⚡ Nível de Poder", min_p, max_p, (min_p, max_p))
+    
+    # Aplicação de Filtros
+    filtered_df = df.copy()
+    if search_query:
+        filtered_df = filtered_df[filtered_df['Nome'].str.contains(search_query, case=False, na=False) | filtered_df['Nº'].str.contains(search_query, case=False, na=False)]
+    if selected_regions:
+        filtered_df = filtered_df[filtered_df['Região'].apply(lambda x: any(region in x for region in selected_regions))]
+    if selected_biomes:
+        filtered_df = filtered_df[filtered_df['Biomas'].apply(lambda x: ("toda" in str(x).lower() and "ga" in str(x).lower()) or any(b in x for b in selected_biomes))]
+    if selected_types:
+        filtered_df = filtered_df[filtered_df['Tipo'].apply(lambda x: all(t in str(x) for t in selected_types))]
+    
+    filtered_df = filtered_df[(filtered_df['Nivel_Poder'] >= power_range[0]) & (filtered_df['Nivel_Poder'] <= power_range[1])]
+    
+    # Exibição
+    st.title("📕 Pokédex Universal")
+    st.markdown(f"**Resultados:** {len(filtered_df)}")
+    
+    if filtered_df.empty: 
+        st.warning("Nenhum Pokémon encontrado.")
+    
+    for index, row in filtered_df.iterrows():
+        dex_num = row['Nº']
+        p_name = row['Nome']
+        img_url = get_image_from_name(p_name, api_name_map)
+        power = row['Nivel_Poder']
+        
+        key_seen = f"seen_{dex_num}_{index}"
+        key_caught = f"caught_{dex_num}_{index}"
+        
+        with st.container():
+            c_img, c_info, c_check = st.columns([0.5, 3, 1.5])
+            with c_img: st.image(img_url, width=80)
+            with c_info:
+                st.markdown(f"### #{dex_num} {p_name}")
+                tags_html = "".join([f"<span style='background-color:#444;color:white;padding:2px 5px;border-radius:4px;margin-right:5px;font-size:0.8em'>{c}</span>" for c in row['Codigos_Estrategia']])
+                
+                if power >= 13: p_color = "#D32F2F"
+                elif power >= 8: p_color = "#F57C00"
+                else: p_color = "#388E3C"
+                power_badge = f"<span style='background-color:{p_color};color:white;padding:2px 8px;border-radius:10px;font-weight:bold;font-size:0.8em'>⚡ NP: {power}</span>"
+                st.markdown(f"**{row['Tipo']}** | {power_badge} {tags_html}", unsafe_allow_html=True)
+                
+                with st.expander("📖 Detalhes"):
+                    st.markdown(f"**📍 Região:** {row['Região']} | **🌿 Bioma:** {row['Biomas']}")
+                    st.info(row['Descrição da Pokedex'])
+                    viab = str(row['Viabilidade'])
+                    for code in row['Codigos_Estrategia']:
+                        viab = re.sub(rf'\b{code}\b', f":red[**{code}**]", viab)
+                    st.write(viab)
+
+            with c_check:
+                st.write("") 
+                is_seen = dex_num in user_data["seen"]
+                is_caught = dex_num in user_data["caught"]
+                
+                if st.checkbox("👁️ Visto", value=is_seen, key=key_seen):
+                    if dex_num not in user_data["seen"]:
+                        user_data["seen"].append(dex_num)
+                        save_data_cloud(trainer_name, user_data)
+                else:
+                    if dex_num in user_data["seen"]:
+                        user_data["seen"].remove(dex_num)
+                        save_data_cloud(trainer_name, user_data)
+
+                if st.checkbox("🔴 Capturado", value=is_caught, key=key_caught):
+                    if dex_num not in user_data["caught"]:
+                        user_data["caught"].append(dex_num)
+                        if dex_num not in user_data["seen"]: user_data["seen"].append(dex_num)
+                        save_data_cloud(trainer_name, user_data)
+                        st.rerun()
+                else:
+                    if dex_num in user_data["caught"]:
+                        user_data["caught"].remove(dex_num)
+                        save_data_cloud(trainer_name, user_data)
+            st.divider()
 
 # ==============================================================================
-# PÁGINA DE BATALHA COM CALCULADORA RPG E DADOS
+# PÁGINA 2: TRAINER HUB
+# ==============================================================================
+elif page == "Trainer Hub":
+    st.title("🏕️ Hub do Treinador")
+    st.write(f"Bem-vindo, {trainer_name}!")
+    st.write("Aqui você pode ver seus Pokémon capturados e organizar seu time.")
+    st.info("Funcionalidade em construção. Use a Pokédex ou a Arena!")
+
+# ==============================================================================
+# PÁGINA 3: ARENA DE BATALHA (V3 - COMPLETA)
 # ==============================================================================
 elif page == "⚔️ Arena de Batalha (PvP)":
     st.title("⚔️ Arena Tática V3 (RPG System)")
@@ -395,7 +495,6 @@ elif page == "⚔️ Arena de Batalha (PvP)":
         }
     battle = st.session_state['battle_state']
 
-    # --- LOBBY DE CRIAÇÃO (IGUAL AO ANTERIOR) ---
     if not battle['active']:
         st.subheader("🛠️ Configurar Mapa")
         c1, c2 = st.columns(2)
@@ -413,7 +512,6 @@ elif page == "⚔️ Arena de Batalha (PvP)":
             st.rerun()
             
     else:
-        # --- HUD DE BATALHA ---
         st.markdown(f"""
         <div style="background:#222; border-radius:10px; padding:10px; border:2px solid #444; color:white; display:flex; justify-content:space-between;">
             <div><h3 style="margin:0; color:#4facfe">{st.session_state['trainer_name']}</h3></div>
@@ -422,7 +520,6 @@ elif page == "⚔️ Arena de Batalha (PvP)":
         </div>
         """, unsafe_allow_html=True)
 
-        # LOG DE COMBATE (Mostra rolagens para todos)
         with st.expander("📜 Log de Combate (Últimas Ações)", expanded=True):
             for msg in reversed(battle['combat_log'][-5:]):
                 st.write(msg)
@@ -434,14 +531,10 @@ elif page == "⚔️ Arena de Batalha (PvP)":
             st.plotly_chart(fig, use_container_width=True)
             
         with c_panel:
-            # ABAS DE CONTROLE
             tab_calc, tab_move, tab_add, tab_gm = st.tabs(["🧮 Combate", "👣 Mover", "➕ Invocar", "⚙️ Mestre"])
             
-            # --- ABA 1: CALCULADORA DE COMBATE ---
             with tab_calc:
                 st.subheader("⚔️ Fase de Ataque")
-                
-                # Seleção de Quem Bate e Quem Apanha
                 my_units = [u for u in battle['units']]
                 if not my_units:
                     st.warning("Adicione unidades no campo primeiro!")
@@ -450,13 +543,10 @@ elif page == "⚔️ Arena de Batalha (PvP)":
                     attacker_name = col_atk.selectbox("Atacante", [u['name'] for u in my_units], key="sel_atk")
                     defender_name = col_def.selectbox("Alvo", [u['name'] for u in my_units], key="sel_def")
                     
-                    # Busca os dados dos selecionados
                     attacker = next((u for u in battle['units'] if u['name'] == attacker_name), None)
                     defender = next((u for u in battle['units'] if u['name'] == defender_name), None)
 
                     st.divider()
-                    
-                    # MODO 1: ACERTO (Hit Chance)
                     st.markdown("🎯 **Teste de Acerto**")
                     type_atk = st.radio("Tipo de Ataque", ["Distância (vs Dodge)", "Perto (vs Parry)"], horizontal=True)
                     hit_mod = st.number_input("Bônus de Acerto do Golpe", value=0)
@@ -464,29 +554,20 @@ elif page == "⚔️ Arena de Batalha (PvP)":
                     if st.button("🎲 Rolar Ataque (D20)"):
                         d20 = random.randint(1, 20)
                         total_hit = d20 + hit_mod
-                        
-                        # Pega a defesa escondida do alvo
                         def_stat = defender['stats']['dodge'] if "Distância" in type_atk else defender['stats']['parry']
                         target_dc = def_stat + 10
-                        
                         result_msg = "ACERTOU! ✅" if total_hit >= target_dc else "ERROU! ❌"
-                        
-                        # Log público (Sem revelar os números exatos do defensor)
                         log = f"⚔️ {attacker_name} atacou {defender_name}! (Rolou {d20} + {hit_mod} = {total_hit}). Resultado: **{result_msg}**"
                         battle['combat_log'].append(log)
                         st.rerun()
 
                     st.divider()
-
-                    # MODO 2: DANO (Damage Calc)
                     st.markdown("💥 **Cálculo de Dano**")
                     dmg_val = st.number_input("Dano do Golpe", min_value=0, value=10)
                     res_type = st.selectbox("Resistência do Alvo", ["Toughness (+15)", "Will (+10)", "Fortitude (+10)"])
                     
-                    # Aqui o sistema roda o dado do defensor automaticamente para ser justo e rápido
                     if st.button("🎲 Calcular Dano (Defensor Rola D20)"):
                         def_d20 = random.randint(1, 20)
-                        
                         if "Toughness" in res_type:
                             const = 15
                             stat_val = defender['stats']['thg']
@@ -500,23 +581,15 @@ elif page == "⚔️ Arena de Batalha (PvP)":
                             stat_val = defender['stats']['fort']
                             res_name = "Fortitude"
                             
-                        # Fórmula aplicada
                         bars_lost = calculate_damage(dmg_val, const, def_d20, stat_val)
-                        
-                        # Atualiza o HP do alvo (opcional, visual)
                         defender['hp'] = max(0, defender['hp'] - bars_lost)
-                        
                         log = f"🛡️ {defender_name} defendeu com {res_name} (Rolou {def_d20} + {stat_val}). {attacker_name} causou **{bars_lost} BARRAS DE DANO** 💔."
                         battle['combat_log'].append(log)
                         st.rerun()
 
-            # --- ABA 3: INVOCAR (ATUALIZADA COM STATUS) ---
             with tab_add:
                 st.write("📋 **Registrar Novo Combatente**")
-                
-                # Tipo de entrada
                 add_type = st.radio("Tipo", ["Pokémon", "Treinador"], horizontal=True)
-                
                 c_name, c_hp = st.columns([2, 1])
                 new_name = c_name.text_input("Nome/Apelido")
                 
@@ -535,19 +608,14 @@ elif page == "⚔️ Arena de Batalha (PvP)":
                             "x": 0 if add_type == "Treinador" else 1,
                             "y": 0,
                             "is_trainer": (add_type == "Treinador"),
-                            "hp": 6, # Padrão 6 barras
-                            "stats": {
-                                "dodge": v_dodge, "parry": v_parry,
-                                "thg": v_thg, "will": v_will, "fort": v_fort
-                            }
+                            "hp": 6,
+                            "stats": {"dodge": v_dodge, "parry": v_parry, "thg": v_thg, "will": v_will, "fort": v_fort}
                         }
                         battle['units'].append(new_unit)
                         st.success(f"{new_name} adicionado!")
                         st.rerun()
 
-            # --- OUTRAS ABAS (Mover e Mestre - Manter código anterior) ---
             with tab_move:
-                # (Copie o código da aba Mover da resposta anterior)
                 my_units = battle['units']
                 if my_units:
                     u_name = st.selectbox("Unidade", [u['name'] for u in my_units], key="mv_sel")
@@ -561,5 +629,3 @@ elif page == "⚔️ Arena de Batalha (PvP)":
             with tab_gm:
                 if st.button("🔥 Fogo"): battle['obstacles'].append({"x":4,"y":4,"icon":"🔥","name":"Fogo","type":"hazard"}); st.rerun()
                 if st.button("🧹 Limpar Tudo"): st.session_state['battle_state']['active'] = False; st.rerun()
-
-
