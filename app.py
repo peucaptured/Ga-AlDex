@@ -186,6 +186,13 @@ user_data = st.session_state['user_data']
 trainer_name = st.session_state['trainer_name']
 
 # --- FUNÇÕES DO APP ---
+import random
+
+def roll_die(db, rid: str, by: str, sides: int = 20):
+    result = random.randint(1, int(sides))
+    add_public_event(db, rid, "dice", by, {"sides": int(sides), "result": int(result)})
+    return result
+
 def safe_doc_id(name: str) -> str:
     # Evita caracteres problemáticos no Firestore doc id
     if not isinstance(name, str):
@@ -875,6 +882,12 @@ elif page == "PvP – Arena Tática":
 
             # (Já prepara o log público — aqui o dado vai aparecer também)
             st.markdown("### 📜 Log público (todos veem)")
+            last_events = list_public_events(db, rid, limit=10)
+last_dice = next((e for e in last_events if e.get("type") == "dice"), None)
+if last_dice:
+    payload = last_dice.get("payload", {})
+    st.info(f"🎲 Última rolagem: **d{payload.get('sides')} = {payload.get('result')}** (por {last_dice.get('by')})")
+
             events = list_public_events(db, rid, limit=25)
             if not events:
                 st.caption("Sem eventos ainda.")
@@ -885,15 +898,25 @@ elif page == "PvP – Arena Tática":
                     payload = ev.get("payload", {})
                     st.write(f"- **{et}** — _{by}_ — {payload}")
 
-            # botão de “evento público” de teste (vamos trocar por dado logo)
-            st.markdown("---")
-            c_ev1, c_ev2 = st.columns([1, 3])
-            with c_ev1:
-                if st.button("📣 Ping público"):
-                    add_public_event(db, rid, "ping", trainer_name, {"msg": "olá do servidor"})
-                    st.rerun()
-            with c_ev2:
-                st.caption("Este botão é temporário. Em seguida, ele vira o **Dado público**.")
+         st.markdown("---")
+c_ev1, c_ev2, c_ev3 = st.columns([1, 1, 2])
+
+with c_ev1:
+    if st.button("🎲 Rolar d20"):
+        r = roll_die(db, rid, trainer_name, sides=20)
+        st.success(f"Você rolou: **{r}**")
+        st.rerun()
+
+with c_ev2:
+    if st.button("🎲 Rolar d6"):
+        r = roll_die(db, rid, trainer_name, sides=6)
+        st.success(f"Você rolou: **{r}**")
+        st.rerun()
+
+with c_ev3:
+    st.caption("A rolagem aparece no **Log público** para jogadores e espectadores.")
+
+
 
 
 
