@@ -208,18 +208,169 @@ def render_battle_grid(size, biome, units, obstacles):
     return fig
 
 # --- CÓDIGO DE LOGIN E DADOS MANTIDO IGUAL ---
-# (Copie aqui as funções find_user_row, authenticate_user, register_new_user, 
-# save_data_cloud, get_image_from_name, etc. do código anterior)
+# --- FUNÇÕES DE LOGIN/DADOS ---
 
-# ... (Carregamento de Excel igual) ...
+def find_user_row(sheet, name):
+    try:
+        all_names = sheet.col_values(1)
+        row_index = all_names.index(name) + 1 
+        return row_index
+    except ValueError:
+        return None
 
-# --- INÍCIO DA INTERFACE (MANTIDA) ---
+def authenticate_user(name, password):
+    try:
+        sheet = get_google_sheet("SaveData_RPG", 0) # Aba 0 é Save
+        row_num = find_user_row(sheet, name)
+        if row_num is None: return "NOT_FOUND"
+        row_values = sheet.row_values(row_num)
+        if len(row_values) < 3: return "WRONG_PASS"
+        if str(row_values[2]) == str(password): return json.loads(row_values[1])
+        else: return "WRONG_PASS"
+    except Exception as e:
+        return None
+
+def register_new_user(name, password):
+    try:
+        sheet = get_google_sheet("SaveData_RPG", 0)
+        if find_user_row(sheet, name) is not None: return "EXISTS"
+        empty_data = json.dumps({"seen": [], "caught": [], "party": [], "notes": {}, "avatar": ""})
+        sheet.append_row([name, empty_data, str(password)])
+        return "SUCCESS"
+    except: return "ERROR"
+
+def save_data_cloud(trainer_name, data):
+    try:
+        sheet = get_google_sheet("SaveData_RPG", 0)
+        json_str = json.dumps(data)
+        row_num = find_user_row(sheet, trainer_name)
+        if row_num:
+            sheet.update_cell(row_num, 2, json_str)
+            return True
+        return False
+    except: return False
+
+def normalize_text(text):
+    if not isinstance(text, str): return str(text)
+    return unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
+
+def get_image_from_name(user_name, name_map):
+    if not isinstance(user_name, str): return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
+    pre_clean = user_name.replace('♀', '-f').replace('♂', '-m')
+    clean = normalize_text(pre_clean).replace('.', '').replace("'", '').replace(' ', '-')
+    
+    # Exceções comuns
+    exceptions = {
+        'mimikyu': 'mimikyu-disguised', 'aegislash': 'aegislash-blade', 'giratina': 'giratina-origin',
+        'wishiwashi': 'wishiwashi-solo', 'toxtricity': 'toxtricity-amped', 'eiscue': 'eiscue-ice',
+        'indeedee': 'indeedee-male', 'morpeko': 'morpeko-full-belly', 'urshifu': 'urshifu-single-strike',
+        'basculegion': 'basculegion-male', 'enamorus': 'enamorus-incarnate'
+    }
+    if clean in exceptions: clean = exceptions[clean]
+    
+    # Sufixos Regionais
+    if clean.endswith('-a'): clean = clean[:-2] + '-alola'
+    if clean.endswith('-g'): clean = clean[:-2] + '-galar'
+    if clean.endswith('-h'): clean = clean[:-2] + '-hisui'
+    if clean.endswith('-p'): clean = clean[:-2] + '-paldea'
+    
+    p_id = name_map.get(clean)
+    if not p_id: 
+        base_name = clean.split('-')[0]
+        p_id = name_map.get(base_name)
+    
+    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{p_id}.png" if p_id else "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
+
+@st.cache_data
+def get_official_pokemon_map():
+    try:
+        url = "https://pokeapi.co/api/v2/pokemon?limit=10000"
+        response = requests.get(url, timeout=5)
+        data = response.json()
+        return {p['name']: p['url'].split('/')[-2] for p in data['results']}
+    except: return {}
+
+def load_excel_data():
+    file_name = "pokedex.xlsx"
+    if not os.path.exists(file_name): return None, None
+    try:
+        df = pd.read_excel(file_name)
+        df.columns = [c.strip() for c in df.columns]
+        # Tratamento de erros básico
+        df['Região'] = df['Região'].fillna('Desconhecida').astype(str)
+        df['Biomas'] = df['Biomas'].fillna('Desconhecido').astype(str)
+        df['Nome'] = df['Nome'].fillna('Desconhecido')
+        df['Viabilidade'] = df['Viabilidade'].fillna('Sem dados.')
+        if 'Nº' in df.columns: df['Nº'] = df['Nº'].astype(str).str.replace('#', '')
+        df['Nivel_Poder'] = pd.to_numeric(df.get('Nivel_Poder', 1), errors='coerce').fillna(1)
+        df['Codigos_Estrategia'] = df['Viabilidade'].apply(lambda x: re.findall(r'([CFS][ODFIC][RL])', str(x)))
+        return df, {}
+    except: return None, None
+
+api_name_map = get_official_pokemon_map()
+if 'df_data' not in st.session_state:
+    st.session_state['df_data'], st.session_state['cols_map'] = load_excel_data()
+df = st.session_state['df_data']
 
 if 'trainer_name' not in st.session_state:
-    # (Tela de Login igual)
-    st.title("Login")
-    # ...
+    st.title("🔒 Login Pokedex RPG")
+    
+    l_user = st.text_input("Usuário")
+    l_pass = st.text_input("Senha", type="password")
+    
+    col_entrar, col_criar = st.columns(2)
+    
+    with col_entrar:
+        if st.button("Entrar"):
+            if not l_user or not l_pass:
+                st.warning("Preencha tudo.")
+            else:
+                res = authenticate_user(l_user, l_pass)
+                if res == "NOT_FOUND":
+                    st.error("Usuário não encontrado.")
+                elif res == "WRONG_PASS":
+                    st.error("Senha incorreta.")
+                elif isinstance(res, dict):
+                    st.session_state['trainer_name'] = l_user
+                    st.session_state['user_data'] = res
+                    st.rerun()
+    
+    with col_criar:
+        if st.button("Criar Conta"):
+            if not l_user or not l_pass:
+                st.warning("Digite nome e senha para criar.")
+            else:
+                res = register_new_user(l_user, l_pass)
+                if res == "EXISTS":
+                    st.warning("Usuário já existe.")
+                elif res == "SUCCESS":
+                    st.success("Conta criada! Clique em Entrar.")
+                else:
+                    st.error("Erro ao criar.")
     st.stop()
+
+user_data = st.session_state['user_data']
+trainer_name = st.session_state['trainer_name']
+
+st.sidebar.title(f"👤 {trainer_name}")
+if st.sidebar.button("💾 Salvar Tudo"):
+    save_data_cloud(trainer_name, user_data)
+    st.sidebar.success("Salvo!")
+
+# --- MENU DE AVATAR ---
+with st.sidebar.expander("📸 Meu Avatar"):
+    uploaded_avatar = st.file_uploader("Enviar Foto", type=['png', 'jpg', 'jpeg'])
+    if uploaded_avatar:
+        bytes_data = uploaded_avatar.getvalue()
+        base64_str = base64.b64encode(bytes_data).decode()
+        user_data['avatar'] = f"data:image/png;base64,{base64_str}"
+        save_data_cloud(trainer_name, user_data)
+        st.success("Avatar atualizado!")
+    
+    if user_data.get('avatar'):
+        st.image(user_data['avatar'], width=100, caption="Você em Campo")
+
+st.sidebar.markdown("---")
 
 # ... (Menu Lateral e Avatar mantidos) ...
 
@@ -411,3 +562,4 @@ elif page == "⚔️ Arena de Batalha (PvP)":
             with tab_gm:
                 if st.button("🔥 Fogo"): battle['obstacles'].append({"x":4,"y":4,"icon":"🔥","name":"Fogo","type":"hazard"}); st.rerun()
                 if st.button("🧹 Limpar Tudo"): st.session_state['battle_state']['active'] = False; st.rerun()
+
