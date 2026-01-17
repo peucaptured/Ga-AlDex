@@ -5,3 +5,4 @@ requests
 gspread==5.10.0
 oauth2client==4.1.3
 protobuf==3.20.3
+plotly
