@@ -304,19 +304,37 @@ st.sidebar.markdown("---")
 page = st.sidebar.radio("Ir para:", ["Pokédex (Busca)", "Trainer Hub (Meus Pokémons)"])
 
 # ==============================================================================
-# PÁGINA 1: POKEDEX
+# PÁGINA 1: POKEDEX (COM FILTROS INTELIGENTES E TIPO)
 # ==============================================================================
 if page == "Pokédex (Busca)":
     st.sidebar.header("🔍 Filtros")
     search_query = st.sidebar.text_input("Buscar (Nome ou Nº)", "")
     
+    # 1. FILTRO DE REGIÃO (O Pai de todos)
+    # Pega todas as regiões únicas
     all_regions = sorted(list(set([r.strip() for region in df['Região'].unique() for r in region.split('/')])))
     selected_regions = st.sidebar.multiselect("Região", all_regions)
     
-    all_biomes = sorted(list(set([b.strip() for biome in df['Biomas'].unique() for b in biome.split('/')])))
-    biomes_clean = [b for b in all_biomes if "toda" not in b.lower()]
+    # 2. FILTRO DE BIOMA (Inteligente/Cascata)
+    # Se tiver região selecionada, só mostra biomas daquela região
+    if selected_regions:
+        # Cria um DF temporário só pra ver os biomas disponíveis nessas regiões
+        df_for_biomes = df[df['Região'].apply(lambda x: any(reg in x for reg in selected_regions))]
+        raw_biomes = df_for_biomes['Biomas'].unique()
+    else:
+        # Se não tiver região, mostra todos os biomas do mundo
+        raw_biomes = df['Biomas'].unique()
+        
+    all_biomes = sorted(list(set([b.strip() for biome in raw_biomes for b in str(biome).split('/')])))
+    biomes_clean = [b for b in all_biomes if "toda" not in b.lower() and "ga" not in b.lower()]
     selected_biomes = st.sidebar.multiselect("Bioma", biomes_clean)
+
+    # 3. FILTRO DE TIPO (NOVO!)
+    # Pega todos os tipos (separando Fogo/Voador em Fogo e Voador)
+    all_types = sorted(list(set([t.strip() for t_str in df['Tipo'].unique() for t in str(t_str).split('/')])))
+    selected_types = st.sidebar.multiselect("Tipo Elementar", all_types)
     
+    # 4. Outros Filtros
     min_p, max_p = int(df['Nivel_Poder'].min()), int(df['Nivel_Poder'].max())
     power_range = st.sidebar.slider("⚡ Nível de Poder", min_p, max_p, (min_p, max_p))
     
@@ -329,33 +347,51 @@ if page == "Pokédex (Busca)":
     l2 = sel_style[0] if sel_style != "Todos" else ""
     l3 = sel_speed[0] if sel_speed != "Todos" else ""
 
+    # --- APLICAÇÃO DOS FILTROS ---
     filtered_df = df.copy()
     
+    # Filtro de Texto
     if search_query:
         filtered_df = filtered_df[filtered_df['Nome'].str.contains(search_query, case=False, na=False) | filtered_df['Nº'].str.contains(search_query, case=False, na=False)]
+    
+    # Filtro de Região
     if selected_regions:
         filtered_df = filtered_df[filtered_df['Região'].apply(lambda x: any(region in x for region in selected_regions))]
+    
+    # Filtro de Bioma
     if selected_biomes:
         filtered_df = filtered_df[filtered_df['Biomas'].apply(lambda x: ("toda" in str(x).lower() and "ga" in str(x).lower()) or any(b in x for b in selected_biomes))]
+
+    # Filtro de TIPO (NOVO!)
+    if selected_types:
+        # Verifica se algum dos tipos selecionados está na string de tipo do Pokemon
+        filtered_df = filtered_df[filtered_df['Tipo'].apply(lambda x: any(t in str(x) for t in selected_types))]
     
+    # Filtro de Poder
     filtered_df = filtered_df[
         (filtered_df['Nivel_Poder'] >= power_range[0]) & 
         (filtered_df['Nivel_Poder'] <= power_range[1])
     ]
     
+    # Filtro de Estratégia
     if l1 or l2 or l3:
             filtered_df = filtered_df[filtered_df['Codigos_Estrategia'].apply(lambda codes: any(((not l1 or c[0]==l1) and (not l2 or c[1]==l2) and (not l3 or c[2]==l3)) for c in codes))]
 
+    # --- EXIBIÇÃO ---
     st.title("📕 Pokédex Universal")
     st.markdown(f"**Resultados:** {len(filtered_df)}")
     
-    if filtered_df.empty: st.warning("Nenhum Pokémon encontrado.")
+    if filtered_df.empty: st.warning("Nenhum Pokémon encontrado com essa combinação.")
 
     for index, row in filtered_df.iterrows():
         dex_num = row['Nº']
         p_name = row['Nome']
         img_url = get_image_from_name(p_name, api_name_map)
         power = row['Nivel_Poder']
+        
+        # Chaves Únicas (Correção de Bug)
+        key_seen = f"seen_{dex_num}_{index}"
+        key_caught = f"caught_{dex_num}_{index}"
         
         with st.container():
             c_img, c_info, c_check = st.columns([0.5, 3, 1.5])
@@ -385,7 +421,7 @@ if page == "Pokédex (Busca)":
                 is_seen = dex_num in user_data["seen"]
                 is_caught = dex_num in user_data["caught"]
                 
-                if st.checkbox("👁️ Visto", value=is_seen, key=f"seen_{dex_num}"):
+                if st.checkbox("👁️ Visto", value=is_seen, key=key_seen):
                     if dex_num not in user_data["seen"]:
                         user_data["seen"].append(dex_num)
                         save_data_cloud(trainer_name, user_data)
@@ -394,7 +430,7 @@ if page == "Pokédex (Busca)":
                         user_data["seen"].remove(dex_num)
                         save_data_cloud(trainer_name, user_data)
 
-                if st.checkbox("🔴 Capturado", value=is_caught, key=f"caught_{dex_num}"):
+                if st.checkbox("🔴 Capturado", value=is_caught, key=key_caught):
                     if dex_num not in user_data["caught"]:
                         user_data["caught"].append(dex_num)
                         if dex_num not in user_data["seen"]: user_data["seen"].append(dex_num)
@@ -405,7 +441,6 @@ if page == "Pokédex (Busca)":
                         user_data["caught"].remove(dex_num)
                         save_data_cloud(trainer_name, user_data)
             st.divider()
-
 # ==============================================================================
 # PÁGINA 2: TRAINER HUB
 # ==============================================================================
@@ -522,3 +557,4 @@ elif page == "Trainer Hub (Meus Pokémons)":
         st.markdown(f"### Progresso da Pokédex")
         st.progress(min(vistos / total, 1.0))
         st.write(f"**{vistos}** de **{total}** Pokémons registrados.")
+
