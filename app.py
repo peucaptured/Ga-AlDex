@@ -1892,117 +1892,118 @@ elif page == "PvP – Arena Tática":
                 else:
                     st.caption("Clique em um Pokémon no mapa para selecionar. Depois clique em outra célula para mover.")
                 
- if click and "x" in click and "y" in click:
-                    col = int(click["x"] // TILE_SIZE)
-                    row = int(click["y"] // TILE_SIZE)
-                
-                    if 0 <= row < grid and 0 <= col < grid:
-                        
-                        # --- NOVA LÓGICA: COLOCAR POKEMON DA MOCHILA ---
-                        placing_pid = st.session_state.get("placing_pid")
-                        
-                        if placing_pid:
-                            # Verifica se já tem algo na célula
-                            state_now = get_state(db, rid)
-                            all_pieces = state_now.get("pieces") or []
-                            pieces_visible = visible_pieces_for(room, trainer_name, all_pieces)
-                            occupied = find_piece_at(pieces_visible, row, col)
-
-                            if occupied:
-                                st.warning("Célula ocupada! Escolha outra.")
-                            else:
-                                # Cria a nova peça
-                                new_id = str(uuid.uuid4())[:8]
-                                new_piece = {
-                                    "id": new_id,
-                                    "pid": placing_pid,
-                                    "owner": trainer_name,
-                                    "row": row,
-                                    "col": col,
-                                    "revealed": True,
-                                    "status": "active"
-                                }
-                                upsert_piece(db, rid, new_piece)
-                                
-                                # Evento público
-                                add_public_event(db, rid, "pokemon_placed", trainer_name, {"pid": placing_pid})
-                                
-                                # Limpa o estado de "colocando" e recarrega
-                                st.session_state.pop("placing_pid", None)
-                                st.rerun()
-
-                        # --- FIM DA NOVA LÓGICA ---
-
-                        else:
-                        # pega estado atual de peças (sempre do firestore)
+             if click and "x" in click and "y" in click:
+                col = int(click["x"] // TILE_SIZE)
+                row = int(click["y"] // TILE_SIZE)
+            
+                if 0 <= row < grid and 0 <= col < grid:
+                    
+                    # --- NOVA LÓGICA: COLOCAR POKEMON DA MOCHILA ---
+                    placing_pid = st.session_state.get("placing_pid")
+                    
+                    if placing_pid:
+                        # Verifica se já tem algo na célula
                         state_now = get_state(db, rid)
                         all_pieces = state_now.get("pieces") or []
                         pieces_visible = visible_pieces_for(room, trainer_name, all_pieces)
-                
-                        # peça que está na célula clicada (se houver)
-                        clicked_piece = find_piece_at(pieces_visible, row, col)
-                
-                        # 1) clique em uma peça
-                        if clicked_piece is not None:
-                            # só pode selecionar/mexer nas suas peças
-                            if not is_player or clicked_piece.get("owner") != trainer_name:
-                                st.warning("Você não pode mover peças do oponente.")
-                            else:
-                                pid = clicked_piece.get("id")
-                                # se clicou na mesma peça -> cancela seleção
-                                if sel == pid:
-                                    st.session_state.pop("selected_piece_id", None)
-                                    st.toast("Seleção cancelada.")
-                                else:
-                                    st.session_state["selected_piece_id"] = pid
-                                    st.toast(f"Selecionado: {clicked_piece.get('pid')}")
-                            st.rerun()
-                
-                        # 2) clique em célula vazia => tenta mover peça selecionada
+                        occupied = find_piece_at(pieces_visible, row, col)
+
+                        if occupied:
+                            st.warning("Célula ocupada! Escolha outra.")
                         else:
-                            if not is_player:
-                                st.warning("Espectador não move peças.")
-                            elif not sel:
-                                st.warning("Selecione um Pokémon primeiro (clicando nele no mapa).")
+                            # Cria a nova peça
+                            new_id = str(uuid.uuid4())[:8]
+                            new_piece = {
+                                "id": new_id,
+                                "pid": placing_pid,
+                                "owner": trainer_name,
+                                "row": row,
+                                "col": col,
+                                "revealed": True,
+                                "status": "active"
+                            }
+                            upsert_piece(db, rid, new_piece)
+                            
+                            # Evento público
+                            add_public_event(db, rid, "pokemon_placed", trainer_name, {"pid": placing_pid})
+                            
+                            # Limpa o estado de "colocando" e recarrega
+                            st.session_state.pop("placing_pid", None)
+                            st.rerun()
+
+                    # --- FIM DA NOVA LÓGICA ---
+
+                    else:
+                    # pega estado atual de peças (sempre do firestore)
+                    state_now = get_state(db, rid)
+                    all_pieces = state_now.get("pieces") or []
+                    pieces_visible = visible_pieces_for(room, trainer_name, all_pieces)
+            
+                    # peça que está na célula clicada (se houver)
+                    clicked_piece = find_piece_at(pieces_visible, row, col)
+            
+                    # 1) clique em uma peça
+                    if clicked_piece is not None:
+                        # só pode selecionar/mexer nas suas peças
+                        if not is_player or clicked_piece.get("owner") != trainer_name:
+                            st.warning("Você não pode mover peças do oponente.")
+                        else:
+                            pid = clicked_piece.get("id")
+                            # se clicou na mesma peça -> cancela seleção
+                            if sel == pid:
+                                st.session_state.pop("selected_piece_id", None)
+                                st.toast("Seleção cancelada.")
                             else:
-                                # encontra a peça selecionada no estado TOTAL (não só visible)
-                                moving = None
-                                for p in all_pieces:
-                                    if p.get("id") == sel:
-                                        moving = p
-                                        break
-                
-                                if moving is None:
-                                    st.session_state.pop("selected_piece_id", None)
-                                    st.warning("A peça selecionada não existe mais. Selecione de novo.")
-                                    st.rerun()
-                
-                                # bloqueio: não mover para cima de outra peça
-                                occupied = find_piece_at(pieces_visible, row, col)
-                                if occupied is not None:
-                                    st.warning("Essa célula já está ocupada.")
-                                else:
-                                    moving2 = dict(moving)
-                                    moving2["row"] = int(row)
-                                    moving2["col"] = int(col)
-                                    moving2["revealed"] = True  # no campo = revelado
-                
-                                    upsert_piece(db, rid, moving2)
-                
-                                    add_public_event(
-                                        db, rid, "piece_moved", trainer_name,
-                                        {"pid": moving2.get("pid"), "row": int(row), "col": int(col)}
-                                    )
-                
-                                    # limpa seleção só depois de mover
-                                    st.session_state.pop("selected_piece_id", None)
-                                    st.toast("Movido!")
-                                    st.rerun()
+                                st.session_state["selected_piece_id"] = pid
+                                st.toast(f"Selecionado: {clicked_piece.get('pid')}")
+                        st.rerun()
+            
+                    # 2) clique em célula vazia => tenta mover peça selecionada
+                    else:
+                        if not is_player:
+                            st.warning("Espectador não move peças.")
+                        elif not sel:
+                            st.warning("Selecione um Pokémon primeiro (clicando nele no mapa).")
+                        else:
+                            # encontra a peça selecionada no estado TOTAL (não só visible)
+                            moving = None
+                            for p in all_pieces:
+                                if p.get("id") == sel:
+                                    moving = p
+                                    break
+            
+                            if moving is None:
+                                st.session_state.pop("selected_piece_id", None)
+                                st.warning("A peça selecionada não existe mais. Selecione de novo.")
+                                st.rerun()
+            
+                            # bloqueio: não mover para cima de outra peça
+                            occupied = find_piece_at(pieces_visible, row, col)
+                            if occupied is not None:
+                                st.warning("Essa célula já está ocupada.")
+                            else:
+                                moving2 = dict(moving)
+                                moving2["row"] = int(row)
+                                moving2["col"] = int(col)
+                                moving2["revealed"] = True  # no campo = revelado
+            
+                                upsert_piece(db, rid, moving2)
+            
+                                add_public_event(
+                                    db, rid, "piece_moved", trainer_name,
+                                    {"pid": moving2.get("pid"), "row": int(row), "col": int(col)}
+                                )
+            
+                                # limpa seleção só depois de mover
+                                st.session_state.pop("selected_piece_id", None)
+                                st.toast("Movido!")
+                                st.rerun()
                 
                 
                                     
                                     
                 
+
 
 
 
