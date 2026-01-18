@@ -481,7 +481,7 @@ elif theme_key == "forest":
                     if inside(rr, cc2) and rng.random() > 0.35:
                         tiles[rr][cc2] = "water"
 
-    elif theme_key == "mountain_slopes":
+elif theme_key == "mountain_slopes":
     # base rochosa
     for r in range(1, grid - 1):
         for c in range(1, grid - 1):
@@ -1337,6 +1337,7 @@ elif page == "PvP – Arena Tática":
                         by = ev.get("by", "?")
                         payload = ev.get("payload", {})
                         st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
