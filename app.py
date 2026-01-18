@@ -729,10 +729,113 @@ def fetch_image_pil(url: str) -> Image.Image | None:
         return img
     except Exception:
         return None
+def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str):
+    img = render_map_png(tiles, theme_key, seed).convert("RGBA")
+
+    # cache simples por execução (evita baixar 10x no mesmo rerun)
+    local_cache = {}
+
+    for p in pieces or []:
+        r = int(p.get("row", -1))
+        c = int(p.get("col", -1))
+        if r < 0 or c < 0:
+            continue
+
+        owner = p.get("owner")
+        revealed = bool(p.get("revealed", True))
+
+        # segredo: se não é do jogador e não está revelado -> desenha “pokébola”/token
+        # (ou deixe invisível)
+        if owner != viewer_name and not revealed:
+            # desenhar um marcador simples no lugar:
+            x = c * TILE_SIZE
+            y = r * TILE_SIZE
+            draw = ImageDraw.Draw(img)
+            draw.ellipse([x+6, y+6, x+TILE_SIZE-6, y+TILE_SIZE-6], fill=(220,0,0,220))
+            draw.ellipse([x+10, y+10, x+TILE_SIZE-10, y+TILE_SIZE-10], fill=(255,255,255,220))
+            continue
+
+        pid = str(p.get("pid", ""))
+        url = pokemon_pid_to_image(pid, mode="sprite")
+
+        if url not in local_cache:
+            local_cache[url] = fetch_image_pil(url)
+
+        sprite = local_cache[url]
+        if sprite is None:
+            continue
+
+        # redimensiona para caber na célula
+        sp = sprite.copy()
+        sp.thumbnail((TILE_SIZE, TILE_SIZE), Image.Resampling.LANCZOS)
+
+        # centraliza na célula
+        x0 = c * TILE_SIZE + (TILE_SIZE - sp.size[0]) // 2
+        y0 = r * TILE_SIZE + (TILE_SIZE - sp.size[1]) // 2
+
+        img.alpha_composite(sp, (x0, y0))
+
+    return img.convert("RGB")
 
 def normalize_text(text):
     if not isinstance(text, str): return str(text)
     return unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
+
+def get_pid_from_name(user_name: str, name_map: dict) -> str | None:
+    if not isinstance(user_name, str):
+        return None
+
+    pre_clean = user_name.replace('♀', '-f').replace('♂', '-m')
+    clean = normalize_text(pre_clean).replace('.', '').replace("'", '').replace(' ', '-')
+
+    # exceções / formas (as mesmas que você já usa)
+    if clean == 'mimikyu': clean = 'mimikyu-disguised'
+    if clean == 'aegislash': clean = 'aegislash-blade'
+    if clean == 'giratina': clean = 'giratina-origin'
+    if clean == 'wishiwashi': clean = 'wishiwashi-solo'
+    if clean == 'pumpkaboo': clean = 'pumpkaboo-average'
+    if clean == 'gourgeist': clean = 'gourgeist-average'
+    if clean == 'lycanroc': clean = 'lycanroc-midday'
+    if clean == 'deoxys': clean = 'deoxys-normal'
+    if clean == 'wormadam': clean = 'wormadam-plant'
+    if clean == 'shaymin': clean = 'shaymin-land'
+
+    if clean == 'toxtricity': clean = 'toxtricity-amped'
+    if clean == 'eiscue': clean = 'eiscue-ice'
+    if clean == 'indeedee': clean = 'indeedee-male'
+    if clean == 'morpeko': clean = 'morpeko-full-belly'
+    if clean == 'urshifu': clean = 'urshifu-single-strike'
+
+    if clean == 'basculegion': clean = 'basculegion-male'
+    if clean == 'enamorus': clean = 'enamorus-incarnate'
+    if clean == 'keldeo': clean = 'keldeo-ordinary'
+    if clean == 'meloetta': clean = 'meloetta-aria'
+
+    # regionais (as mesmas)
+    if clean.endswith('-a'): clean = clean[:-2] + '-alola'
+    if clean.endswith('-g'): clean = clean[:-2] + '-galar'
+    if clean.endswith('-h'): clean = clean[:-2] + '-hisui'
+    if clean.endswith('-p'): clean = clean[:-2] + '-paldea'
+    if clean.startswith('g-'): clean = clean[2:] + '-galar'
+    if clean.startswith('a-'): clean = clean[2:] + '-alola'
+    if clean.startswith('h-'): clean = clean[2:] + '-hisui'
+    if clean.startswith('p-'): clean = clean[2:] + '-paldea'
+
+    p_id = name_map.get(clean)
+    if not p_id:
+        base_name = clean.split('-')[0]
+        p_id = name_map.get(base_name)
+
+    return p_id
+    
+def get_pokemon_image_url(user_name: str, name_map: dict, mode: str = "artwork") -> str:
+    p_id = get_pid_from_name(user_name, name_map)
+    if not p_id:
+        return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
+
+    if mode == "sprite":
+        return get_pokemon_sprite_url(p_id)
+    return get_pokemon_artwork_url(p_id)
 
 def get_image_from_name(user_name, name_map):
     if not isinstance(user_name, str): return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
@@ -783,6 +886,21 @@ def get_image_from_name(user_name, name_map):
     else:
         return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
 
+def pokemon_pid_to_image(pid: str, mode: str = "artwork") -> str:
+    if not pid:
+        return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
+
+    if str(pid).startswith("EXT:"):
+        name = pid.replace("EXT:", "")
+        return get_pokemon_image_url(name, api_name_map, mode=mode)
+
+    row = df[df["Nº"] == pid]
+    if row.empty:
+        return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
+
+    name = row.iloc[0]["Nome"]
+    return get_pokemon_image_url(name, api_name_map, mode=mode)
+
 @st.cache_data
 def get_official_pokemon_map():
     try:
@@ -796,6 +914,14 @@ def get_official_pokemon_map():
         return name_map
     except:
         return {}
+        
+def get_pokemon_artwork_url(p_id: str) -> str:
+    # grande (fora do PvP)
+    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{p_id}.png"
+
+def get_pokemon_sprite_url(p_id: str) -> str:
+    # pequeno (PvP)
+    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{p_id}.png"
 
 def extract_strategies(text):
     if not isinstance(text, str): return []
@@ -862,6 +988,27 @@ def load_excel_data():
         return None, None
 
 api_name_map = get_official_pokemon_map()
+def pokemon_pid_to_image(pid: str, mode: str = "artwork") -> str:
+    """
+    Converte PID da party em URL de imagem.
+    mode="artwork" (grande) | mode="sprite" (pequeno)
+    """
+    if not pid:
+        return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
+
+    # Pokémon visitante (EXT:)
+    if str(pid).startswith("EXT:"):
+        name = pid.replace("EXT:", "")
+        return get_pokemon_image_url(name, api_name_map, mode=mode)
+
+    # Pokémon normal da Dex
+    row = df[df["Nº"] == pid]
+    if row.empty:
+        return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
+
+    name = row.iloc[0]["Nome"]
+    return get_pokemon_image_url(name, api_name_map, mode=mode)
+
 
 if 'df_data' not in st.session_state:
     st.session_state['df_data'], st.session_state['cols_map'] = load_excel_data()
@@ -1392,7 +1539,7 @@ elif page == "PvP – Arena Tática":
                 else:
                     st.caption("Você está como espectador (não pode posicionar/mover).")
             
-                img = render_map_png(tiles, theme_key, seed)
+                img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name)
                 st.markdown("### 🗺️ Mapa tático")
                 click = streamlit_image_coordinates(img, key=f"map_{rid}")
                 
@@ -1477,6 +1624,7 @@ elif page == "PvP – Arena Tática":
                         
 
                 
+
 
 
 
