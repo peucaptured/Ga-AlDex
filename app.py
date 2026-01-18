@@ -15,6 +15,7 @@ import random
 import gzip
 import base64
 from io import BytesIO
+from PIL import ImageFont
 
 
 
@@ -821,26 +822,76 @@ def draw_tile(draw: ImageDraw.ImageDraw, x: int, y: int, t: str, rng: random.Ran
         draw.rectangle([x + 2, y + 12, x + TILE_SIZE - 3, y + 20], fill=(150, 120, 80))
         
 
-def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
-    grid = len(tiles)
-    img = Image.new("RGB", (grid * TILE_SIZE, grid * TILE_SIZE), (0, 0, 0))
+def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, effects=None):
+    # Cria a base do mapa
+    img = render_map_png(tiles, theme_key, seed).convert("RGBA")
     draw = ImageDraw.Draw(img)
-    rng = random.Random(int(seed or 0) + 1337)
+    
+    # --- CAMADA 1: EFEITOS DE TERRENO (EMOJIS) ---
+    # Desenhamos antes das peças para ficar no chão
+    if effects:
+        # Tenta carregar uma fonte grande para o emoji
+        try:
+            # Tenta fontes comuns de linux/windows
+            font = ImageFont.truetype("DejaVuSans.ttf", size=int(TILE_SIZE * 0.8))
+        except:
+            try:
+                font = ImageFont.truetype("arial.ttf", size=int(TILE_SIZE * 0.8))
+            except:
+                font = ImageFont.load_default()
 
-    for r in range(grid):
-        for c in range(grid):
+        for eff in effects:
+            r, c = int(eff.get("row")), int(eff.get("col"))
+            icon = eff.get("icon")
+            
             x = c * TILE_SIZE
             y = r * TILE_SIZE
-            draw_tile(draw, x, y, tiles[r][c], rng)
+            
+            # Centraliza o emoji
+            # Como calcular tamanho exato de fonte é chato em PIL puro sem lib externa,
+            # vamos chutar o meio aproximado
+            draw.text((x + 5, y + 5), icon, fill="white", font=font)
 
-    for r in range(grid + 1):
-        y = r * TILE_SIZE
-        draw.line([(0, y), (grid * TILE_SIZE, y)], fill=(0, 0, 0))
-    for c in range(grid + 1):
+    # --- CAMADA 2: PEÇAS (POKÉMONS) ---
+    local_cache = {}
+    
+    for p in pieces or []:
+        r = int(p.get("row", -1))
+        c = int(p.get("col", -1))
+        if r < 0 or c < 0: continue
+
+        # BORDAS COLORIDAS
+        owner = p.get("owner")
+        if owner == viewer_name:
+            border_color = (0, 255, 255) # Azul
+        else:
+            border_color = (255, 50, 50) # Vermelho
+
         x = c * TILE_SIZE
-        draw.line([(x, 0), (x, grid * TILE_SIZE)], fill=(0, 0, 0))
+        y = r * TILE_SIZE
+        draw.rectangle([x, y, x + TILE_SIZE - 1, y + TILE_SIZE - 1], outline=border_color, width=3)
 
-    return img
+        pid = str(p.get("pid", ""))
+        url = pokemon_pid_to_image(pid, mode="sprite")
+
+        if url not in local_cache:
+            local_cache[url] = fetch_image_pil(url)
+
+        sprite = local_cache[url]
+        if sprite is None: continue
+
+        sp = sprite.copy()
+        sp.thumbnail((TILE_SIZE, TILE_SIZE), Image.Resampling.LANCZOS)
+        
+        # --- CORREÇÃO: REMOVIDA LÓGICA DE FICAR CINZA NO MAPA ---
+        # O Pokémon fica colorido mesmo se HP = 0.
+        
+        # Centraliza
+        x0 = x + (TILE_SIZE - sp.size[0]) // 2
+        y0 = y + (TILE_SIZE - sp.size[1]) // 2
+        img.alpha_composite(sp, (x0, y0))
+
+    return img.convert("RGB")
     
 
 @st.cache_data(show_spinner=False)
@@ -1424,14 +1475,14 @@ elif page == "PvP – Arena Tática":
 
 
 # =========================
-    # VIEW: BATTLE (Final: Stats Corrigidos)
+    # VIEW: BATTLE (Efeitos + Visual Fainted Corrigido)
     # =========================
-    if view == "battle":
+    elif view == "battle":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
 
-        # Sincroniza Party
+        # Sync Party
         current_party = user_data.get("party") or []
         db.collection("rooms").document(rid).collection("public_state").document("players").set(
             {trainer_name: current_party}, merge=True
@@ -1440,33 +1491,28 @@ elif page == "PvP – Arena Tática":
         # Carrega dados
         state = get_state(db, rid)
         seed = state.get("seed")
-        packed = state.get("tilesPacked")
-        tiles = unpack_tiles(packed) if packed else None
+        tiles_packed = state.get("tilesPacked")
+        tiles = unpack_tiles(tiles_packed) if tiles_packed else None
         
         all_pieces = state.get("pieces") or []
         seen_pids = state.get("seen") or []
+        # --- CARREGA EFEITOS DO CAMPO ---
+        field_effects = state.get("effects") or []
 
-        # Carrega estados de HP/Status
+        # Helper HP
         ps_doc = db.collection("rooms").document(rid).collection("public_state").document("party_states").get()
         party_states_data = ps_doc.to_dict() or {}
-        
-        # Helper de leitura robusto
         def get_poke_data(t_name, p_id):
-            # Busca dicionário do treinador, depois dicionário do pokemon
             user_dict = party_states_data.get(t_name, {})
-            # Garante que p_id seja string para buscar no dict
             p_data = user_dict.get(str(p_id), {})
             return p_data.get("hp", 6), p_data.get("cond", [])
 
-        # Filtra peças visíveis no mapa
+        # Filtro de Desenho (Peças)
         pieces_to_draw = []
         for p in all_pieces:
             hp_check, _ = get_poke_data(p.get("owner"), p.get("pid"))
-            # Sincronia visual: se HP global é 0, desenha fainted
-            if hp_check == 0: 
-                p["status"] = "fainted"
-            else:
-                p["status"] = "active"
+            if hp_check == 0: p["status"] = "fainted"
+            else: p["status"] = "active"
 
             if p.get("owner") == trainer_name:
                 pieces_to_draw.append(p)
@@ -1497,14 +1543,14 @@ elif page == "PvP – Arena Tática":
         <style>
           .block-container { max-width: 98% !important; padding-top: 1rem; padding-bottom: 5rem; }
           header { visibility: hidden; height: 0px; }
-          .element-container img { max-width: 100%; }
           .stSlider { padding-top: 0px; padding-bottom: 0px; margin-bottom: -15px; }
           .stMultiSelect { padding-bottom: 0px; }
-          div[data-testid="stVerticalBlock"] > div { gap: 0.5rem; }
+          /* Classe para imagem cinza */
+          .gray-img { filter: grayscale(100%); opacity: 0.6; }
         </style>
         """, unsafe_allow_html=True)
 
-        # --- MENU ---
+        # --- MENU SUPERIOR ---
         top = st.columns([1, 1, 1, 1, 4])
         with top[0]:
             if st.button("⬅️ Lobby"):
@@ -1554,11 +1600,8 @@ elif page == "PvP – Arena Tática":
             
             for pid in party:
                 is_on_map = pid in my_pids_on_board
-                
-                # Dados atuais do banco
                 cur_hp, cur_cond = get_poke_data(trainer_name, pid)
                 
-                # Ícone HP
                 if cur_hp >= 5: hp_icon = "💚"
                 elif cur_hp >= 3: hp_icon = "🟡"
                 elif cur_hp >= 1: hp_icon = "🔴"
@@ -1568,70 +1611,85 @@ elif page == "PvP – Arena Tática":
                 
                 with st.container(border=True):
                     c_img, c_ctrl = st.columns([1, 2.5])
-                    
                     with c_img:
-                        st.image(sprite_url, width=60)
+                        # TRUQUE VISUAL: Se HP 0, usa HTML para aplicar filtro grayscale NA MOCHILA
                         if cur_hp == 0:
+                            st.markdown(f'<img src="{sprite_url}" style="width:100%; filter:grayscale(100%); opacity:0.6;">', unsafe_allow_html=True)
                             st.caption("**FAINTED**")
+                        else:
+                            st.image(sprite_url, use_container_width=True)
 
-                        # BOTOES
                         if is_on_map:
                             piece_obj = next((p for p in my_pieces_on_board if p["pid"] == pid), None)
                             if piece_obj:
                                 is_rev = piece_obj.get("revealed", True)
                                 b_txt = "👁️" if is_rev else "✅"
-                                if st.button(b_txt, key=f"v_{pid}", help="Ocultar/Revelar"):
+                                if st.button(b_txt, key=f"v_{pid}"):
                                     piece_obj["revealed"] = not is_rev
                                     upsert_piece(db, rid, piece_obj)
                                     if piece_obj["revealed"]: mark_pid_seen(db, rid, pid)
                                     st.rerun()
-                                
-                                if st.button("❌", key=f"r_{pid}", help="Tirar"):
+                                if st.button("❌", key=f"r_{pid}"):
                                     delete_piece(db, rid, piece_obj["id"])
                                     add_public_event(db, rid, "pokemon_removed", trainer_name, {"pid": pid})
                                     st.rerun()
                         else:
+                            # Só permite colocar se tiver HP
                             if cur_hp > 0:
                                 if st.button("📍 Por", key=f"p_{pid}"):
                                     st.session_state["placing_pid"] = pid
+                                    st.session_state["placing_effect"] = None # Limpa efeito se houver
                                     st.rerun()
 
                     with c_ctrl:
                         st.markdown(f"**{hp_icon} HP: {cur_hp}/6**")
-                        
-                        # SLIDER COM CALLBACK
-                        st.slider(
-                            "HP", 0, 6, value=int(cur_hp), 
-                            key=f"hp_{pid}", # Nome da chave importante para o callback
-                            label_visibility="collapsed",
-                            on_change=update_poke_state_callback,
-                            args=(db, rid, trainer_name, pid)
-                        )
-                        
-                        # STATUS COM CALLBACK
+                        st.slider("HP", 0, 6, value=int(cur_hp), key=f"hp_{pid}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, trainer_name, pid))
                         options = ["⚡", "❄️", "🔥", "💤", "☠️", "💓"]
-                        st.multiselect(
-                            "Status", options, default=cur_cond,
-                            key=f"cond_{pid}", # Nome da chave importante
-                            label_visibility="collapsed",
-                            placeholder="Status...",
-                            on_change=update_poke_state_callback,
-                            args=(db, rid, trainer_name, pid)
-                        )
+                        st.multiselect("Status", options, default=cur_cond, key=f"cond_{pid}", label_visibility="collapsed", placeholder="Status...", on_change=update_poke_state_callback, args=(db, rid, trainer_name, pid))
 
-        # --- 2. MAPA ---
+        # --- 2. MAPA E FERRAMENTAS ---
         with c_map:
             st.markdown("### 🗺️ Arena")
+            
+            # --- FERRAMENTAS DE MESTRE/JOGADOR ---
+            # Só Ezenek ou Jogadores podem colocar efeitos
+            can_edit_map = (trainer_name == "Ezenek" or is_player)
+            
+            with st.expander("🛠️ Itens e Terrenos", expanded=False):
+                if can_edit_map:
+                    # Lista de itens solicitados
+                    effects_map = {
+                        "Fogo": "🔥", "Gelo": "🧊", "Água": "💧", "Rocha": "🪨",
+                        "Nuvem": "☁️", "Sol": "☀️", "Floco": "❄️", "Folha": "🍃",
+                        "Fada": "✨", "Raio": "⚡", "Colher": "🥄", "Deserto": "🌵"
+                    }
+                    
+                    # Layout de botões lado a lado
+                    cols_eff = st.columns(6)
+                    for i, (name, icon) in enumerate(effects_map.items()):
+                        with cols_eff[i % 6]:
+                            if st.button(f"{icon}", key=f"eff_{name}", help=f"Colocar {name}"):
+                                st.session_state["placing_effect"] = icon
+                                st.session_state["placing_pid"] = None # Limpa pokemon se houver
+                                st.toast(f"Clique no mapa para colocar {icon}")
+                    
+                    st.write("")
+                    if st.button("🧹 Varrer Campo (Limpar Efeitos)", type="primary"):
+                        db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": []})
+                        st.rerun()
+                else:
+                    st.caption("Apenas Jogadores e Mestre podem alterar o terreno.")
+
             if "selected_piece_id" not in st.session_state:
                 st.session_state["selected_piece_id"] = None
 
-            img = render_map_with_pieces(tiles, theme_key, seed, pieces_to_draw, trainer_name)
+            # Renderiza Mapa (Passamos os Efeitos agora!)
+            img = render_map_with_pieces(tiles, theme_key, seed, pieces_to_draw, trainer_name, effects=field_effects)
             click = streamlit_image_coordinates(img, key=f"battle_map_{rid}")
 
         # --- 3. INIMIGO ---
         with c_opp:
             st.markdown(f"### {opp_label}")
-            
             players_doc = db.collection("rooms").document(rid).collection("public_state").document("players").get()
             players_data = players_doc.to_dict() or {}
             opp_party_list = players_data.get(opp_name, []) if opp_name else []
@@ -1641,7 +1699,6 @@ elif page == "PvP – Arena Tática":
                 st.caption("Aguardando...")
             
             temp_board_pieces = list(opp_pieces_on_board)
-            
             for pid in opp_party_list:
                 found_on_board = None
                 for i, p in enumerate(temp_board_pieces):
@@ -1650,17 +1707,15 @@ elif page == "PvP – Arena Tática":
                         del temp_board_pieces[i]
                         break
                 
-                # Dados HP Inimigo
                 opp_hp, opp_cond = get_poke_data(opp_name, pid)
                 already_seen = str(pid) in seen_pids
-
+                
+                # Visual Logic
                 show_full = False
                 status_msg = ""
-                
                 if found_on_board:
-                    if found_on_board.get("revealed", True):
-                        show_full = True
-                    elif already_seen:
+                    if found_on_board.get("revealed", True): show_full = True
+                    elif already_seen: 
                         show_full = True
                         status_msg = "(Escondido)"
                     else:
@@ -1668,10 +1723,10 @@ elif page == "PvP – Arena Tática":
                         status_msg = "❓ Oculto"
                 elif already_seen:
                     show_full = True
-                    status_msg = "(Na Mochila)"
+                    status_msg = "(Mochila)"
                 else:
                     show_full = False
-                    status_msg = "(Na Mochila)"
+                    status_msg = "(Mochila)"
 
                 with st.container(border=True):
                     if show_full:
@@ -1684,55 +1739,69 @@ elif page == "PvP – Arena Tática":
                         with cols[0]:
                             url = pokemon_pid_to_image(pid, mode="sprite")
                             st.image(url, width=50)
-                                
                         with cols[1]:
                             p_name = pid
                             row_p = df[df["Nº"].astype(str) == str(pid)]
                             if not row_p.empty: p_name = row_p.iloc[0]["Nome"]
-                            
                             st.markdown(f"**{p_name}**")
                             if status_msg: st.caption(status_msg)
-                            
                             st.markdown(f"{hpi} HP: {opp_hp}/6")
                             if opp_cond: st.caption(" ".join(opp_cond))
                             if opp_hp == 0: st.caption("**FAINTED**")
-                                
                     else:
                         st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=40)
                         st.caption("Desconhecido")
 
         # =========================
-        # CLIQUE
+        # LÓGICA DE CLIQUE
         # =========================
         if click and "x" in click and "y" in click:
             col = int(click["x"] // TILE_SIZE)
             row = int(click["y"] // TILE_SIZE)
             
             if 0 <= row < grid and 0 <= col < grid:
+                
                 placing_pid = st.session_state.get("placing_pid")
+                placing_effect = st.session_state.get("placing_effect")
                 sel = st.session_state.get("selected_piece_id")
 
-                # A. COLOCAR
-                if placing_pid:
+                # --- 1. COLOCAR EFEITO ---
+                if placing_effect:
+                    # Adiciona efeito na lista de efeitos do estado
+                    current_effects = state.get("effects") or []
+                    # Verifica se já tem efeito ali, se tiver substitui
+                    # Filtra removendo efeito antigo nessa pos
+                    new_effects = [e for e in current_effects if not (int(e["row"]) == row and int(e["col"]) == col)]
+                    
+                    new_effects.append({
+                        "icon": placing_effect,
+                        "row": row,
+                        "col": col,
+                        "id": str(uuid.uuid4())[:8]
+                    })
+                    
+                    db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": new_effects})
+                    st.toast(f"Item {placing_effect} colocado!", icon="✨")
+                    # Não limpa o placing_effect para permitir colocar vários seguidos
+                    st.rerun()
+
+                # --- 2. COLOCAR POKEMON ---
+                elif placing_pid:
                     php, _ = get_poke_data(trainer_name, placing_pid)
                     if php == 0:
-                        st.toast("Este Pokémon está desmaiado!", icon="💀")
+                        st.toast("Pokémon desmaiado!", icon="💀")
                         st.session_state.pop("placing_pid", None)
                         st.rerun()
 
                     state_now = get_state(db, rid)
                     current_all = state_now.get("pieces") or []
                     if find_piece_at(current_all, row, col):
-                        st.toast("⚠️ Ocupado!", icon="🚫")
+                        st.toast("Ocupado!", icon="🚫")
                     else:
                         new_id = str(uuid.uuid4())[:8]
                         new_piece = {
-                            "id": new_id,
-                            "pid": placing_pid,
-                            "owner": trainer_name,
-                            "row": row, "col": col,
-                            "revealed": True,
-                            "status": "active"
+                            "id": new_id, "pid": placing_pid, "owner": trainer_name,
+                            "row": row, "col": col, "revealed": True, "status": "active"
                         }
                         upsert_piece(db, rid, new_piece)
                         mark_pid_seen(db, rid, placing_pid)
@@ -1740,7 +1809,7 @@ elif page == "PvP – Arena Tática":
                         st.session_state.pop("placing_pid", None)
                         st.rerun()
 
-                # B. MOVER
+                # --- 3. MOVER ---
                 else:
                     state_now = get_state(db, rid)
                     current_all = state_now.get("pieces") or []
@@ -1759,25 +1828,20 @@ elif page == "PvP – Arena Tática":
                                 st.toast("Selecionado!", icon="✅")
                         st.rerun()
                     else:
-                        if not is_player:
-                            st.warning("Espectador não move.")
-                        elif not sel:
-                            st.toast("Selecione um Pokémon.", icon="👆")
+                        if not is_player: st.warning("Espectador não move.")
+                        elif not sel: st.toast("Selecione um Pokémon.", icon="👆")
                         else:
                             moving = next((p for p in current_all if p["id"] == sel), None)
                             if moving is None:
                                 st.session_state.pop("selected_piece_id", None)
                                 st.rerun()
-            
                             if find_piece_at(current_all, row, col):
-                                st.toast("Célula ocupada.", icon="🚫")
+                                st.toast("Ocupado.", icon="🚫")
                             else:
                                 mhp, _ = get_poke_data(trainer_name, moving.get("pid"))
-                                if mhp == 0:
-                                    st.toast("Desmaiado não anda!", icon="💀")
+                                if mhp == 0: st.toast("Desmaiado não anda!", icon="💀")
                                 else:
-                                    moving["row"] = int(row)
-                                    moving["col"] = int(col)
+                                    moving["row"] = int(row); moving["col"] = int(col)
                                     upsert_piece(db, rid, moving)
                                     add_public_event(db, rid, "moved", trainer_name, {"pid": moving.get("pid"), "to": [row, col]})
                                     st.session_state.pop("selected_piece_id", None)
@@ -2100,6 +2164,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
