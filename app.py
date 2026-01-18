@@ -447,7 +447,7 @@ if theme_key == "cave_water":
         if inside(rr, cc) and tiles[rr][cc] == base:
             tiles[rr][cc] = "stalagmite"
 
-    elif theme_key == "forest":
+elif theme_key == "forest":
     # “carpete” de grama
     for r in range(1, grid - 1):
         for c in range(1, grid - 1):
@@ -480,7 +480,6 @@ if theme_key == "cave_water":
                 for cc2 in range(cc - rad, cc + rad + 1):
                     if inside(rr, cc2) and rng.random() > 0.35:
                         tiles[rr][cc2] = "water"
-
 
     elif theme_key == "mountain_slopes":
     # base rochosa
@@ -1338,6 +1337,7 @@ elif page == "PvP – Arena Tática":
                         by = ev.get("by", "?")
                         payload = ev.get("payload", {})
                         st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
