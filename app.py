@@ -530,50 +530,50 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool
                     tiles[r][c] = "rut"
 
     elif theme_key == "river":
-    r = rng.randint(1, grid - 2)
-    width = 2 if grid >= 8 else 1
-
-    for c in range(1, grid - 1):
-        for w in range(width):
-            rr = r + w
-            if 1 <= rr <= grid - 2:
-                tiles[rr][c] = ("water" if not no_water else "trail")
-
-        # margens
-        if r - 1 >= 1 and rng.random() > 0.35:
-            tiles[r - 1][c] = "sand" if not no_water else "stone"
-        if r + width <= grid - 2 and rng.random() > 0.35:
-            tiles[r + width][c] = "sand" if not no_water else "stone"
-
-        step = rng.choice([-1, 0, 1])
-        r = max(1, min(grid - 2 - (width - 1), r + step))
+        r = rng.randint(1, grid - 2)
+        width = 2 if grid >= 8 else 1
+    
+        for c in range(1, grid - 1):
+            for w in range(width):
+                rr = r + w
+                if 1 <= rr <= grid - 2:
+                    tiles[rr][c] = ("water" if not no_water else "trail")
+    
+            # margens
+            if r - 1 >= 1 and rng.random() > 0.35:
+                tiles[r - 1][c] = "sand" if not no_water else "stone"
+            if r + width <= grid - 2 and rng.random() > 0.35:
+                tiles[r + width][c] = "sand" if not no_water else "stone"
+    
+            step = rng.choice([-1, 0, 1])
+            r = max(1, min(grid - 2 - (width - 1), r + step))
 
         
     elif theme_key == "sea_coast":
-    for r in range(grid):
-        if not no_water:
-            tiles[r][0] = "sea"
-            if grid > 4:
-                tiles[r][1] = "sea" if rng.random() > 0.25 else "sand"
-        else:
-            tiles[r][0] = "sand"
-            if grid > 4:
-                tiles[r][1] = "sand" if rng.random() > 0.25 else "stone"
-
-    for _ in range(rng.randint(1, 4)):
-        rr = rng.randint(1, grid - 2)
-        cc = rng.randint(2, grid - 2)
-        if inside(rr, cc) and rng.random() > 0.45:
-            tiles[rr][cc] = "rock"
+        for r in range(grid):
+            if not no_water:
+                tiles[r][0] = "sea"
+                if grid > 4:
+                    tiles[r][1] = "sea" if rng.random() > 0.25 else "sand"
+            else:
+                tiles[r][0] = "sand"
+                if grid > 4:
+                    tiles[r][1] = "sand" if rng.random() > 0.25 else "stone"
+    
+        for _ in range(rng.randint(1, 4)):
+            rr = rng.randint(1, grid - 2)
+            cc = rng.randint(2, grid - 2)
+            if inside(rr, cc) and rng.random() > 0.45:
+                tiles[rr][cc] = "rock"
     
     elif theme_key == "center_lake":
-    cr = grid // 2
-    cc = grid // 2
-    rad = 2 if grid >= 8 else 1
-    for rr in range(cr - rad, cr + rad + 1):
-        for cc2 in range(cc - rad, cc + rad + 1):
-            if inside(rr, cc2) and (abs(rr - cr) + abs(cc2 - cc) <= rad + 1):
-                tiles[rr][cc2] = ("water" if not no_water else "stone")
+        cr = grid // 2
+        cc = grid // 2
+        rad = 2 if grid >= 8 else 1
+        for rr in range(cr - rad, cr + rad + 1):
+            for cc2 in range(cc - rad, cc + rad + 1):
+                if inside(rr, cc2) and (abs(rr - cr) + abs(cc2 - cc) <= rad + 1):
+                    tiles[rr][cc2] = ("water" if not no_water else "stone")
 
 
     return tiles, seed
@@ -1337,6 +1337,7 @@ elif page == "PvP – Arena Tática":
                         by = ev.get("by", "?")
                         payload = ev.get("payload", {})
                         st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
