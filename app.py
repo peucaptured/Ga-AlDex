@@ -13,6 +13,8 @@ from streamlit_autorefresh import st_autorefresh
 from PIL import Image, ImageDraw
 from streamlit_image_coordinates import streamlit_image_coordinates
 import random
+import gzip
+import base64
 
 
 
@@ -60,6 +62,18 @@ def get_google_sheet():
     except Exception as e:
         st.error(f"Erro de Conexão: {e}")
         st.stop()
+
+def pack_tiles(tiles: list[list[str]]) -> str:
+    # list -> json -> gzip -> base64 (string)
+    raw = json.dumps(tiles, separators=(",", ":")).encode("utf-8")
+    gz = gzip.compress(raw, compresslevel=9)
+    return base64.b64encode(gz).decode("ascii")
+
+def unpack_tiles(packed: str) -> list[list[str]]:
+    gz = base64.b64decode(packed.encode("ascii"))
+    raw = gzip.decompress(gz).decode("utf-8")
+    return json.loads(raw)
+
 
 # --- SISTEMA DE LOGIN SEGURO (CORRIGIDO) ---
 
@@ -1170,13 +1184,16 @@ elif page == "PvP – Arena Tática":
             grid = int(room.get("gridSize") or 6)
             theme_key = room.get("theme") or "cave_water"
 
-            tiles = state.get("tiles")
             seed = state.get("seed")
+            packed = state.get("tilesPacked")
+            tiles = unpack_tiles(packed) if packed else None
 
             if not tiles:
                 if st.button("🗺️ Gerar mapa (pixel art)", disabled=not is_player):
                     tiles, seed = gen_tiles(grid, theme_key, seed=None)
 
+                    packed = pack_tiles(tiles)
+                    
                     state_ref.set({
                         "gridSize": grid,
                         "theme": theme_key,
@@ -1259,6 +1276,7 @@ elif page == "PvP – Arena Tática":
                         by = ev.get("by", "?")
                         payload = ev.get("payload", {})
                         st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
