@@ -232,7 +232,7 @@ def safe_doc_id(name: str) -> str:
 
 def room_id_new() -> str:
     # curto e fácil de digitar
-    return uuid.uuid4().hex[:8]
+    return str(random.randint(100, 999))
 
 def get_user_doc_ref(db, trainer_name: str):
     return db.collection("users").document(safe_doc_id(trainer_name))
@@ -266,8 +266,21 @@ def create_room(db, trainer_name: str, grid_size: int, theme: str, max_active: i
     if len(my_rooms) >= max_active:
         return None, f"Você já tem {len(my_rooms)} arenas ativas (limite {max_active}). Finalize/arquive uma para criar outra."
 
-    rid = room_id_new()
-    room_ref = db.collection("rooms").document(rid)
+    # --- LÓGICA DE CÓDIGO ÚNICO (Tenta 5 vezes achar um livre) ---
+    rid = None
+    room_ref = None
+    
+    for _ in range(5):
+        candidate = room_id_new()
+        ref = db.collection("rooms").document(candidate)
+        if not ref.get().exists:
+            rid = candidate
+            room_ref = ref
+            break
+    
+    if not rid:
+        return None, "Servidor cheio ou erro ao gerar código. Tente novamente."
+    # -------------------------------------------------------------
 
     room_ref.set({
         "createdAt": firestore.SERVER_TIMESTAMP,
@@ -281,7 +294,7 @@ def create_room(db, trainer_name: str, grid_size: int, theme: str, max_active: i
         "turnNumber": 1,
     })
 
-    # estado público inicial (vazio por enquanto)
+    # estado público inicial
     room_ref.collection("public_state").document("state").set({
         "tilesPacked": None,
         "seed": None,
@@ -1860,6 +1873,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
