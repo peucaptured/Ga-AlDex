@@ -778,7 +778,7 @@ elif page == "PvP – Arena Tática":
     )
 
     # Auto-refresh só nesta aba
-    st_autorefresh(interval=1500, key="pvp_refresh")
+    st_autorefresh(interval=2500, key="pvp_refresh")
 
     db, bucket = init_firebase()
 
@@ -946,3 +946,4 @@ elif page == "PvP – Arena Tática":
                     by = ev.get("by", "?")
                     payload = ev.get("payload", {})
                     st.write(f"- **{et}** — _{by}_ — {payload}")
+
