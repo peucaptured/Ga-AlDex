@@ -1287,6 +1287,11 @@ elif page == "Trainer Hub (Meus Pokémons)":
 # PVP ARENA
 
 elif page == "PvP – Arena Tática":
+    if "pvp_view" not in st.session_state:
+        st.session_state["pvp_view"] = "lobby"
+
+    view = st.session_state["pvp_view"]
+
     st.title("⚔️ PvP – Arena Tática (MVP)")
     st.caption(
         "Base multiplayer: criar/abrir arena, entrar por código, espectadores "
@@ -1303,6 +1308,16 @@ elif page == "PvP – Arena Tática":
     # =========================
     # VIEW: BATTLE (tela cheia)
     # =========================
+    state = get_state(db, rid)
+
+    seed = state.get("seed")
+    packed = state.get("tilesPacked")
+    tiles = unpack_tiles(packed) if packed else None
+    pieces = state.get("pieces", [])
+    if not tiles:
+        st.warning("Mapa ainda não foi gerado.")
+        st.stop()
+
 
 
     st.markdown("## 🗺️ Campo de batalha")
@@ -1736,6 +1751,7 @@ else:
                                 
                                 
             
+
 
 
 
