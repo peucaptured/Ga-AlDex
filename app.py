@@ -426,34 +426,25 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool
                 tiles[rr][cc] = "stone"
 
     # --- features por tema ---
-    if theme_key == "cave_water":
+if theme_key == "cave_water":
     if not no_water:
         pools = rng.randint(1, 2)
         for _ in range(pools):
             cr = rng.randint(2, grid - 3)
             cc = rng.randint(2, grid - 3)
             rad = rng.randint(1, 2)
+
             for rr in range(cr - rad, cr + rad + 1):
                 for cc2 in range(cc - rad, cc + rad + 1):
                     if inside(rr, cc2) and rng.random() > 0.25:
                         tiles[rr][cc2] = "water"
-    else:
-        # “poças secas” (pedra clara) pra dar variedade
-        patches = rng.randint(1, 2)
-        for _ in range(patches):
-            cr = rng.randint(2, grid - 3)
-            cc = rng.randint(2, grid - 3)
-            rad = rng.randint(1, 2)
-            for rr in range(cr - rad, cr + rad + 1):
-                for cc2 in range(cc - rad, cc + rad + 1):
-                    if inside(rr, cc2) and rng.random() > 0.25:
-                        tiles[rr][cc2] = "stone"
 
+    # elementos sólidos continuam existindo
     spikes = rng.randint(1, max(2, grid - 3))
     for _ in range(spikes):
         rr = rng.randint(1, grid - 2)
         cc = rng.randint(1, grid - 2)
-        if inside(rr, cc) and tiles[rr][cc] == base and rng.random() > 0.5:
+        if inside(rr, cc) and tiles[rr][cc] == base:
             tiles[rr][cc] = "stalagmite"
 
     elif theme_key == "forest":
@@ -1347,6 +1338,7 @@ elif page == "PvP – Arena Tática":
                         by = ev.get("by", "?")
                         payload = ev.get("payload", {})
                         st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
