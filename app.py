@@ -271,6 +271,16 @@ def remove_room_from_user(db, trainer_name: str, rid: str):
          "updatedAt": firestore.SERVER_TIMESTAMP},
         merge=True
     )
+# --- FUNÇÃO DE CALLBACK PARA SLIDERS E STATUS ---
+def update_poke_state_callback(db, rid, trainer_name, pid):
+    # Pega os valores novos direto do estado da sessão (widgets)
+    new_hp = st.session_state.get(f"hp_slider_{pid}")
+    new_cond = st.session_state.get(f"cond_{pid}")
+    
+    # Salva no banco
+    if new_hp is not None and new_cond is not None:
+        update_party_state(db, rid, trainer_name, pid, new_hp, new_cond)
+
 
 def create_room(db, trainer_name: str, grid_size: int, theme: str, max_active: int = 5):
     my_rooms = list_my_rooms(db, trainer_name)
@@ -1231,15 +1241,7 @@ if page == "Pokédex (Busca)":
                         save_data_cloud(trainer_name, user_data)
             st.divider()
 
-# --- FUNÇÃO DE CALLBACK PARA SLIDERS E STATUS ---
-def update_poke_state_callback(db, rid, trainer_name, pid):
-    # Pega os valores novos direto do estado da sessão (widgets)
-    new_hp = st.session_state.get(f"hp_slider_{pid}")
-    new_cond = st.session_state.get(f"cond_{pid}")
-    
-    # Salva no banco
-    if new_hp is not None and new_cond is not None:
-        update_party_state(db, rid, trainer_name, pid, new_hp, new_cond)
+
 
 # ==============================================================================
 # PÁGINA 2: TRAINER HUB
@@ -1382,7 +1384,7 @@ elif page == "PvP – Arena Tática":
 # =========================
     # VIEW: BATTLE (Versão Final: Callbacks e Zero Flickering)
     # =========================
-    elif view == "battle":
+    if view == "battle":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
@@ -2060,6 +2062,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
