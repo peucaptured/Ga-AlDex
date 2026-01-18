@@ -763,7 +763,7 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str):
 
         sprite = local_cache[url]
                 if sprite is None:
-            continue
+                    continue
 
         # redimensiona para caber na célula
         sp = sprite.copy()
@@ -1640,6 +1640,7 @@ elif page == "PvP – Arena Tática":
                     
                     
                     
+
 
 
 
