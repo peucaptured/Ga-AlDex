@@ -1303,47 +1303,7 @@ elif page == "PvP – Arena Tática":
     # =========================
     # VIEW: BATTLE (tela cheia)
     # =========================
-    if view == "battle":
-        if not rid or not room:
-            st.session_state["pvp_view"] = "lobby"
-            st.rerun()
 
-        # puxa estado do mapa/pieces aqui também
-        state = get_state(db, rid)
-        seed = state.get("seed")
-        packed = state.get("tilesPacked")
-        tiles = unpack_tiles(packed) if packed else None
-        all_pieces = state.get("pieces") or []
-        pieces = visible_pieces_for(room, trainer_name, all_pieces)
-
-        st.markdown("""
-        <style>
-          .block-container { max-width: 100% !important; padding-top: 0.6rem; }
-          header { visibility: hidden; height: 0px; }
-        </style>
-        """, unsafe_allow_html=True)
-
-        top = st.columns([1,1,1,6])
-        with top[0]:
-            if st.button("⬅️ Lobby"):
-                st.session_state["pvp_view"] = "lobby"
-                st.rerun()
-        with top[1]:
-            if st.button("🎲 d20", disabled=not is_player):
-                roll_die(db, rid, trainer_name, sides=20)
-                st.rerun()
-        with top[2]:
-            if st.button("🔄 Atualizar"):
-                st.rerun()
-
-        with st.expander("📜 Log público", expanded=False):
-            events = list_public_events(db, rid, limit=25)
-            for ev in events:
-                st.write(f"- **{ev.get('type')}** — {ev.get('by')} — {ev.get('payload')}")
-
-        if not tiles:
-            st.info("Ainda não há mapa. Volte ao lobby e gere o mapa primeiro.")
-            st.stop()
 
         st.markdown("## 🗺️ Campo de batalha")
         img = render_map_with_pieces(tiles, room.get("theme"), seed, pieces, trainer_name)
@@ -1684,7 +1644,7 @@ elif page == "PvP – Arena Tática":
                 if "selected_piece_id" not in st.session_state:
                     st.session_state["selected_piece_id"] = None
                 img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name)
-                click = streamlit_image_coordinates(img, key=f"map_{rid}")
+                click = streamlit_image_coordinates(img, key=f"battle_map_{rid}")
                 selected_piece_id = st.session_state.get("selected_piece_id")
                 
                 # =========================
@@ -1776,6 +1736,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
