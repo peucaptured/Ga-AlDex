@@ -1307,7 +1307,6 @@ elif page == "PvP – Arena Tática":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
-
         # --- Carrega Dados ---
         state = get_state(db, rid)
         seed = state.get("seed")
@@ -1315,6 +1314,7 @@ elif page == "PvP – Arena Tática":
         tiles = unpack_tiles(packed) if packed else None
         all_pieces = state.get("pieces") or []
         pieces = visible_pieces_for(room, trainer_name, all_pieces)
+        theme_key = room.get("theme", "cave_water")
 
         # --- CSS para tela cheia e limpa ---
         st.markdown("""
@@ -1814,6 +1814,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
