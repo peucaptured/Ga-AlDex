@@ -422,8 +422,8 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool
         rr = rng.randint(1, grid - 2)
         cc = rng.randint(1, grid - 2)
         if inside(rr, cc) and rng.random() > 0.55:
-            if tiles[rr][cc] in ["grass", "dirt", "stone", "sand"]:
-                tiles[rr][cc] = "stone"
+            if tiles[rr][cc] in ["grass", "dirt", "sand"]:
+                tiles[rr][cc] = "rock"
 
     # --- features por tema ---
     if theme_key == "cave_water":
@@ -575,6 +575,16 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool
                 if inside(rr, cc2) and (abs(rr - cr) + abs(cc2 - cc) <= rad + 1):
                     tiles[rr][cc2] = ("water" if not no_water else "stone")
 
+   
+    # --- limpeza final: garante zero água se no_water=True ---
+    if no_water:
+        for r in range(grid):
+            for c in range(grid):
+                if tiles[r][c] == "water":
+                    # substitui por algo coerente com o tema
+                    tiles[r][c] = "path" if theme_key in ["forest", "cave_water"] else "trail"
+                elif tiles[r][c] == "sea":
+                    tiles[r][c] = "sand"
 
     return tiles, seed
 
@@ -597,8 +607,7 @@ def draw_tile(draw: ImageDraw.ImageDraw, x: int, y: int, t: str, rng: random.Ran
         "rut": (85, 65, 40),
         "sea": (20, 60, 120),
         "sand": (180, 165, 120),
-        "bush": (40, 95, 50),
-        "rock": (90, 90, 95),
+        "bush": (40, 95, 50),        
     }
     base = colors.get(t, (200, 0, 200))
 
@@ -1068,7 +1077,7 @@ elif page == "PvP – Arena Tática":
     )
 
     # Auto-refresh só nesta aba
-    st_autorefresh(interval=4500, key="pvp_refresh")
+    st_autorefresh(interval=7500, key="pvp_refresh")
 
     db, bucket = init_firebase()
 
@@ -1337,6 +1346,7 @@ elif page == "PvP – Arena Tática":
                         by = ev.get("by", "?")
                         payload = ev.get("payload", {})
                         st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
