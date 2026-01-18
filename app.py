@@ -1607,38 +1607,53 @@ elif page == "PvP – Arena Tática":
                 
                 with right:
                     st.markdown("## 🗺️ Campo de batalha")
+                    # seleção atual (persistente entre reruns)
+                    if "selected_piece_id" not in st.session_state:
+                        st.session_state["selected_piece_id"] = None
                     img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name)
                     click = streamlit_image_coordinates(img, key=f"map_{rid}")
+                    selected_piece_id = st.session_state.get("selected_piece_id")
                     
-                    placing_pid = st.session_state.get("placing_pid")
-                    
-                    if click and placing_pid:
+                    if click and "x" in click and "y" in click:
                         col = int(click["x"] // TILE_SIZE)
                         row = int(click["y"] // TILE_SIZE)
                     
                         if 0 <= row < grid and 0 <= col < grid:
-                            piece = {
-                                "id": f"{rid}:{trainer_name}:{placing_pid}",
-                                "pid": placing_pid,
-                                "owner": trainer_name,
-                                "row": row,
-                                "col": col,
-                                "revealed": True,
-                                "status": "active",
-                            }
                     
-                            upsert_piece(db, rid, piece)
+                            # 1) se já existe peça sua nessa célula -> seleciona para mover
+                            my_piece_here = None
+                            for p in (pieces or []):
+                                if p.get("owner") == trainer_name and int(p.get("row")) == row and int(p.get("col")) == col:
+                                    my_piece_here = p
+                                    break
                     
-                            add_public_event(
-                                db, rid, "pokemon_placed", trainer_name,
-                                {"pid": placing_pid, "row": row, "col": col}
-                            )
+                            if my_piece_here:
+                                st.session_state["selected_piece_id"] = my_piece_here["id"]
+                                st.toast("Pokémon selecionado. Agora clique no destino.")
+                                # NÃO rerun aqui
                     
-                            del st.session_state["placing_pid"]
-                            st.rerun()
+                            # 2) se tem peça selecionada e clicou em célula vazia -> move e rerun
+                            elif selected_piece_id and is_player:
+                                moving_piece = next((p for p in (pieces or []) if p.get("id") == selected_piece_id), None)
+                                if moving_piece:
+                                    moving_piece["row"] = row
+                                    moving_piece["col"] = col
+                                    moving_piece["revealed"] = True
+                    
+                                    upsert_piece(db, rid, moving_piece)
+                    
+                                    add_public_event(
+                                        db, rid, "pokemon_moved", trainer_name,
+                                        {"pid": moving_piece.get("pid"), "row": row, "col": col}
+                                    )
+                    
+                                    st.session_state.pop("selected_piece_id", None)
+                                    st.rerun()
+
+
                     
                     
-                    
+
 
 
 
