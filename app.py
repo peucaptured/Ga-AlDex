@@ -439,13 +439,13 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool
                         if inside(rr, cc2) and rng.random() > 0.25:
                             tiles[rr][cc2] = "water"
 
-    # elementos sólidos continuam existindo
-    spikes = rng.randint(1, max(2, grid - 3))
-    for _ in range(spikes):
-        rr = rng.randint(1, grid - 2)
-        cc = rng.randint(1, grid - 2)
-        if inside(rr, cc) and tiles[rr][cc] == base:
-            tiles[rr][cc] = "stalagmite"
+        # elementos sólidos continuam existindo
+        spikes = rng.randint(1, max(2, grid - 3))
+        for _ in range(spikes):
+            rr = rng.randint(1, grid - 2)
+            cc = rng.randint(1, grid - 2)
+            if inside(rr, cc) and tiles[rr][cc] == base:
+                tiles[rr][cc] = "stalagmite"
 
     elif theme_key == "forest":
         # “carpete” de grama
@@ -1337,6 +1337,7 @@ elif page == "PvP – Arena Tática":
                         by = ev.get("by", "?")
                         payload = ev.get("payload", {})
                         st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
