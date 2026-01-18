@@ -407,6 +407,43 @@ def get_state(db, rid: str) -> dict:
     doc = state_ref_for(db, rid).get()
     return doc.to_dict() if doc.exists else {}
 
+def update_party_state(db, rid, trainer_name, pid, hp, conditions):
+    # Salva HP e Status no documento 'party_states'
+    ref = db.collection("rooms").document(rid).collection("public_state").document("party_states")
+    
+    # Estrutura: { "NomeTreinador": { "PID": { "hp": 6, "cond": [...] } } }
+    # Usamos merge=True com notação de ponto para não apagar os outros
+    key = f"{trainer_name}.{pid}"
+    
+    data = {
+        key: {
+            "hp": int(hp),
+            "cond": conditions,
+            "updatedAt": str(datetime.now())
+        }
+    }
+    ref.set(data, merge=True)
+    
+    # Se o HP for 0, precisamos atualizar a peça no tabuleiro para 'fainted' (se ela estiver lá)
+    if hp == 0:
+        # Busca peças desse treinador e desse PID
+        state_doc = db.collection("rooms").document(rid).collection("public_state").document("state").get()
+        if state_doc.exists:
+            pieces = state_doc.to_dict().get("pieces", [])
+            for p in pieces:
+                if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid):
+                    p["status"] = "fainted"
+                    upsert_piece(db, rid, p)
+    # Se HP > 0 e estava fainted, revive
+    elif hp > 0:
+        state_doc = db.collection("rooms").document(rid).collection("public_state").document("state").get()
+        if state_doc.exists:
+            pieces = state_doc.to_dict().get("pieces", [])
+            for p in pieces:
+                if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid) and p.get("status") == "fainted":
+                    p["status"] = "active"
+                    upsert_piece(db, rid, p)
+
 def upsert_piece(db, rid: str, piece: dict):
     # piece precisa ter id único
     sref = state_ref_for(db, rid)
@@ -1331,7 +1368,10 @@ elif page == "PvP – Arena Tática":
 # =========================
     # VIEW: BATTLE (Com Memória de Revelação)
     # =========================
-    if view == "battle":
+# =========================
+    # VIEW: BATTLE (HP, Status e Fainted)
+    # =========================
+    elif view == "battle":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
@@ -1342,19 +1382,36 @@ elif page == "PvP – Arena Tática":
             {trainer_name: current_party}, merge=True
         )
 
-        # --- CARREGA DADOS ---
+        # --- CARREGA DADOS DO JOGO ---
         state = get_state(db, rid)
         seed = state.get("seed")
         packed = state.get("tilesPacked")
         tiles = unpack_tiles(packed) if packed else None
         
         all_pieces = state.get("pieces") or []
-        # Lista de Pokémons que já foram revelados publicamente
         seen_pids = state.get("seen") or []
+
+        # --- CARREGA ESTADOS DE HP/STATUS (NOVO) ---
+        ps_doc = db.collection("rooms").document(rid).collection("public_state").document("party_states").get()
+        party_states_data = ps_doc.to_dict() or {}
+        
+        # Helper para pegar dados de um pokemon específico
+        def get_poke_data(t_name, p_id):
+            user_dict = party_states_data.get(t_name, {})
+            p_data = user_dict.get(str(p_id), {})
+            # Padrão: HP 6, Sem condições
+            return p_data.get("hp", 6), p_data.get("cond", [])
 
         # --- FILTRO VISUAL DO MAPA ---
         pieces_to_draw = []
         for p in all_pieces:
+            # Atualiza o status visual 'fainted' baseado no HP global, para garantir consistência
+            hp_check, _ = get_poke_data(p.get("owner"), p.get("pid"))
+            if hp_check == 0: 
+                p["status"] = "fainted"
+            else:
+                p["status"] = "active"
+
             if p.get("owner") == trainer_name:
                 pieces_to_draw.append(p)
             elif p.get("revealed", True):
@@ -1385,6 +1442,9 @@ elif page == "PvP – Arena Tática":
           .block-container { max-width: 95% !important; padding-top: 1rem; padding-bottom: 5rem; }
           header { visibility: hidden; height: 0px; }
           .element-container img { max-width: 100%; }
+          /* Ajuste para deixar os sliders mais compactos */
+          .stSlider { padding-top: 0px; padding-bottom: 10px; }
+          .stMultiSelect { padding-bottom: 10px; }
         </style>
         """, unsafe_allow_html=True)
 
@@ -1425,9 +1485,9 @@ elif page == "PvP – Arena Tática":
         # =========================
         # LAYOUT 3 COLUNAS
         # =========================
-        c_bag, c_map, c_opp = st.columns([1, 3.5, 1])
+        c_bag, c_map, c_opp = st.columns([1.2, 3, 1.2]) # Ajustei proporções para caber o slider
 
-        # --- 1. VOCÊ ---
+        # --- 1. VOCÊ (Com Sliders e Status) ---
         with c_bag:
             st.markdown(f"### {my_label}")
             party = user_data.get("party") or []
@@ -1438,71 +1498,105 @@ elif page == "PvP – Arena Tática":
             
             for pid in party:
                 is_on_map = pid in my_pids_on_board
+                
+                # Pega dados atuais (HP e Condições)
+                cur_hp, cur_cond = get_poke_data(trainer_name, pid)
+                
+                # Define cor e imagem baseada no HP
+                # 5-6: Verde | 3-4: Amarelo | 1-2: Vermelho | 0: Fainted
+                if cur_hp >= 5: hp_icon = "💚"
+                elif cur_hp >= 3: hp_icon = "🟡"
+                elif cur_hp >= 1: hp_icon = "🔴"
+                else: hp_icon = "💀"
+
+                # Define URL da imagem (Normal ou Cinza se fainted)
+                # O processamento cinza é feito no render_map, aqui usamos CSS filter trick se quiser, 
+                # ou apenas confiamos que o usuário entenda o HP 0.
                 sprite_url = pokemon_pid_to_image(pid, mode="sprite")
                 
                 with st.container(border=True):
-                    cols = st.columns([1, 2])
-                    with cols[0]:
-                        st.image(sprite_url, use_container_width=True)
-                    with cols[1]:
+                    # Layout Interno: Imagem | Controles
+                    c_img, c_ctrl = st.columns([1, 2.5])
+                    
+                    with c_img:
+                        if cur_hp == 0:
+                             # Exibe imagem cinza (hack visual simples ou original)
+                             st.image(sprite_url, width=60)
+                             st.caption("Fainted")
+                        else:
+                             st.image(sprite_url, width=60)
+
+                        # Botões de ação (Compactos)
                         if is_on_map:
                             piece_obj = next((p for p in my_pieces_on_board if p["pid"] == pid), None)
-                            
-                            # Botão Remover
-                            if st.button("❌ Tirar", key=f"rm_{pid}", use_container_width=True):
-                                if piece_obj:
+                            if piece_obj:
+                                is_rev = piece_obj.get("revealed", True)
+                                b_txt = "👁️" if is_rev else "✅"
+                                b_help = "Ocultar/Revelar"
+                                if st.button(b_txt, key=f"v_{pid}", help=b_help):
+                                    piece_obj["revealed"] = not is_rev
+                                    upsert_piece(db, rid, piece_obj)
+                                    if piece_obj["revealed"]: mark_pid_seen(db, rid, pid)
+                                    st.rerun()
+                                
+                                if st.button("❌", key=f"r_{pid}", help="Tirar do mapa"):
                                     delete_piece(db, rid, piece_obj["id"])
                                     add_public_event(db, rid, "pokemon_removed", trainer_name, {"pid": pid})
                                     st.rerun()
-                            
-                            # Botão Visibilidade
-                            if piece_obj:
-                                is_rev = piece_obj.get("revealed", True)
-                                btn_label = "👁️ Ocultar" if is_rev else "✅ Revelar"
-                                btn_type = "secondary" if is_rev else "primary"
-                                
-                                if st.button(btn_label, key=f"vis_{pid}", type=btn_type, use_container_width=True):
-                                    piece_obj["revealed"] = not is_rev
-                                    upsert_piece(db, rid, piece_obj)
-                                    # Se revelou, marca como VISTO para sempre
-                                    if piece_obj["revealed"]:
-                                        mark_pid_seen(db, rid, pid)
-                                    st.rerun()
                         else:
-                            if st.button("📍 Por", key=f"put_{pid}", use_container_width=True):
-                                st.session_state["placing_pid"] = pid
-                                st.toast(f"Clique no mapa para colocar {pid}")
-                                st.rerun()
+                            if cur_hp > 0:
+                                if st.button("📍 Por", key=f"p_{pid}"):
+                                    st.session_state["placing_pid"] = pid
+                                    st.rerun()
+
+                    with c_ctrl:
+                        # 1. Slider de HP
+                        st.markdown(f"**{hp_icon} HP: {cur_hp}/6**")
+                        new_hp = st.slider(
+                            "HP", 0, 6, value=cur_hp, 
+                            key=f"hp_slider_{pid}", 
+                            label_visibility="collapsed"
+                        )
+                        
+                        # 2. Status
+                        # Opções: Raio, Gelo, Fogo, Zzz, Caveira
+                        options = ["⚡", "❄️", "🔥", "💤", "☠️"]
+                        new_cond = st.multiselect(
+                            "Status", options, default=cur_cond,
+                            key=f"cond_{pid}",
+                            label_visibility="collapsed",
+                            placeholder="Status..."
+                        )
+
+                        # Lógica de Atualização (Se mudou algo, salva no banco)
+                        if new_hp != cur_hp or new_cond != cur_cond:
+                            update_party_state(db, rid, trainer_name, pid, new_hp, new_cond)
+                            st.rerun()
 
         # --- 2. MAPA ---
         with c_map:
-            st.markdown("### 🗺️ Campo de Batalha")
+            st.markdown("### 🗺️ Arena")
             if "selected_piece_id" not in st.session_state:
                 st.session_state["selected_piece_id"] = None
 
             img = render_map_with_pieces(tiles, theme_key, seed, pieces_to_draw, trainer_name)
             click = streamlit_image_coordinates(img, key=f"battle_map_{rid}")
 
-        # --- 3. INIMIGO ---
+        # --- 3. INIMIGO (Visualização) ---
         with c_opp:
             st.markdown(f"### {opp_label}")
             
-            # Pega Party do Inimigo
             players_doc = db.collection("rooms").document(rid).collection("public_state").document("players").get()
             players_data = players_doc.to_dict() or {}
             opp_party_list = players_data.get(opp_name, []) if opp_name else []
-            
-            # Pega peças do inimigo no board
             opp_pieces_on_board = [p for p in all_pieces if p.get("owner") == opp_name]
             
             if not opp_party_list:
                 st.caption("Aguardando...")
             
-            # Copia para não alterar o original
             temp_board_pieces = list(opp_pieces_on_board)
             
             for pid in opp_party_list:
-                # Verifica se está no board
                 found_on_board = None
                 for i, p in enumerate(temp_board_pieces):
                     if str(p.get("pid")) == str(pid):
@@ -1510,55 +1604,71 @@ elif page == "PvP – Arena Tática":
                         del temp_board_pieces[i]
                         break
                 
-                # --- LÓGICA DE VISUALIZAÇÃO INTELIGENTE ---
-                # Mostra o Sprite se:
-                # 1. Estiver no campo e REVELADO.
-                # 2. OU se já estiver na lista de "VISTOS" (Memória).
-                show_sprite = False
-                status_text = ""
-                
-                # Checa memória global
+                # Dados de HP/Status do INIMIGO
+                opp_hp, opp_cond = get_poke_data(opp_name, pid)
                 already_seen = str(pid) in seen_pids
 
+                # Lógica de Exibição
+                show_full = False
+                status_msg = ""
+                
                 if found_on_board:
                     if found_on_board.get("revealed", True):
-                        show_sprite = True
-                        status_text = f"**{pid}**" # Nome depois
+                        show_full = True
+                    elif already_seen:
+                        show_full = True
+                        status_msg = "(Escondido)"
                     else:
-                        # Oculto no campo
-                        # Se já vi antes, mostro sprite mas aviso que está escondido agora
-                        if already_seen:
-                            show_sprite = True
-                            status_text = f"**{pid}** (Escondido)"
-                        else:
-                            show_sprite = False
-                            status_text = "❓ Oculto (Campo)"
+                        show_full = False
+                        status_msg = "❓ Oculto"
+                elif already_seen:
+                    show_full = True
+                    status_msg = "(Na Mochila)"
                 else:
-                    # Na mochila
-                    if already_seen:
-                        show_sprite = True
-                        status_text = "👜 Na Mochila" # Mas eu sei quem é
-                    else:
-                        show_sprite = False
-                        status_text = "👜 Na Mochila"
+                    show_full = False
+                    status_msg = "(Na Mochila)"
 
-                # Renderiza
                 with st.container(border=True):
-                    if show_sprite:
-                        url = pokemon_pid_to_image(pid, mode="sprite")
-                        st.image(url, width=50)
+                    if show_full:
+                        # Ícone de HP
+                        if opp_hp >= 5: hpi = "💚"
+                        elif opp_hp >= 3: hpi = "🟡"
+                        elif opp_hp >= 1: hpi = "🔴"
+                        else: hpi = "💀"
                         
-                        # Nome bonito
-                        p_name = pid
-                        row_p = df[df["Nº"].astype(str) == str(pid)]
-                        if not row_p.empty: p_name = row_p.iloc[0]["Nome"]
-                        
-                        # Ajusta legenda se estava usando PID puro
-                        if status_text == f"**{pid}**": status_text = f"**{p_name}**"
-                        st.caption(status_text)
+                        cols = st.columns([1, 2])
+                        with cols[0]:
+                            url = pokemon_pid_to_image(pid, mode="sprite")
+                            if opp_hp == 0:
+                                # Mostra imagem normal (o cinza é no mapa), mas com aviso
+                                st.image(url, width=50)
+                            else:
+                                st.image(url, width=50)
+                                
+                        with cols[1]:
+                            # Nome
+                            p_name = pid
+                            row_p = df[df["Nº"].astype(str) == str(pid)]
+                            if not row_p.empty: p_name = row_p.iloc[0]["Nome"]
+                            st.markdown(f"**{p_name}**")
+                            
+                            if status_msg: st.caption(status_msg)
+                            
+                            # Barra de Vida (Visual apenas)
+                            st.markdown(f"{hpi} HP: {opp_hp}/6")
+                            
+                            # Condições
+                            if opp_cond:
+                                st.caption(" ".join(opp_cond))
+                            elif opp_hp == 0:
+                                st.caption("Fainted")
+                            else:
+                                st.caption("Saudável")
+                                
                     else:
+                        # Modo Pokébola
                         st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=40)
-                        st.caption(status_text)
+                        st.caption("Desconhecido")
 
         # =========================
         # CLIQUE
@@ -1568,15 +1678,20 @@ elif page == "PvP – Arena Tática":
             row = int(click["y"] // TILE_SIZE)
             
             if 0 <= row < grid and 0 <= col < grid:
-                
                 placing_pid = st.session_state.get("placing_pid")
                 sel = st.session_state.get("selected_piece_id")
 
                 # A. COLOCAR
                 if placing_pid:
+                    # Verifica se HP > 0
+                    php, _ = get_poke_data(trainer_name, placing_pid)
+                    if php == 0:
+                        st.toast("Este Pokémon está desmaiado (Fainted)!", icon="💀")
+                        st.session_state.pop("placing_pid", None)
+                        st.rerun()
+
                     state_now = get_state(db, rid)
                     current_all = state_now.get("pieces") or []
-                    
                     if find_piece_at(current_all, row, col):
                         st.toast("⚠️ Célula ocupada!", icon="🚫")
                     else:
@@ -1586,18 +1701,16 @@ elif page == "PvP – Arena Tática":
                             "pid": placing_pid,
                             "owner": trainer_name,
                             "row": row, "col": col,
-                            "revealed": True, # Entra revelado
+                            "revealed": True,
                             "status": "active"
                         }
                         upsert_piece(db, rid, new_piece)
-                        # --- MEMÓRIA: Entrou no campo revelado -> Marca como visto
                         mark_pid_seen(db, rid, placing_pid)
-                        
                         add_public_event(db, rid, "pokemon_placed", trainer_name, {"pid": placing_pid})
                         st.session_state.pop("placing_pid", None)
                         st.rerun()
 
-                # B. SELECIONAR / MOVER
+                # B. MOVER
                 else:
                     state_now = get_state(db, rid)
                     current_all = state_now.get("pieces") or []
@@ -1629,13 +1742,18 @@ elif page == "PvP – Arena Tática":
                             if find_piece_at(current_all, row, col):
                                 st.toast("Célula ocupada.", icon="🚫")
                             else:
-                                moving["row"] = int(row)
-                                moving["col"] = int(col)
-                                upsert_piece(db, rid, moving)
-                                add_public_event(db, rid, "piece_moved", trainer_name, {"pid": moving.get("pid"), "to": [row, col]})
-                                st.session_state.pop("selected_piece_id", None)
-                                st.toast("Movido!", icon="💨")
-                                st.rerun()
+                                # Verifica se está fainted antes de mover (opcional, mas bom pra realismo)
+                                mhp, _ = get_poke_data(trainer_name, moving.get("pid"))
+                                if mhp == 0:
+                                    st.toast("Pokémon desmaiado não pode andar!", icon="💀")
+                                else:
+                                    moving["row"] = int(row)
+                                    moving["col"] = int(col)
+                                    upsert_piece(db, rid, moving)
+                                    add_public_event(db, rid, "piece_moved", trainer_name, {"pid": moving.get("pid"), "to": [row, col]})
+                                    st.session_state.pop("selected_piece_id", None)
+                                    st.toast("Movido!", icon="💨")
+                                    st.rerun()
 
         st.stop()
         
@@ -1953,6 +2071,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
