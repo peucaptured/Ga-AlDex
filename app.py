@@ -15,6 +15,7 @@ from streamlit_image_coordinates import streamlit_image_coordinates
 import random
 import gzip
 import base64
+from io import BytesIO
 
 
 
@@ -371,6 +372,65 @@ def add_public_event(db, rid: str, event_type: str, by: str, payload: dict):
         "payload": payload or {},
         "ts": firestore.SERVER_TIMESTAMP,
     })
+def state_ref_for(db, rid: str):
+    return (
+        db.collection("rooms")
+          .document(rid)
+          .collection("public_state")
+          .document("state")
+    )
+
+def get_state(db, rid: str) -> dict:
+    doc = state_ref_for(db, rid).get()
+    return doc.to_dict() if doc.exists else {}
+
+def upsert_piece(db, rid: str, piece: dict):
+    # piece precisa ter id único
+    sref = state_ref_for(db, rid)
+    stt = get_state(db, rid)
+    pieces = stt.get("pieces") or []
+
+    # substitui se já existe
+    new_pieces = [p for p in pieces if p.get("id") != piece.get("id")]
+    new_pieces.append(piece)
+
+    sref.set({
+        "pieces": new_pieces,
+        "updatedAt": firestore.SERVER_TIMESTAMP,
+    }, merge=True)
+
+def delete_piece(db, rid: str, piece_id: str):
+    sref = state_ref_for(db, rid)
+    stt = get_state(db, rid)
+    pieces = stt.get("pieces") or []
+    new_pieces = [p for p in pieces if p.get("id") != piece_id]
+    sref.set({
+        "pieces": new_pieces,
+        "updatedAt": firestore.SERVER_TIMESTAMP,
+    }, merge=True)
+
+def visible_pieces_for(room: dict, viewer_name: str, pieces: list[dict]) -> list[dict]:
+    # Jogador vê tudo dele; vê do oponente só o que estiver "revealed" (no campo)
+    role = get_role(room, viewer_name)
+    owner = (room.get("owner") or {}).get("name")
+    chal = room.get("challenger") or {}
+    chal_name = chal.get("name") if isinstance(chal, dict) else (chal or None)
+
+    if role == "spectator":
+        # espectador vê somente o que está no campo (revealed)
+        return [p for p in pieces if p.get("revealed") is True]
+
+    # jogador: vê os dele sempre; e do outro só se revealed
+    me = owner if role == "owner" else chal_name
+    out = chal_name if role == "owner" else owner
+
+    result = []
+    for p in pieces:
+        if p.get("owner") == me:
+            result.append(p)
+        elif p.get("owner") == out and p.get("revealed") is True:
+            result.append(p)
+    return result
 
 def list_public_events(db, rid: str, limit: int = 30):
     q = (db.collection("rooms").document(rid)
@@ -421,8 +481,8 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool
     for _ in range(rng.randint(grid, grid * 2)):
         rr = rng.randint(1, grid - 2)
         cc = rng.randint(1, grid - 2)
-        if inside(rr, cc) and rng.random() > 0.55:
-            if tiles[rr][cc] in ["grass", "dirt", "sand"]:
+        if inside(rr, cc) and rng.random() > 0.75:
+            if tiles[rr][cc] in ["grass", "dirt", "sand", "trail"]:
                 tiles[rr][cc] = "rock"
 
     # --- features por tema ---
@@ -486,7 +546,7 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool
         for r in range(1, grid - 1):
             for c in range(1, grid - 1):
                 if inside(r, c):
-                    tiles[r][c] = "stone" if rng.random() > 0.12 else "rock"
+                    tiles[r][c] = "stone" if rng.random() > 0.25 else "rock"
 
         # faixas de declive (diagonais)
         bands = rng.randint(2, 4)
@@ -658,6 +718,17 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
         draw.line([(x, 0), (x, grid * TILE_SIZE)], fill=(0, 0, 0))
 
     return img
+    
+
+@st.cache_data(show_spinner=False)
+def fetch_image_pil(url: str) -> Image.Image | None:
+    try:
+        r = requests.get(url, timeout=8)
+        r.raise_for_status()
+        img = Image.open(BytesIO(r.content)).convert("RGBA")
+        return img
+    except Exception:
+        return None
 
 def normalize_text(text):
     if not isinstance(text, str): return str(text)
@@ -1227,7 +1298,7 @@ elif page == "PvP – Arena Tática":
             st.write(f"**Grid:** {room.get('gridSize')}x{room.get('gridSize')}  |  **Tema:** {room.get('theme')}")
             st.write(f"**Owner:** {owner}  |  **Challenger:** {chal_name or '-'}")
             st.write(f"**Espectadores:** {len(room.get('spectators') or [])}")
-                       # =========================
+            # =========================
             # 🗺️ BLOCO DO MAPA (ETAPA 2)
             # =========================
             state_ref = (
@@ -1292,26 +1363,73 @@ elif page == "PvP – Arena Tática":
                         {"theme": theme_key, "grid": grid, "seed": seed, "noWater": bool(no_water)}
                     )
                     st.rerun()
+
+                # --- Estado atual ---
+                state = get_state(db, rid)
+                all_pieces = state.get("pieces") or []
+                pieces = visible_pieces_for(room, trainer_name, all_pieces)
+                
+                # --- montar lista da party (até 10) ---
+                party = user_data.get("party") or []
+                party = party[:10]
+                
+                st.markdown("### 🧩 Pokémons no campo")
+                
+                if is_player:
+                    # escolhe pokemon da party
+                    options = []
+                    for i, pid in enumerate(party):
+                        options.append(f"{i+1}. {pid}")
+                
+                    selected = st.selectbox("Selecionar Pokémon da party", options, index=0)
+                
+                    # id base do pokemon (permite EXT:)
+                    sel_idx = int(selected.split(".")[0]) - 1
+                    sel_pid = party[sel_idx]
+                
+                    st.caption("Clique em uma célula do mapa para **posicionar/mover** o Pokémon selecionado.")
+                
+                else:
+                    st.caption("Você está como espectador (não pode posicionar/mover).")
             
                 img = render_map_png(tiles, theme_key, seed)
                 st.markdown("### 🗺️ Mapa tático")
                 click = streamlit_image_coordinates(img, key=f"map_{rid}")
-
+                
 
                 if click and "x" in click and "y" in click:
                     col = int(click["x"] // TILE_SIZE)
                     row = int(click["y"] // TILE_SIZE)
 
                     if 0 <= row < grid and 0 <= col < grid:
-                        st.success(f"Célula selecionada: **linha {row}**, **coluna {col}**")
-
-                        add_public_event(
-                            db,
-                            rid,
-                            "cell_click",
-                            trainer_name,
-                            {"row": row, "col": col}
-                        )
+                        # (opcional) ainda pode logar clique
+                        add_public_event(db, rid, "cell_click", trainer_name, {"row": row, "col": col})
+                    
+                        if is_player:
+                            # sel_idx e sel_pid vêm do selectbox da party (passo 2)
+                            slot_id = f"{rid}:{trainer_name}:slot{sel_idx}"
+                    
+                            piece = {
+                                "id": slot_id,
+                                "owner": trainer_name,
+                                "slot": int(sel_idx),
+                                "pid": str(sel_pid),
+                                "row": int(row),
+                                "col": int(col),
+                                "revealed": True,
+                            }
+                    
+                            upsert_piece(db, rid, piece)
+                    
+                            add_public_event(
+                                db, rid, "piece_moved", trainer_name,
+                                {"slot": int(sel_idx), "pid": str(sel_pid), "row": int(row), "col": int(col)}
+                            )
+                    
+                            st.success(f"Movido: **slot {sel_idx+1}** -> (**{row}**, **{col}**)")
+                            st.rerun()
+                        else:
+                            st.success(f"Célula selecionada: **linha {row}**, **coluna {col}**")
 
                 # --- Última rolagem de dado ---
                 last_events = list_public_events(db, rid, limit=10)
@@ -1356,6 +1474,9 @@ elif page == "PvP – Arena Tática":
                         by = ev.get("by", "?")
                         payload = ev.get("payload", {})
                         st.write(f"- **{et}** — _{by}_ — {payload}")
+                        
+
+                
 
 
 
