@@ -750,31 +750,39 @@ def fetch_image_pil(url: str) -> Image.Image | None:
     except Exception:
         return None
 def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str):
+    # Cria a base do mapa
     img = render_map_png(tiles, theme_key, seed).convert("RGBA")
-
-    # cache simples por execução (evita baixar 10x no mesmo rerun)
+    
+    # Cache local para não baixar a mesma imagem 10x no loop
     local_cache = {}
+    draw = ImageDraw.Draw(img)
 
     for p in pieces or []:
         r = int(p.get("row", -1))
         c = int(p.get("col", -1))
+        
+        # Se posição inválida ou peça que não deve ser desenhada (lógica de filtro anterior)
         if r < 0 or c < 0:
             continue
 
         owner = p.get("owner")
-        revealed = bool(p.get("revealed", True))
+        
+        # Define cor da borda
+        # Azul (Ciano) para mim, Vermelho para oponente
+        if owner == viewer_name:
+            border_color = (0, 255, 255) # Ciano
+        else:
+            border_color = (255, 50, 50) # Vermelho
 
-        # segredo: se não é do jogador e não está revelado -> desenha “pokébola”/token
-        # (ou deixe invisível)
-        if owner != viewer_name and not revealed:
-            # desenhar um marcador simples no lugar:
-            x = c * TILE_SIZE
-            y = r * TILE_SIZE
-            draw = ImageDraw.Draw(img)
-            draw.ellipse([x+6, y+6, x+TILE_SIZE-6, y+TILE_SIZE-6], fill=(220,0,0,220))
-            draw.ellipse([x+10, y+10, x+TILE_SIZE-10, y+TILE_SIZE-10], fill=(255,255,255,220))
-            continue
+        # Coordenadas do quadrado
+        x = c * TILE_SIZE
+        y = r * TILE_SIZE
 
+        # Desenha a Borda Colorida no chão (antes do sprite)
+        # width=3 deixa a borda grossinha visível
+        draw.rectangle([x, y, x + TILE_SIZE - 1, y + TILE_SIZE - 1], outline=border_color, width=3)
+
+        # Busca imagem
         pid = str(p.get("pid", ""))
         url = pokemon_pid_to_image(pid, mode="sprite")
 
@@ -785,22 +793,21 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str):
         if sprite is None:
             continue
 
-        # redimensiona para caber na célula
+        # Processa Sprite
         sp = sprite.copy()
         sp.thumbnail((TILE_SIZE, TILE_SIZE), Image.Resampling.LANCZOS)
-        # 🔴 NOVO: derrotado = cinza
-        status = p.get("status", "active")
-        if status == "fainted":
+        
+        # Se estiver derrotado (fainted), fica cinza
+        if p.get("status") == "fainted":
             sp = sp.convert("LA").convert("RGBA")
 
-        # centraliza na célula
-        x0 = c * TILE_SIZE + (TILE_SIZE - sp.size[0]) // 2
-        y0 = r * TILE_SIZE + (TILE_SIZE - sp.size[1]) // 2
-
+        # Centraliza e cola
+        x0 = x + (TILE_SIZE - sp.size[0]) // 2
+        y0 = y + (TILE_SIZE - sp.size[1]) // 2
         img.alpha_composite(sp, (x0, y0))
 
     return img.convert("RGB")
-
+    
 def normalize_text(text):
     if not isinstance(text, str): return str(text)
     return unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
@@ -1885,6 +1892,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
