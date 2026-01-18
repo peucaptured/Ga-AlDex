@@ -1305,11 +1305,11 @@ elif page == "PvP – Arena Tática":
     # =========================
 
 
-        st.markdown("## 🗺️ Campo de batalha")
-        img = render_map_with_pieces(tiles, room.get("theme"), seed, pieces, trainer_name)
-        click = streamlit_image_coordinates(img, key=f"battle_map_{rid}")  # ✅ key única
+    st.markdown("## 🗺️ Campo de batalha")
+    img = render_map_with_pieces(tiles, room.get("theme"), seed, pieces, trainer_name)
+    click = streamlit_image_coordinates(img, key=f"battle_map_{rid}")  # ✅ key única
 
-        st.stop()  # ✅ MUITO IMPORTANTE: impede render do lobby no mesmo run
+    st.stop()  # ✅ MUITO IMPORTANTE: impede render do lobby no mesmo run
         
     elif view == "lobby":
         # --- Painel: criar arena ---
@@ -1736,6 +1736,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
