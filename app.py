@@ -1437,305 +1437,306 @@ if view == "lobby":
 
 
     
-    elif view == "battle":
-    
-        # --- Painel da arena ativa ---
-        rid = st.session_state.get("active_room_id")
-        st.subheader("🎮 Arena ativa")
-        if st.button("🔄 Atualizar arena"):
-            st.rerun()
-        if st.button("⬅️ Voltar ao lobby"):
-            st.session_state["pvp_view"] = "lobby"
-            st.rerun()
+elif view == "battle":
+
+    # --- Painel da arena ativa ---
+    rid = st.session_state.get("active_room_id")
+    st.subheader("🎮 Arena ativa")
+    if st.button("🔄 Atualizar arena"):
+        st.rerun()
+    if st.button("⬅️ Voltar ao lobby"):
+        st.session_state["pvp_view"] = "lobby"
+        st.rerun()
 
 
-    if not rid:
-        st.info("Nenhuma arena aberta. Crie ou abra uma arena acima.")
+if not rid:
+    st.info("Nenhuma arena aberta. Crie ou abra uma arena acima.")
+else:
+    room = get_room(db, rid)
+    if not room:
+        st.error("Arena ativa não existe mais (ou código inválido).")
+        st.session_state.pop("active_room_id", None)
     else:
-        room = get_room(db, rid)
-        if not room:
-            st.error("Arena ativa não existe mais (ou código inválido).")
-            st.session_state.pop("active_room_id", None)
-        else:
-            owner = (room.get("owner") or {}).get("name")
-            chal = room.get("challenger") or {}
-            chal_name = chal.get("name") if isinstance(chal, dict) else (chal or None)
+        owner = (room.get("owner") or {}).get("name")
+        chal = room.get("challenger") or {}
+        chal_name = chal.get("name") if isinstance(chal, dict) else (chal or None)
 
-            role = get_role(room, trainer_name)
-            is_player = role in ["owner", "challenger"]
+        role = get_role(room, trainer_name)
+        is_player = role in ["owner", "challenger"]
 
-            st.write(f"**Código:** `{rid}`")
-            st.write(f"**Status:** {room.get('status')}")
-            st.write(f"**Grid:** {room.get('gridSize')}x{room.get('gridSize')}  |  **Tema:** {room.get('theme')}")
-            st.write(f"**Owner:** {owner}  |  **Challenger:** {chal_name or '-'}")
-            st.write(f"**Espectadores:** {len(room.get('spectators') or [])}")
-            
+        st.write(f"**Código:** `{rid}`")
+        st.write(f"**Status:** {room.get('status')}")
+        st.write(f"**Grid:** {room.get('gridSize')}x{room.get('gridSize')}  |  **Tema:** {room.get('theme')}")
+        st.write(f"**Owner:** {owner}  |  **Challenger:** {chal_name or '-'}")
+        st.write(f"**Espectadores:** {len(room.get('spectators') or [])}")
+        
 
 
 
-         
-            # =========================
-            # 🗺️ BLOCO DO MAPA (ETAPA 2)
-            # =========================
-            state_ref = (
-                db.collection("rooms")
-                  .document(rid)
-                  .collection("public_state")
-                  .document("state")
-            )
+     
+        # =========================
+        # 🗺️ BLOCO DO MAPA (ETAPA 2)
+        # =========================
+        state_ref = (
+            db.collection("rooms")
+              .document(rid)
+              .collection("public_state")
+              .document("state")
+        )
 
-            state_doc = state_ref.get()
-            state = state_doc.to_dict() if state_doc.exists else {}
+        state_doc = state_ref.get()
+        state = state_doc.to_dict() if state_doc.exists else {}
 
-            grid = int(room.get("gridSize") or 6)
-            theme_key = room.get("theme") or "cave_water"
+        grid = int(room.get("gridSize") or 6)
+        theme_key = room.get("theme") or "cave_water"
 
-            seed = state.get("seed")
-            packed = state.get("tilesPacked")
-            tiles = unpack_tiles(packed) if packed else None
-            
-            # checkbox SEMPRE disponível (tanto pra gerar quanto regerar)
-            no_water = st.checkbox(
-                "🚫 Gerar sem água",
-                value=bool(state.get("noWater", False)),
-                disabled=not is_player
-            )
-            
-            if not tiles:
-                if st.button("🗺️ Gerar mapa (pixel art)", disabled=not is_player):
-                    tiles, seed = gen_tiles(grid, theme_key, seed=None, no_water=no_water)
-                    packed = pack_tiles(tiles)
-            
-                    state_ref.set({
-                        "gridSize": grid,
-                        "theme": theme_key,
-                        "seed": seed,
-                        "tilesPacked": packed,
-                        "noWater": bool(no_water),
-                        "updatedAt": firestore.SERVER_TIMESTAMP,
-                    }, merge=True)
-            
-                    add_public_event(
-                        db, rid, "map_generated", trainer_name,
-                        {"theme": theme_key, "grid": grid, "seed": seed, "noWater": bool(no_water)}
-                    )
-                    st.session_state["pvp_view"] = "battle"
-                    st.rerun()
-            
-            else:
-                # ✅ Botão de REGERAR fica aqui (porque o mapa já existe)
-                if st.button("🔁 Regerar mapa", disabled=not is_player):
-                    tiles, seed = gen_tiles(grid, theme_key, seed=None, no_water=no_water)
-                    packed = pack_tiles(tiles)
-            
-                    state_ref.set({
-                        "seed": seed,
-                        "tilesPacked": packed,
-                        "noWater": bool(no_water),
-                        "updatedAt": firestore.SERVER_TIMESTAMP,
-                    }, merge=True)
-            
-                    add_public_event(
-                        db, rid, "map_regenerated", trainer_name,
-                        {"theme": theme_key, "grid": grid, "seed": seed, "noWater": bool(no_water)}
-                    )
-                    st.rerun()
-            
-            if st.button("⚔️ Ir para o Campo de Batalha", type="primary"):
+        seed = state.get("seed")
+        packed = state.get("tilesPacked")
+        tiles = unpack_tiles(packed) if packed else None
+        
+        # checkbox SEMPRE disponível (tanto pra gerar quanto regerar)
+        no_water = st.checkbox(
+            "🚫 Gerar sem água",
+            value=bool(state.get("noWater", False)),
+            disabled=not is_player
+        )
+        
+        if not tiles:
+            if st.button("🗺️ Gerar mapa (pixel art)", disabled=not is_player):
+                tiles, seed = gen_tiles(grid, theme_key, seed=None, no_water=no_water)
+                packed = pack_tiles(tiles)
+        
+                state_ref.set({
+                    "gridSize": grid,
+                    "theme": theme_key,
+                    "seed": seed,
+                    "tilesPacked": packed,
+                    "noWater": bool(no_water),
+                    "updatedAt": firestore.SERVER_TIMESTAMP,
+                }, merge=True)
+        
+                add_public_event(
+                    db, rid, "map_generated", trainer_name,
+                    {"theme": theme_key, "grid": grid, "seed": seed, "noWater": bool(no_water)}
+                )
                 st.session_state["pvp_view"] = "battle"
                 st.rerun()
-
-            # --- Estado atual ---
-            state = get_state(db, rid)
-            all_pieces = state.get("pieces") or []
-            pieces = visible_pieces_for(room, trainer_name, all_pieces)
-            
-            # --- montar lista da party (até 10) ---
-            party = user_data.get("party") or []
-            party = party[:10]
-            
-           
         
-            # --- Última rolagem de dado ---
-            last_events = list_public_events(db, rid, limit=10)
-            last_dice = next((e for e in last_events if e.get("type") == "dice"), None)
-            if last_dice:
-                payload = last_dice.get("payload", {})
-                st.info(
-                    f"🎲 Última rolagem: **d{payload.get('sides')} = {payload.get('result')}** "
-                    f"(por {last_dice.get('by')})"
+        else:
+            # ✅ Botão de REGERAR fica aqui (porque o mapa já existe)
+            if st.button("🔁 Regerar mapa", disabled=not is_player):
+                tiles, seed = gen_tiles(grid, theme_key, seed=None, no_water=no_water)
+                packed = pack_tiles(tiles)
+        
+                state_ref.set({
+                    "seed": seed,
+                    "tilesPacked": packed,
+                    "noWater": bool(no_water),
+                    "updatedAt": firestore.SERVER_TIMESTAMP,
+                }, merge=True)
+        
+                add_public_event(
+                    db, rid, "map_regenerated", trainer_name,
+                    {"theme": theme_key, "grid": grid, "seed": seed, "noWater": bool(no_water)}
                 )
+                st.rerun()
+        
+        if st.button("⚔️ Ir para o Campo de Batalha", type="primary"):
+            st.session_state["pvp_view"] = "battle"
+            st.rerun()
 
-            # --- Botões de dado ---
-            st.markdown("---")
-            c1, c2, c3 = st.columns([1, 1, 2])
+        # --- Estado atual ---
+        state = get_state(db, rid)
+        all_pieces = state.get("pieces") or []
+        pieces = visible_pieces_for(room, trainer_name, all_pieces)
+        
+        # --- montar lista da party (até 10) ---
+        party = user_data.get("party") or []
+        party = party[:10]
+        
+       
+    
+        # --- Última rolagem de dado ---
+        last_events = list_public_events(db, rid, limit=10)
+        last_dice = next((e for e in last_events if e.get("type") == "dice"), None)
+        if last_dice:
+            payload = last_dice.get("payload", {})
+            st.info(
+                f"🎲 Última rolagem: **d{payload.get('sides')} = {payload.get('result')}** "
+                f"(por {last_dice.get('by')})"
+            )
 
-            with c1:
-                if st.button("🎲 Rolar d20", disabled=not is_player):
-                    r = roll_die(db, rid, trainer_name, sides=20)
-                    st.success(f"Você rolou: **{r}**")
-                    st.rerun()
+        # --- Botões de dado ---
+        st.markdown("---")
+        c1, c2, c3 = st.columns([1, 1, 2])
 
-            with c2:
-                if st.button("🎲 Rolar d6", disabled=not is_player):
-                    r = roll_die(db, rid, trainer_name, sides=6)
-                    st.success(f"Você rolou: **{r}**")
-                    st.rerun()
+        with c1:
+            if st.button("🎲 Rolar d20", disabled=not is_player):
+                r = roll_die(db, rid, trainer_name, sides=20)
+                st.success(f"Você rolou: **{r}**")
+                st.rerun()
 
-            with c3:
-                if is_player:
-                    st.caption("A rolagem aparece no **Log público** para jogadores e espectadores.")
-                else:
-                    st.caption("Você está como **espectador**.")
+        with c2:
+            if st.button("🎲 Rolar d6", disabled=not is_player):
+                r = roll_die(db, rid, trainer_name, sides=6)
+                st.success(f"Você rolou: **{r}**")
+                st.rerun()
 
-            # --- Log público ---
-            st.markdown("### 📜 Log público (todos veem)")
-            events = list_public_events(db, rid, limit=25)
-            if not events:
-                st.caption("Sem eventos ainda.")
+        with c3:
+            if is_player:
+                st.caption("A rolagem aparece no **Log público** para jogadores e espectadores.")
             else:
-                for ev in events:
-                    et = ev.get("type", "?")
-                    by = ev.get("by", "?")
-                    payload = ev.get("payload", {})
-                    st.write(f"- **{et}** — _{by}_ — {payload}")
-            # =========================
-            # 🧠 LAYOUT DE BATALHA
-            # =========================
-            left, right = st.columns([1.2, 3])
-            
-            with left:
-                st.markdown("## 🎒 Seus Pokémon")
-            
-                party = user_data.get("party") or []
-                party = party[:8]
-            
-                state = get_state(db, rid)
-                pieces = state.get("pieces", [])
-            
-                placed_by_me = {p["pid"] for p in pieces if p.get("owner") == trainer_name}
-            
-                for pid in party:
-                    is_on_map = pid in placed_by_me
-            
-                    # imagem pequena do pokemon
-                    sprite_url = pokemon_pid_to_image(pid, mode="sprite")
-            
-                    cimg, cbtn = st.columns([1, 3], vertical_alignment="center")
-                    with cimg:
-                        st.image(sprite_url, width=48)
-            
-                    with cbtn:
-                        label = "❌ Remover" if is_on_map else "➕ Colocar"
-                        if st.button(f"{label}", key=f"btn_{rid}_{pid}"):
-                            if is_on_map:
-                                piece_id = f"{rid}:{trainer_name}:{pid}"
-                                delete_piece(db, rid, piece_id)
-                                add_public_event(db, rid, "pokemon_removed", trainer_name, {"pid": pid})
-                                st.rerun()
-                            else:
-                                st.session_state["placing_pid"] = pid
+                st.caption("Você está como **espectador**.")
 
-
-            
-            with right:
-                st.markdown("## 🗺️ Campo de batalha")
-                # seleção atual (persistente entre reruns)
-                if "selected_piece_id" not in st.session_state:
-                    st.session_state["selected_piece_id"] = None
-                img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name)
-                click = streamlit_image_coordinates(img, key=f"battle_map_{rid}")
-                selected_piece_id = st.session_state.get("selected_piece_id")
-                
-                # =========================
-                # MOVIMENTO EM 2 CLIQUES
-                # clique 1: seleciona peça
-                # clique 2: move para célula vazia
-                # =========================
-                
-                # estado local (não vai pro firestore até confirmar o 2o clique)
-                sel = st.session_state.get("selected_piece_id")
-                
-                # dica visual simples
-                if sel:
-                    st.info("✅ Pokémon selecionado. Clique em outra célula para mover (ou clique nele de novo para cancelar).")
-                else:
-                    st.caption("Clique em um Pokémon no mapa para selecionar. Depois clique em outra célula para mover.")
-                
-                if click and "x" in click and "y" in click:
-                    col = int(click["x"] // TILE_SIZE)
-                    row = int(click["y"] // TILE_SIZE)
-                
-                    if 0 <= row < grid and 0 <= col < grid:
-                        # pega estado atual de peças (sempre do firestore)
-                        state_now = get_state(db, rid)
-                        all_pieces = state_now.get("pieces") or []
-                        pieces_visible = visible_pieces_for(room, trainer_name, all_pieces)
-                
-                        # peça que está na célula clicada (se houver)
-                        clicked_piece = find_piece_at(pieces_visible, row, col)
-                
-                        # 1) clique em uma peça
-                        if clicked_piece is not None:
-                            # só pode selecionar/mexer nas suas peças
-                            if not is_player or clicked_piece.get("owner") != trainer_name:
-                                st.warning("Você não pode mover peças do oponente.")
-                            else:
-                                pid = clicked_piece.get("id")
-                                # se clicou na mesma peça -> cancela seleção
-                                if sel == pid:
-                                    st.session_state.pop("selected_piece_id", None)
-                                    st.toast("Seleção cancelada.")
-                                else:
-                                    st.session_state["selected_piece_id"] = pid
-                                    st.toast(f"Selecionado: {clicked_piece.get('pid')}")
+        # --- Log público ---
+        st.markdown("### 📜 Log público (todos veem)")
+        events = list_public_events(db, rid, limit=25)
+        if not events:
+            st.caption("Sem eventos ainda.")
+        else:
+            for ev in events:
+                et = ev.get("type", "?")
+                by = ev.get("by", "?")
+                payload = ev.get("payload", {})
+                st.write(f"- **{et}** — _{by}_ — {payload}")
+        # =========================
+        # 🧠 LAYOUT DE BATALHA
+        # =========================
+        left, right = st.columns([1.2, 3])
+        
+        with left:
+            st.markdown("## 🎒 Seus Pokémon")
+        
+            party = user_data.get("party") or []
+            party = party[:8]
+        
+            state = get_state(db, rid)
+            pieces = state.get("pieces", [])
+        
+            placed_by_me = {p["pid"] for p in pieces if p.get("owner") == trainer_name}
+        
+            for pid in party:
+                is_on_map = pid in placed_by_me
+        
+                # imagem pequena do pokemon
+                sprite_url = pokemon_pid_to_image(pid, mode="sprite")
+        
+                cimg, cbtn = st.columns([1, 3], vertical_alignment="center")
+                with cimg:
+                    st.image(sprite_url, width=48)
+        
+                with cbtn:
+                    label = "❌ Remover" if is_on_map else "➕ Colocar"
+                    if st.button(f"{label}", key=f"btn_{rid}_{pid}"):
+                        if is_on_map:
+                            piece_id = f"{rid}:{trainer_name}:{pid}"
+                            delete_piece(db, rid, piece_id)
+                            add_public_event(db, rid, "pokemon_removed", trainer_name, {"pid": pid})
                             st.rerun()
-                
-                        # 2) clique em célula vazia => tenta mover peça selecionada
                         else:
-                            if not is_player:
-                                st.warning("Espectador não move peças.")
-                            elif not sel:
-                                st.warning("Selecione um Pokémon primeiro (clicando nele no mapa).")
+                            st.session_state["placing_pid"] = pid
+
+
+        
+        with right:
+            st.markdown("## 🗺️ Campo de batalha")
+            # seleção atual (persistente entre reruns)
+            if "selected_piece_id" not in st.session_state:
+                st.session_state["selected_piece_id"] = None
+            img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name)
+            click = streamlit_image_coordinates(img, key=f"battle_map_{rid}")
+            selected_piece_id = st.session_state.get("selected_piece_id")
+            
+            # =========================
+            # MOVIMENTO EM 2 CLIQUES
+            # clique 1: seleciona peça
+            # clique 2: move para célula vazia
+            # =========================
+            
+            # estado local (não vai pro firestore até confirmar o 2o clique)
+            sel = st.session_state.get("selected_piece_id")
+            
+            # dica visual simples
+            if sel:
+                st.info("✅ Pokémon selecionado. Clique em outra célula para mover (ou clique nele de novo para cancelar).")
+            else:
+                st.caption("Clique em um Pokémon no mapa para selecionar. Depois clique em outra célula para mover.")
+            
+            if click and "x" in click and "y" in click:
+                col = int(click["x"] // TILE_SIZE)
+                row = int(click["y"] // TILE_SIZE)
+            
+                if 0 <= row < grid and 0 <= col < grid:
+                    # pega estado atual de peças (sempre do firestore)
+                    state_now = get_state(db, rid)
+                    all_pieces = state_now.get("pieces") or []
+                    pieces_visible = visible_pieces_for(room, trainer_name, all_pieces)
+            
+                    # peça que está na célula clicada (se houver)
+                    clicked_piece = find_piece_at(pieces_visible, row, col)
+            
+                    # 1) clique em uma peça
+                    if clicked_piece is not None:
+                        # só pode selecionar/mexer nas suas peças
+                        if not is_player or clicked_piece.get("owner") != trainer_name:
+                            st.warning("Você não pode mover peças do oponente.")
+                        else:
+                            pid = clicked_piece.get("id")
+                            # se clicou na mesma peça -> cancela seleção
+                            if sel == pid:
+                                st.session_state.pop("selected_piece_id", None)
+                                st.toast("Seleção cancelada.")
                             else:
-                                # encontra a peça selecionada no estado TOTAL (não só visible)
-                                moving = None
-                                for p in all_pieces:
-                                    if p.get("id") == sel:
-                                        moving = p
-                                        break
-                
-                                if moving is None:
-                                    st.session_state.pop("selected_piece_id", None)
-                                    st.warning("A peça selecionada não existe mais. Selecione de novo.")
-                                    st.rerun()
-                
-                                # bloqueio: não mover para cima de outra peça
-                                occupied = find_piece_at(pieces_visible, row, col)
-                                if occupied is not None:
-                                    st.warning("Essa célula já está ocupada.")
-                                else:
-                                    moving2 = dict(moving)
-                                    moving2["row"] = int(row)
-                                    moving2["col"] = int(col)
-                                    moving2["revealed"] = True  # no campo = revelado
-                
-                                    upsert_piece(db, rid, moving2)
-                
-                                    add_public_event(
-                                        db, rid, "piece_moved", trainer_name,
-                                        {"pid": moving2.get("pid"), "row": int(row), "col": int(col)}
-                                    )
-                
-                                    # limpa seleção só depois de mover
-                                    st.session_state.pop("selected_piece_id", None)
-                                    st.toast("Movido!")
-                                    st.rerun()
-                
-                
-                                    
-                                    
-                
+                                st.session_state["selected_piece_id"] = pid
+                                st.toast(f"Selecionado: {clicked_piece.get('pid')}")
+                        st.rerun()
+            
+                    # 2) clique em célula vazia => tenta mover peça selecionada
+                    else:
+                        if not is_player:
+                            st.warning("Espectador não move peças.")
+                        elif not sel:
+                            st.warning("Selecione um Pokémon primeiro (clicando nele no mapa).")
+                        else:
+                            # encontra a peça selecionada no estado TOTAL (não só visible)
+                            moving = None
+                            for p in all_pieces:
+                                if p.get("id") == sel:
+                                    moving = p
+                                    break
+            
+                            if moving is None:
+                                st.session_state.pop("selected_piece_id", None)
+                                st.warning("A peça selecionada não existe mais. Selecione de novo.")
+                                st.rerun()
+            
+                            # bloqueio: não mover para cima de outra peça
+                            occupied = find_piece_at(pieces_visible, row, col)
+                            if occupied is not None:
+                                st.warning("Essa célula já está ocupada.")
+                            else:
+                                moving2 = dict(moving)
+                                moving2["row"] = int(row)
+                                moving2["col"] = int(col)
+                                moving2["revealed"] = True  # no campo = revelado
+            
+                                upsert_piece(db, rid, moving2)
+            
+                                add_public_event(
+                                    db, rid, "piece_moved", trainer_name,
+                                    {"pid": moving2.get("pid"), "row": int(row), "col": int(col)}
+                                )
+            
+                                # limpa seleção só depois de mover
+                                st.session_state.pop("selected_piece_id", None)
+                                st.toast("Movido!")
+                                st.rerun()
+            
+            
+                                
+                                
+            
+
 
 
 
