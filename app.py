@@ -1303,7 +1303,7 @@ elif page == "PvP – Arena Tática":
     # =========================
     # VIEW: BATTLE (tela cheia)
     # =========================
-    elif view == "battle":
+    if view == "battle":
             if not rid or not room:
                 st.session_state["pvp_view"] = "lobby"
                 st.rerun()
@@ -1523,8 +1523,8 @@ elif page == "PvP – Arena Tática":
                                     st.rerun()
     
             # Impede render do lobby no mesmo run (encerra o script aqui quando está em batalha)
-            st.stop()
-            
+        st.stop()
+
     elif view == "lobby":
         # --- Painel: criar arena ---
         st.subheader("➕ Criar nova arena")
@@ -2006,6 +2006,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
