@@ -395,7 +395,7 @@ THEMES = {
     "center_lake": {"base": "grass", "border": "tree"},
 }
 
-def gen_tiles(grid: int, theme_key: str, seed: int | None = None):
+def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool = False):
     if seed is None:
         seed = random.randint(1, 999999999)
 
@@ -417,8 +417,17 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None):
     def inside(r, c):
         return 1 <= r <= grid - 2 and 1 <= c <= grid - 2
 
+   # pedras leves em todos os temas (dá textura)
+    for _ in range(rng.randint(grid, grid * 2)):
+        rr = rng.randint(1, grid - 2)
+        cc = rng.randint(1, grid - 2)
+        if inside(rr, cc) and rng.random() > 0.55:
+            if tiles[rr][cc] in ["grass", "dirt", "stone", "sand"]:
+                tiles[rr][cc] = "stone"
+
     # --- features por tema ---
     if theme_key == "cave_water":
+    if not no_water:
         pools = rng.randint(1, 2)
         for _ in range(pools):
             cr = rng.randint(2, grid - 3)
@@ -428,15 +437,49 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None):
                 for cc2 in range(cc - rad, cc + rad + 1):
                     if inside(rr, cc2) and rng.random() > 0.25:
                         tiles[rr][cc2] = "water"
+    else:
+        # “poças secas” (pedra clara) pra dar variedade
+        patches = rng.randint(1, 2)
+        for _ in range(patches):
+            cr = rng.randint(2, grid - 3)
+            cc = rng.randint(2, grid - 3)
+            rad = rng.randint(1, 2)
+            for rr in range(cr - rad, cr + rad + 1):
+                for cc2 in range(cc - rad, cc + rad + 1):
+                    if inside(rr, cc2) and rng.random() > 0.25:
+                        tiles[rr][cc2] = "stone"
 
-        spikes = rng.randint(1, max(2, grid - 3))
-        for _ in range(spikes):
-            rr = rng.randint(1, grid - 2)
-            cc = rng.randint(1, grid - 2)
-            if inside(rr, cc) and tiles[rr][cc] == base and rng.random() > 0.5:
-                tiles[rr][cc] = "stalagmite"
+    spikes = rng.randint(1, max(2, grid - 3))
+    for _ in range(spikes):
+        rr = rng.randint(1, grid - 2)
+        cc = rng.randint(1, grid - 2)
+        if inside(rr, cc) and tiles[rr][cc] == base and rng.random() > 0.5:
+            tiles[rr][cc] = "stalagmite"
 
     elif theme_key == "forest":
+    # “carpete” de grama
+    for r in range(1, grid - 1):
+        for c in range(1, grid - 1):
+            if inside(r, c):
+                tiles[r][c] = "grass" if rng.random() > 0.10 else "bush"
+
+    # árvores espalhadas
+    trees = rng.randint(grid, grid * 2)
+    for _ in range(trees):
+        rr = rng.randint(1, grid - 2)
+        cc = rng.randint(1, grid - 2)
+        if inside(rr, cc) and tiles[rr][cc] in ["grass", "bush"] and rng.random() > 0.35:
+            tiles[rr][cc] = "tree"
+
+    # caminho opcional
+    if rng.random() > 0.35:
+        r = rng.randint(2, grid - 3)
+        for c in range(1, grid - 1):
+            if inside(r, c) and tiles[r][c] != "tree":
+                tiles[r][c] = "path"
+
+    # água só se permitido
+    if not no_water:
         ponds = rng.randint(0, 2)
         for _ in range(ponds):
             cr = rng.randint(2, grid - 3)
@@ -447,27 +490,29 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None):
                     if inside(rr, cc2) and rng.random() > 0.35:
                         tiles[rr][cc2] = "water"
 
-        if rng.random() > 0.4:
-            r = rng.randint(2, grid - 3)
-            for c in range(1, grid - 1):
-                if inside(r, c) and tiles[r][c] != "water":
-                    tiles[r][c] = "path"
 
     elif theme_key == "mountain_slopes":
-        for r in range(1, grid - 1):
-            for c in range(1, grid - 1):
-                if inside(r, c):
-                    d = r + c
-                    if d % 4 == 0 and rng.random() > 0.25:
-                        tiles[r][c] = "slope1"
-                    elif d % 4 == 2 and rng.random() > 0.35:
-                        tiles[r][c] = "slope2"
+    # base rochosa
+    for r in range(1, grid - 1):
+        for c in range(1, grid - 1):
+            if inside(r, c):
+                tiles[r][c] = "stone" if rng.random() > 0.12 else "rock"
 
-        peaks = rng.randint(1, 2)
-        for _ in range(peaks):
-            rr = rng.randint(2, grid - 3)
-            cc = rng.randint(2, grid - 3)
-            tiles[rr][cc] = "peak"
+    # faixas de declive (diagonais)
+    bands = rng.randint(2, 4)
+    for _ in range(bands):
+        start_r = rng.randint(1, grid - 2)
+        for c in range(1, grid - 1):
+            rr = start_r + (c // 2)
+            if inside(rr, c) and rng.random() > 0.25:
+                tiles[rr][c] = "slope1" if rng.random() > 0.5 else "slope2"
+
+    # picos
+    peaks = rng.randint(1, 3)
+    for _ in range(peaks):
+        rr = rng.randint(2, grid - 3)
+        cc = rng.randint(2, grid - 3)
+        tiles[rr][cc] = "peak"
 
     elif theme_key == "plains":
         for _ in range(rng.randint(2, grid * 2)):
@@ -495,37 +540,51 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None):
                     tiles[r][c] = "rut"
 
     elif theme_key == "river":
-        r = rng.randint(1, grid - 2)
-        c = 1
-        while c < grid - 1:
-            if inside(r, c):
-                tiles[r][c] = "water"
-                if inside(r - 1, c) and rng.random() > 0.6:
-                    tiles[r - 1][c] = "water"
-            step = rng.choice([-1, 0, 1])
-            r = max(1, min(grid - 2, r + step))
-            c += 1
+    r = rng.randint(1, grid - 2)
+    width = 2 if grid >= 8 else 1
 
+    for c in range(1, grid - 1):
+        for w in range(width):
+            rr = r + w
+            if 1 <= rr <= grid - 2:
+                tiles[rr][c] = ("water" if not no_water else "trail")
+
+        # margens
+        if r - 1 >= 1 and rng.random() > 0.35:
+            tiles[r - 1][c] = "sand" if not no_water else "stone"
+        if r + width <= grid - 2 and rng.random() > 0.35:
+            tiles[r + width][c] = "sand" if not no_water else "stone"
+
+        step = rng.choice([-1, 0, 1])
+        r = max(1, min(grid - 2 - (width - 1), r + step))
+
+        
     elif theme_key == "sea_coast":
-        for r in range(grid):
+    for r in range(grid):
+        if not no_water:
             tiles[r][0] = "sea"
             if grid > 4:
                 tiles[r][1] = "sea" if rng.random() > 0.25 else "sand"
+        else:
+            tiles[r][0] = "sand"
+            if grid > 4:
+                tiles[r][1] = "sand" if rng.random() > 0.25 else "stone"
 
-        for _ in range(rng.randint(1, 3)):
-            rr = rng.randint(1, grid - 2)
-            cc = rng.randint(2, grid - 2)
-            if inside(rr, cc) and rng.random() > 0.5:
-                tiles[rr][cc] = "rock"
-
+    for _ in range(rng.randint(1, 4)):
+        rr = rng.randint(1, grid - 2)
+        cc = rng.randint(2, grid - 2)
+        if inside(rr, cc) and rng.random() > 0.45:
+            tiles[rr][cc] = "rock"
+    
     elif theme_key == "center_lake":
-        cr = grid // 2
-        cc = grid // 2
-        rad = 2 if grid >= 8 else 1
-        for rr in range(cr - rad, cr + rad + 1):
-            for cc2 in range(cc - rad, cc + rad + 1):
-                if inside(rr, cc2) and (abs(rr - cr) + abs(cc2 - cc) <= rad + 1):
-                    tiles[rr][cc2] = "water"
+    cr = grid // 2
+    cc = grid // 2
+    rad = 2 if grid >= 8 else 1
+    for rr in range(cr - rad, cr + rad + 1):
+        for cc2 in range(cc - rad, cc + rad + 1):
+            if inside(rr, cc2) and (abs(rr - cr) + abs(cc2 - cc) <= rad + 1):
+                tiles[rr][cc2] = ("water" if not no_water else "stone")
+
 
     return tiles, seed
 
@@ -1190,18 +1249,26 @@ elif page == "PvP – Arena Tática":
             tiles = unpack_tiles(packed) if packed else None
 
             if not tiles:
+                no_water = st.checkbox(
+                    "🚫 Gerar sem água",
+                    value=False,
+                    disabled=not is_player
+                )
+                
                 if st.button("🗺️ Gerar mapa (pixel art)", disabled=not is_player):
                     tiles, seed = gen_tiles(grid, theme_key, seed=None)
 
                     packed = pack_tiles(tiles)
                     # DEBUG (temporário)
-                    st.write("DEBUG types:", type(grid), type(theme_key), type(seed), type(packed))
+                    st.write("DEBUG no_water:", no_water)
+                    st.write("DEBUG seed:", seed)
                     st.write("DEBUG packed len:", len(packed) if packed else None)
                     
                     state_ref.set({
                         "gridSize": grid,
                         "theme": theme_key,
                         "seed": seed,
+                        "noWater": bool(no_water),
                         "tilesPacked": packed,
                         "updatedAt": firestore.SERVER_TIMESTAMP,
                     }, merge=True)
@@ -1280,6 +1347,7 @@ elif page == "PvP – Arena Tática":
                         by = ev.get("by", "?")
                         payload = ev.get("payload", {})
                         st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
