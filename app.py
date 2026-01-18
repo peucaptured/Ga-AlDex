@@ -1514,35 +1514,37 @@ elif page == "PvP – Arena Tática":
 # =========================
     # VIEW: BATTLE (Com Calculadora de Dano e Stats)
     # =========================
-    if view == "battle":
+# =========================
+    # VIEW: BATTLE (Lógica Corrigida + Stats Automáticos do Hub)
+    # =========================
+    elif view == "battle":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
 
-        # --- CONTROLE DE CLIQUES (ANTI-FLICKER) ---
         if "last_click_processed" not in st.session_state:
             st.session_state["last_click_processed"] = None
 
-        # --- SYNC 1: Lista de Pokémons (Party) ---
+        # --- SYNC 1: Lista de Pokémons ---
         current_party = user_data.get("party") or []
         db.collection("rooms").document(rid).collection("public_state").document("players").set(
             {trainer_name: current_party}, merge=True
         )
+
+        # --- SYNC 2: Envia Stats do Hub para o Banco da Sala ---
+        # Isso garante que a calculadora tenha acesso ao que você editou no Hub
         if "stats" in user_data:
             batch_stats = {}
             for pid in current_party:
-                # Pega stats do Hub
                 hub_stats = user_data["stats"].get(pid, {})
                 if hub_stats:
-                    # Prepara para enviar ao Firestore
-                    # Mantém HP e Condições antigos se existirem, só atualiza stats
-                    # Como firestore merge profundo é chato, fazemos merge aqui
+                    # Salva no formato que a função get_poke_data espera ler
                     batch_stats[f"{trainer_name}.{pid}.stats"] = hub_stats
                     batch_stats[f"{trainer_name}.{pid}.updatedAt"] = str(datetime.now())
             
             if batch_stats:
-                # CORREÇÃO: Usa .set com merge=True para CRIAR o documento se ele não existir
                 db.collection("rooms").document(rid).collection("public_state").document("party_states").set(batch_stats, merge=True)
+
         # Carrega dados
         state = get_state(db, rid)
         seed = state.get("seed")
@@ -1553,29 +1555,28 @@ elif page == "PvP – Arena Tática":
         seen_pids = state.get("seen") or []
         field_effects = state.get("effects") or []
 
-        # Helper HP
+        # Helper de Leitura
         ps_doc = db.collection("rooms").document(rid).collection("public_state").document("party_states").get()
         party_states_data = ps_doc.to_dict() or {}
+        
         def get_poke_data(t_name, p_id):
             user_dict = party_states_data.get(t_name, {})
             p_data = user_dict.get(str(p_id), {})
-            return p_data.get("hp", 6), p_data.get("cond", [])
+            # Retorna HP, Condições e os Stats (Dodge, Parry...)
+            return p_data.get("hp", 6), p_data.get("cond", []), p_data.get("stats", {})
 
         # Filtro de Desenho
         pieces_to_draw = []
-        my_pieces_on_board = [] # Lista auxiliar para seleção de alvo
-        opp_pieces_on_board = []
+        opp_pieces_on_board = [] 
 
         for p in all_pieces:
-            hp_check, _ = get_poke_data(p.get("owner"), p.get("pid"))
+            hp_check, _, _ = get_poke_data(p.get("owner"), p.get("pid"))
             p["status"] = "fainted" if hp_check == 0 else "active"
 
             if p.get("owner") == trainer_name:
                 pieces_to_draw.append(p)
-                my_pieces_on_board.append(p)
             elif p.get("revealed", True):
                 pieces_to_draw.append(p)
-                # Só posso atacar o que vejo
                 opp_pieces_on_board.append(p)
         
         # Nomes
@@ -1633,18 +1634,17 @@ elif page == "PvP – Arena Tática":
                 st.info(f"🎲 **{last_dice.get('by')}** rolou **{pl.get('result')}** (d{pl.get('sides')})")
 
         # ==========================================
-        # 🧮 CALCULADORA DE BATALHA (NOVO)
+        # 🧮 CALCULADORA DE BATALHA (MATEMÁTICA CORRIGIDA)
         # ==========================================
         battle_ref = db.collection("rooms").document(rid).collection("public_state").document("battle")
         battle_doc = battle_ref.get()
-        # Estado padrão se vazio
         b_data = battle_doc.to_dict() or {"status": "idle", "logs": []}
         
         import math
 
         with st.expander("⚔️ Calculadora de Combate", expanded=(b_data["status"] != "idle")):
             
-            # --- FASE 0: IDLE (Iniciar) ---
+            # --- FASE 0: IDLE ---
             if b_data["status"] == "idle":
                 if st.button("Nova Batalha (Atacar)"):
                     battle_ref.set({"status": "setup", "attacker": trainer_name, "logs": []})
@@ -1654,13 +1654,11 @@ elif page == "PvP – Arena Tática":
             elif b_data["status"] == "setup":
                 st.caption(f"**Atacante:** {b_data.get('attacker')}")
                 
-                # Se eu sou o atacante
                 if b_data.get("attacker") == trainer_name:
-                    # Escolher Alvo (Inimigos no campo)
                     target_options = {p['id']: f"{p['pid']} ({p['owner']})" for p in opp_pieces_on_board}
                     
                     if not target_options:
-                        st.warning("Não há inimigos visíveis para atacar.")
+                        st.warning("Sem inimigos visíveis.")
                         if st.button("Cancelar"):
                             battle_ref.update({"status": "idle"})
                             st.rerun()
@@ -1674,21 +1672,15 @@ elif page == "PvP – Arena Tática":
                             atk_type = st.selectbox("Tipo", ["Distância", "Corpo-a-corpo"])
                         
                         if st.button("⚔️ Rolar Ataque"):
-                            # Rola dado do sistema
                             d20 = random.randint(1, 20)
-                            
-                            # Busca dados do alvo
                             target_piece = next((p for p in all_pieces if p['id'] == target_id), None)
                             
                             if target_piece:
-                                # Pega stats do alvo (segredo revelado para o sistema)
-                                stats = target_piece.get("stats", {})
-                                dodge = int(stats.get("dodge", 0))
-                                parry = int(stats.get("parry", 0))
+                                # Busca Stats
+                                _, _, t_stats = get_poke_data(target_piece['owner'], target_piece['pid'])
+                                dodge = int(t_stats.get("dodge", 0))
+                                parry = int(t_stats.get("parry", 0))
                                 
-                                # Fórmula de Acerto
-                                # Distância: Acerto + Dado >= Dodge + 10
-                                # Melee: Acerto + Dado >= Parry + 10
                                 total_atk = atk_mod + d20
                                 defense_val = dodge if atk_type == "Distância" else parry
                                 needed = defense_val + 10
@@ -1696,24 +1688,22 @@ elif page == "PvP – Arena Tática":
                                 hit = total_atk >= needed
                                 result_msg = "ACERTOU! ✅" if hit else "ERROU! ❌"
                                 
-                                # Salva estado
-                                next_status = "hit_confirmed" if hit else "missed"
-                                
                                 battle_ref.update({
-                                    "status": next_status,
+                                    "status": "hit_confirmed" if hit else "missed",
                                     "target_id": target_id,
                                     "target_owner": target_piece['owner'],
+                                    "target_pid": target_piece['pid'],
                                     "atk_roll": d20,
                                     "atk_total": total_atk,
                                     "def_needed": needed,
                                     "atk_type": atk_type,
-                                    "logs": [f"{trainer_name} rolou {d20} + {atk_mod} = {total_atk} contra Def {needed} ({atk_type})... {result_msg}"]
+                                    "logs": [f"{trainer_name} rolou {d20} + {atk_mod} = {total_atk} (vs Def {needed})... {result_msg}"]
                                 })
                                 st.rerun()
                 else:
-                    st.info(f"Aguardando {b_data.get('attacker')} configurar o ataque...")
+                    st.info(f"Aguardando {b_data.get('attacker')}...")
 
-            # --- FASE 2: RESULTADO DO ATAQUE / INSERIR DANO ---
+            # --- FASE 2: DEFINIR DANO ---
             elif b_data["status"] == "hit_confirmed":
                 st.success(b_data["logs"][-1])
                 
@@ -1725,11 +1715,11 @@ elif page == "PvP – Arena Tática":
                         battle_ref.update({
                             "status": "waiting_defense",
                             "dmg_base": dmg_input,
-                            "logs": firestore.ArrayUnion([f"Dano base enviado: {dmg_input}. Aguardando resistência..."])
+                            "logs": firestore.ArrayUnion([f"Dano base: {dmg_input}. Aguardando resistência..."])
                         })
                         st.rerun()
                 else:
-                    st.info("Aguardando atacante definir o dano...")
+                    st.info("Aguardando dano...")
 
             elif b_data["status"] == "missed":
                 st.error(b_data["logs"][-1])
@@ -1737,70 +1727,55 @@ elif page == "PvP – Arena Tática":
                     battle_ref.update({"status": "idle", "logs": []})
                     st.rerun()
 
-            # --- FASE 3: DEFENSOR ROLA RESISTÊNCIA ---
+            # --- FASE 3: DEFESA E CÁLCULO FINAL ---
             elif b_data["status"] == "waiting_defense":
-                st.info(f"Ataque em andamento! Dano Base: {b_data.get('dmg_base')}")
+                st.info(f"Ataque! Dano Base: {b_data.get('dmg_base')}")
                 
-                # Só o dono do alvo vê os botões de defesa
                 if b_data.get("target_owner") == trainer_name:
-                    st.markdown("### 🛡️ Sua vez de defender!")
-                    st.caption("Escolha qual atributo usar para resistir. O dado será rolado automaticamente.")
-                    
+                    st.markdown("### 🛡️ Defenda-se")
                     c_def1, c_def2, c_def3 = st.columns(3)
-                    
                     res_type = None
-                    if c_def1.button("Usar THG"): res_type = "thg"
-                    if c_def2.button("Usar Will"): res_type = "will"
-                    if c_def3.button("Usar Fortitude"): res_type = "fort"
+                    if c_def1.button("THG"): res_type = "thg"
+                    if c_def2.button("Will"): res_type = "will"
+                    if c_def3.button("Fort"): res_type = "fort"
                     
                     if res_type:
-                        # 1. Rola dado
                         def_die = random.randint(1, 20)
                         
-                        # 2. Pega stat da peça
-                        target_piece = next((p for p in all_pieces if p['id'] == b_data['target_id']), None)
-                        stats = target_piece.get("stats", {}) if target_piece else {}
+                        # Pega o Stat do banco
+                        _, _, t_stats = get_poke_data(trainer_name, b_data.get('target_pid'))
+                        stat_val = int(t_stats.get(res_type, 0))
                         
-                        stat_val = int(stats.get(res_type, 0)) # thg, will ou fort
+                        dmg_base = int(b_data.get("dmg_base", 0))
+                        const = 15 if res_type == "thg" else 10
                         
-                        # 3. Calcula Dano Final (Fórmulas do Prompt)
-                        # Dano na THG: (Dano + 15 - (Dado + THG)) / 5
-                        # Dano na Will/Fort: (Dano + 10 - (Dado + Stat)) / 5
-                        # Nota: Assumi a lógica matemática padrão onde Defesa subtrai do ataque.
-                        # Se a fórmula for literal "soma tudo", avise que inverto.
+                        # --- FÓRMULA FINAL ---
+                        # (Dano do Golpe + Constante) - (Dado + Atributo)
+                        # Resultado dividido por 5, arredondado para CIMA.
                         
-                        dmg_base = b_data.get("dmg_base", 0)
+                        attack_power = dmg_base + const
+                        defense_power = def_die + stat_val
+                        raw_diff = attack_power - defense_power
                         
-                        if res_type == "thg":
-                            const = 15
-                        else:
-                            const = 10
-                            
-                        # Fórmula aplicada: (Dano + Const) - (Dado + Stat)
-                        # Divisão por 5 e Arredondar para CIMA (ceil)
-                        raw_dmg = (dmg_base + const) - (def_die + stat_val)
+                        if raw_diff < 0: raw_diff = 0 # Dano não pode ser negativo
                         
-                        # Se raw_dmg for negativo, cura? Normalmente em RPG dano mínimo é 0.
-                        # Vamos assumir mínimo 0 barras.
-                        if raw_dmg < 0: raw_dmg = 0
+                        bars_lost = math.ceil(raw_diff / 5)
                         
-                        bars_lost = math.ceil(raw_dmg / 5)
-                        
-                        # Log final
-                        final_msg = f"Defensor rolou {def_die} + {stat_val} ({res_type.upper()}). Dano Final: {bars_lost} barras de HP."
+                        calc_log = f"Cálculo: ({dmg_base}+{const}) - ({def_die}+{stat_val}) = {raw_diff}. Div/5 = {raw_diff/5:.1f} ➝ {bars_lost}."
+                        final_msg = f"Defensor rolou {def_die} + {stat_val} ({res_type.upper()}). Perdeu **{bars_lost}** barras de HP."
                         
                         battle_ref.update({
                             "status": "finished",
                             "final_bars": bars_lost,
-                            "logs": firestore.ArrayUnion([final_msg])
+                            "logs": firestore.ArrayUnion([calc_log, final_msg])
                         })
                         st.rerun()
                 else:
-                    st.warning(f"Aguardando {b_data.get('target_owner')} rolar resistência...")
+                    st.warning(f"Aguardando {b_data.get('target_owner')}...")
 
-            # --- FASE 4: RESULTADO FINAL ---
+            # --- FASE 4: RESULTADO ---
             elif b_data["status"] == "finished":
-                st.markdown(f"## 🩸 Resultado: -{b_data.get('final_bars')} Barras de HP")
+                st.markdown(f"## 🩸 Resultado: -{b_data.get('final_bars')} Barras")
                 for log in b_data.get("logs", []):
                     st.text(log)
                 
@@ -1812,12 +1787,12 @@ elif page == "PvP – Arena Tática":
         # LAYOUT PRINCIPAL
         # =========================
         if not tiles:
-            st.warning("O mapa ainda não foi gerado.")
+            st.warning("Sem mapa.")
             st.stop()
 
         c_bag, c_map, c_opp = st.columns([1.3, 3, 1.3])
 
-        # --- 1. VOCÊ (Mochila e Inputs de Stats) ---
+        # --- 1. VOCÊ ---
         with c_bag:
             st.markdown(f"### {my_label}")
             party = user_data.get("party") or []
@@ -1827,7 +1802,8 @@ elif page == "PvP – Arena Tática":
             
             for pid in party:
                 is_on_map = pid in my_pids_on_board
-                cur_hp, cur_cond = get_poke_data(trainer_name, pid)
+                # Aqui lemos os dados (HP, Cond, Stats) vindos do banco
+                cur_hp, cur_cond, cur_stats = get_poke_data(trainer_name, pid)
                 
                 hp_icon = "💚" if cur_hp >= 5 else "🟡" if cur_hp >= 3 else "🔴" if cur_hp >= 1 else "💀"
                 sprite_url = pokemon_pid_to_image(pid, mode="sprite")
@@ -1842,7 +1818,6 @@ elif page == "PvP – Arena Tática":
                             st.image(sprite_url, use_container_width=True)
 
                         if is_on_map:
-                            # Botões de quem JÁ ESTÁ no mapa
                             piece_obj = next((p for p in all_pieces if p["pid"] == pid and p["owner"] == trainer_name), None)
                             if piece_obj:
                                 is_rev = piece_obj.get("revealed", True)
@@ -1857,25 +1832,18 @@ elif page == "PvP – Arena Tática":
                                     add_public_event(db, rid, "pokemon_removed", trainer_name, {"pid": pid})
                                     st.rerun()
                         else:
-                            # Botão de COLOCAR
                             if cur_hp > 0:
-                                # Se clicar em Por, ativa o modo
+                                # Botão de Colocar Simples (Sem perguntas)
                                 if st.button("📍 Por", key=f"p_{pid}"):
                                     st.session_state["placing_pid"] = pid
                                     st.session_state["placing_effect"] = None 
                                     st.rerun()
 
                     with c_ctrl:
-                        # Se estiver colocando ESTE pokemon, mostra inputs de stats
+                        # Se tiver colocando, mostra aviso
                         if st.session_state.get("placing_pid") == pid:
-                            st.info("Defina Stats:")
-                            s1, s2 = st.columns(2)
-                            dodge = s1.number_input("Dodge", 0, 30, 0, key=f"s_dod_{pid}")
-                            parry = s2.number_input("Parry", 0, 30, 0, key=f"s_par_{pid}")
-                            will = s1.number_input("Will", 0, 30, 0, key=f"s_wil_{pid}")
-                            fort = s2.number_input("Fort", 0, 30, 0, key=f"s_for_{pid}")
-                            thg = st.number_input("THG", 0, 30, 0, key=f"s_thg_{pid}")
-                            st.caption("Agora clique no mapa!")
+                            st.info("Clique no mapa!")
+                            st.caption(f"(Usando stats do Hub: Dodge {cur_stats.get('dodge',0)})")
                         else:
                             st.markdown(f"**{hp_icon} HP: {cur_hp}/6**")
                             st.slider("HP", 0, 6, value=int(cur_hp), key=f"hp_{pid}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, trainer_name, pid))
@@ -1895,31 +1863,24 @@ elif page == "PvP – Arena Tática":
                         "Nuvem": "☁️", "Sol": "☀️", "Floco": "❄️", "Folha": "🍃",
                         "Fada": "✨", "Raio": "⚡", "Colher": "🥄", "Deserto": "🌵"
                     }
-                    
                     curr_eff = st.session_state.get("placing_effect")
-                    if curr_eff:
-                        st.info(f"🔹 Item selecionado: {curr_eff} (Clique no mapa)")
+                    if curr_eff: st.info(f"🔹 Item: {curr_eff}")
 
                     cols_eff = st.columns(6)
                     for i, (name, icon) in enumerate(effects_map.items()):
                         with cols_eff[i % 6]:
                             is_active = (icon == curr_eff)
                             type_btn = "primary" if is_active else "secondary"
-                            
                             if st.button(f"{icon}", key=f"eff_{name}", type=type_btn, help=f"Colocar {name}"):
-                                if is_active:
-                                    st.session_state["placing_effect"] = None
-                                else:
-                                    st.session_state["placing_effect"] = icon
+                                if is_active: st.session_state["placing_effect"] = None
+                                else: st.session_state["placing_effect"] = icon
                                 st.session_state["placing_pid"] = None 
                                 st.rerun()
                     
                     st.write("")
-                    if st.button("🧹 Varrer Campo (Limpar Tudo)", type="primary"):
+                    if st.button("🧹 Limpar Itens"):
                         db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": []})
                         st.rerun()
-                else:
-                    st.caption("Apenas Jogadores e Mestre podem alterar o terreno.")
 
             if "selected_piece_id" not in st.session_state:
                 st.session_state["selected_piece_id"] = None
@@ -1934,10 +1895,8 @@ elif page == "PvP – Arena Tática":
             players_data = players_doc.to_dict() or {}
             opp_party_list = players_data.get(opp_name, []) if opp_name else []
             
-            if not opp_party_list:
-                st.caption("Aguardando...")
+            if not opp_party_list: st.caption("Aguardando...")
             
-            # (Lógica visual do inimigo mantida identica, omitida aqui por brevidade mas incluída na colagem final)
             opp_pieces_on_board = [p for p in all_pieces if p.get("owner") == opp_name]
             temp_board_pieces = list(opp_pieces_on_board)
             for pid in opp_party_list:
@@ -1948,7 +1907,7 @@ elif page == "PvP – Arena Tática":
                         del temp_board_pieces[i]
                         break
                 
-                opp_hp, opp_cond = get_poke_data(opp_name, pid)
+                opp_hp, opp_cond, _ = get_poke_data(opp_name, pid)
                 already_seen = str(pid) in seen_pids
                 
                 show_full = False
@@ -2007,25 +1966,19 @@ elif page == "PvP – Arena Tática":
             placing_effect = st.session_state.get("placing_effect")
             sel = st.session_state.get("selected_piece_id")
 
-            # --- 1. EFEITO (ITEMS) ---
+            # 1. ITEM
             if placing_effect:
                 current_effects = state.get("effects") or []
                 new_effects = [e for e in current_effects if not (int(e["row"]) == row and int(e["col"]) == col)]
-                
-                new_effects.append({
-                    "icon": placing_effect,
-                    "row": row, "col": col,
-                    "id": str(uuid.uuid4())[:8]
-                })
-                
+                new_effects.append({"icon": placing_effect, "row": row, "col": col, "id": str(uuid.uuid4())[:8]})
                 db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": new_effects})
                 st.session_state["placing_effect"] = None
                 st.toast("Item colocado!", icon="✨")
                 st.rerun()
 
-            # --- 2. POKÉMON (COM STATS) ---
+            # 2. POKEMON (Sem pedir stats - pega do Hub)
             elif placing_pid:
-                php, _ = get_poke_data(trainer_name, placing_pid)
+                php, _, p_stats = get_poke_data(trainer_name, placing_pid)
                 if php == 0:
                     st.toast("Pokémon desmaiado!", icon="💀")
                     st.session_state.pop("placing_pid", None)
@@ -2036,20 +1989,12 @@ elif page == "PvP – Arena Tática":
                 if find_piece_at(current_all, row, col):
                     st.toast("Ocupado!", icon="🚫")
                 else:
-                    # Captura os stats digitados nos inputs
-                    stats_data = {
-                        "dodge": st.session_state.get(f"s_dod_{placing_pid}", 0),
-                        "parry": st.session_state.get(f"s_par_{placing_pid}", 0),
-                        "will": st.session_state.get(f"s_wil_{placing_pid}", 0),
-                        "fort": st.session_state.get(f"s_for_{placing_pid}", 0),
-                        "thg": st.session_state.get(f"s_thg_{placing_pid}", 0),
-                    }
-
                     new_id = str(uuid.uuid4())[:8]
+                    # Usa os stats que vieram do banco (SYNC 2)
                     new_piece = {
                         "id": new_id, "pid": placing_pid, "owner": trainer_name,
                         "row": row, "col": col, "revealed": True, "status": "active",
-                        "stats": stats_data # Salva stats na peça
+                        "stats": p_stats # Salva stats na peça
                     }
                     upsert_piece(db, rid, new_piece)
                     mark_pid_seen(db, rid, placing_pid)
@@ -2057,7 +2002,7 @@ elif page == "PvP – Arena Tática":
                     st.session_state.pop("placing_pid", None)
                     st.rerun()
 
-            # --- 3. MOVER ---
+            # 3. MOVER
             else:
                 state_now = get_state(db, rid)
                 current_all = state_now.get("pieces") or []
@@ -2086,7 +2031,7 @@ elif page == "PvP – Arena Tática":
                         if find_piece_at(current_all, row, col):
                             st.toast("Ocupado.", icon="🚫")
                         else:
-                            mhp, _ = get_poke_data(trainer_name, moving.get("pid"))
+                            mhp, _, _ = get_poke_data(trainer_name, moving.get("pid"))
                             if mhp == 0: st.toast("Desmaiado não anda!", icon="💀")
                             else:
                                 moving["row"] = int(row); moving["col"] = int(col)
@@ -2406,6 +2351,7 @@ elif page == "PvP – Arena Tática":
                     by = ev.get("by", "?")
                     payload = ev.get("payload", {})
                     st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
