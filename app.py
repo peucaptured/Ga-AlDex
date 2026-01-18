@@ -1311,7 +1311,7 @@ elif page == "PvP – Arena Tática":
 
     st.stop()  # ✅ MUITO IMPORTANTE: impede render do lobby no mesmo run
     
-elif view == "lobby":
+if view == "lobby":
     # --- Painel: criar arena ---
     st.subheader("➕ Criar nova arena")
     c1, c2, c3 = st.columns([1, 1, 2])
@@ -1736,6 +1736,7 @@ elif view == "lobby":
                                     
                                     
                 
+
 
 
 
