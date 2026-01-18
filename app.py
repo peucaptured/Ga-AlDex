@@ -1437,7 +1437,7 @@ elif view == "lobby":
 
 
     
-    else:
+    elif view == "battle":
     
         # --- Painel da arena ativa ---
         rid = st.session_state.get("active_room_id")
@@ -1736,6 +1736,7 @@ elif view == "lobby":
                                     
                                     
                 
+
 
 
 
