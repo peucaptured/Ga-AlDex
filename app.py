@@ -1316,6 +1316,30 @@ elif page == "PvP – Arena Tática":
     pieces = state.get("pieces", [])
     if not tiles:
         st.warning("Mapa ainda não foi gerado.")
+        colA, colB = st.columns([1, 1])
+        with colA:
+            if st.button("🗺️ Gerar mapa agora", type="primary", disabled=not is_player):
+                tiles, seed = gen_tiles(grid, theme_key, seed=None, no_water=False)
+                packed = pack_tiles(tiles)
+        
+                state_ref_for(db, rid).set({
+                    "gridSize": grid,
+                    "theme": theme_key,
+                    "seed": seed,
+                    "tilesPacked": packed,
+                    "pieces": [],
+                    "updatedAt": firestore.SERVER_TIMESTAMP,
+                }, merge=True)
+        
+                add_public_event(db, rid, "map_generated", trainer_name,
+                                 {"theme": theme_key, "grid": grid, "seed": seed})
+                st.rerun()
+        
+        with colB:
+            if st.button("⬅️ Voltar ao lobby"):
+                st.session_state["pvp_view"] = "lobby"
+                st.rerun()
+        
         st.stop()
 
 
@@ -1453,6 +1477,7 @@ if view == "lobby":
 
     
 elif view == "battle":
+    
 
     # --- Painel da arena ativa ---
     rid = st.session_state.get("active_room_id")
@@ -1751,6 +1776,7 @@ else:
                                 
                                 
             
+
 
 
 
