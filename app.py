@@ -865,36 +865,65 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, eff
     img = render_map_png(tiles, theme_key, seed).convert("RGBA")
     draw = ImageDraw.Draw(img)
     
-    # Tenta carregar fonte para emojis
-    try:
-        font_path = "arial.ttf" if os.name == 'nt' else "DejaVuSans.ttf"
-        # Tamanho grande para parecer um sprite
-        font = ImageFont.truetype(font_path, size=int(TILE_SIZE * 0.8))
-        offset_x, offset_y = 4, 2 # Ajuste fino
-    except:
-        font = ImageFont.load_default()
-        offset_x, offset_y = 10, 10
-
-    # 2. Camada de Efeitos (Desenhados como peças no chão)
+    # 2. CAMADA DE EFEITOS (Agora usando Imagens Reais)
     if effects:
+        # Mapeamento: Emoji -> URL da Imagem (Ícones Oficiais)
+        EMOJI_TO_URL = {
+            "🔥": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Pok%C3%A9mon_Fire_Type_Icon.svg/512px-Pok%C3%A9mon_Fire_Type_Icon.svg.png", # Fogo
+            "🧊": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Pok%C3%A9mon_Ice_Type_Icon.svg/512px-Pok%C3%A9mon_Ice_Type_Icon.svg.png",   # Gelo
+            "💧": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Pok%C3%A9mon_Water_Type_Icon.svg/512px-Pok%C3%A9mon_Water_Type_Icon.svg.png", # Água
+            "🪨": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Pok%C3%A9mon_Rock_Type_Icon.svg/512px-Pok%C3%A9mon_Rock_Type_Icon.svg.png",  # Rocha
+            "☁️": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Pok%C3%A9mon_Flying_Type_Icon.svg/512px-Pok%C3%A9mon_Flying_Type_Icon.svg.png", # Nuvem (Flying)
+            "☀️": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Sun_icon.svg/512px-Sun_icon.svg.png",                                         # Sol
+            "❄️": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Pok%C3%A9mon_Ice_Type_Icon.svg/512px-Pok%C3%A9mon_Ice_Type_Icon.svg.png",   # Floco (Ice)
+            "🍃": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Pok%C3%A9mon_Grass_Type_Icon.svg/512px-Pok%C3%A9mon_Grass_Type_Icon.svg.png", # Folha
+            "✨": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Pok%C3%A9mon_Fairy_Type_Icon.svg/512px-Pok%C3%A9mon_Fairy_Type_Icon.svg.png", # Fada
+            "⚡": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Pok%C3%A9mon_Electric_Type_Icon.svg/512px-Pok%C3%A9mon_Electric_Type_Icon.svg.png", # Raio
+            "🥄": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Pok%C3%A9mon_Psychic_Type_Icon.svg/512px-Pok%C3%A9mon_Psychic_Type_Icon.svg.png", # Colher (Psychic)
+            "🌵": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Pok%C3%A9mon_Ground_Type_Icon.svg/512px-Pok%C3%A9mon_Ground_Type_Icon.svg.png", # Deserto (Ground)
+        }
+
+        local_cache_icons = {}
+
         for eff in effects:
             try:
                 r, c = int(eff.get("row")), int(eff.get("col"))
-                icon = eff.get("icon", "?")
+                icon_char = eff.get("icon", "?")
                 
                 # Coordenadas
                 x = c * TILE_SIZE
                 y = r * TILE_SIZE
                 
-                # Desenha um fundo semitransparente suave para destacar o item
-                draw.ellipse([x+4, y+4, x+TILE_SIZE-4, y+TILE_SIZE-4], fill=(0, 0, 0, 50))
+                # Fundo semi-transparente para o ícone
+                draw.ellipse([x+4, y+4, x+TILE_SIZE-4, y+TILE_SIZE-4], fill=(0, 0, 0, 60))
                 
-                # Desenha o ícone
-                draw.text((x + offset_x, y + offset_y), icon, fill="white", font=font)
-            except:
+                # Pega a URL baseada no Emoji
+                url = EMOJI_TO_URL.get(icon_char)
+                
+                if url:
+                    # Baixa (ou pega do cache) a imagem do ícone
+                    if url not in local_cache_icons:
+                        local_cache_icons[url] = fetch_image_pil(url)
+                    
+                    icon_img = local_cache_icons[url]
+                    
+                    if icon_img:
+                        # Redimensiona para caber no quadrado (um pouco menor que o pokemon)
+                        icon_sp = icon_img.copy()
+                        icon_sp.thumbnail((int(TILE_SIZE * 0.7), int(TILE_SIZE * 0.7)), Image.Resampling.LANCZOS)
+                        
+                        # Centraliza
+                        ix = x + (TILE_SIZE - icon_sp.size[0]) // 2
+                        iy = y + (TILE_SIZE - icon_sp.size[1]) // 2
+                        img.alpha_composite(icon_sp, (ix, iy))
+                else:
+                    # Fallback (se não tiver imagem, desenha bolinha branca)
+                    draw.text((x + 10, y + 5), "?", fill="white")
+
+            except Exception:
                 continue
 
-    # 3. Camada de Pokémons
+    # 3. CAMADA DE POKÉMONS
     local_cache = {}
     
     for p in pieces or []:
@@ -903,13 +932,12 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, eff
         if r < 0 or c < 0: continue
 
         owner = p.get("owner")
-        # Borda Ciano (Você) ou Vermelha (Inimigo)
         border_color = (0, 255, 255) if owner == viewer_name else (255, 50, 50)
 
         x = c * TILE_SIZE
         y = r * TILE_SIZE
         
-        # Desenha borda
+        # Borda
         draw.rectangle([x, y, x + TILE_SIZE - 1, y + TILE_SIZE - 1], outline=border_color, width=3)
 
         pid = str(p.get("pid", ""))
@@ -924,7 +952,6 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, eff
         sp = sprite.copy()
         sp.thumbnail((TILE_SIZE, TILE_SIZE), Image.Resampling.LANCZOS)
         
-        # Centraliza
         x0 = x + (TILE_SIZE - sp.size[0]) // 2
         y0 = y + (TILE_SIZE - sp.size[1]) // 2
         img.alpha_composite(sp, (x0, y0))
@@ -2158,5 +2185,6 @@ elif page == "PvP – Arena Tática":
                     by = ev.get("by", "?")
                     payload = ev.get("payload", {})
                     st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
