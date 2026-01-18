@@ -1291,35 +1291,35 @@ elif page == "PvP – Arena Tática":
     view = st.session_state.get("pvp_view", "lobby")
     
     if view == "battle":
-    st.markdown("""
-    <style>
-      .block-container { padding-top: 0.8rem; padding-left: 1rem; padding-right: 1rem; max-width: 100% !important; }
-      header { visibility: hidden; height: 0px; }
-    </style>
-    """, unsafe_allow_html=True)
-
-    top = st.columns([1,1,1,6])
-    with top[0]:
-        if st.button("⬅️ Lobby"):
-            st.session_state["pvp_view"] = "lobby"
-            st.rerun()
-    with top[1]:
-        if st.button("🎲 d20", disabled=not is_player):
-            r = roll_die(db, rid, trainer_name, 20)
-            st.toast(f"d20 = {r}")
-    with top[2]:
-        if st.button("🔄 Atualizar"):
-            st.rerun()
-
-    with st.expander("📜 Log público", expanded=False):
-        events = list_public_events(db, rid, limit=25)
-        for ev in events:
-            st.write(f"- **{ev.get('type')}** — {ev.get('by')} — {ev.get('payload')}")
-
-    # campo grande
-    st.markdown("## 🗺️ Campo de batalha")
-    img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name)
-    click = streamlit_image_coordinates(img, key=f"battle_map_{rid}")
+        st.markdown("""
+        <style>
+          .block-container { padding-top: 0.8rem; padding-left: 1rem; padding-right: 1rem; max-width: 100% !important; }
+          header { visibility: hidden; height: 0px; }
+        </style>
+        """, unsafe_allow_html=True)
+    
+        top = st.columns([1,1,1,6])
+        with top[0]:
+            if st.button("⬅️ Lobby"):
+                st.session_state["pvp_view"] = "lobby"
+                st.rerun()
+        with top[1]:
+            if st.button("🎲 d20", disabled=not is_player):
+                r = roll_die(db, rid, trainer_name, 20)
+                st.toast(f"d20 = {r}")
+        with top[2]:
+            if st.button("🔄 Atualizar"):
+                st.rerun()
+    
+        with st.expander("📜 Log público", expanded=False):
+            events = list_public_events(db, rid, limit=25)
+            for ev in events:
+                st.write(f"- **{ev.get('type')}** — {ev.get('by')} — {ev.get('payload')}")
+    
+        # campo grande
+        st.markdown("## 🗺️ Campo de batalha")
+        img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name)
+        click = streamlit_image_coordinates(img, key=f"battle_map_{rid}")
 
 
     if view == "lobby":
@@ -1692,6 +1692,7 @@ elif page == "PvP – Arena Tática":
 
                     
                     
+
 
 
 
