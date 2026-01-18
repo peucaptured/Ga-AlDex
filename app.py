@@ -275,33 +275,44 @@ def remove_room_from_user(db, trainer_name: str, rid: str):
 # --- FUNÇÃO DE CALLBACK PARA SLIDERS E STATUS ---
 # --- FUNÇÃO DE CALLBACK CORRIGIDA ---
 def update_poke_state_callback(db, rid, trainer_name, pid):
-    # 1. Pega os valores novos dos widgets
-    # Usamos session_state direto para garantir que pegamos o que o usuário acabou de mexer
+    # Pega valores atuais da sessão (HP e Condições)
     new_hp = st.session_state.get(f"hp_{pid}")
     new_cond = st.session_state.get(f"cond_{pid}")
     
-    if new_hp is None or new_cond is None:
-        return # Evita erro se o widget não carregou
+    # Pega os novos Stats (com valor padrão 0 se não existir)
+    new_dodge = st.session_state.get(f"s_dod_{pid}")
+    new_parry = st.session_state.get(f"s_par_{pid}")
+    new_will = st.session_state.get(f"s_wil_{pid}")
+    new_fort = st.session_state.get(f"s_for_{pid}")
+    new_thg = st.session_state.get(f"s_thg_{pid}")
 
-    # 2. Salva no Firestore com a ESTRUTURA CORRETA (Aninhada)
-    # Antes estava salvando "Nome.ID", agora salva { "Nome": { "ID": ... } }
+    # Se qualquer um for None (widget não carregou), aborta para não estragar dados
+    if new_hp is None: return
+
+    # Referência ao documento
     ref = db.collection("rooms").document(rid).collection("public_state").document("party_states")
     
+    # Estrutura de dados completa
     data = {
         trainer_name: {
             str(pid): {
                 "hp": int(new_hp),
                 "cond": new_cond,
+                "stats": {
+                    "dodge": int(new_dodge or 0),
+                    "parry": int(new_parry or 0),
+                    "will": int(new_will or 0),
+                    "fort": int(new_fort or 0),
+                    "thg": int(new_thg or 0),
+                },
                 "updatedAt": str(datetime.now())
             }
         }
     }
-    # merge=True garante que não apaga os dados dos outros pokémons
     ref.set(data, merge=True)
     
-    # 3. Atualiza status de Fainted na lista de peças (se estiver no mapa)
+    # Lógica de Fainted no Mapa (Visual)
     if new_hp == 0:
-        # Lógica rápida para atualizar o mapa sem precisar de outra leitura pesada
         state_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
         stt = state_ref.get().to_dict() or {}
         pieces = stt.get("pieces") or []
@@ -311,11 +322,9 @@ def update_poke_state_callback(db, rid, trainer_name, pid):
                 if p.get("status") != "fainted":
                     p["status"] = "fainted"
                     dirty = True
-        if dirty:
-            state_ref.update({"pieces": pieces})
+        if dirty: state_ref.update({"pieces": pieces})
             
     elif new_hp > 0:
-        # Revive se curou
         state_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
         stt = state_ref.get().to_dict() or {}
         pieces = stt.get("pieces") or []
@@ -325,8 +334,7 @@ def update_poke_state_callback(db, rid, trainer_name, pid):
                 if p.get("status") == "fainted":
                     p["status"] = "active"
                     dirty = True
-        if dirty:
-            state_ref.update({"pieces": pieces})
+        if dirty: state_ref.update({"pieces": pieces})
 
 def create_room(db, trainer_name: str, grid_size: int, theme: str, max_active: int = 5):
     my_rooms = list_my_rooms(db, trainer_name)
@@ -1346,9 +1354,12 @@ if page == "Pokédex (Busca)":
 elif page == "Trainer Hub (Meus Pokémons)":
     st.title("🏕️ Trainer Hub")
     tab1, tab2, tab3 = st.tabs(["🎒 Minha Party", "🔴 Capturados", "👁️ Pokedex (Vistos)"])
-    
+    # Garante que existe o dicionário de stats no save
+    if "stats" not in user_data:
+        user_data["stats"] = {}
+        
     with tab1:
-        with st.expander("➕ Adicionar Pokémon à Equipe", expanded=True):
+        with st.expander("➕ Adicionar Pokémon à Equipe", expanded=False):
             col_add1, col_add2 = st.columns(2)
             with col_add1:
                 st.subheader("Da Dex")
@@ -1380,7 +1391,9 @@ elif page == "Trainer Hub (Meus Pokémons)":
                         if ext_id not in user_data['seen']: user_data['seen'].append(ext_id)
                         save_data_cloud(trainer_name, user_data)
                         st.rerun()
+        
         st.markdown("---")
+        
         if user_data['party']:
             cols = st.columns(3)
             for i, member in enumerate(user_data['party']):
@@ -1399,6 +1412,7 @@ elif page == "Trainer Hub (Meus Pokémons)":
                     else:
                         p_name, p_subtitle = f"ID: {member}", "?"
                         p_img = ""
+                
                 with cols[i % 3]:
                     with st.container(border=True):
                         c_p1, c_p2 = st.columns([3, 1])
@@ -1408,16 +1422,37 @@ elif page == "Trainer Hub (Meus Pokémons)":
                                 user_data['party'].pop(i)
                                 save_data_cloud(trainer_name, user_data)
                                 st.rerun()
+                        
                         st.image(p_img, width=120)
                         st.caption(p_subtitle)
+                        
+                        # --- FICHA DE STATUS (DODGE, PARRY, ETC) ---
+                        # Recupera stats salvos ou inicia zerado
+                        my_stats = user_data["stats"].get(member, {})
+                        
+                        with st.expander("📊 Ficha de Combate"):
+                            s1, s2 = st.columns(2)
+                            d = s1.number_input("Dodge", value=int(my_stats.get("dodge", 0)), key=f"hub_dod_{member}")
+                            p = s2.number_input("Parry", value=int(my_stats.get("parry", 0)), key=f"hub_par_{member}")
+                            w = s1.number_input("Will", value=int(my_stats.get("will", 0)), key=f"hub_wil_{member}")
+                            f = s2.number_input("Fort", value=int(my_stats.get("fort", 0)), key=f"hub_for_{member}")
+                            t = st.number_input("THG", value=int(my_stats.get("thg", 0)), key=f"hub_thg_{member}")
+                            
+                            # Atualiza automaticamente no objeto local ao mudar
+                            current_vals = {"dodge": d, "parry": p, "will": w, "fort": f, "thg": t}
+                            if current_vals != my_stats:
+                                user_data["stats"][member] = current_vals
+                                # Opcional: Salvar na nuvem a cada alteração (pode ser lento)
+                                # save_data_cloud(trainer_name, user_data) 
+
+                        # Notas
                         nk = f"note_party_{i}_{member}"
                         curr = user_data["notes"].get(nk, "")
-                        new = st.text_area("Notas", value=curr, height=80, key=nk)
+                        new = st.text_area("Notas", value=curr, height=60, key=nk)
                         if new != curr:
                             user_data["notes"][nk] = new
-                            save_data_cloud(trainer_name, user_data)
-        else: st.info("Sua equipe está vazia.")
-
+        else: 
+            st.info("Sua equipe está vazia.")
     with tab2:
         st.markdown(f"### Total Capturados: {len(user_data['caught'])}")
         if not user_data['caught']: st.info("Sua caixa está vazia.")
@@ -1475,12 +1510,7 @@ elif page == "PvP – Arena Tática":
 
 
 
-# =========================
-    # VIEW: BATTLE (Versão "Batch Edit" - Múltiplos Cliques)
-    # =========================
-# =========================
-    # VIEW: BATTLE (Estável - Sem Flicker)
-    # =========================
+
 # =========================
     # VIEW: BATTLE (Com Calculadora de Dano e Stats)
     # =========================
@@ -1493,11 +1523,25 @@ elif page == "PvP – Arena Tática":
         if "last_click_processed" not in st.session_state:
             st.session_state["last_click_processed"] = None
 
-        # Sync Party
+        # --- SYNC 1: Lista de Pokémons (Party) ---
         current_party = user_data.get("party") or []
         db.collection("rooms").document(rid).collection("public_state").document("players").set(
             {trainer_name: current_party}, merge=True
         )
+        if "stats" in user_data:
+            batch_stats = {}
+            for pid in current_party:
+                # Pega stats do Hub
+                hub_stats = user_data["stats"].get(pid, {})
+                if hub_stats:
+                    # Prepara para enviar ao Firestore
+                    # Mantém HP e Condições antigos se existirem, só atualiza stats
+                    # Como firestore merge profundo é chato, fazemos merge aqui
+                    batch_stats[f"{trainer_name}.{pid}.stats"] = hub_stats
+                    batch_stats[f"{trainer_name}.{pid}.updatedAt"] = str(datetime.now())
+            
+            if batch_stats:
+                db.collection("rooms").document(rid).collection("public_state").document("party_states").update(batch_stats)
 
         # Carrega dados
         state = get_state(db, rid)
@@ -2362,6 +2406,7 @@ elif page == "PvP – Arena Tática":
                     by = ev.get("by", "?")
                     payload = ev.get("payload", {})
                     st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
