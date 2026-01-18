@@ -823,17 +823,25 @@ def draw_tile(draw: ImageDraw.ImageDraw, x: int, y: int, t: str, rng: random.Ran
         
 
 # ==========================================
-# 🛠️ FUNÇÕES DE DESENHO E AUXILIARES (Cole isso abaixo de draw_tile)
+# 🛠️ CORREÇÃO: FUNÇÕES DE DESENHO (CACHE + EFEITOS)
 # ==========================================
 
 @st.cache_data(show_spinner=False)
+def fetch_image_pil(url: str) -> Image.Image | None:
+    try:
+        r = requests.get(url, timeout=5)
+        r.raise_for_status()
+        img = Image.open(BytesIO(r.content)).convert("RGBA")
+        return img
+    except Exception:
+        return None
+
+@st.cache_data(show_spinner=False)
 def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
-    """Gera a imagem base do terreno (chão, pedras, árvores) com cache para não piscar."""
+    # Cria a imagem base com CACHE para não piscar
     grid = len(tiles)
     img = Image.new("RGB", (grid * TILE_SIZE, grid * TILE_SIZE), (0, 0, 0))
     draw = ImageDraw.Draw(img)
-    
-    # Usa seed fixa para as texturas não ficarem dançando
     rng = random.Random(int(seed or 0) + 1337)
 
     for r in range(grid):
@@ -842,7 +850,7 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
             y = r * TILE_SIZE
             draw_tile(draw, x, y, tiles[r][c], rng)
 
-    # Linhas da grade
+    # Grid lines
     for r in range(grid + 1):
         y = r * TILE_SIZE
         draw.line([(0, y), (grid * TILE_SIZE, y)], fill=(0, 0, 0))
@@ -852,29 +860,16 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
 
     return img
 
-@st.cache_data(show_spinner=False)
-def fetch_image_pil(url: str) -> Image.Image | None:
-    """Baixa e converte a imagem do Pokémon (Cacheada)."""
-    try:
-        r = requests.get(url, timeout=5)
-        r.raise_for_status()
-        img = Image.open(BytesIO(r.content)).convert("RGBA")
-        return img
-    except Exception:
-        return None
-
 def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, effects=None):
-    """Desenha Terreno + Efeitos + Pokémons."""
     # 1. Base do Mapa
     img = render_map_png(tiles, theme_key, seed).convert("RGBA")
     draw = ImageDraw.Draw(img)
     
-    # 2. Camada de Efeitos (Itens/Terrenos)
+    # 2. Camada de Efeitos (Gelo, Fogo, etc)
     if effects:
         try:
-            # Tenta carregar fonte arial ou padrão do sistema
-            font_path = "arial.ttf" 
-            if os.name == 'posix': font_path = "DejaVuSans.ttf"
+            # Tenta carregar uma fonte melhor, ou usa padrão
+            font_path = "arial.ttf" if os.name == 'nt' else "DejaVuSans.ttf"
             font = ImageFont.truetype(font_path, size=int(TILE_SIZE * 0.8))
         except:
             font = ImageFont.load_default()
@@ -885,12 +880,11 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, eff
                 icon = eff.get("icon", "?")
                 x = c * TILE_SIZE
                 y = r * TILE_SIZE
-                # Centraliza o emoji
                 draw.text((x + 4, y + 2), icon, fill="white", font=font)
             except:
                 continue
 
-    # 3. Camada de Peças (Pokémons)
+    # 3. Camada de Peças
     local_cache = {}
     
     for p in pieces or []:
@@ -898,18 +892,16 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, eff
         c = int(p.get("col", -1))
         if r < 0 or c < 0: continue
 
-        # Borda Colorida (Identificação)
         owner = p.get("owner")
         if owner == viewer_name:
-            border_color = (0, 255, 255) # Ciano (Você)
+            border_color = (0, 255, 255)
         else:
-            border_color = (255, 50, 50) # Vermelho (Inimigo)
+            border_color = (255, 50, 50)
 
         x = c * TILE_SIZE
         y = r * TILE_SIZE
         draw.rectangle([x, y, x + TILE_SIZE - 1, y + TILE_SIZE - 1], outline=border_color, width=3)
 
-        # Imagem do Pokémon
         pid = str(p.get("pid", ""))
         url = pokemon_pid_to_image(pid, mode="sprite")
 
@@ -919,17 +911,14 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, eff
         sprite = local_cache[url]
         if sprite is None: continue
 
-        # Redimensiona e Cola
         sp = sprite.copy()
         sp.thumbnail((TILE_SIZE, TILE_SIZE), Image.Resampling.LANCZOS)
         
-        # Centraliza na célula
         x0 = x + (TILE_SIZE - sp.size[0]) // 2
         y0 = y + (TILE_SIZE - sp.size[1]) // 2
         img.alpha_composite(sp, (x0, y0))
 
     return img.convert("RGB")
-
 def normalize_text(text):
     if not isinstance(text, str): return str(text)
     return unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
@@ -1648,15 +1637,23 @@ elif page == "PvP – Arena Tática":
                     cols_eff = st.columns(6)
                     for i, (name, icon) in enumerate(effects_map.items()):
                         with cols_eff[i % 6]:
-                            # Se este for o item ativo, destaca
+                            # Lógica visual do botão
                             is_active = (icon == curr_eff)
                             type_btn = "primary" if is_active else "secondary"
                             
+                            # Botão com lógica de Toggle (Ligar/Desligar)
                             if st.button(f"{icon}", key=f"eff_{name}", type=type_btn, help=f"Colocar {name}"):
-                                st.session_state["placing_effect"] = icon
+                                if is_active:
+                                    # Se já estava ativo, desativa (Desselecionar)
+                                    st.session_state["placing_effect"] = None
+                                else:
+                                    # Se não, ativa
+                                    st.session_state["placing_effect"] = icon
+                                
+                                # Garante que não está colocando Pokémon ao mesmo tempo
                                 st.session_state["placing_pid"] = None 
                                 st.rerun()
-                    
+                                        
                     st.write("")
                     # --- ÁREA DE CONTROLE DE EDIÇÃO ---
                     col_save, col_undo, col_clear = st.columns(3)
@@ -2157,3 +2154,4 @@ elif page == "PvP – Arena Tática":
                     by = ev.get("by", "?")
                     payload = ev.get("payload", {})
                     st.write(f"- **{et}** — _{by}_ — {payload}")
+
