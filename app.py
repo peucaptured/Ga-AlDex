@@ -483,7 +483,7 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool
     def inside(r, c):
         return 1 <= r <= grid - 2 and 1 <= c <= grid - 2
 
-   # pedras leves em todos os temas (dá textura)
+    # pedras leves em todos os temas (dá textura)
     for _ in range(rng.randint(grid, grid * 2)):
         rr = rng.randint(1, grid - 2)
         cc = rng.randint(1, grid - 2)
@@ -1776,6 +1776,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
