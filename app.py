@@ -1541,8 +1541,8 @@ elif page == "PvP – Arena Tática":
                     batch_stats[f"{trainer_name}.{pid}.updatedAt"] = str(datetime.now())
             
             if batch_stats:
-                db.collection("rooms").document(rid).collection("public_state").document("party_states").update(batch_stats)
-
+                # CORREÇÃO: Usa .set com merge=True para CRIAR o documento se ele não existir
+                db.collection("rooms").document(rid).collection("public_state").document("party_states").set(batch_stats, merge=True)
         # Carrega dados
         state = get_state(db, rid)
         seed = state.get("seed")
@@ -2406,6 +2406,7 @@ elif page == "PvP – Arena Tática":
                     by = ev.get("by", "?")
                     payload = ev.get("payload", {})
                     st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
