@@ -283,7 +283,8 @@ def create_room(db, trainer_name: str, grid_size: int, theme: str, max_active: i
 
     # estado público inicial (vazio por enquanto)
     room_ref.collection("public_state").document("state").set({
-        "map": None,
+        "tilesPacked": None,
+        "seed": None,
         "pieces": [],
         "effects": [],
         "updatedAt": firestore.SERVER_TIMESTAMP,
@@ -1198,7 +1199,7 @@ elif page == "PvP – Arena Tática":
                         "gridSize": grid,
                         "theme": theme_key,
                         "seed": seed,
-                        "tiles": tiles,
+                        "tilesPacked": packed,
                         "updatedAt": firestore.SERVER_TIMESTAMP,
                     }, merge=True)
 
@@ -1276,6 +1277,7 @@ elif page == "PvP – Arena Tática":
                         by = ev.get("by", "?")
                         payload = ev.get("payload", {})
                         st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
