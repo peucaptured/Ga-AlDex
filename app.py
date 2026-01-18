@@ -1297,6 +1297,10 @@ elif page == "PvP – Arena Tática":
         "Base multiplayer: criar/abrir arena, entrar por código, espectadores "
         "e log público (dado visível para todos)."
     )
+    if "pvp_view" not in st.session_state:
+        st.session_state["pvp_view"] = "lobby"
+
+    view = st.session_state["pvp_view"]
 
     db, bucket = init_firebase()
     view = st.session_state.get("pvp_view", "lobby")
@@ -1335,11 +1339,7 @@ elif page == "PvP – Arena Tática":
                                  {"theme": theme_key, "grid": grid, "seed": seed})
                 st.rerun()
         
-        with colB:
-            if st.button("⬅️ Voltar ao lobby"):
-                st.session_state["pvp_view"] = "lobby"
-                st.rerun()
-        
+               
         st.stop()
 
 
@@ -1481,6 +1481,11 @@ elif view == "battle":
 
     # --- Painel da arena ativa ---
     rid = st.session_state.get("active_room_id")
+    topA, topB = st.columns([1, 3])
+    with topA:
+        if st.button("⬅️ Voltar ao lobby", key="back_lobby_battle"):
+            st.session_state["pvp_view"] = "lobby"
+            st.rerun()
     st.subheader("🎮 Arena ativa")
     if st.button("🔄 Atualizar arena"):
         st.rerun()
@@ -1776,6 +1781,7 @@ else:
                                 
                                 
             
+
 
 
 
