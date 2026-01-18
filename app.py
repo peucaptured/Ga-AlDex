@@ -1286,135 +1286,141 @@ elif page == "PvP – Arena Tática":
 
 
     db, bucket = init_firebase()
+    view = st.session_state.get("pvp_view", "lobby")
 
-
-    # --- Painel: criar arena ---
-    st.subheader("➕ Criar nova arena")
-    c1, c2, c3 = st.columns([1, 1, 2])
-    with c1:
-        grid = st.selectbox("Tamanho do grid", [6, 8, 10], index=0)
-    with c2:
-        theme_label = st.selectbox(
-            "Tema",
-            [
-                "Caverna (com água)",
-                "Floresta",
-                "Montanha (declives)",
-                "Pradaria",
-                "Terra batida",
-                "Rio",
-                "Mar (costa)",
-                "Lago no centro",
-            ],
-            index=0
-        )
-
-        label_to_key = {
-            "Caverna (com água)": "cave_water",
-            "Floresta": "forest",
-            "Montanha (declives)": "mountain_slopes",
-            "Pradaria": "plains",
-            "Terra batida": "dirt",
-            "Rio": "river",
-            "Mar (costa)": "sea_coast",
-            "Lago no centro": "center_lake",
-        }
-
-        theme = label_to_key[theme_label]
-
-    with c3:
-        st.write("")
-        if st.button("🆕 Criar arena", type="primary"):
-            rid, err = create_room(db, trainer_name, grid, theme, max_active=5)
-            if err:
-                st.error(err)
-            else:
-                st.success(f"Arena criada! Código: **{rid}**")
-                st.session_state["active_room_id"] = rid
-                st.rerun()
-
-    st.markdown("---")
-
-    # --- Minhas arenas ---
-    st.subheader("📌 Minhas arenas")
-    my_rooms = list_my_rooms(db, trainer_name)
-    if not my_rooms:
-        st.info("Você ainda não tem arenas ativas. Crie uma acima.")
-    else:
-        # tenta mostrar infos básicas
-        room_infos = []
-        for rid in my_rooms[:20]:
-            info = get_room(db, rid)
-            if info:
-                status = info.get("status", "?")
-                gs = info.get("gridSize", "?")
-                th = info.get("theme", "?")
-                owner = (info.get("owner") or {}).get("name", "?")
-                chal = (info.get("challenger") or {})
-                chal_name = chal.get("name") if isinstance(chal, dict) else (chal or "")
-                room_infos.append((rid, f"{rid} | {status} | {gs}x{gs} | {th} | owner={owner} | challenger={chal_name or '-'}"))
-
-        labels = [x[1] for x in room_infos] if room_infos else my_rooms
-        chosen = st.selectbox("Abrir arena", labels, index=0)
-        chosen_rid = chosen.split(" | ")[0] if " | " in chosen else chosen
-
-        b1, b2, b3 = st.columns([1, 1, 2])
-        with b1:
-            if st.button("📂 Abrir"):
-                st.session_state["active_room_id"] = chosen_rid
-                st.rerun()
-        with b2:
-            if st.button("🗄️ Arquivar (remover da lista)"):
-                remove_room_from_user(db, trainer_name, chosen_rid)
-                if st.session_state.get("active_room_id") == chosen_rid:
-                    st.session_state.pop("active_room_id", None)
-                st.rerun()
-
-    st.markdown("---")
-
-    # --- Entrar por código (desafiante / espectador) ---
-    st.subheader("🔑 Entrar por código")
-    cc1, cc2, cc3 = st.columns([2, 1, 1])
-    with cc1:
-        code = st.text_input("Código da arena (roomId)", value="")
-    with cc2:
-        if st.button("🥊 Entrar como desafiante"):
-            if not code.strip():
-                st.warning("Digite um código.")
-            else:
-                res = join_room_as_challenger(db, code.strip(), trainer_name)
-                if res == "OK":
-                    st.success("Você entrou como desafiante!")
-                    st.session_state["active_room_id"] = code.strip()
-                    st.rerun()
-                elif res == "CHALLENGER_TAKEN":
-                    st.error("Essa arena já tem desafiante. Entre como espectador.")
-                elif res == "NOT_FOUND":
-                    st.error("Arena não encontrada.")
-                else:
-                    st.info(res)
-    with cc3:
-        if st.button("👀 Entrar como espectador"):
-            if not code.strip():
-                st.warning("Digite um código.")
-            else:
-                res = join_room_as_spectator(db, code.strip(), trainer_name)
-                if res == "OK" or res == "PLAYER":
-                    st.success("Você entrou na arena!")
-                    st.session_state["active_room_id"] = code.strip()
-                    st.rerun()
-                elif res == "NOT_FOUND":
-                    st.error("Arena não encontrada.")
-                else:
-                    st.info(res)
-
-    st.markdown("---")
-    # --- Painel da arena ativa ---
-    rid = st.session_state.get("active_room_id")
+    if view == "lobby":
+        # --- Painel: criar arena ---
+        st.subheader("➕ Criar nova arena")
+        c1, c2, c3 = st.columns([1, 1, 2])
+        with c1:
+            grid = st.selectbox("Tamanho do grid", [6, 8, 10], index=0)
+        with c2:
+            theme_label = st.selectbox(
+                "Tema",
+                [
+                    "Caverna (com água)",
+                    "Floresta",
+                    "Montanha (declives)",
+                    "Pradaria",
+                    "Terra batida",
+                    "Rio",
+                    "Mar (costa)",
+                    "Lago no centro",
+                ],
+                index=0
+            )
     
-    st.subheader("🎮 Arena ativa")
-    if st.button("🔄 Atualizar arena"):
-        st.rerun()
+            label_to_key = {
+                "Caverna (com água)": "cave_water",
+                "Floresta": "forest",
+                "Montanha (declives)": "mountain_slopes",
+                "Pradaria": "plains",
+                "Terra batida": "dirt",
+                "Rio": "river",
+                "Mar (costa)": "sea_coast",
+                "Lago no centro": "center_lake",
+            }
+    
+            theme = label_to_key[theme_label]
+    
+        with c3:
+            st.write("")
+            if st.button("🆕 Criar arena", type="primary"):
+                rid, err = create_room(db, trainer_name, grid, theme, max_active=5)
+                if err:
+                    st.error(err)
+                else:
+                    st.success(f"Arena criada! Código: **{rid}**")
+                    st.session_state["active_room_id"] = rid
+                    st.rerun()
+    
+        st.markdown("---")
+    
+        # --- Minhas arenas ---
+        st.subheader("📌 Minhas arenas")
+        my_rooms = list_my_rooms(db, trainer_name)
+        if not my_rooms:
+            st.info("Você ainda não tem arenas ativas. Crie uma acima.")
+        else:
+            # tenta mostrar infos básicas
+            room_infos = []
+            for rid in my_rooms[:20]:
+                info = get_room(db, rid)
+                if info:
+                    status = info.get("status", "?")
+                    gs = info.get("gridSize", "?")
+                    th = info.get("theme", "?")
+                    owner = (info.get("owner") or {}).get("name", "?")
+                    chal = (info.get("challenger") or {})
+                    chal_name = chal.get("name") if isinstance(chal, dict) else (chal or "")
+                    room_infos.append((rid, f"{rid} | {status} | {gs}x{gs} | {th} | owner={owner} | challenger={chal_name or '-'}"))
+    
+            labels = [x[1] for x in room_infos] if room_infos else my_rooms
+            chosen = st.selectbox("Abrir arena", labels, index=0)
+            chosen_rid = chosen.split(" | ")[0] if " | " in chosen else chosen
+    
+            b1, b2, b3 = st.columns([1, 1, 2])
+            with b1:
+                if st.button("📂 Abrir"):
+                    st.session_state["active_room_id"] = chosen_rid
+                    st.rerun()
+            with b2:
+                if st.button("🗄️ Arquivar (remover da lista)"):
+                    remove_room_from_user(db, trainer_name, chosen_rid)
+                    if st.session_state.get("active_room_id") == chosen_rid:
+                        st.session_state.pop("active_room_id", None)
+                    st.rerun()
+    
+        st.markdown("---")
+    
+        # --- Entrar por código (desafiante / espectador) ---
+        st.subheader("🔑 Entrar por código")
+        cc1, cc2, cc3 = st.columns([2, 1, 1])
+        with cc1:
+            code = st.text_input("Código da arena (roomId)", value="")
+        with cc2:
+            if st.button("🥊 Entrar como desafiante"):
+                if not code.strip():
+                    st.warning("Digite um código.")
+                else:
+                    res = join_room_as_challenger(db, code.strip(), trainer_name)
+                    if res == "OK":
+                        st.success("Você entrou como desafiante!")
+                        st.session_state["active_room_id"] = code.strip()
+                        st.rerun()
+                    elif res == "CHALLENGER_TAKEN":
+                        st.error("Essa arena já tem desafiante. Entre como espectador.")
+                    elif res == "NOT_FOUND":
+                        st.error("Arena não encontrada.")
+                    else:
+                        st.info(res)
+        with cc3:
+            if st.button("👀 Entrar como espectador"):
+                if not code.strip():
+                    st.warning("Digite um código.")
+                else:
+                    res = join_room_as_spectator(db, code.strip(), trainer_name)
+                    if res == "OK" or res == "PLAYER":
+                        st.success("Você entrou na arena!")
+                        st.session_state["active_room_id"] = code.strip()
+                        st.rerun()
+                    elif res == "NOT_FOUND":
+                        st.error("Arena não encontrada.")
+                    else:
+                        st.info(res)
+    
+        st.markdown("---")
+    
+    else:
+    
+        # --- Painel da arena ativa ---
+        rid = st.session_state.get("active_room_id")
+        st.subheader("🎮 Arena ativa")
+        if st.button("🔄 Atualizar arena"):
+            st.rerun()
+        if st.button("⬅️ Voltar ao lobby"):
+            st.session_state["pvp_view"] = "lobby"
+            st.rerun()
 
 
     if not rid:
@@ -1484,6 +1490,7 @@ elif page == "PvP – Arena Tática":
                         db, rid, "map_generated", trainer_name,
                         {"theme": theme_key, "grid": grid, "seed": seed, "noWater": bool(no_water)}
                     )
+                    st.session_state["pvp_view"] = "battle"
                     st.rerun()
             
             else:
@@ -1566,36 +1573,36 @@ elif page == "PvP – Arena Tática":
                 
                 with left:
                     st.markdown("## 🎒 Seus Pokémon")
+                
                     party = user_data.get("party") or []
-                    party = party[:8]  # limite visual
-                    
+                    party = party[:8]
+                
                     state = get_state(db, rid)
                     pieces = state.get("pieces", [])
-                    
-                    placed_pids = {
-                        p["pid"] for p in pieces
-                        if p.get("owner") == trainer_name
-                    }
-                    
+                
+                    placed_by_me = {p["pid"] for p in pieces if p.get("owner") == trainer_name}
+                
                     for pid in party:
-                        is_on_map = pid in placed_pids
-                    
-                        label = "❌ Remover" if is_on_map else "➕ Colocar"
-                    
-                        if st.button(f"{label} {pid}", key=f"btn_{pid}"):
-                            if is_on_map:
-                                # REMOVE do mapa
-                                piece_id = f"{rid}:{trainer_name}:{pid}"
-                                delete_piece(db, rid, piece_id)
-                    
-                                add_public_event(
-                                    db, rid, "pokemon_removed", trainer_name,
-                                    {"pid": pid}
-                                )
-                                st.rerun()
-                            else:
-                                # entra em modo posicionar
-                                st.session_state["placing_pid"] = pid
+                        is_on_map = pid in placed_by_me
+                
+                        # imagem pequena do pokemon
+                        sprite_url = pokemon_pid_to_image(pid, mode="sprite")
+                
+                        cimg, cbtn = st.columns([1, 3], vertical_alignment="center")
+                        with cimg:
+                            st.image(sprite_url, width=48)
+                
+                        with cbtn:
+                            label = "❌ Remover" if is_on_map else "➕ Colocar"
+                            if st.button(f"{label}", key=f"btn_{rid}_{pid}"):
+                                if is_on_map:
+                                    piece_id = f"{rid}:{trainer_name}:{pid}"
+                                    delete_piece(db, rid, piece_id)
+                                    add_public_event(db, rid, "pokemon_removed", trainer_name, {"pid": pid})
+                                    st.rerun()
+                                else:
+                                    st.session_state["placing_pid"] = pid
+
 
                 
                 with right:
@@ -1632,6 +1639,7 @@ elif page == "PvP – Arena Tática":
                     
                     
                     
+
 
 
 
