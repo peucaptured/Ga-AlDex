@@ -1315,6 +1315,7 @@ elif page == "PvP – Arena Tática":
         all_pieces = state.get("pieces") or []
         pieces = visible_pieces_for(room, trainer_name, all_pieces)
         theme_key = room.get("theme", "cave_water")
+        grid = len(tiles) if tiles else 10
 
         # --- CSS para tela cheia e limpa ---
         st.markdown("""
@@ -1814,6 +1815,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
