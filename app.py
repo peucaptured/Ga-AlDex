@@ -452,7 +452,7 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool
         for r in range(1, grid - 1):
             for c in range(1, grid - 1):
                 if inside(r, c):
-                    tiles[r][c] = "grass" if rng.random() > 0.10 else "bush"
+                    tiles[r][c] = "grass" if rng.random() > 0.15 else "bush"
     
         # árvores espalhadas
         trees = rng.randint(grid, grid * 2)
@@ -590,17 +590,17 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool
 
 def draw_tile(draw: ImageDraw.ImageDraw, x: int, y: int, t: str, rng: random.Random):
     colors = {
-        "rock": (70, 72, 78),
+        "rock": (60, 60, 70),
         "wall": (45, 46, 50),
         "water": (35, 90, 140),
         "stalagmite": (90, 92, 98),
         "grass": (60, 130, 70),
         "tree": (30, 70, 35),
         "path": (120, 95, 60),
-        "stone": (95, 96, 100),
-        "peak": (160, 160, 165),
-        "slope1": (120, 120, 125),
-        "slope2": (105, 105, 110),
+        "stone": (125, 125, 140),
+        "peak": (175, 175, 190),
+        "slope1": (110, 110, 125),
+        "slope2": (95, 95, 110),
         "flower": (150, 80, 110),
         "trail": (105, 85, 55),
         "dirt": (110, 85, 55),
@@ -1246,47 +1246,57 @@ elif page == "PvP – Arena Tática":
             seed = state.get("seed")
             packed = state.get("tilesPacked")
             tiles = unpack_tiles(packed) if packed else None
-
+            
+            # checkbox SEMPRE disponível (tanto pra gerar quanto regerar)
+            no_water = st.checkbox(
+                "🚫 Gerar sem água",
+                value=bool(state.get("noWater", False)),
+                disabled=not is_player
+            )
+            
             if not tiles:
-                no_water = st.checkbox(
-                    "🚫 Gerar sem água",
-                    value=False,
-                    disabled=not is_player
-                )
-                
                 if st.button("🗺️ Gerar mapa (pixel art)", disabled=not is_player):
-                    tiles, seed = gen_tiles(grid, theme_key, seed=None)
-
+                    tiles, seed = gen_tiles(grid, theme_key, seed=None, no_water=no_water)
                     packed = pack_tiles(tiles)
-                    # DEBUG (temporário)
-                    st.write("DEBUG no_water:", no_water)
-                    st.write("DEBUG seed:", seed)
-                    st.write("DEBUG packed len:", len(packed) if packed else None)
-                    
+            
                     state_ref.set({
                         "gridSize": grid,
                         "theme": theme_key,
                         "seed": seed,
-                        "noWater": bool(no_water),
                         "tilesPacked": packed,
+                        "noWater": bool(no_water),
                         "updatedAt": firestore.SERVER_TIMESTAMP,
                     }, merge=True)
-
+            
                     add_public_event(
-                        db,
-                        rid,
-                        "map_generated",
-                        trainer_name,
-                        {"theme": theme_key, "grid": grid, "seed": seed}
+                        db, rid, "map_generated", trainer_name,
+                        {"theme": theme_key, "grid": grid, "seed": seed, "noWater": bool(no_water)}
                     )
-
                     st.rerun()
-
+            
             else:
+                # ✅ Botão de REGERAR fica aqui (porque o mapa já existe)
+                if st.button("🔁 Regerar mapa", disabled=not is_player):
+                    tiles, seed = gen_tiles(grid, theme_key, seed=None, no_water=no_water)
+                    packed = pack_tiles(tiles)
+            
+                    state_ref.set({
+                        "seed": seed,
+                        "tilesPacked": packed,
+                        "noWater": bool(no_water),
+                        "updatedAt": firestore.SERVER_TIMESTAMP,
+                    }, merge=True)
+            
+                    add_public_event(
+                        db, rid, "map_regenerated", trainer_name,
+                        {"theme": theme_key, "grid": grid, "seed": seed, "noWater": bool(no_water)}
+                    )
+                    st.rerun()
+            
                 img = render_map_png(tiles, theme_key, seed)
-
                 st.markdown("### 🗺️ Mapa tático")
                 click = streamlit_image_coordinates(img, key=f"map_{rid}")
+
 
                 if click and "x" in click and "y" in click:
                     col = int(click["x"] // TILE_SIZE)
@@ -1346,6 +1356,7 @@ elif page == "PvP – Arena Tática":
                         by = ev.get("by", "?")
                         payload = ev.get("payload", {})
                         st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
