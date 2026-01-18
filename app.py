@@ -762,12 +762,16 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str):
             local_cache[url] = fetch_image_pil(url)
 
         sprite = local_cache[url]
-        if sprite is None:
+                if sprite is None:
             continue
 
         # redimensiona para caber na célula
         sp = sprite.copy()
         sp.thumbnail((TILE_SIZE, TILE_SIZE), Image.Resampling.LANCZOS)
+        # 🔴 NOVO: derrotado = cinza
+        status = p.get("status", "active")
+        if status == "fainted":
+            sp = sp.convert("LA").convert("RGBA")
 
         # centraliza na célula
         x0 = c * TILE_SIZE + (TILE_SIZE - sp.size[0]) // 2
@@ -1621,6 +1625,7 @@ elif page == "PvP – Arena Tática":
                                 "row": row,
                                 "col": col,
                                 "revealed": True,
+                                "status": "active",
                             }
                     
                             upsert_piece(db, rid, piece)
@@ -1635,6 +1640,7 @@ elif page == "PvP – Arena Tática":
                     
                     
                     
+
 
 
 
