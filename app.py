@@ -697,6 +697,7 @@ def draw_tile(draw: ImageDraw.ImageDraw, x: int, y: int, t: str, rng: random.Ran
 
     if t == "path":
         draw.rectangle([x + 2, y + 12, x + TILE_SIZE - 3, y + 20], fill=(150, 120, 80))
+        
 
 def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
     grid = len(tiles)
@@ -1445,6 +1446,28 @@ elif page == "PvP – Arena Tática":
             st.write(f"**Grid:** {room.get('gridSize')}x{room.get('gridSize')}  |  **Tema:** {room.get('theme')}")
             st.write(f"**Owner:** {owner}  |  **Challenger:** {chal_name or '-'}")
             st.write(f"**Espectadores:** {len(room.get('spectators') or [])}")
+
+            # =========================
+            # 🎒 SELETOR DE POKÉMON DA PARTY (PASSO 2)
+            # =========================
+            if is_player:
+                party = user_data.get("party") or []
+                party = [p for p in party if not str(p).startswith("EXT:")]
+                party = party[:6]
+            
+                if party:
+                    selected_idx = st.selectbox(
+                        "🎒 Selecionar Pokémon da party",
+                        range(len(party)),
+                        format_func=lambda i: f"{i+1}. #{party[i]}"
+                    )
+                    selected_pid = party[selected_idx]
+                else:
+                    selected_pid = None
+                    st.info("Sua party está vazia.")
+            else:
+                selected_pid = None
+
             # =========================
             # 🗺️ BLOCO DO MAPA (ETAPA 2)
             # =========================
@@ -1545,35 +1568,36 @@ elif page == "PvP – Arena Tática":
                 
 
                 if click and "x" in click and "y" in click:
-                    col = int(click["x"] // TILE_SIZE)
-                    row = int(click["y"] // TILE_SIZE)
-
-                    if 0 <= row < grid and 0 <= col < grid:
-                        # (opcional) ainda pode logar clique
-                        add_public_event(db, rid, "cell_click", trainer_name, {"row": row, "col": col})
+                    if click and "x" in click and "y" in click and is_player and selected_pid:
+                        col = int(click["x"] // TILE_SIZE)
+                        row = int(click["y"] // TILE_SIZE)
                     
-                        if is_player:
-                            # sel_idx e sel_pid vêm do selectbox da party (passo 2)
-                            slot_id = f"{rid}:{trainer_name}:slot{sel_idx}"
+                        if 0 <= row < grid and 0 <= col < grid:
+                            pieces = state.get("pieces", [])
                     
-                            piece = {
-                                "id": slot_id,
+                            # remove se já existir esse Pokémon no mapa
+                            pieces = [p for p in pieces if not (
+                                p["pid"] == selected_pid and p["owner"] == trainer_name
+                            )]
+                    
+                            # adiciona na nova posição
+                            pieces.append({
+                                "pid": selected_pid,
                                 "owner": trainer_name,
-                                "slot": int(sel_idx),
-                                "pid": str(sel_pid),
-                                "row": int(row),
-                                "col": int(col),
-                                "revealed": True,
-                            }
+                                "row": row,
+                                "col": col
+                            })
                     
-                            upsert_piece(db, rid, piece)
+                            state_ref.set({
+                                "pieces": pieces,
+                                "updatedAt": firestore.SERVER_TIMESTAMP
+                            }, merge=True)
                     
                             add_public_event(
-                                db, rid, "piece_moved", trainer_name,
-                                {"slot": int(sel_idx), "pid": str(sel_pid), "row": int(row), "col": int(col)}
+                                db, rid, "pokemon_move", trainer_name,
+                                {"pid": selected_pid, "row": row, "col": col}
                             )
                     
-                            st.success(f"Movido: **slot {sel_idx+1}** -> (**{row}**, **{col}**)")
                             st.rerun()
                         else:
                             st.success(f"Célula selecionada: **linha {row}**, **coluna {col}**")
@@ -1624,6 +1648,7 @@ elif page == "PvP – Arena Tática":
                         
 
                 
+
 
 
 
