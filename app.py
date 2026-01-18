@@ -426,18 +426,18 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool
                 tiles[rr][cc] = "stone"
 
     # --- features por tema ---
-if theme_key == "cave_water":
-    if not no_water:
-        pools = rng.randint(1, 2)
-        for _ in range(pools):
-            cr = rng.randint(2, grid - 3)
-            cc = rng.randint(2, grid - 3)
-            rad = rng.randint(1, 2)
+    if theme_key == "cave_water":
+        if not no_water:
+            pools = rng.randint(1, 2)
+            for _ in range(pools):
+                cr = rng.randint(2, grid - 3)
+                cc = rng.randint(2, grid - 3)
+                rad = rng.randint(1, 2)
 
-            for rr in range(cr - rad, cr + rad + 1):
-                for cc2 in range(cc - rad, cc + rad + 1):
-                    if inside(rr, cc2) and rng.random() > 0.25:
-                        tiles[rr][cc2] = "water"
+                for rr in range(cr - rad, cr + rad + 1):
+                    for cc2 in range(cc - rad, cc + rad + 1):
+                        if inside(rr, cc2) and rng.random() > 0.25:
+                            tiles[rr][cc2] = "water"
 
     # elementos sólidos continuam existindo
     spikes = rng.randint(1, max(2, grid - 3))
@@ -447,62 +447,62 @@ if theme_key == "cave_water":
         if inside(rr, cc) and tiles[rr][cc] == base:
             tiles[rr][cc] = "stalagmite"
 
-elif theme_key == "forest":
-    # “carpete” de grama
-    for r in range(1, grid - 1):
-        for c in range(1, grid - 1):
-            if inside(r, c):
-                tiles[r][c] = "grass" if rng.random() > 0.10 else "bush"
+    elif theme_key == "forest":
+        # “carpete” de grama
+        for r in range(1, grid - 1):
+            for c in range(1, grid - 1):
+                if inside(r, c):
+                    tiles[r][c] = "grass" if rng.random() > 0.10 else "bush"
+    
+        # árvores espalhadas
+        trees = rng.randint(grid, grid * 2)
+        for _ in range(trees):
+            rr = rng.randint(1, grid - 2)
+            cc = rng.randint(1, grid - 2)
+            if inside(rr, cc) and tiles[rr][cc] in ["grass", "bush"] and rng.random() > 0.35:
+                tiles[rr][cc] = "tree"
 
-    # árvores espalhadas
-    trees = rng.randint(grid, grid * 2)
-    for _ in range(trees):
-        rr = rng.randint(1, grid - 2)
-        cc = rng.randint(1, grid - 2)
-        if inside(rr, cc) and tiles[rr][cc] in ["grass", "bush"] and rng.random() > 0.35:
-            tiles[rr][cc] = "tree"
+        # caminho opcional
+        if rng.random() > 0.35:
+            r = rng.randint(2, grid - 3)
+            for c in range(1, grid - 1):
+                if inside(r, c) and tiles[r][c] != "tree":
+                    tiles[r][c] = "path"
 
-    # caminho opcional
-    if rng.random() > 0.35:
-        r = rng.randint(2, grid - 3)
-        for c in range(1, grid - 1):
-            if inside(r, c) and tiles[r][c] != "tree":
-                tiles[r][c] = "path"
+        # água só se permitido
+        if not no_water:
+            ponds = rng.randint(0, 2)
+            for _ in range(ponds):
+                cr = rng.randint(2, grid - 3)
+                cc = rng.randint(2, grid - 3)
+                rad = rng.randint(1, 2)
+                for rr in range(cr - rad, cr + rad + 1):
+                    for cc2 in range(cc - rad, cc + rad + 1):
+                        if inside(rr, cc2) and rng.random() > 0.35:
+                            tiles[rr][cc2] = "water"
+    
+    elif theme_key == "mountain_slopes":
+        # base rochosa
+        for r in range(1, grid - 1):
+            for c in range(1, grid - 1):
+                if inside(r, c):
+                    tiles[r][c] = "stone" if rng.random() > 0.12 else "rock"
 
-    # água só se permitido
-    if not no_water:
-        ponds = rng.randint(0, 2)
-        for _ in range(ponds):
-            cr = rng.randint(2, grid - 3)
+        # faixas de declive (diagonais)
+        bands = rng.randint(2, 4)
+        for _ in range(bands):
+            start_r = rng.randint(1, grid - 2)
+            for c in range(1, grid - 1):
+                rr = start_r + (c // 2)
+                if inside(rr, c) and rng.random() > 0.25:
+                    tiles[rr][c] = "slope1" if rng.random() > 0.5 else "slope2"
+
+        # picos
+        peaks = rng.randint(1, 3)
+        for _ in range(peaks):
+            rr = rng.randint(2, grid - 3)
             cc = rng.randint(2, grid - 3)
-            rad = rng.randint(1, 2)
-            for rr in range(cr - rad, cr + rad + 1):
-                for cc2 in range(cc - rad, cc + rad + 1):
-                    if inside(rr, cc2) and rng.random() > 0.35:
-                        tiles[rr][cc2] = "water"
-
-elif theme_key == "mountain_slopes":
-    # base rochosa
-    for r in range(1, grid - 1):
-        for c in range(1, grid - 1):
-            if inside(r, c):
-                tiles[r][c] = "stone" if rng.random() > 0.12 else "rock"
-
-    # faixas de declive (diagonais)
-    bands = rng.randint(2, 4)
-    for _ in range(bands):
-        start_r = rng.randint(1, grid - 2)
-        for c in range(1, grid - 1):
-            rr = start_r + (c // 2)
-            if inside(rr, c) and rng.random() > 0.25:
-                tiles[rr][c] = "slope1" if rng.random() > 0.5 else "slope2"
-
-    # picos
-    peaks = rng.randint(1, 3)
-    for _ in range(peaks):
-        rr = rng.randint(2, grid - 3)
-        cc = rng.randint(2, grid - 3)
-        tiles[rr][cc] = "peak"
+            tiles[rr][cc] = "peak"
 
     elif theme_key == "plains":
         for _ in range(rng.randint(2, grid * 2)):
