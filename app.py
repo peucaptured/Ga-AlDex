@@ -1522,10 +1522,9 @@ elif page == "PvP – Arena Tática":
                                     st.toast("Movido!")
                                     st.rerun()
 
-        # [IMPORTANTE] Este st.stop() deve estar alinhado dentro do "if view == battle"
-        st.stop() 
 
-    # [CORREÇÃO] Este elif deve estar alinhado com o "if view == battle" lá de cima
+    
+            st.stop() 
     elif view == "lobby":
         # --- Painel: criar arena ---
         st.subheader("➕ Criar nova arena")
@@ -1648,10 +1647,7 @@ elif page == "PvP – Arena Tática":
                         st.info(res)
     
         st.markdown("---")
-    
-
-
-    
+   
     else:
     
         # --- Painel da arena ativa ---
@@ -2007,6 +2003,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
