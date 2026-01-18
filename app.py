@@ -1327,16 +1327,11 @@ elif page == "PvP – Arena Tática":
     is_player = role in ["owner", "challenger"]
 
 
-# =========================
-    # VIEW: BATTLE (Bordas Coloridas + Lógica de Pokébola)
-    # =========================
-# =========================
-    # VIEW: BATTLE (Final: Mochila do Oponente + Bordas)
-    # =========================
+
 # =========================
     # VIEW: BATTLE (Com Memória de Revelação)
     # =========================
-    elif view == "battle":
+    if view == "battle":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
@@ -1958,6 +1953,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
