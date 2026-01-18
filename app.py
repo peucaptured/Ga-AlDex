@@ -1313,13 +1313,10 @@ elif page == "PvP – Arena Tática":
     role = get_role(room, trainer_name) if room else "spectator"
     is_player = role in ["owner", "challenger"]
 
-    # =========================
-    # VIEW: BATTLE (Tela Principal de Jogo)
-    # =========================
 # =========================
-    # VIEW: BATTLE (Tela Principal de Jogo)
+    # VIEW: BATTLE (Versão Final: Invisibilidade Real no Mapa)
     # =========================
-    if view == "battle":
+    elif view == "battle":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
@@ -1328,15 +1325,38 @@ elif page == "PvP – Arena Tática":
         seed = state.get("seed")
         packed = state.get("tilesPacked")
         tiles = unpack_tiles(packed) if packed else None
-        all_pieces = state.get("pieces") or []
-        pieces = visible_pieces_for(room, trainer_name, all_pieces)
         
-        # --- VARIÁVEIS ESSENCIAIS ---
+        # Carrega TODAS as peças (para lógica de colisão e lista)
+        all_pieces = state.get("pieces") or []
+        
+        # --- FILTRO DE VISIBILIDADE DO MAPA ---
+        # Regra: Só desenha no mapa se for MINHA ou se estiver REVELADA.
+        pieces_to_draw = []
+        for p in all_pieces:
+            if p.get("owner") == trainer_name:
+                pieces_to_draw.append(p)
+            elif p.get("revealed", True):
+                pieces_to_draw.append(p)
+            # Se for do inimigo e revealed=False, NÃO adiciona (fica invisível no mapa)
+        
+        # --- DEFINIÇÃO DE NOMES ---
+        owner_name = (room.get("owner") or {}).get("name", "Host")
+        chal_name = (room.get("challenger") or {}).get("name", "Desafiante")
+        
+        if trainer_name == owner_name:
+            my_label = f"🎒 {owner_name} (Você)"
+            opp_label = f"🆚 {chal_name}" if chal_name else "🆚 Aguardando..."
+        elif trainer_name == chal_name:
+            my_label = f"🎒 {chal_name} (Você)"
+            opp_label = f"🆚 {owner_name}"
+        else:
+            my_label = "🎒 Jogador 1"
+            opp_label = "🆚 Jogador 2"
+
+        # --- VARIÁVEIS DO MAPA ---
         theme_key = room.get("theme", "cave_water")
         grid = len(tiles) if tiles else 10 
-        # ----------------------------
 
-        # CSS para aproveitar largura total e remover margens
         st.markdown("""
         <style>
           .block-container { max-width: 95% !important; padding-top: 1rem; padding-bottom: 5rem; }
@@ -1363,7 +1383,6 @@ elif page == "PvP – Arena Tática":
                 roll_die(db, rid, trainer_name, sides=6)
                 st.rerun()
         
-        # Mostra última rolagem
         with top[4]:
             last_events = list_public_events(db, rid, limit=5)
             last_dice = next((e for e in last_events if e.get("type") == "dice"), None)
@@ -1383,97 +1402,91 @@ elif page == "PvP – Arena Tática":
 
         # =========================
         # LAYOUT DE 3 COLUNAS
-        # [1] Mochila (Estreita) | [2] Mapa (Largo) | [3] Oponente (Estreito)
         # =========================
         c_bag, c_map, c_opp = st.columns([1, 3.5, 1])
 
-        # --- COLUNA 1: MOCHILA ---
+        # --- COLUNA 1: VOCÊ (MOCHILA) ---
         with c_bag:
-            st.markdown("### 🎒 Seus")
+            st.markdown(f"### {my_label}")
             party = user_data.get("party") or []
             party = party[:8] 
             
-            placed_by_me = {p["pid"] for p in pieces if p.get("owner") == trainer_name}
+            my_pieces_on_board = [p for p in all_pieces if p.get("owner") == trainer_name]
+            my_pids_on_board = {p["pid"] for p in my_pieces_on_board}
             
             for pid in party:
-                is_on_map = pid in placed_by_me
+                is_on_map = pid in my_pids_on_board
                 sprite_url = pokemon_pid_to_image(pid, mode="sprite")
                 
-                # Layout compacto na mochila
                 with st.container(border=True):
                     cols = st.columns([1, 2])
                     with cols[0]:
                         st.image(sprite_url, use_container_width=True)
                     with cols[1]:
                         if is_on_map:
-                            if st.button("Tirar", key=f"rm_{pid}", use_container_width=True):
-                                piece_id = f"{rid}:{trainer_name}:{pid}"
-                                delete_piece(db, rid, piece_id)
-                                add_public_event(db, rid, "pokemon_removed", trainer_name, {"pid": pid})
-                                st.rerun()
+                            piece_obj = next((p for p in my_pieces_on_board if p["pid"] == pid), None)
+                            
+                            if st.button("❌ Tirar", key=f"rm_{pid}", use_container_width=True):
+                                if piece_obj:
+                                    delete_piece(db, rid, piece_obj["id"])
+                                    add_public_event(db, rid, "pokemon_removed", trainer_name, {"pid": pid})
+                                    st.rerun()
+                            
+                            if piece_obj:
+                                is_rev = piece_obj.get("revealed", True)
+                                btn_label = "👁️ Ocultar" if is_rev else "Oculto"
+                                btn_type = "secondary" if is_rev else "primary"
+                                
+                                if st.button(btn_label, key=f"vis_{pid}", type=btn_type, use_container_width=True):
+                                    piece_obj["revealed"] = not is_rev
+                                    upsert_piece(db, rid, piece_obj)
+                                    st.rerun()
                         else:
-                            if st.button("Por", key=f"put_{pid}", use_container_width=True):
+                            if st.button("📍 Por", key=f"put_{pid}", use_container_width=True):
                                 st.session_state["placing_pid"] = pid
+                                st.toast(f"Modo colocação: clique no mapa para por {pid}")
                                 st.rerun()
 
-        # --- COLUNA 2: MAPA GRANDE ---
+        # --- COLUNA 2: MAPA ---
         with c_map:
             st.markdown("### 🗺️ Campo de Batalha")
-
-            # Feedback Visual
-            sel = st.session_state.get("selected_piece_id")
-            placing_pid = st.session_state.get("placing_pid")
             
-            if placing_pid:
-                p_name = placing_pid
-                row_p = df[df["Nº"].astype(str) == str(placing_pid)]
-                if not row_p.empty: p_name = row_p.iloc[0]["Nome"]
-                st.warning(f"📍 **POSICIONANDO:** Clique em um quadrado vazio para colocar **{p_name}**.")
-            elif sel:
-                st.info("✅ **Peça Selecionada.** Clique para mover.")
-            
-            # Renderiza Mapa (com tiles maiores agora)
             if "selected_piece_id" not in st.session_state:
                 st.session_state["selected_piece_id"] = None
 
-            img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name)
+            # AQUI ESTÁ A MÁGICA: Passamos 'pieces_to_draw' (filtrado), não 'all_pieces'.
+            # Oponente não vê peças ocultas.
+            img = render_map_with_pieces(tiles, theme_key, seed, pieces_to_draw, trainer_name)
             
-            # Captura clique
             click = streamlit_image_coordinates(img, key=f"battle_map_{rid}")
 
-        # --- COLUNA 3: INIMIGOS NO CAMPO ---
+        # --- COLUNA 3: INIMIGO (LISTA) ---
         with c_opp:
-            st.markdown("### 🆚 Inimigos")
+            st.markdown(f"### {opp_label}")
             
-            # Filtra peças que NÃO são minhas
-            # (Note: usamos all_pieces para ver até os hidden se a lógica permitir, 
-            # mas aqui vamos filtrar para mostrar status)
             opp_pieces = [p for p in all_pieces if p.get("owner") != trainer_name]
             
             if not opp_pieces:
-                st.caption("Nenhum inimigo no campo.")
+                st.caption("Nenhum Pokémon em campo.")
             
             for p in opp_pieces:
-                revealed = p.get("revealed", True) # Por padrão true, mas se tiver fog of war respeita
+                revealed = p.get("revealed", True)
                 pid = p.get("pid")
                 
                 with st.container(border=True):
                     if revealed:
-                        # Mostra Pokémon real
                         url = pokemon_pid_to_image(pid, mode="sprite")
                         st.image(url, width=50)
-                        # Tenta achar nome
                         p_name = pid
                         row_p = df[df["Nº"].astype(str) == str(pid)]
                         if not row_p.empty: p_name = row_p.iloc[0]["Nome"]
                         st.caption(f"**{p_name}**")
                     else:
-                        # Mostra Pokébola (Desconhecido)
                         st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=40)
                         st.caption("❓ Desconhecido")
 
         # =========================
-        # LÓGICA DO JOGO
+        # LÓGICA DO CLIQUE
         # =========================
         if click and "x" in click and "y" in click:
             col = int(click["x"] // TILE_SIZE)
@@ -1481,17 +1494,16 @@ elif page == "PvP – Arena Tática":
             
             if 0 <= row < grid and 0 <= col < grid:
                 
-                # --- A. LÓGICA: COLOCAR POKEMON (Placing) ---
                 placing_pid = st.session_state.get("placing_pid")
-                
+                sel = st.session_state.get("selected_piece_id")
+
+                # --- A. COLOCAR ---
                 if placing_pid:
                     state_now = get_state(db, rid)
-                    all_pieces = state_now.get("pieces") or []
-                    pieces_visible = visible_pieces_for(room, trainer_name, all_pieces)
-                    occupied = find_piece_at(pieces_visible, row, col)
-
-                    if occupied:
-                        st.warning("Célula ocupada! Escolha outra.")
+                    current_all = state_now.get("pieces") or []
+                    
+                    if find_piece_at(current_all, row, col):
+                        st.toast("⚠️ Célula ocupada!", icon="🚫")
                     else:
                         new_id = str(uuid.uuid4())[:8]
                         new_piece = {
@@ -1499,63 +1511,63 @@ elif page == "PvP – Arena Tática":
                             "pid": placing_pid,
                             "owner": trainer_name,
                             "row": row, "col": col,
-                            "revealed": True, "status": "active"
+                            "revealed": True,
+                            "status": "active"
                         }
                         upsert_piece(db, rid, new_piece)
                         add_public_event(db, rid, "pokemon_placed", trainer_name, {"pid": placing_pid})
                         st.session_state.pop("placing_pid", None)
                         st.rerun()
 
-                # --- B. LÓGICA: MOVER PEÇA (Moving) ---
+                # --- B. SELECIONAR / MOVER ---
                 else:
                     state_now = get_state(db, rid)
-                    all_pieces = state_now.get("pieces") or []
-                    pieces_visible = visible_pieces_for(room, trainer_name, all_pieces)
-                    clicked_piece = find_piece_at(pieces_visible, row, col)
+                    current_all = state_now.get("pieces") or []
+                    clicked_piece = find_piece_at(current_all, row, col)
             
-                    # 1) CLIQUE EM UMA PEÇA (Seleção)
+                    # 1) Clique em peça
                     if clicked_piece is not None:
-                        if not is_player or clicked_piece.get("owner") != trainer_name:
-                            st.warning("Você não pode mover peças do oponente.")
+                        # Se for INIMIGO e estiver OCULTO, eu não consigo clicar (porque ele não existe pra mim no mapa visualmente)
+                        # Mas se por acaso clicar no 'vazio' onde ele está, entra na lógica de 'Mover para vazio' abaixo.
+                        
+                        if clicked_piece.get("owner") != trainer_name:
+                             # Se estiver oculto, o código visual nem mostra a peça, 
+                             # então o usuário vai achar que clicou no chão vazio (vai cair no 'else' abaixo).
+                             # Se estiver visível, avisa que não é dele.
+                            st.toast("Essa peça não é sua.", icon="🔒")
                         else:
-                            pid = clicked_piece.get("id")
-                            if sel == pid:
+                            pid_clk = clicked_piece.get("id")
+                            if sel == pid_clk:
                                 st.session_state.pop("selected_piece_id", None)
                                 st.toast("Seleção cancelada.")
                             else:
-                                st.session_state["selected_piece_id"] = pid
-                                st.toast(f"Selecionado!")
+                                st.session_state["selected_piece_id"] = pid_clk
+                                st.toast("Selecionado!", icon="✅")
                         st.rerun()
             
-                    # 2) CLIQUE EM CÉLULA VAZIA (Movimento)
+                    # 2) Clique no vazio (Mover)
                     else:
                         if not is_player:
-                            st.warning("Espectador não move peças.")
+                            st.warning("Espectador não move.")
                         elif not sel:
-                            st.warning("Selecione um Pokémon primeiro.")
+                            st.toast("Selecione um Pokémon primeiro.", icon="👆")
                         else:
-                            moving = None
-                            for p in all_pieces:
-                                if p.get("id") == sel:
-                                    moving = p
-                                    break
+                            moving = next((p for p in current_all if p["id"] == sel), None)
                             
                             if moving is None:
                                 st.session_state.pop("selected_piece_id", None)
                                 st.rerun()
             
-                            occupied = find_piece_at(pieces_visible, row, col)
-                            if occupied is not None:
-                                st.warning("Essa célula já está ocupada.")
+                            # Colisão: Se tiver alguém lá (mesmo invisível), bloqueia.
+                            if find_piece_at(current_all, row, col):
+                                st.toast("Algo bloqueia o caminho (Célula ocupada).", icon="🚫")
                             else:
-                                moving2 = dict(moving)
-                                moving2["row"] = int(row)
-                                moving2["col"] = int(col)
-                                moving2["revealed"] = True 
-                                upsert_piece(db, rid, moving2)
-                                add_public_event(db, rid, "piece_moved", trainer_name, {"pid": moving2.get("pid"), "row": int(row), "col": int(col)})
+                                moving["row"] = int(row)
+                                moving["col"] = int(col)
+                                upsert_piece(db, rid, moving)
+                                add_public_event(db, rid, "piece_moved", trainer_name, {"pid": moving.get("pid"), "to": [row, col]})
                                 st.session_state.pop("selected_piece_id", None)
-                                st.toast("Movido!")
+                                st.toast("Movido!", icon="💨")
                                 st.rerun()
 
         st.stop()
@@ -1873,6 +1885,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
