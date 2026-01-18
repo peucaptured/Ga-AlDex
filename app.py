@@ -1028,7 +1028,7 @@ elif page == "PvP – Arena Tática":
     st.subheader("➕ Criar nova arena")
     c1, c2, c3 = st.columns([1, 1, 2])
     with c1:
-        grid = st.selectbox("Tamanho do grid", [4, 6, 8, 10], index=1)
+        grid = st.selectbox("Tamanho do grid", [6, 8, 10], index=0)
     with c2:
         theme_label = st.selectbox(
             "Tema",
@@ -1280,6 +1280,7 @@ elif page == "PvP – Arena Tática":
                         by = ev.get("by", "?")
                         payload = ev.get("payload", {})
                         st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
