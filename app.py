@@ -1657,10 +1657,8 @@ elif page == "PvP – Arena Tática":
             st.write(f"**Espectadores:** {len(room.get('spectators') or [])}")
             
 
-
-
-         
-            # =========================
+        
+# =========================
             # 🗺️ BLOCO DO MAPA (ETAPA 2)
             # =========================
             state_ref = (
@@ -1680,9 +1678,15 @@ elif page == "PvP – Arena Tática":
             packed = state.get("tilesPacked")
             tiles = unpack_tiles(packed) if packed else None
             
-            # checkbox SEMPRE disponível (tanto pra gerar quanto regerar)
+            # --- CORREÇÃO AQUI: Carregar as peças para o Lobby ---
+            all_pieces = state.get("pieces") or []
+            pieces = visible_pieces_for(room, trainer_name, all_pieces)
+            # -----------------------------------------------------
+            
+            # checkbox SEMPRE disponível
             no_water = st.checkbox(
                 "🚫 Gerar sem água",
+                # ... restante do código ...
                 value=bool(state.get("noWater", False)),
                 disabled=not is_player
             )
@@ -1810,6 +1814,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
