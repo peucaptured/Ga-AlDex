@@ -1520,9 +1520,7 @@ elif page == "PvP – Arena Tática":
                 st.markdown("### 🗺️ Mapa tático")
                 click = streamlit_image_coordinates(img, key=f"map_{rid}")
                 
-
-                        else:
-                            st.success(f"Célula selecionada: **linha {row}**, **coluna {col}**")
+                      
 
                 # --- Última rolagem de dado ---
                 last_events = list_public_events(db, rid, limit=10)
@@ -1640,6 +1638,7 @@ elif page == "PvP – Arena Tática":
                     
                     
                     
+
 
 
 
