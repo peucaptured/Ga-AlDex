@@ -1371,7 +1371,7 @@ elif page == "PvP – Arena Tática":
 # =========================
     # VIEW: BATTLE (HP, Status e Fainted)
     # =========================
-    elif view == "battle":
+    if view == "battle":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
@@ -2071,6 +2071,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
