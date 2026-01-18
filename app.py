@@ -906,10 +906,12 @@ def get_official_pokemon_map():
         return {}
         
 def get_pokemon_artwork_url(p_id: str) -> str:
+    n = int(str(p_id).lstrip("0") or "0")
     # grande (fora do PvP)
     return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{p_id}.png"
 
 def get_pokemon_sprite_url(p_id: str) -> str:
+    n = int(str(p_id).lstrip("0") or "0")
     # pequeno (PvP)
     return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{p_id}.png"
 
@@ -979,20 +981,20 @@ def load_excel_data():
 
 api_name_map = get_official_pokemon_map()
 def pokemon_pid_to_image(pid: str, mode: str = "artwork") -> str:
-    """
-    Converte PID da party em URL de imagem.
-    mode="artwork" (grande) | mode="sprite" (pequeno)
-    """
     if not pid:
         return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
 
-    # Pokémon visitante (EXT:)
-    if str(pid).startswith("EXT:"):
-        name = pid.replace("EXT:", "")
+    pid_str = str(pid)
+
+    # EXT:
+    if pid_str.startswith("EXT:"):
+        name = pid_str.replace("EXT:", "")
         return get_pokemon_image_url(name, api_name_map, mode=mode)
 
-    # Pokémon normal da Dex
-    row = df[df["Nº"] == pid]
+    # NORMALIZA: "002" -> "2"
+    pid_norm = str(int(pid_str)) if pid_str.isdigit() else pid_str
+
+    row = df[df["Nº"] == pid_norm]
     if row.empty:
         return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
 
@@ -1287,6 +1289,38 @@ elif page == "PvP – Arena Tática":
 
     db, bucket = init_firebase()
     view = st.session_state.get("pvp_view", "lobby")
+    
+    if view == "battle":
+    st.markdown("""
+    <style>
+      .block-container { padding-top: 0.8rem; padding-left: 1rem; padding-right: 1rem; max-width: 100% !important; }
+      header { visibility: hidden; height: 0px; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    top = st.columns([1,1,1,6])
+    with top[0]:
+        if st.button("⬅️ Lobby"):
+            st.session_state["pvp_view"] = "lobby"
+            st.rerun()
+    with top[1]:
+        if st.button("🎲 d20", disabled=not is_player):
+            r = roll_die(db, rid, trainer_name, 20)
+            st.toast(f"d20 = {r}")
+    with top[2]:
+        if st.button("🔄 Atualizar"):
+            st.rerun()
+
+    with st.expander("📜 Log público", expanded=False):
+        events = list_public_events(db, rid, limit=25)
+        for ev in events:
+            st.write(f"- **{ev.get('type')}** — {ev.get('by')} — {ev.get('payload')}")
+
+    # campo grande
+    st.markdown("## 🗺️ Campo de batalha")
+    img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name)
+    click = streamlit_image_coordinates(img, key=f"battle_map_{rid}")
+
 
     if view == "lobby":
         # --- Painel: criar arena ---
@@ -1443,6 +1477,11 @@ elif page == "PvP – Arena Tática":
             st.write(f"**Grid:** {room.get('gridSize')}x{room.get('gridSize')}  |  **Tema:** {room.get('theme')}")
             st.write(f"**Owner:** {owner}  |  **Challenger:** {chal_name or '-'}")
             st.write(f"**Espectadores:** {len(room.get('spectators') or [])}")
+            
+        if tiles and st.button("⚔️ Ir para o Campo de Batalha", type="primary"):
+            st.session_state["pvp_view"] = "battle"
+            st.rerun()
+
 
          
             # =========================
@@ -1653,6 +1692,7 @@ elif page == "PvP – Arena Tática":
 
                     
                     
+
 
 
 
