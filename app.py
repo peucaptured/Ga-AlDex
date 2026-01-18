@@ -1521,10 +1521,11 @@ elif page == "PvP – Arena Tática":
                                     st.session_state.pop("selected_piece_id", None)
                                     st.toast("Movido!")
                                     st.rerun()
-    
-            # Impede render do lobby no mesmo run (encerra o script aqui quando está em batalha)
-        st.stop()
 
+        # [IMPORTANTE] Este st.stop() deve estar alinhado dentro do "if view == battle"
+        st.stop() 
+
+    # [CORREÇÃO] Este elif deve estar alinhado com o "if view == battle" lá de cima
     elif view == "lobby":
         # --- Painel: criar arena ---
         st.subheader("➕ Criar nova arena")
