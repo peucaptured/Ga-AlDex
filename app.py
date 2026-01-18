@@ -9,7 +9,6 @@ import os
 import re
 import uuid
 from datetime import datetime
-from streamlit_autorefresh import st_autorefresh
 from PIL import Image, ImageDraw
 from streamlit_image_coordinates import streamlit_image_coordinates
 import random
@@ -887,20 +886,6 @@ def get_image_from_name(user_name, name_map):
     else:
         return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
 
-def pokemon_pid_to_image(pid: str, mode: str = "artwork") -> str:
-    if not pid:
-        return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
-
-    if str(pid).startswith("EXT:"):
-        name = pid.replace("EXT:", "")
-        return get_pokemon_image_url(name, api_name_map, mode=mode)
-
-    row = df[df["Nº"] == pid]
-    if row.empty:
-        return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
-
-    name = row.iloc[0]["Nome"]
-    return get_pokemon_image_url(name, api_name_map, mode=mode)
 
 @st.cache_data
 def get_official_pokemon_map():
@@ -1295,8 +1280,6 @@ elif page == "PvP – Arena Tática":
         "e log público (dado visível para todos)."
     )
 
-    # Auto-refresh só nesta aba
-    st_autorefresh(interval=7500, key="pvp_refresh")
 
     db, bucket = init_firebase()
 
@@ -1424,7 +1407,11 @@ elif page == "PvP – Arena Tática":
     st.markdown("---")
     # --- Painel da arena ativa ---
     rid = st.session_state.get("active_room_id")
+    
     st.subheader("🎮 Arena ativa")
+    if st.button("🔄 Atualizar arena"):
+        st.rerun()
+
 
     if not rid:
         st.info("Nenhuma arena aberta. Crie ou abra uma arena acima.")
@@ -1447,27 +1434,7 @@ elif page == "PvP – Arena Tática":
             st.write(f"**Owner:** {owner}  |  **Challenger:** {chal_name or '-'}")
             st.write(f"**Espectadores:** {len(room.get('spectators') or [])}")
 
-            # =========================
-            # 🎒 SELETOR DE POKÉMON DA PARTY (PASSO 2)
-            # =========================
-            if is_player:
-                party = user_data.get("party") or []
-                party = [p for p in party if not str(p).startswith("EXT:")]
-                party = party[:6]
-            
-                if party:
-                    selected_idx = st.selectbox(
-                        "🎒 Selecionar Pokémon da party",
-                        range(len(party)),
-                        format_func=lambda i: f"{i+1}. #{party[i]}"
-                    )
-                    selected_pid = party[selected_idx]
-                else:
-                    selected_pid = None
-                    st.info("Sua party está vazia.")
-            else:
-                selected_pid = None
-
+         
             # =========================
             # 🗺️ BLOCO DO MAPA (ETAPA 2)
             # =========================
@@ -1543,62 +1510,13 @@ elif page == "PvP – Arena Tática":
                 party = user_data.get("party") or []
                 party = party[:10]
                 
-                st.markdown("### 🧩 Pokémons no campo")
-                
-                if is_player:
-                    # escolhe pokemon da party
-                    options = []
-                    for i, pid in enumerate(party):
-                        options.append(f"{i+1}. {pid}")
-                
-                    selected = st.selectbox("Selecionar Pokémon da party", options, index=0)
-                
-                    # id base do pokemon (permite EXT:)
-                    sel_idx = int(selected.split(".")[0]) - 1
-                    sel_pid = party[sel_idx]
-                
-                    st.caption("Clique em uma célula do mapa para **posicionar/mover** o Pokémon selecionado.")
-                
-                else:
-                    st.caption("Você está como espectador (não pode posicionar/mover).")
+               
             
                 img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name)
                 st.markdown("### 🗺️ Mapa tático")
                 click = streamlit_image_coordinates(img, key=f"map_{rid}")
                 
 
-                if click and "x" in click and "y" in click:
-                    if click and "x" in click and "y" in click and is_player and selected_pid:
-                        col = int(click["x"] // TILE_SIZE)
-                        row = int(click["y"] // TILE_SIZE)
-                    
-                        if 0 <= row < grid and 0 <= col < grid:
-                            pieces = state.get("pieces", [])
-                    
-                            # remove se já existir esse Pokémon no mapa
-                            pieces = [p for p in pieces if not (
-                                p["pid"] == selected_pid and p["owner"] == trainer_name
-                            )]
-                    
-                            # adiciona na nova posição
-                            pieces.append({
-                                "pid": selected_pid,
-                                "owner": trainer_name,
-                                "row": row,
-                                "col": col
-                            })
-                    
-                            state_ref.set({
-                                "pieces": pieces,
-                                "updatedAt": firestore.SERVER_TIMESTAMP
-                            }, merge=True)
-                    
-                            add_public_event(
-                                db, rid, "pokemon_move", trainer_name,
-                                {"pid": selected_pid, "row": row, "col": col}
-                            )
-                    
-                            st.rerun()
                         else:
                             st.success(f"Célula selecionada: **linha {row}**, **coluna {col}**")
 
@@ -1645,13 +1563,78 @@ elif page == "PvP – Arena Tática":
                         by = ev.get("by", "?")
                         payload = ev.get("payload", {})
                         st.write(f"- **{et}** — _{by}_ — {payload}")
-                        
+                # =========================
+                # 🧠 LAYOUT DE BATALHA
+                # =========================
+                left, right = st.columns([1.2, 3])
+                
+                with left:
+                    st.markdown("## 🎒 Seus Pokémon")
+                    party = user_data.get("party") or []
+                    party = party[:8]  # limite visual
+                    
+                    state = get_state(db, rid)
+                    pieces = state.get("pieces", [])
+                    
+                    placed_pids = {
+                        p["pid"] for p in pieces
+                        if p.get("owner") == trainer_name
+                    }
+                    
+                    for pid in party:
+                        is_on_map = pid in placed_pids
+                    
+                        label = "❌ Remover" if is_on_map else "➕ Colocar"
+                    
+                        if st.button(f"{label} {pid}", key=f"btn_{pid}"):
+                            if is_on_map:
+                                # REMOVE do mapa
+                                piece_id = f"{rid}:{trainer_name}:{pid}"
+                                delete_piece(db, rid, piece_id)
+                    
+                                add_public_event(
+                                    db, rid, "pokemon_removed", trainer_name,
+                                    {"pid": pid}
+                                )
+                                st.rerun()
+                            else:
+                                # entra em modo posicionar
+                                st.session_state["placing_pid"] = pid
 
                 
-
-
-
-
+                with right:
+                    st.markdown("## 🗺️ Campo de batalha")
+                    img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name)
+                    click = streamlit_image_coordinates(img, key=f"map_{rid}")
+                    
+                    placing_pid = st.session_state.get("placing_pid")
+                    
+                    if click and placing_pid:
+                        col = int(click["x"] // TILE_SIZE)
+                        row = int(click["y"] // TILE_SIZE)
+                    
+                        if 0 <= row < grid and 0 <= col < grid:
+                            piece = {
+                                "id": f"{rid}:{trainer_name}:{placing_pid}",
+                                "pid": placing_pid,
+                                "owner": trainer_name,
+                                "row": row,
+                                "col": col,
+                                "revealed": True,
+                            }
+                    
+                            upsert_piece(db, rid, piece)
+                    
+                            add_public_event(
+                                db, rid, "pokemon_placed", trainer_name,
+                                {"pid": placing_pid, "row": row, "col": col}
+                            )
+                    
+                            del st.session_state["placing_pid"]
+                            st.rerun()
+                    
+                    
+                    
 
 
 
