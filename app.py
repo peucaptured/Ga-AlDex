@@ -272,15 +272,60 @@ def remove_room_from_user(db, trainer_name: str, rid: str):
         merge=True
     )
 # --- FUNÇÃO DE CALLBACK PARA SLIDERS E STATUS ---
+# --- FUNÇÃO DE CALLBACK CORRIGIDA ---
 def update_poke_state_callback(db, rid, trainer_name, pid):
-    # Pega os valores novos direto do estado da sessão (widgets)
-    new_hp = st.session_state.get(f"hp_slider_{pid}")
+    # 1. Pega os valores novos dos widgets
+    # Usamos session_state direto para garantir que pegamos o que o usuário acabou de mexer
+    new_hp = st.session_state.get(f"hp_{pid}")
     new_cond = st.session_state.get(f"cond_{pid}")
     
-    # Salva no banco
-    if new_hp is not None and new_cond is not None:
-        update_party_state(db, rid, trainer_name, pid, new_hp, new_cond)
+    if new_hp is None or new_cond is None:
+        return # Evita erro se o widget não carregou
 
+    # 2. Salva no Firestore com a ESTRUTURA CORRETA (Aninhada)
+    # Antes estava salvando "Nome.ID", agora salva { "Nome": { "ID": ... } }
+    ref = db.collection("rooms").document(rid).collection("public_state").document("party_states")
+    
+    data = {
+        trainer_name: {
+            str(pid): {
+                "hp": int(new_hp),
+                "cond": new_cond,
+                "updatedAt": str(datetime.now())
+            }
+        }
+    }
+    # merge=True garante que não apaga os dados dos outros pokémons
+    ref.set(data, merge=True)
+    
+    # 3. Atualiza status de Fainted na lista de peças (se estiver no mapa)
+    if new_hp == 0:
+        # Lógica rápida para atualizar o mapa sem precisar de outra leitura pesada
+        state_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
+        stt = state_ref.get().to_dict() or {}
+        pieces = stt.get("pieces") or []
+        dirty = False
+        for p in pieces:
+            if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid):
+                if p.get("status") != "fainted":
+                    p["status"] = "fainted"
+                    dirty = True
+        if dirty:
+            state_ref.update({"pieces": pieces})
+            
+    elif new_hp > 0:
+        # Revive se curou
+        state_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
+        stt = state_ref.get().to_dict() or {}
+        pieces = stt.get("pieces") or []
+        dirty = False
+        for p in pieces:
+            if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid):
+                if p.get("status") == "fainted":
+                    p["status"] = "active"
+                    dirty = True
+        if dirty:
+            state_ref.update({"pieces": pieces})
 
 def create_room(db, trainer_name: str, grid_size: int, theme: str, max_active: int = 5):
     my_rooms = list_my_rooms(db, trainer_name)
@@ -1379,12 +1424,9 @@ elif page == "PvP – Arena Tática":
 
 
 # =========================
-    # VIEW: BATTLE (HP, Status e Fainted)
+    # VIEW: BATTLE (Final: Stats Corrigidos)
     # =========================
-# =========================
-    # VIEW: BATTLE (Versão Final: Callbacks e Zero Flickering)
-    # =========================
-    if view == "battle":
+    elif view == "battle":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
@@ -1398,8 +1440,8 @@ elif page == "PvP – Arena Tática":
         # Carrega dados
         state = get_state(db, rid)
         seed = state.get("seed")
-        tiles_packed = state.get("tilesPacked")
-        tiles = unpack_tiles(tiles_packed) if tiles_packed else None
+        packed = state.get("tilesPacked")
+        tiles = unpack_tiles(packed) if packed else None
         
         all_pieces = state.get("pieces") or []
         seen_pids = state.get("seen") or []
@@ -1408,17 +1450,19 @@ elif page == "PvP – Arena Tática":
         ps_doc = db.collection("rooms").document(rid).collection("public_state").document("party_states").get()
         party_states_data = ps_doc.to_dict() or {}
         
-        # Helper de leitura
+        # Helper de leitura robusto
         def get_poke_data(t_name, p_id):
+            # Busca dicionário do treinador, depois dicionário do pokemon
             user_dict = party_states_data.get(t_name, {})
+            # Garante que p_id seja string para buscar no dict
             p_data = user_dict.get(str(p_id), {})
             return p_data.get("hp", 6), p_data.get("cond", [])
 
         # Filtra peças visíveis no mapa
         pieces_to_draw = []
         for p in all_pieces:
-            # Atualiza status fainted visualmente baseado no HP global
             hp_check, _ = get_poke_data(p.get("owner"), p.get("pid"))
+            # Sincronia visual: se HP global é 0, desenha fainted
             if hp_check == 0: 
                 p["status"] = "fainted"
             else:
@@ -1449,7 +1493,6 @@ elif page == "PvP – Arena Tática":
         theme_key = room.get("theme", "cave_water")
         grid = len(tiles) if tiles else 10 
 
-        # CSS Otimizado
         st.markdown("""
         <style>
           .block-container { max-width: 98% !important; padding-top: 1rem; padding-bottom: 5rem; }
@@ -1512,7 +1555,7 @@ elif page == "PvP – Arena Tática":
             for pid in party:
                 is_on_map = pid in my_pids_on_board
                 
-                # Dados atuais
+                # Dados atuais do banco
                 cur_hp, cur_cond = get_poke_data(trainer_name, pid)
                 
                 # Ícone HP
@@ -1527,14 +1570,11 @@ elif page == "PvP – Arena Tática":
                     c_img, c_ctrl = st.columns([1, 2.5])
                     
                     with c_img:
-                        # Se HP 0, usamos a imagem cinza processada ou normal.
-                        # Para evitar flickering, vamos usar normal com filtro CSS ou apenas normal por enquanto.
-                        # O processamento pesado fica só no mapa.
                         st.image(sprite_url, width=60)
                         if cur_hp == 0:
                             st.caption("**FAINTED**")
 
-                        # BOTOES DE ACAO
+                        # BOTOES
                         if is_on_map:
                             piece_obj = next((p for p in my_pieces_on_board if p["pid"] == pid), None)
                             if piece_obj:
@@ -1557,21 +1597,22 @@ elif page == "PvP – Arena Tática":
                                     st.rerun()
 
                     with c_ctrl:
-                        # CONTROLES COM CALLBACK (ZERO FLICKERING)
                         st.markdown(f"**{hp_icon} HP: {cur_hp}/6**")
                         
+                        # SLIDER COM CALLBACK
                         st.slider(
-                            "HP", 0, 6, value=cur_hp, 
-                            key=f"hp_slider_{pid}", 
+                            "HP", 0, 6, value=int(cur_hp), 
+                            key=f"hp_{pid}", # Nome da chave importante para o callback
                             label_visibility="collapsed",
                             on_change=update_poke_state_callback,
                             args=(db, rid, trainer_name, pid)
                         )
                         
+                        # STATUS COM CALLBACK
                         options = ["⚡", "❄️", "🔥", "💤", "☠️", "💓"]
                         st.multiselect(
                             "Status", options, default=cur_cond,
-                            key=f"cond_{pid}",
+                            key=f"cond_{pid}", # Nome da chave importante
                             label_visibility="collapsed",
                             placeholder="Status...",
                             on_change=update_poke_state_callback,
@@ -1584,7 +1625,6 @@ elif page == "PvP – Arena Tática":
             if "selected_piece_id" not in st.session_state:
                 st.session_state["selected_piece_id"] = None
 
-            # Renderiza mapa (Oponente não vê peças ocultas)
             img = render_map_with_pieces(tiles, theme_key, seed, pieces_to_draw, trainer_name)
             click = streamlit_image_coordinates(img, key=f"battle_map_{rid}")
 
@@ -1592,7 +1632,6 @@ elif page == "PvP – Arena Tática":
         with c_opp:
             st.markdown(f"### {opp_label}")
             
-            # Lê Party do Inimigo
             players_doc = db.collection("rooms").document(rid).collection("public_state").document("players").get()
             players_data = players_doc.to_dict() or {}
             opp_party_list = players_data.get(opp_name, []) if opp_name else []
@@ -1615,7 +1654,6 @@ elif page == "PvP – Arena Tática":
                 opp_hp, opp_cond = get_poke_data(opp_name, pid)
                 already_seen = str(pid) in seen_pids
 
-                # Lógica Visual
                 show_full = False
                 status_msg = ""
                 
@@ -2062,6 +2100,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
