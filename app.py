@@ -1300,10 +1300,10 @@ elif page == "PvP – Arena Tática":
     role = get_role(room, trainer_name) if room else "spectator"
     is_player = role in ["owner", "challenger"]
 
-# =========================
+    # =========================
     # VIEW: BATTLE (Tela Principal de Jogo)
     # =========================
-    elif view == "battle":
+    if view == "battle":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
@@ -1810,6 +1810,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
