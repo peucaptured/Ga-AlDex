@@ -10,6 +10,10 @@ import re
 import uuid
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
+from PIL import Image, ImageDraw
+from streamlit_image_coordinates import streamlit_image_coordinates
+import random
+
 
 
 
@@ -359,6 +363,228 @@ def list_public_events(db, rid: str, limit: int = 30):
          .order_by("ts", direction=firestore.Query.DESCENDING)
          .limit(limit))
     return [d.to_dict() for d in q.stream()]
+# =========================
+# MAPA TÁTICO (3.1 / 3.2 / 3.3)
+# =========================
+
+TILE_SIZE = 32
+
+THEMES = {
+    "cave_water": {"base": "rock", "border": "wall"},
+    "forest": {"base": "grass", "border": "tree"},
+    "mountain_slopes": {"base": "stone", "border": "peak"},
+    "plains": {"base": "grass", "border": "bush"},
+    "dirt": {"base": "dirt", "border": "rock"},
+    "river": {"base": "grass", "border": "tree"},
+    "sea_coast": {"base": "sand", "border": "sea"},
+    "center_lake": {"base": "grass", "border": "tree"},
+}
+
+def gen_tiles(grid: int, theme_key: str, seed: int | None = None):
+    if seed is None:
+        seed = random.randint(1, 999999999)
+
+    rng = random.Random(seed)
+    theme = THEMES.get(theme_key, THEMES["cave_water"])
+    base = theme["base"]
+    border = theme["border"]
+
+    tiles = [[base for _ in range(grid)] for _ in range(grid)]
+
+    # bordas sólidas
+    for r in range(grid):
+        tiles[r][0] = border
+        tiles[r][grid - 1] = border
+    for c in range(grid):
+        tiles[0][c] = border
+        tiles[grid - 1][c] = border
+
+    def inside(r, c):
+        return 1 <= r <= grid - 2 and 1 <= c <= grid - 2
+
+    # --- features por tema ---
+    if theme_key == "cave_water":
+        pools = rng.randint(1, 2)
+        for _ in range(pools):
+            cr = rng.randint(2, grid - 3)
+            cc = rng.randint(2, grid - 3)
+            rad = rng.randint(1, 2)
+            for rr in range(cr - rad, cr + rad + 1):
+                for cc2 in range(cc - rad, cc + rad + 1):
+                    if inside(rr, cc2) and rng.random() > 0.25:
+                        tiles[rr][cc2] = "water"
+
+        spikes = rng.randint(1, max(2, grid - 3))
+        for _ in range(spikes):
+            rr = rng.randint(1, grid - 2)
+            cc = rng.randint(1, grid - 2)
+            if inside(rr, cc) and tiles[rr][cc] == base and rng.random() > 0.5:
+                tiles[rr][cc] = "stalagmite"
+
+    elif theme_key == "forest":
+        ponds = rng.randint(0, 2)
+        for _ in range(ponds):
+            cr = rng.randint(2, grid - 3)
+            cc = rng.randint(2, grid - 3)
+            rad = rng.randint(1, 2)
+            for rr in range(cr - rad, cr + rad + 1):
+                for cc2 in range(cc - rad, cc + rad + 1):
+                    if inside(rr, cc2) and rng.random() > 0.35:
+                        tiles[rr][cc2] = "water"
+
+        if rng.random() > 0.4:
+            r = rng.randint(2, grid - 3)
+            for c in range(1, grid - 1):
+                if inside(r, c) and tiles[r][c] != "water":
+                    tiles[r][c] = "path"
+
+    elif theme_key == "mountain_slopes":
+        for r in range(1, grid - 1):
+            for c in range(1, grid - 1):
+                if inside(r, c):
+                    d = r + c
+                    if d % 4 == 0 and rng.random() > 0.25:
+                        tiles[r][c] = "slope1"
+                    elif d % 4 == 2 and rng.random() > 0.35:
+                        tiles[r][c] = "slope2"
+
+        peaks = rng.randint(1, 2)
+        for _ in range(peaks):
+            rr = rng.randint(2, grid - 3)
+            cc = rng.randint(2, grid - 3)
+            tiles[rr][cc] = "peak"
+
+    elif theme_key == "plains":
+        for _ in range(rng.randint(2, grid * 2)):
+            rr = rng.randint(1, grid - 2)
+            cc = rng.randint(1, grid - 2)
+            if inside(rr, cc) and rng.random() > 0.5:
+                tiles[rr][cc] = "flower"
+
+        if rng.random() > 0.5:
+            c = rng.randint(2, grid - 3)
+            for r in range(1, grid - 1):
+                if inside(r, c):
+                    tiles[r][c] = "trail"
+
+    elif theme_key == "dirt":
+        for r in range(1, grid - 1):
+            for c in range(1, grid - 1):
+                if inside(r, c) and rng.random() > 0.85:
+                    tiles[r][c] = "stone"
+
+        if rng.random() > 0.4:
+            r = rng.randint(2, grid - 3)
+            for c in range(1, grid - 1):
+                if inside(r, c) and tiles[r][c] == base:
+                    tiles[r][c] = "rut"
+
+    elif theme_key == "river":
+        r = rng.randint(1, grid - 2)
+        c = 1
+        while c < grid - 1:
+            if inside(r, c):
+                tiles[r][c] = "water"
+                if inside(r - 1, c) and rng.random() > 0.6:
+                    tiles[r - 1][c] = "water"
+            step = rng.choice([-1, 0, 1])
+            r = max(1, min(grid - 2, r + step))
+            c += 1
+
+    elif theme_key == "sea_coast":
+        for r in range(grid):
+            tiles[r][0] = "sea"
+            if grid > 4:
+                tiles[r][1] = "sea" if rng.random() > 0.25 else "sand"
+
+        for _ in range(rng.randint(1, 3)):
+            rr = rng.randint(1, grid - 2)
+            cc = rng.randint(2, grid - 2)
+            if inside(rr, cc) and rng.random() > 0.5:
+                tiles[rr][cc] = "rock"
+
+    elif theme_key == "center_lake":
+        cr = grid // 2
+        cc = grid // 2
+        rad = 2 if grid >= 8 else 1
+        for rr in range(cr - rad, cr + rad + 1):
+            for cc2 in range(cc - rad, cc + rad + 1):
+                if inside(rr, cc2) and (abs(rr - cr) + abs(cc2 - cc) <= rad + 1):
+                    tiles[rr][cc2] = "water"
+
+    return tiles, seed
+
+def draw_tile(draw: ImageDraw.ImageDraw, x: int, y: int, t: str, rng: random.Random):
+    colors = {
+        "rock": (70, 72, 78),
+        "wall": (45, 46, 50),
+        "water": (35, 90, 140),
+        "stalagmite": (90, 92, 98),
+        "grass": (60, 130, 70),
+        "tree": (30, 70, 35),
+        "path": (120, 95, 60),
+        "stone": (95, 96, 100),
+        "peak": (160, 160, 165),
+        "slope1": (120, 120, 125),
+        "slope2": (105, 105, 110),
+        "flower": (150, 80, 110),
+        "trail": (105, 85, 55),
+        "dirt": (110, 85, 55),
+        "rut": (85, 65, 40),
+        "sea": (20, 60, 120),
+        "sand": (180, 165, 120),
+        "bush": (40, 95, 50),
+        "rock": (90, 90, 95),
+    }
+    base = colors.get(t, (200, 0, 200))
+
+    draw.rectangle([x, y, x + TILE_SIZE - 1, y + TILE_SIZE - 1], fill=base)
+
+    for _ in range(18):
+        px = x + rng.randint(0, TILE_SIZE - 1)
+        py = y + rng.randint(0, TILE_SIZE - 1)
+        tweak = rng.randint(-10, 10)
+        c = (max(0, min(255, base[0] + tweak)),
+             max(0, min(255, base[1] + tweak)),
+             max(0, min(255, base[2] + tweak)))
+        draw.point((px, py), fill=c)
+
+    if t in ["water", "sea"]:
+        for _ in range(6):
+            px = x + rng.randint(2, TILE_SIZE - 3)
+            py = y + rng.randint(2, TILE_SIZE - 3)
+            draw.point((px, py), fill=(210, 230, 255))
+
+    if t == "tree":
+        draw.rectangle([x + 10, y + 8, x + 21, y + 24], fill=(20, 55, 25))
+        draw.rectangle([x + 14, y + 24, x + 17, y + 30], fill=(80, 60, 35))
+
+    if t == "stalagmite":
+        draw.polygon([(x + 16, y + 6), (x + 8, y + 26), (x + 24, y + 26)], fill=(120, 120, 125))
+
+    if t == "path":
+        draw.rectangle([x + 2, y + 12, x + TILE_SIZE - 3, y + 20], fill=(150, 120, 80))
+
+def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
+    grid = len(tiles)
+    img = Image.new("RGB", (grid * TILE_SIZE, grid * TILE_SIZE), (0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    rng = random.Random(int(seed or 0) + 1337)
+
+    for r in range(grid):
+        for c in range(grid):
+            x = c * TILE_SIZE
+            y = r * TILE_SIZE
+            draw_tile(draw, x, y, tiles[r][c], rng)
+
+    for r in range(grid + 1):
+        y = r * TILE_SIZE
+        draw.line([(0, y), (grid * TILE_SIZE, y)], fill=(0, 0, 0))
+    for c in range(grid + 1):
+        x = c * TILE_SIZE
+        draw.line([(x, 0), (x, grid * TILE_SIZE)], fill=(0, 0, 0))
+
+    return img
 
 def normalize_text(text):
     if not isinstance(text, str): return str(text)
@@ -789,8 +1015,34 @@ elif page == "PvP – Arena Tática":
     with c1:
         grid = st.selectbox("Tamanho do grid", [4, 6, 8, 10], index=1)
     with c2:
-        theme_label = st.selectbox("Tema", ["Caverna (com água)", "Floresta"], index=0)
-        theme = "cave_water" if "Caverna" in theme_label else "forest"
+    theme_label = st.selectbox(
+        "Tema",
+        [
+            "Caverna (com água)",
+            "Floresta",
+            "Montanha (declives)",
+            "Pradaria",
+            "Terra batida",
+            "Rio",
+            "Mar (costa)",
+            "Lago no centro",
+        ],
+        index=0
+    )
+
+    label_to_key = {
+        "Caverna (com água)": "cave_water",
+        "Floresta": "forest",
+        "Montanha (declives)": "mountain_slopes",
+        "Pradaria": "plains",
+        "Terra batida": "dirt",
+        "Rio": "river",
+        "Mar (costa)": "sea_coast",
+        "Lago no centro": "center_lake",
+    }
+
+    theme = label_to_key[theme_label]
+
     with c3:
         st.write("")
         if st.button("🆕 Criar arena", type="primary"):
@@ -878,7 +1130,7 @@ elif page == "PvP – Arena Tática":
                     st.info(res)
 
     st.markdown("---")
-        # --- Painel da arena ativa ---
+    # --- Painel da arena ativa ---
     rid = st.session_state.get("active_room_id")
     st.subheader("🎮 Arena ativa")
 
@@ -902,48 +1154,110 @@ elif page == "PvP – Arena Tática":
             st.write(f"**Grid:** {room.get('gridSize')}x{room.get('gridSize')}  |  **Tema:** {room.get('theme')}")
             st.write(f"**Owner:** {owner}  |  **Challenger:** {chal_name or '-'}")
             st.write(f"**Espectadores:** {len(room.get('spectators') or [])}")
+                       # =========================
+            # 🗺️ BLOCO DO MAPA (ETAPA 2)
+            # =========================
+            state_ref = (
+                db.collection("rooms")
+                  .document(rid)
+                  .collection("public_state")
+                  .document("state")
+            )
 
-            # --- Última rolagem de dado ---
-            last_events = list_public_events(db, rid, limit=10)
-            last_dice = next((e for e in last_events if e.get("type") == "dice"), None)
-            if last_dice:
-                payload = last_dice.get("payload", {})
-                st.info(
-                    f"🎲 Última rolagem: **d{payload.get('sides')} = {payload.get('result')}** "
-                    f"(por {last_dice.get('by')})"
-                )
+            state_doc = state_ref.get()
+            state = state_doc.to_dict() if state_doc.exists else {}
 
-            # --- Botões de dado ---
-            st.markdown("---")
-            c1, c2, c3 = st.columns([1, 1, 2])
+            grid = int(room.get("gridSize") or 6)
+            theme_key = room.get("theme") or "cave_water"
 
-            with c1:
-                if st.button("🎲 Rolar d20", disabled=not is_player):
-                    r = roll_die(db, rid, trainer_name, sides=20)
-                    st.success(f"Você rolou: **{r}**")
+            tiles = state.get("tiles")
+            seed = state.get("seed")
+
+            if not tiles:
+                if st.button("🗺️ Gerar mapa (pixel art)", disabled=not is_player):
+                    tiles, seed = gen_tiles(grid, theme_key, seed=None)
+
+                    state_ref.set({
+                        "gridSize": grid,
+                        "theme": theme_key,
+                        "seed": seed,
+                        "tiles": tiles,
+                        "updatedAt": firestore.SERVER_TIMESTAMP,
+                    }, merge=True)
+
+                    add_public_event(
+                        db,
+                        rid,
+                        "map_generated",
+                        trainer_name,
+                        {"theme": theme_key, "grid": grid, "seed": seed}
+                    )
+
                     st.rerun()
 
-            with c2:
-                if st.button("🎲 Rolar d6", disabled=not is_player):
-                    r = roll_die(db, rid, trainer_name, sides=6)
-                    st.success(f"Você rolou: **{r}**")
-                    st.rerun()
-
-            with c3:
-                if is_player:
-                    st.caption("A rolagem aparece no **Log público** para jogadores e espectadores.")
-                else:
-                    st.caption("Você está como **espectador**.")
-
-            # --- Log público ---
-            st.markdown("### 📜 Log público (todos veem)")
-            events = list_public_events(db, rid, limit=25)
-            if not events:
-                st.caption("Sem eventos ainda.")
             else:
-                for ev in events:
-                    et = ev.get("type", "?")
-                    by = ev.get("by", "?")
-                    payload = ev.get("payload", {})
-                    st.write(f"- **{et}** — _{by}_ — {payload}")
+                img = render_map_png(tiles, theme_key, seed)
+
+                st.markdown("### 🗺️ Mapa tático")
+                click = streamlit_image_coordinates(img, key=f"map_{rid}")
+
+                if click and "x" in click and "y" in click:
+                    col = int(click["x"] // TILE_SIZE)
+                    row = int(click["y"] // TILE_SIZE)
+
+                    if 0 <= row < grid and 0 <= col < grid:
+                        st.success(f"Célula selecionada: **linha {row}**, **coluna {col}**")
+
+                        add_public_event(
+                            db,
+                            rid,
+                            "cell_click",
+                            trainer_name,
+                            {"row": row, "col": col}
+                        )
+
+                # --- Última rolagem de dado ---
+                last_events = list_public_events(db, rid, limit=10)
+                last_dice = next((e for e in last_events if e.get("type") == "dice"), None)
+                if last_dice:
+                    payload = last_dice.get("payload", {})
+                    st.info(
+                        f"🎲 Última rolagem: **d{payload.get('sides')} = {payload.get('result')}** "
+                        f"(por {last_dice.get('by')})"
+                    )
+
+                # --- Botões de dado ---
+                st.markdown("---")
+                c1, c2, c3 = st.columns([1, 1, 2])
+
+                with c1:
+                    if st.button("🎲 Rolar d20", disabled=not is_player):
+                        r = roll_die(db, rid, trainer_name, sides=20)
+                        st.success(f"Você rolou: **{r}**")
+                        st.rerun()
+
+                with c2:
+                    if st.button("🎲 Rolar d6", disabled=not is_player):
+                        r = roll_die(db, rid, trainer_name, sides=6)
+                        st.success(f"Você rolou: **{r}**")
+                        st.rerun()
+
+                with c3:
+                    if is_player:
+                        st.caption("A rolagem aparece no **Log público** para jogadores e espectadores.")
+                    else:
+                        st.caption("Você está como **espectador**.")
+
+                # --- Log público ---
+                st.markdown("### 📜 Log público (todos veem)")
+                events = list_public_events(db, rid, limit=25)
+                if not events:
+                    st.caption("Sem eventos ainda.")
+                else:
+                    for ev in events:
+                        et = ev.get("type", "?")
+                        by = ev.get("by", "?")
+                        payload = ev.get("payload", {})
+                        st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
