@@ -822,40 +822,75 @@ def draw_tile(draw: ImageDraw.ImageDraw, x: int, y: int, t: str, rng: random.Ran
         draw.rectangle([x + 2, y + 12, x + TILE_SIZE - 3, y + 20], fill=(150, 120, 80))
         
 
+# ==========================================
+# 🛠️ FUNÇÕES DE DESENHO E AUXILIARES (Cole isso abaixo de draw_tile)
+# ==========================================
+
+@st.cache_data(show_spinner=False)
+def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
+    """Gera a imagem base do terreno (chão, pedras, árvores) com cache para não piscar."""
+    grid = len(tiles)
+    img = Image.new("RGB", (grid * TILE_SIZE, grid * TILE_SIZE), (0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    
+    # Usa seed fixa para as texturas não ficarem dançando
+    rng = random.Random(int(seed or 0) + 1337)
+
+    for r in range(grid):
+        for c in range(grid):
+            x = c * TILE_SIZE
+            y = r * TILE_SIZE
+            draw_tile(draw, x, y, tiles[r][c], rng)
+
+    # Linhas da grade
+    for r in range(grid + 1):
+        y = r * TILE_SIZE
+        draw.line([(0, y), (grid * TILE_SIZE, y)], fill=(0, 0, 0))
+    for c in range(grid + 1):
+        x = c * TILE_SIZE
+        draw.line([(x, 0), (x, grid * TILE_SIZE)], fill=(0, 0, 0))
+
+    return img
+
+@st.cache_data(show_spinner=False)
+def fetch_image_pil(url: str) -> Image.Image | None:
+    """Baixa e converte a imagem do Pokémon (Cacheada)."""
+    try:
+        r = requests.get(url, timeout=5)
+        r.raise_for_status()
+        img = Image.open(BytesIO(r.content)).convert("RGBA")
+        return img
+    except Exception:
+        return None
 
 def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, effects=None):
-    # Cria a base do mapa
+    """Desenha Terreno + Efeitos + Pokémons."""
+    # 1. Base do Mapa
     img = render_map_png(tiles, theme_key, seed).convert("RGBA")
     draw = ImageDraw.Draw(img)
     
-    # --- CAMADA 1: EFEITOS DE TERRENO (EMOJIS) ---
-    # Desenhamos antes das peças para ficar no chão
+    # 2. Camada de Efeitos (Itens/Terrenos)
     if effects:
-        # Tenta carregar uma fonte grande para o emoji
         try:
-            # Tenta fontes comuns de linux/windows/mac
+            # Tenta carregar fonte arial ou padrão do sistema
             font_path = "arial.ttf" 
-            if os.name == 'posix': font_path = "DejaVuSans.ttf" # Linux (Streamlit Cloud costuma usar Debian)
+            if os.name == 'posix': font_path = "DejaVuSans.ttf"
             font = ImageFont.truetype(font_path, size=int(TILE_SIZE * 0.8))
         except:
             font = ImageFont.load_default()
 
         for eff in effects:
-            # Garante que as coordenadas sejam inteiros
             try:
                 r, c = int(eff.get("row")), int(eff.get("col"))
+                icon = eff.get("icon", "?")
+                x = c * TILE_SIZE
+                y = r * TILE_SIZE
+                # Centraliza o emoji
+                draw.text((x + 4, y + 2), icon, fill="white", font=font)
             except:
                 continue
 
-            icon = eff.get("icon", "?")
-            
-            x = c * TILE_SIZE
-            y = r * TILE_SIZE
-            
-            # Centraliza o emoji (ajuste fino de posição)
-            draw.text((x + 4, y + 2), icon, fill="white", font=font)
-
-    # --- CAMADA 2: PEÇAS (POKÉMONS) ---
+    # 3. Camada de Peças (Pokémons)
     local_cache = {}
     
     for p in pieces or []:
@@ -863,18 +898,18 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, eff
         c = int(p.get("col", -1))
         if r < 0 or c < 0: continue
 
-        # Filtro de Visibilidade (já aplicado antes, mas reforçando segurança)
-        # BORDAS COLORIDAS
+        # Borda Colorida (Identificação)
         owner = p.get("owner")
         if owner == viewer_name:
-            border_color = (0, 255, 255) # Azul
+            border_color = (0, 255, 255) # Ciano (Você)
         else:
-            border_color = (255, 50, 50) # Vermelho
+            border_color = (255, 50, 50) # Vermelho (Inimigo)
 
         x = c * TILE_SIZE
         y = r * TILE_SIZE
         draw.rectangle([x, y, x + TILE_SIZE - 1, y + TILE_SIZE - 1], outline=border_color, width=3)
 
+        # Imagem do Pokémon
         pid = str(p.get("pid", ""))
         url = pokemon_pid_to_image(pid, mode="sprite")
 
@@ -884,48 +919,17 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, eff
         sprite = local_cache[url]
         if sprite is None: continue
 
+        # Redimensiona e Cola
         sp = sprite.copy()
         sp.thumbnail((TILE_SIZE, TILE_SIZE), Image.Resampling.LANCZOS)
         
-        # Centraliza
+        # Centraliza na célula
         x0 = x + (TILE_SIZE - sp.size[0]) // 2
         y0 = y + (TILE_SIZE - sp.size[1]) // 2
         img.alpha_composite(sp, (x0, y0))
 
-    return img.convert("RGB")    
+    return img.convert("RGB")
 
-# ==========================================
-# ⚡ CORREÇÃO: Função que estava faltando
-# ==========================================
-
-# Adicionamos o cache aqui para o mapa não piscar (recalcula só se mudar o grid/tema)
-@st.cache_data(show_spinner=False)
-def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
-    grid = len(tiles)
-    # Cria a imagem base preta
-    img = Image.new("RGB", (grid * TILE_SIZE, grid * TILE_SIZE), (0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    
-    # Usa seed fixa para as texturas não ficarem dançando
-    rng = random.Random(int(seed or 0) + 1337)
-
-    # Desenha cada quadrado (chão, paredes, árvores)
-    for r in range(grid):
-        for c in range(grid):
-            x = c * TILE_SIZE
-            y = r * TILE_SIZE
-            draw_tile(draw, x, y, tiles[r][c], rng)
-
-    # Desenha as linhas da grade (Grid lines)
-    for r in range(grid + 1):
-        y = r * TILE_SIZE
-        draw.line([(0, y), (grid * TILE_SIZE, y)], fill=(0, 0, 0))
-    for c in range(grid + 1):
-        x = c * TILE_SIZE
-        draw.line([(x, 0), (x, grid * TILE_SIZE)], fill=(0, 0, 0))
-
-    return img
-    
 def normalize_text(text):
     if not isinstance(text, str): return str(text)
     return unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
@@ -2153,65 +2157,3 @@ elif page == "PvP – Arena Tática":
                     by = ev.get("by", "?")
                     payload = ev.get("payload", {})
                     st.write(f"- **{et}** — _{by}_ — {payload}")
-
-                
-                
-                                    
-                                    
-                
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
