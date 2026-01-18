@@ -1516,12 +1516,6 @@ elif page == "PvP – Arena Tática":
                 
                
             
-                img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name)
-                st.markdown("### 🗺️ Mapa tático")
-                click = streamlit_image_coordinates(img, key=f"map_{rid}")
-                
-                      
-
                 # --- Última rolagem de dado ---
                 last_events = list_public_events(db, rid, limit=10)
                 last_dice = next((e for e in last_events if e.get("type") == "dice"), None)
@@ -1638,6 +1632,7 @@ elif page == "PvP – Arena Tática":
                     
                     
                     
+
 
 
 
