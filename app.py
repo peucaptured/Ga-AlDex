@@ -822,6 +822,11 @@ def draw_tile(draw: ImageDraw.ImageDraw, x: int, y: int, t: str, rng: random.Ran
         draw.rectangle([x + 2, y + 12, x + TILE_SIZE - 3, y + 20], fill=(150, 120, 80))
         
 
+
+    
+
+@st.cache_data(show_spinner=False)
+# --- SUBSTITUA A FUNÇÃO render_map_with_pieces POR ESTA ---
 def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, effects=None):
     # Cria a base do mapa
     img = render_map_png(tiles, theme_key, seed).convert("RGBA")
@@ -832,25 +837,27 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, eff
     if effects:
         # Tenta carregar uma fonte grande para o emoji
         try:
-            # Tenta fontes comuns de linux/windows
-            font = ImageFont.truetype("DejaVuSans.ttf", size=int(TILE_SIZE * 0.8))
+            # Tenta fontes comuns de linux/windows/mac
+            font_path = "arial.ttf" 
+            if os.name == 'posix': font_path = "DejaVuSans.ttf" # Linux (Streamlit Cloud costuma usar Debian)
+            font = ImageFont.truetype(font_path, size=int(TILE_SIZE * 0.8))
         except:
-            try:
-                font = ImageFont.truetype("arial.ttf", size=int(TILE_SIZE * 0.8))
-            except:
-                font = ImageFont.load_default()
+            font = ImageFont.load_default()
 
         for eff in effects:
-            r, c = int(eff.get("row")), int(eff.get("col"))
-            icon = eff.get("icon")
+            # Garante que as coordenadas sejam inteiros
+            try:
+                r, c = int(eff.get("row")), int(eff.get("col"))
+            except:
+                continue
+
+            icon = eff.get("icon", "?")
             
             x = c * TILE_SIZE
             y = r * TILE_SIZE
             
-            # Centraliza o emoji
-            # Como calcular tamanho exato de fonte é chato em PIL puro sem lib externa,
-            # vamos chutar o meio aproximado
-            draw.text((x + 5, y + 5), icon, fill="white", font=font)
+            # Centraliza o emoji (ajuste fino de posição)
+            draw.text((x + 4, y + 2), icon, fill="white", font=font)
 
     # --- CAMADA 2: PEÇAS (POKÉMONS) ---
     local_cache = {}
@@ -860,6 +867,7 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, eff
         c = int(p.get("col", -1))
         if r < 0 or c < 0: continue
 
+        # Filtro de Visibilidade (já aplicado antes, mas reforçando segurança)
         # BORDAS COLORIDAS
         owner = p.get("owner")
         if owner == viewer_name:
@@ -883,73 +891,6 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, eff
         sp = sprite.copy()
         sp.thumbnail((TILE_SIZE, TILE_SIZE), Image.Resampling.LANCZOS)
         
-        # --- CORREÇÃO: REMOVIDA LÓGICA DE FICAR CINZA NO MAPA ---
-        # O Pokémon fica colorido mesmo se HP = 0.
-        
-        # Centraliza
-        x0 = x + (TILE_SIZE - sp.size[0]) // 2
-        y0 = y + (TILE_SIZE - sp.size[1]) // 2
-        img.alpha_composite(sp, (x0, y0))
-
-    return img.convert("RGB")
-    
-
-@st.cache_data(show_spinner=False)
-def fetch_image_pil(url: str) -> Image.Image | None:
-    try:
-        r = requests.get(url, timeout=8)
-        r.raise_for_status()
-        img = Image.open(BytesIO(r.content)).convert("RGBA")
-        return img
-    except Exception:
-        return None
-def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str):
-    # Cria a base do mapa
-    img = render_map_png(tiles, theme_key, seed).convert("RGBA")
-    
-    local_cache = {}
-    draw = ImageDraw.Draw(img)
-
-    for p in pieces or []:
-        r = int(p.get("row", -1))
-        c = int(p.get("col", -1))
-        
-        # Ignora peças inválidas
-        if r < 0 or c < 0:
-            continue
-
-        # --- BORDAS COLORIDAS (Quality of Life) ---
-        owner = p.get("owner")
-        if owner == viewer_name:
-            border_color = (0, 255, 255) # Ciano/Azul Neon (Você)
-        else:
-            border_color = (255, 50, 50) # Vermelho (Inimigo)
-
-        x = c * TILE_SIZE
-        y = r * TILE_SIZE
-        
-        # Desenha o quadrado colorido no chão
-        draw.rectangle([x, y, x + TILE_SIZE - 1, y + TILE_SIZE - 1], outline=border_color, width=3)
-        # ------------------------------------------
-
-        pid = str(p.get("pid", ""))
-        url = pokemon_pid_to_image(pid, mode="sprite")
-
-        if url not in local_cache:
-            local_cache[url] = fetch_image_pil(url)
-
-        sprite = local_cache[url]
-        if sprite is None:
-            continue
-
-        # Processa Sprite
-        sp = sprite.copy()
-        sp.thumbnail((TILE_SIZE, TILE_SIZE), Image.Resampling.LANCZOS)
-        
-        # Se estiver desmaiado/fainted, fica cinza
-        if p.get("status") == "fainted":
-            sp = sp.convert("LA").convert("RGBA")
-
         # Centraliza
         x0 = x + (TILE_SIZE - sp.size[0]) // 2
         y0 = y + (TILE_SIZE - sp.size[1]) // 2
@@ -1475,12 +1416,16 @@ elif page == "PvP – Arena Tática":
 
 
 # =========================
-    # VIEW: BATTLE (Efeitos + Visual Fainted Corrigido)
+    # VIEW: BATTLE (Versão "Batch Edit" - Múltiplos Cliques)
     # =========================
-    if view == "battle":
+    elif view == "battle":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
+
+        # Inicia lista temporária de edição se não existir
+        if "pending_effects" not in st.session_state:
+            st.session_state["pending_effects"] = []
 
         # Sync Party
         current_party = user_data.get("party") or []
@@ -1496,8 +1441,11 @@ elif page == "PvP – Arena Tática":
         
         all_pieces = state.get("pieces") or []
         seen_pids = state.get("seen") or []
-        # --- CARREGA EFEITOS DO CAMPO ---
-        field_effects = state.get("effects") or []
+        
+        # --- COMBINA EFEITOS DO BANCO COM OS TEMPORÁRIOS ---
+        db_effects = state.get("effects") or []
+        # A gente soma as listas para mostrar na tela o que já tem + o que você está colocando agora
+        visual_effects = db_effects + st.session_state["pending_effects"]
 
         # Helper HP
         ps_doc = db.collection("rooms").document(rid).collection("public_state").document("party_states").get()
@@ -1507,7 +1455,7 @@ elif page == "PvP – Arena Tática":
             p_data = user_dict.get(str(p_id), {})
             return p_data.get("hp", 6), p_data.get("cond", [])
 
-        # Filtro de Desenho (Peças)
+        # Filtro de Desenho
         pieces_to_draw = []
         for p in all_pieces:
             hp_check, _ = get_poke_data(p.get("owner"), p.get("pid"))
@@ -1545,8 +1493,6 @@ elif page == "PvP – Arena Tática":
           header { visibility: hidden; height: 0px; }
           .stSlider { padding-top: 0px; padding-bottom: 0px; margin-bottom: -15px; }
           .stMultiSelect { padding-bottom: 0px; }
-          /* Classe para imagem cinza */
-          .gray-img { filter: grayscale(100%); opacity: 0.6; }
         </style>
         """, unsafe_allow_html=True)
 
@@ -1558,6 +1504,7 @@ elif page == "PvP – Arena Tática":
                 st.rerun()
         with top[1]:
             if st.button("🔄 Atualizar"):
+                st.session_state["pending_effects"] = [] # Limpa pendências ao atualizar forçado
                 st.rerun()
         with top[2]:
             if st.button("🎲 d20", disabled=not is_player):
@@ -1612,7 +1559,6 @@ elif page == "PvP – Arena Tática":
                 with st.container(border=True):
                     c_img, c_ctrl = st.columns([1, 2.5])
                     with c_img:
-                        # TRUQUE VISUAL: Se HP 0, usa HTML para aplicar filtro grayscale NA MOCHILA
                         if cur_hp == 0:
                             st.markdown(f'<img src="{sprite_url}" style="width:100%; filter:grayscale(100%); opacity:0.6;">', unsafe_allow_html=True)
                             st.caption("**FAINTED**")
@@ -1634,11 +1580,10 @@ elif page == "PvP – Arena Tática":
                                     add_public_event(db, rid, "pokemon_removed", trainer_name, {"pid": pid})
                                     st.rerun()
                         else:
-                            # Só permite colocar se tiver HP
                             if cur_hp > 0:
                                 if st.button("📍 Por", key=f"p_{pid}"):
                                     st.session_state["placing_pid"] = pid
-                                    st.session_state["placing_effect"] = None # Limpa efeito se houver
+                                    st.session_state["placing_effect"] = None 
                                     st.rerun()
 
                     with c_ctrl:
@@ -1647,44 +1592,75 @@ elif page == "PvP – Arena Tática":
                         options = ["⚡", "❄️", "🔥", "💤", "☠️", "💓"]
                         st.multiselect("Status", options, default=cur_cond, key=f"cond_{pid}", label_visibility="collapsed", placeholder="Status...", on_change=update_poke_state_callback, args=(db, rid, trainer_name, pid))
 
-        # --- 2. MAPA E FERRAMENTAS ---
+        # --- 2. MAPA ---
         with c_map:
             st.markdown("### 🗺️ Arena")
             
-            # --- FERRAMENTAS DE MESTRE/JOGADOR ---
-            # Só Ezenek ou Jogadores podem colocar efeitos
             can_edit_map = (trainer_name == "Ezenek" or is_player)
             
             with st.expander("🛠️ Itens e Terrenos", expanded=False):
                 if can_edit_map:
-                    # Lista de itens solicitados
                     effects_map = {
                         "Fogo": "🔥", "Gelo": "🧊", "Água": "💧", "Rocha": "🪨",
                         "Nuvem": "☁️", "Sol": "☀️", "Floco": "❄️", "Folha": "🍃",
                         "Fada": "✨", "Raio": "⚡", "Colher": "🥄", "Deserto": "🌵"
                     }
                     
-                    # Layout de botões lado a lado
+                    # Seletor de Item Atual
+                    curr_eff = st.session_state.get("placing_effect")
+                    if curr_eff:
+                        st.info(f"🔹 Item selecionado: {curr_eff} (Clique no mapa para adicionar)")
+                    else:
+                        st.caption("Selecione um item abaixo:")
+
                     cols_eff = st.columns(6)
                     for i, (name, icon) in enumerate(effects_map.items()):
                         with cols_eff[i % 6]:
-                            if st.button(f"{icon}", key=f"eff_{name}", help=f"Colocar {name}"):
+                            # Se este for o item ativo, destaca
+                            is_active = (icon == curr_eff)
+                            type_btn = "primary" if is_active else "secondary"
+                            
+                            if st.button(f"{icon}", key=f"eff_{name}", type=type_btn, help=f"Colocar {name}"):
                                 st.session_state["placing_effect"] = icon
-                                st.session_state["placing_pid"] = None # Limpa pokemon se houver
-                                st.toast(f"Clique no mapa para colocar {icon}")
+                                st.session_state["placing_pid"] = None 
+                                st.rerun()
                     
                     st.write("")
-                    if st.button("🧹 Varrer Campo (Limpar Efeitos)", type="primary"):
-                        db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": []})
-                        st.rerun()
+                    # --- ÁREA DE CONTROLE DE EDIÇÃO ---
+                    col_save, col_undo, col_clear = st.columns(3)
+                    
+                    # Botão para Commit (Salvar no DB)
+                    pending_count = len(st.session_state["pending_effects"])
+                    with col_save:
+                        if pending_count > 0:
+                            if st.button(f"💾 Salvar ({pending_count})", type="primary"):
+                                final_list = db_effects + st.session_state["pending_effects"]
+                                db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": final_list})
+                                st.session_state["pending_effects"] = [] # Limpa a fila
+                                st.toast("Alterações salvas!", icon="✅")
+                                st.rerun()
+                        else:
+                            st.button("💾 Salvar", disabled=True)
+                            
+                    with col_undo:
+                         if pending_count > 0:
+                             if st.button("↩️ Desfazer"):
+                                 st.session_state["pending_effects"].pop()
+                                 st.rerun()
+
+                    with col_clear:
+                        if st.button("🧹 Limpar Tudo"):
+                            db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": []})
+                            st.session_state["pending_effects"] = []
+                            st.rerun()
                 else:
                     st.caption("Apenas Jogadores e Mestre podem alterar o terreno.")
 
             if "selected_piece_id" not in st.session_state:
                 st.session_state["selected_piece_id"] = None
 
-            # Renderiza Mapa (Passamos os Efeitos agora!)
-            img = render_map_with_pieces(tiles, theme_key, seed, pieces_to_draw, trainer_name, effects=field_effects)
+            # Renderiza Mapa (Passamos Visual Effects = DB + Pending)
+            img = render_map_with_pieces(tiles, theme_key, seed, pieces_to_draw, trainer_name, effects=visual_effects)
             click = streamlit_image_coordinates(img, key=f"battle_map_{rid}")
 
         # --- 3. INIMIGO ---
@@ -1710,7 +1686,6 @@ elif page == "PvP – Arena Tática":
                 opp_hp, opp_cond = get_poke_data(opp_name, pid)
                 already_seen = str(pid) in seen_pids
                 
-                # Visual Logic
                 show_full = False
                 status_msg = ""
                 if found_on_board:
@@ -1753,7 +1728,7 @@ elif page == "PvP – Arena Tática":
                         st.caption("Desconhecido")
 
         # =========================
-        # LÓGICA DE CLIQUE
+        # CLIQUE
         # =========================
         if click and "x" in click and "y" in click:
             col = int(click["x"] // TILE_SIZE)
@@ -1765,24 +1740,16 @@ elif page == "PvP – Arena Tática":
                 placing_effect = st.session_state.get("placing_effect")
                 sel = st.session_state.get("selected_piece_id")
 
-                # --- 1. COLOCAR EFEITO ---
+                # --- 1. COLOCAR EFEITO (Modo Rápido / Batch) ---
                 if placing_effect:
-                    # Adiciona efeito na lista de efeitos do estado
-                    current_effects = state.get("effects") or []
-                    # Verifica se já tem efeito ali, se tiver substitui
-                    # Filtra removendo efeito antigo nessa pos
-                    new_effects = [e for e in current_effects if not (int(e["row"]) == row and int(e["col"]) == col)]
-                    
-                    new_effects.append({
+                    # Adiciona à lista temporária (Local)
+                    st.session_state["pending_effects"].append({
                         "icon": placing_effect,
                         "row": row,
                         "col": col,
                         "id": str(uuid.uuid4())[:8]
                     })
-                    
-                    db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": new_effects})
-                    st.toast(f"Item {placing_effect} colocado!", icon="✨")
-                    # Não limpa o placing_effect para permitir colocar vários seguidos
+                    # Rerun rápido (apenas local, não vai no DB ainda)
                     st.rerun()
 
                 # --- 2. COLOCAR POKEMON ---
@@ -2164,6 +2131,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
