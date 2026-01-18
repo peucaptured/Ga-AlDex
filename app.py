@@ -1015,33 +1015,33 @@ elif page == "PvP – Arena Tática":
     with c1:
         grid = st.selectbox("Tamanho do grid", [4, 6, 8, 10], index=1)
     with c2:
-    theme_label = st.selectbox(
-        "Tema",
-        [
-            "Caverna (com água)",
-            "Floresta",
-            "Montanha (declives)",
-            "Pradaria",
-            "Terra batida",
-            "Rio",
-            "Mar (costa)",
-            "Lago no centro",
-        ],
-        index=0
-    )
+        theme_label = st.selectbox(
+            "Tema",
+            [
+                "Caverna (com água)",
+                "Floresta",
+                "Montanha (declives)",
+                "Pradaria",
+                "Terra batida",
+                "Rio",
+                "Mar (costa)",
+                "Lago no centro",
+            ],
+            index=0
+        )
 
-    label_to_key = {
-        "Caverna (com água)": "cave_water",
-        "Floresta": "forest",
-        "Montanha (declives)": "mountain_slopes",
-        "Pradaria": "plains",
-        "Terra batida": "dirt",
-        "Rio": "river",
-        "Mar (costa)": "sea_coast",
-        "Lago no centro": "center_lake",
-    }
+        label_to_key = {
+            "Caverna (com água)": "cave_water",
+            "Floresta": "forest",
+            "Montanha (declives)": "mountain_slopes",
+            "Pradaria": "plains",
+            "Terra batida": "dirt",
+            "Rio": "river",
+            "Mar (costa)": "sea_coast",
+            "Lago no centro": "center_lake",
+        }
 
-    theme = label_to_key[theme_label]
+        theme = label_to_key[theme_label]
 
     with c3:
         st.write("")
@@ -1259,5 +1259,6 @@ elif page == "PvP – Arena Tática":
                         by = ev.get("by", "?")
                         payload = ev.get("payload", {})
                         st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
