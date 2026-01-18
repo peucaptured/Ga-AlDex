@@ -1323,7 +1323,10 @@ elif page == "PvP – Arena Tática":
 # =========================
     # VIEW: BATTLE (Versão Final: Invisibilidade Real no Mapa)
     # =========================
-    if view == "battle":
+# =========================
+    # VIEW: BATTLE (Bordas Coloridas + Lógica de Pokébola)
+    # =========================
+    elif view == "battle":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
@@ -1333,20 +1336,21 @@ elif page == "PvP – Arena Tática":
         packed = state.get("tilesPacked")
         tiles = unpack_tiles(packed) if packed else None
         
-        # Carrega TODAS as peças (para lógica de colisão e lista)
         all_pieces = state.get("pieces") or []
         
-        # --- FILTRO DE VISIBILIDADE DO MAPA ---
-        # Regra: Só desenha no mapa se for MINHA ou se estiver REVELADA.
+        # --- FILTRO DE VISÃO DO MAPA ---
+        # Regra: Só mando para o desenhista o que deve aparecer VISUALMENTE.
         pieces_to_draw = []
         for p in all_pieces:
+            # Eu vejo tudo que é meu
             if p.get("owner") == trainer_name:
                 pieces_to_draw.append(p)
+            # Vejo inimigo APENAS se estiver REVELADO
             elif p.get("revealed", True):
                 pieces_to_draw.append(p)
-            # Se for do inimigo e revealed=False, NÃO adiciona (fica invisível no mapa)
+            # Se for inimigo oculto, ele NÃO entra nesta lista, logo não aparece no mapa.
         
-        # --- DEFINIÇÃO DE NOMES ---
+        # --- NOMES ---
         owner_name = (room.get("owner") or {}).get("name", "Host")
         chal_name = (room.get("challenger") or {}).get("name", "Desafiante")
         
@@ -1360,7 +1364,6 @@ elif page == "PvP – Arena Tática":
             my_label = "🎒 Jogador 1"
             opp_label = "🆚 Jogador 2"
 
-        # --- VARIÁVEIS DO MAPA ---
         theme_key = room.get("theme", "cave_water")
         grid = len(tiles) if tiles else 10 
 
@@ -1372,7 +1375,7 @@ elif page == "PvP – Arena Tática":
         </style>
         """, unsafe_allow_html=True)
 
-        # --- BARRA SUPERIOR ---
+        # --- MENU ---
         top = st.columns([1, 1, 1, 1, 4])
         with top[0]:
             if st.button("⬅️ Lobby"):
@@ -1397,7 +1400,7 @@ elif page == "PvP – Arena Tática":
                 pl = last_dice.get("payload", {})
                 st.info(f"🎲 **{last_dice.get('by')}** rolou **{pl.get('result')}** (d{pl.get('sides')})")
 
-        with st.expander("📜 Histórico de Ações", expanded=False):
+        with st.expander("📜 Histórico", expanded=False):
             events = list_public_events(db, rid, limit=25)
             for ev in events:
                 icon = "🎲" if ev['type'] == 'dice' else "⚔️"
@@ -1408,11 +1411,11 @@ elif page == "PvP – Arena Tática":
             st.stop()
 
         # =========================
-        # LAYOUT DE 3 COLUNAS
+        # LAYOUT
         # =========================
         c_bag, c_map, c_opp = st.columns([1, 3.5, 1])
 
-        # --- COLUNA 1: VOCÊ (MOCHILA) ---
+        # --- 1. VOCÊ ---
         with c_bag:
             st.markdown(f"### {my_label}")
             party = user_data.get("party") or []
@@ -1433,48 +1436,50 @@ elif page == "PvP – Arena Tática":
                         if is_on_map:
                             piece_obj = next((p for p in my_pieces_on_board if p["pid"] == pid), None)
                             
+                            # Botão Remover
                             if st.button("❌ Tirar", key=f"rm_{pid}", use_container_width=True):
                                 if piece_obj:
                                     delete_piece(db, rid, piece_obj["id"])
                                     add_public_event(db, rid, "pokemon_removed", trainer_name, {"pid": pid})
                                     st.rerun()
                             
+                            # Botão Ocultar/Revelar (Controle de Pokébola)
                             if piece_obj:
                                 is_rev = piece_obj.get("revealed", True)
-                                btn_label = "👁️ Ocultar" if is_rev else "Oculto"
-                                btn_type = "secondary" if is_rev else "primary"
+                                btn_label = "👁️ Ocultar" if is_rev else "✅ Revelar"
+                                btn_help = "Ocultar = Pokébola para o inimigo. Revelar = Sprite."
                                 
-                                if st.button(btn_label, key=f"vis_{pid}", type=btn_type, use_container_width=True):
+                                if st.button(btn_label, key=f"vis_{pid}", help=btn_help, use_container_width=True):
                                     piece_obj["revealed"] = not is_rev
                                     upsert_piece(db, rid, piece_obj)
                                     st.rerun()
                         else:
                             if st.button("📍 Por", key=f"put_{pid}", use_container_width=True):
                                 st.session_state["placing_pid"] = pid
-                                st.toast(f"Modo colocação: clique no mapa para por {pid}")
+                                st.toast(f"Clique no mapa para colocar {pid}")
                                 st.rerun()
 
-        # --- COLUNA 2: MAPA ---
+        # --- 2. MAPA ---
         with c_map:
             st.markdown("### 🗺️ Campo de Batalha")
-            
             if "selected_piece_id" not in st.session_state:
                 st.session_state["selected_piece_id"] = None
 
-            # AQUI ESTÁ A MÁGICA: Passamos 'pieces_to_draw' (filtrado), não 'all_pieces'.
-            # Oponente não vê peças ocultas.
+            # Renderiza APENAS pieces_to_draw (já filtrado)
+            # A função render agora adiciona as bordas coloridas
             img = render_map_with_pieces(tiles, theme_key, seed, pieces_to_draw, trainer_name)
             
             click = streamlit_image_coordinates(img, key=f"battle_map_{rid}")
 
-        # --- COLUNA 3: INIMIGO (LISTA) ---
+        # --- 3. INIMIGO ---
         with c_opp:
             st.markdown(f"### {opp_label}")
             
+            # Pega peças do inimigo
             opp_pieces = [p for p in all_pieces if p.get("owner") != trainer_name]
             
             if not opp_pieces:
-                st.caption("Nenhum Pokémon em campo.")
+                st.caption("Nenhum Pokémon.")
             
             for p in opp_pieces:
                 revealed = p.get("revealed", True)
@@ -1482,18 +1487,22 @@ elif page == "PvP – Arena Tática":
                 
                 with st.container(border=True):
                     if revealed:
+                        # REVELADO: Vê imagem e nome
                         url = pokemon_pid_to_image(pid, mode="sprite")
                         st.image(url, width=50)
+                        
                         p_name = pid
                         row_p = df[df["Nº"].astype(str) == str(pid)]
                         if not row_p.empty: p_name = row_p.iloc[0]["Nome"]
                         st.caption(f"**{p_name}**")
                     else:
+                        # OCULTO: Vê apenas Pokébola
                         st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=40)
-                        st.caption("❓ Desconhecido")
+                        st.caption("**❓ Desconhecido**")
+                        st.caption("_(Ainda na Pokébola)_")
 
         # =========================
-        # LÓGICA DO CLIQUE
+        # CLIQUE
         # =========================
         if click and "x" in click and "y" in click:
             col = int(click["x"] // TILE_SIZE)
@@ -1504,7 +1513,7 @@ elif page == "PvP – Arena Tática":
                 placing_pid = st.session_state.get("placing_pid")
                 sel = st.session_state.get("selected_piece_id")
 
-                # --- A. COLOCAR ---
+                # A. COLOCAR
                 if placing_pid:
                     state_now = get_state(db, rid)
                     current_all = state_now.get("pieces") or []
@@ -1518,7 +1527,7 @@ elif page == "PvP – Arena Tática":
                             "pid": placing_pid,
                             "owner": trainer_name,
                             "row": row, "col": col,
-                            "revealed": True,
+                            "revealed": True, # Entra revelado por padrão (use o botão para ocultar)
                             "status": "active"
                         }
                         upsert_piece(db, rid, new_piece)
@@ -1526,21 +1535,18 @@ elif page == "PvP – Arena Tática":
                         st.session_state.pop("placing_pid", None)
                         st.rerun()
 
-                # --- B. SELECIONAR / MOVER ---
+                # B. SELECIONAR / MOVER
                 else:
                     state_now = get_state(db, rid)
                     current_all = state_now.get("pieces") or []
                     clicked_piece = find_piece_at(current_all, row, col)
             
-                    # 1) Clique em peça
+                    # Clique em peça
                     if clicked_piece is not None:
-                        # Se for INIMIGO e estiver OCULTO, eu não consigo clicar (porque ele não existe pra mim no mapa visualmente)
-                        # Mas se por acaso clicar no 'vazio' onde ele está, entra na lógica de 'Mover para vazio' abaixo.
-                        
+                        # Se for inimigo
                         if clicked_piece.get("owner") != trainer_name:
-                             # Se estiver oculto, o código visual nem mostra a peça, 
-                             # então o usuário vai achar que clicou no chão vazio (vai cair no 'else' abaixo).
-                             # Se estiver visível, avisa que não é dele.
+                            # Se estiver oculto, visualmente não tem nada lá, então é estranho clicar.
+                            # Mas se clicar, avisa.
                             st.toast("Essa peça não é sua.", icon="🔒")
                         else:
                             pid_clk = clicked_piece.get("id")
@@ -1552,7 +1558,7 @@ elif page == "PvP – Arena Tática":
                                 st.toast("Selecionado!", icon="✅")
                         st.rerun()
             
-                    # 2) Clique no vazio (Mover)
+                    # Clique no vazio (Mover)
                     else:
                         if not is_player:
                             st.warning("Espectador não move.")
@@ -1565,9 +1571,8 @@ elif page == "PvP – Arena Tática":
                                 st.session_state.pop("selected_piece_id", None)
                                 st.rerun()
             
-                            # Colisão: Se tiver alguém lá (mesmo invisível), bloqueia.
                             if find_piece_at(current_all, row, col):
-                                st.toast("Algo bloqueia o caminho (Célula ocupada).", icon="🚫")
+                                st.toast("Célula ocupada.", icon="🚫")
                             else:
                                 moving["row"] = int(row)
                                 moving["col"] = int(col)
@@ -1578,6 +1583,7 @@ elif page == "PvP – Arena Tática":
                                 st.rerun()
 
         st.stop()
+        
     elif view == "lobby":
         # --- Painel: criar arena ---
         st.subheader("➕ Criar nova arena")
@@ -1892,6 +1898,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
