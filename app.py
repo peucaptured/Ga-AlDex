@@ -1194,6 +1194,9 @@ elif page == "PvP – Arena Tática":
                     tiles, seed = gen_tiles(grid, theme_key, seed=None)
 
                     packed = pack_tiles(tiles)
+                    # DEBUG (temporário)
+                    st.write("DEBUG types:", type(grid), type(theme_key), type(seed), type(packed))
+                    st.write("DEBUG packed len:", len(packed) if packed else None)
                     
                     state_ref.set({
                         "gridSize": grid,
