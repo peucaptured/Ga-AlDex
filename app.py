@@ -861,30 +861,40 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
     return img
 
 def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, effects=None):
-    # 1. Base do Mapa
+    # 1. Base do Mapa (Cacheada)
     img = render_map_png(tiles, theme_key, seed).convert("RGBA")
     draw = ImageDraw.Draw(img)
     
-    # 2. Camada de Efeitos (Gelo, Fogo, etc)
-    if effects:
-        try:
-            # Tenta carregar uma fonte melhor, ou usa padrão
-            font_path = "arial.ttf" if os.name == 'nt' else "DejaVuSans.ttf"
-            font = ImageFont.truetype(font_path, size=int(TILE_SIZE * 0.8))
-        except:
-            font = ImageFont.load_default()
+    # Tenta carregar fonte para emojis
+    try:
+        font_path = "arial.ttf" if os.name == 'nt' else "DejaVuSans.ttf"
+        # Tamanho grande para parecer um sprite
+        font = ImageFont.truetype(font_path, size=int(TILE_SIZE * 0.8))
+        offset_x, offset_y = 4, 2 # Ajuste fino
+    except:
+        font = ImageFont.load_default()
+        offset_x, offset_y = 10, 10
 
+    # 2. Camada de Efeitos (Desenhados como peças no chão)
+    if effects:
         for eff in effects:
             try:
                 r, c = int(eff.get("row")), int(eff.get("col"))
                 icon = eff.get("icon", "?")
+                
+                # Coordenadas
                 x = c * TILE_SIZE
                 y = r * TILE_SIZE
-                draw.text((x + 4, y + 2), icon, fill="white", font=font)
+                
+                # Desenha um fundo semitransparente suave para destacar o item
+                draw.ellipse([x+4, y+4, x+TILE_SIZE-4, y+TILE_SIZE-4], fill=(0, 0, 0, 50))
+                
+                # Desenha o ícone
+                draw.text((x + offset_x, y + offset_y), icon, fill="white", font=font)
             except:
                 continue
 
-    # 3. Camada de Peças
+    # 3. Camada de Pokémons
     local_cache = {}
     
     for p in pieces or []:
@@ -893,13 +903,13 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, eff
         if r < 0 or c < 0: continue
 
         owner = p.get("owner")
-        if owner == viewer_name:
-            border_color = (0, 255, 255)
-        else:
-            border_color = (255, 50, 50)
+        # Borda Ciano (Você) ou Vermelha (Inimigo)
+        border_color = (0, 255, 255) if owner == viewer_name else (255, 50, 50)
 
         x = c * TILE_SIZE
         y = r * TILE_SIZE
+        
+        # Desenha borda
         draw.rectangle([x, y, x + TILE_SIZE - 1, y + TILE_SIZE - 1], outline=border_color, width=3)
 
         pid = str(p.get("pid", ""))
@@ -914,11 +924,13 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, eff
         sp = sprite.copy()
         sp.thumbnail((TILE_SIZE, TILE_SIZE), Image.Resampling.LANCZOS)
         
+        # Centraliza
         x0 = x + (TILE_SIZE - sp.size[0]) // 2
         y0 = y + (TILE_SIZE - sp.size[1]) // 2
         img.alpha_composite(sp, (x0, y0))
 
     return img.convert("RGB")
+    
 def normalize_text(text):
     if not isinstance(text, str): return str(text)
     return unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
@@ -1439,14 +1451,17 @@ elif page == "PvP – Arena Tática":
 # =========================
     # VIEW: BATTLE (Versão "Batch Edit" - Múltiplos Cliques)
     # =========================
-    if view == "battle":
+# =========================
+    # VIEW: BATTLE (Estável - Sem Flicker)
+    # =========================
+    elif view == "battle":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
 
-        # Inicia lista temporária de edição se não existir
-        if "pending_effects" not in st.session_state:
-            st.session_state["pending_effects"] = []
+        # --- CONTROLE DE CLIQUES (ANTI-FLICKER) ---
+        if "last_click_processed" not in st.session_state:
+            st.session_state["last_click_processed"] = None
 
         # Sync Party
         current_party = user_data.get("party") or []
@@ -1462,11 +1477,7 @@ elif page == "PvP – Arena Tática":
         
         all_pieces = state.get("pieces") or []
         seen_pids = state.get("seen") or []
-        
-        # --- COMBINA EFEITOS DO BANCO COM OS TEMPORÁRIOS ---
-        db_effects = state.get("effects") or []
-        # A gente soma as listas para mostrar na tela o que já tem + o que você está colocando agora
-        visual_effects = db_effects + st.session_state["pending_effects"]
+        field_effects = state.get("effects") or []
 
         # Helper HP
         ps_doc = db.collection("rooms").document(rid).collection("public_state").document("party_states").get()
@@ -1480,8 +1491,7 @@ elif page == "PvP – Arena Tática":
         pieces_to_draw = []
         for p in all_pieces:
             hp_check, _ = get_poke_data(p.get("owner"), p.get("pid"))
-            if hp_check == 0: p["status"] = "fainted"
-            else: p["status"] = "active"
+            p["status"] = "fainted" if hp_check == 0 else "active"
 
             if p.get("owner") == trainer_name:
                 pieces_to_draw.append(p)
@@ -1525,7 +1535,6 @@ elif page == "PvP – Arena Tática":
                 st.rerun()
         with top[1]:
             if st.button("🔄 Atualizar"):
-                st.session_state["pending_effects"] = [] # Limpa pendências ao atualizar forçado
                 st.rerun()
         with top[2]:
             if st.button("🎲 d20", disabled=not is_player):
@@ -1627,69 +1636,39 @@ elif page == "PvP – Arena Tática":
                         "Fada": "✨", "Raio": "⚡", "Colher": "🥄", "Deserto": "🌵"
                     }
                     
-                    # Seletor de Item Atual
                     curr_eff = st.session_state.get("placing_effect")
                     if curr_eff:
-                        st.info(f"🔹 Item selecionado: {curr_eff} (Clique no mapa para adicionar)")
+                        st.info(f"🔹 Item selecionado: {curr_eff} (Clique no mapa para colocar)")
                     else:
-                        st.caption("Selecione um item abaixo:")
+                        st.caption("Clique para selecionar um item:")
 
                     cols_eff = st.columns(6)
                     for i, (name, icon) in enumerate(effects_map.items()):
                         with cols_eff[i % 6]:
-                            # Lógica visual do botão
                             is_active = (icon == curr_eff)
                             type_btn = "primary" if is_active else "secondary"
                             
-                            # Botão com lógica de Toggle (Ligar/Desligar)
+                            # Botão funciona como Toggle (Liga/Desliga)
                             if st.button(f"{icon}", key=f"eff_{name}", type=type_btn, help=f"Colocar {name}"):
                                 if is_active:
-                                    # Se já estava ativo, desativa (Desselecionar)
                                     st.session_state["placing_effect"] = None
                                 else:
-                                    # Se não, ativa
                                     st.session_state["placing_effect"] = icon
-                                
-                                # Garante que não está colocando Pokémon ao mesmo tempo
                                 st.session_state["placing_pid"] = None 
                                 st.rerun()
-                                        
-                    st.write("")
-                    # --- ÁREA DE CONTROLE DE EDIÇÃO ---
-                    col_save, col_undo, col_clear = st.columns(3)
                     
-                    # Botão para Commit (Salvar no DB)
-                    pending_count = len(st.session_state["pending_effects"])
-                    with col_save:
-                        if pending_count > 0:
-                            if st.button(f"💾 Salvar ({pending_count})", type="primary"):
-                                final_list = db_effects + st.session_state["pending_effects"]
-                                db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": final_list})
-                                st.session_state["pending_effects"] = [] # Limpa a fila
-                                st.toast("Alterações salvas!", icon="✅")
-                                st.rerun()
-                        else:
-                            st.button("💾 Salvar", disabled=True)
-                            
-                    with col_undo:
-                         if pending_count > 0:
-                             if st.button("↩️ Desfazer"):
-                                 st.session_state["pending_effects"].pop()
-                                 st.rerun()
-
-                    with col_clear:
-                        if st.button("🧹 Limpar Tudo"):
-                            db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": []})
-                            st.session_state["pending_effects"] = []
-                            st.rerun()
+                    st.write("")
+                    if st.button("🧹 Varrer Campo (Limpar Tudo)", type="primary"):
+                        db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": []})
+                        st.rerun()
                 else:
                     st.caption("Apenas Jogadores e Mestre podem alterar o terreno.")
 
             if "selected_piece_id" not in st.session_state:
                 st.session_state["selected_piece_id"] = None
 
-            # Renderiza Mapa (Passamos Visual Effects = DB + Pending)
-            img = render_map_with_pieces(tiles, theme_key, seed, pieces_to_draw, trainer_name, effects=visual_effects)
+            # Renderiza (Efeitos vêm do banco agora)
+            img = render_map_with_pieces(tiles, theme_key, seed, pieces_to_draw, trainer_name, effects=field_effects)
             click = streamlit_image_coordinates(img, key=f"battle_map_{rid}")
 
         # --- 3. INIMIGO ---
@@ -1757,28 +1736,53 @@ elif page == "PvP – Arena Tática":
                         st.caption("Desconhecido")
 
         # =========================
-        # CLIQUE
+        # LÓGICA DE CLIQUE (CRÍTICO: PROTEÇÃO ANTI-LOOP)
         # =========================
         if click and "x" in click and "y" in click:
+            
+            # --- CHECAGEM DE CLIQUE REPETIDO ---
+            # O Streamlit envia o mesmo 'click' a cada rerun se o usuário não clicou de novo.
+            # Verificamos se as coordenadas exatas já foram processadas.
+            current_click_signature = f"{click['x']}_{click['y']}_{datetime.now().timestamp()}"
+            
+            # Usamos uma verificação mais simples baseada em coordenadas brutas
+            click_coords = (click['x'], click['y'])
+            last_coords = st.session_state.get("last_click_coords")
+            
+            # Se as coordenadas são idênticas ao último clique processado E não houve mudança de intenção, pular.
+            # Mas cuidado: o usuário pode querer clicar no mesmo lugar para outra coisa. 
+            # A melhor forma é: processou? limpa a ação OU marca processado.
+            
             col = int(click["x"] // TILE_SIZE)
             row = int(click["y"] // TILE_SIZE)
             
-            if 0 <= row < grid and 0 <= col < grid:
+            # Se clicou fora do grid, ignora
+            if not (0 <= row < grid and 0 <= col < grid):
+                st.stop()
+
+            # Se as coordenadas mudaram em relação ao último processamento, é um NOVO clique.
+            if click_coords != last_coords:
+                st.session_state["last_click_coords"] = click_coords
                 
                 placing_pid = st.session_state.get("placing_pid")
                 placing_effect = st.session_state.get("placing_effect")
                 sel = st.session_state.get("selected_piece_id")
 
-                # --- 1. COLOCAR EFEITO (Modo Rápido / Batch) ---
+                # --- 1. COLOCAR EFEITO (DIRETO NO BANCO) ---
                 if placing_effect:
-                    # Adiciona à lista temporária (Local)
-                    st.session_state["pending_effects"].append({
+                    current_effects = state.get("effects") or []
+                    # Remove se já existir algo nessa posição (substitui)
+                    new_effects = [e for e in current_effects if not (int(e["row"]) == row and int(e["col"]) == col)]
+                    
+                    new_effects.append({
                         "icon": placing_effect,
                         "row": row,
                         "col": col,
                         "id": str(uuid.uuid4())[:8]
                     })
-                    # Rerun rápido (apenas local, não vai no DB ainda)
+                    
+                    db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": new_effects})
+                    # NÃO fazemos st.toast aqui para evitar spam visual, pois a atualização é visualmente óbvia
                     st.rerun()
 
                 # --- 2. COLOCAR POKEMON ---
@@ -2154,4 +2158,5 @@ elif page == "PvP – Arena Tática":
                     by = ev.get("by", "?")
                     payload = ev.get("payload", {})
                     st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
