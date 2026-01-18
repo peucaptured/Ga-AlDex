@@ -823,10 +823,6 @@ def draw_tile(draw: ImageDraw.ImageDraw, x: int, y: int, t: str, rng: random.Ran
         
 
 
-    
-
-@st.cache_data(show_spinner=False)
-# --- SUBSTITUA A FUNÇÃO render_map_with_pieces POR ESTA ---
 def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, effects=None):
     # Cria a base do mapa
     img = render_map_png(tiles, theme_key, seed).convert("RGBA")
@@ -896,7 +892,39 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, eff
         y0 = y + (TILE_SIZE - sp.size[1]) // 2
         img.alpha_composite(sp, (x0, y0))
 
-    return img.convert("RGB")
+    return img.convert("RGB")    
+
+# ==========================================
+# ⚡ CORREÇÃO: Função que estava faltando
+# ==========================================
+
+# Adicionamos o cache aqui para o mapa não piscar (recalcula só se mudar o grid/tema)
+@st.cache_data(show_spinner=False)
+def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
+    grid = len(tiles)
+    # Cria a imagem base preta
+    img = Image.new("RGB", (grid * TILE_SIZE, grid * TILE_SIZE), (0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    
+    # Usa seed fixa para as texturas não ficarem dançando
+    rng = random.Random(int(seed or 0) + 1337)
+
+    # Desenha cada quadrado (chão, paredes, árvores)
+    for r in range(grid):
+        for c in range(grid):
+            x = c * TILE_SIZE
+            y = r * TILE_SIZE
+            draw_tile(draw, x, y, tiles[r][c], rng)
+
+    # Desenha as linhas da grade (Grid lines)
+    for r in range(grid + 1):
+        y = r * TILE_SIZE
+        draw.line([(0, y), (grid * TILE_SIZE, y)], fill=(0, 0, 0))
+    for c in range(grid + 1):
+        x = c * TILE_SIZE
+        draw.line([(x, 0), (x, grid * TILE_SIZE)], fill=(0, 0, 0))
+
+    return img
     
 def normalize_text(text):
     if not isinstance(text, str): return str(text)
@@ -2131,6 +2159,7 @@ elif page == "PvP – Arena Tática":
                                     
                                     
                 
+
 
 
 
