@@ -50,6 +50,62 @@ st.set_page_config(
     page_icon="🔒",
     layout="wide"
 )
+# ==========================================
+# 🎨 ESTILO VISUAL GLOBAL (POKÉMON RETRÔ)
+# ==========================================
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    /* Aplica a fonte a todo o corpo do app */
+    html, body, [class*="st-at"], .stMarkdown, p, h1, h2, h3, h4, span, label {
+        font-family: 'Press Start 2P', cursive !important;
+    }
+
+    /* Ajuste de tamanho para textos normais (para não ficar gigante) */
+    p, span, label, li {
+        font-size: 12px !important;
+        line-height: 1.6;
+    }
+
+    /* Títulos em destaque */
+    h1 { font-size: 24px !important; color: #D32F2F; text-shadow: 2px 2px #000; }
+    h2 { font-size: 20px !important; color: #1976D2; }
+    h3 { font-size: 16px !important; }
+
+    /* Estilo para botões do Streamlit */
+    .stButton>button {
+        font-family: 'Press Start 2P', cursive !important;
+        font-size: 10px !important;
+        text-transform: uppercase;
+        border: 3px solid #000 !important;
+        box-shadow: 2px 2px 0px #888;
+    }
+
+    /* Estilo para inputs e barras de busca */
+    .stTextInput>div>div>input, .stSelectbox select {
+        font-family: 'Press Start 2P', cursive !important;
+        font-size: 12px !important;
+    }
+
+    /* Sidebar (Menu Lateral) */
+    [data-testid="stSidebar"] * {
+        font-family: 'Press Start 2P', cursive !important;
+        font-size: 10px !important;
+    }
+
+    /* Container de Dinheiro (Mochila) */
+    .money-display {
+        background-color: #f8f8f8;
+        border: 3px solid #555;
+        border-radius: 10px;
+        padding: 10px;
+        color: #2e7d32;
+        text-align: right;
+        margin-bottom: 20px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- CONEXÃO COM GOOGLE SHEETS ---
 def get_google_sheet():
@@ -471,6 +527,9 @@ def join_room_as_challenger(db, rid: str, trainer_name: str, max_challengers: in
         return "OK"
 
     return "ARENA_FULL"
+
+
+
 
 def join_room_as_spectator(db, rid: str, trainer_name: str):
     ref = db.collection("rooms").document(rid)
@@ -2470,28 +2529,7 @@ elif page == "PvP – Arena Tática":
             
     
     
-    # Estilo para simular a interface de Pokémon
-st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-    
-    .poke-font {
-        font-family: 'Press Start 2P', cursive;
-        font-size: 14px;
-        color: #333;
-    }
-    .money-display {
-        background-color: #f8f8f8;
-        border: 3px solid #555;
-        border-radius: 10px;
-        padding: 10px;
-        font-family: 'Press Start 2P', cursive;
-        color: #2e7d32;
-        text-align: right;
-        margin-bottom: 20px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+
     
 
 
@@ -2535,6 +2573,7 @@ elif page == "Mochila":
                     user_data["backpack"][key] = updated_items
                     [cite_start]save_data_cloud(trainer_name, user_data) # [cite: 11, 16]
                     st.rerun()
+
 
 
 
