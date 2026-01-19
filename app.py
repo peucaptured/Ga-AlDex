@@ -57,43 +57,36 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-    /* Aplica a fonte apenas em textos, evitando ícones do sistema */
-    html, body, .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, span {
+    /* Aplica a fonte apenas em textos e botões, protegendo ícones */
+    html, body, .stMarkdown p, .stButton button, label, .stTab p, .stTextInput input {
         font-family: 'Press Start 2P', cursive !important;
+        font-size: 11px !important; /* Tamanho ajustado para legibilidade */
+        line-height: 1.5;
     }
 
-    /* Ajuste para evitar o bug do "arrow" em expanders e menus */
-    [data-testid="stExpander"] summary p, 
-    [data-testid="stHeader"] h1,
-    label p {
-        font-family: 'Press Start 2P', cursive !important;
-        font-size: 12px !important;
+    /* REMOVE O BUG "ARROW": Força ícones de sistema a usarem fonte padrão */
+    [data-testid="stExpander"] svg, 
+    [data-testid="stSidebarNav"] svg,
+    [data-baseweb="icon"] svg,
+    .st-at svg, 
+    summary svg {
+        font-family: serif !important;
     }
 
-    /* Esconde o texto residual que o Streamlit usa para ícones quando a fonte muda */
-    [data-testid="stExpander"] svg, [data-baseweb="icon"] {
-        font-family: serif !important; /* Mantém ícones originais */
-    }
+    /* Ajuste para os Títulos */
+    h1 { font-size: 18px !important; color: #D32F2F; margin-bottom: 15px; }
+    h2 { font-size: 14px !important; color: #1976D2; }
+    h3 { font-size: 12px !important; }
 
-    /* Ajuste de tamanho para não quebrar o layout */
-    p, span, label {
-        font-size: 10px !important;
-        line-height: 1.8;
-    }
-    
-    h1 { font-size: 20px !important; color: #D32F2F; }
-    h2 { font-size: 16px !important; color: #1976D2; }
-
+    /* Estilo da barra de dinheiro */
     .money-display {
-        background-color: #f8f8f8;
-        border: 3px solid #555;
-        border-radius: 10px;
+        background-color: #222;
+        border: 3px solid #f1c40f;
         padding: 10px;
-        font-family: 'Press Start 2P', cursive !important;
-        color: #2e7d32;
-        text-align: right;
+        color: #f1c40f;
+        text-align: center;
+        border-radius: 5px;
         margin-bottom: 20px;
-        font-size: 14px !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -284,28 +277,34 @@ def safe_doc_id(name: str) -> str:
 def get_item_image_url(item_name):
     if not item_name:
         return "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/question-mark.png"
-    # [cite_start]Usa a função de normalização que você já tem no código [cite: 106]
-    clean_name = normalize_text(item_name).replace(" ", "-")
-    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/{clean_name}.png"
+    
+    # Normalização para Pokébolas e TMs
+    name = normalize_text(item_name).replace(" ", "-")
+    if "ball" in name and "-" not in name:
+        name = name.replace("ball", "-ball")
+    if "tm" in name and "-" not in name:
+        name = name.replace("tm", "tm-")
+
+    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/{name}.png"
 
 def render_item_row(category_key, index, item_data, show_image=True):
-    # Ajuste de colunas para o layout da mochila
-    cols = st.columns([2, 1, 1]) if show_image else st.columns([3, 1])
+    # Layout das colunas
+    cols = st.columns([2.5, 1, 1.5]) if show_image else st.columns([3, 1])
     
     with cols[0]:
-        # Input com a mesma fonte dos jogos via CSS
-        n_key = f"it_nm_{category_key}_{index}"
-        new_name = st.text_input("Nome", value=item_data.get("name", ""), key=n_key, label_visibility="collapsed")
+        new_name = st.text_input("Item", value=item_data.get("name", ""), 
+                                key=f"it_nm_{category_key}_{index}", label_visibility="collapsed")
     
     with cols[-1]:
-        q_key = f"it_qt_{category_key}_{index}"
-        new_qty = st.number_input("Qtd", min_value=0, value=item_data.get("qty", 1), key=q_key, label_visibility="collapsed")
+        new_qty = st.number_input("Qtd", min_value=0, value=item_data.get("qty", 0), 
+                                 key=f"it_qt_{category_key}_{index}", label_visibility="collapsed")
 
-    if show_image and new_name:
+    if show_image:
         with cols[1]:
-            img_url = get_item_image_url(new_name)
-            # Renderização em linha única para não quebrar o visual do editor
-            st.markdown(f'<img src="{img_url}" width="30">', unsafe_allow_html=True)
+            if new_name:
+                img_url = get_item_image_url(new_name)
+                # Fallback se a imagem não carregar
+                st.markdown(f'<img src="{img_url}" width="35" style="image-rendering: pixelated;">', unsafe_allow_html=True)
 
     return {"name": new_name, "qty": new_qty}
 
@@ -2522,7 +2521,6 @@ elif page == "PvP – Arena Tática":
 
     
 
-
 elif page == "Mochila":
     if "backpack" not in user_data:
         user_data["backpack"] = {
@@ -2533,50 +2531,52 @@ elif page == "Mochila":
             "key_items": []
         }
 
-    # Dinheiro no topo conforme pedido
-    st.markdown(f'<div class="money-display">💰 Dinheiro: ₽ {user_data["backpack"]["money"]}</div>', unsafe_allow_html=True)
+    # Cabeçalho com Dinheiro (Fonte Pixel)
+    st.markdown(f'<div class="money-display">DINHEIRO: ₽ {user_data["backpack"]["money"]}</div>', unsafe_allow_html=True)
     
-    col_bag, col_content = st.columns([1, 2])
+    col_bag, col_content = st.columns([1, 2.5])
     
     with col_bag:
-        # Imagem fixa da mochila ao lado
-        st.image("https://archives.bulbagarden.org/media/upload/c/c0/Bag_Medicine_HGSS_m.png")
+        # Ícone da Mochila (URL Estável do Wikimedia/PokeAPI)
+        bag_url = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/adventure-guide.png" 
+        # Alternativa (HGSS Style): "https://www.pokewiki.de/images/e/e3/Itemicon_Beutel_M_HGSS.png"
+        
+        st.image(bag_url, width=150, caption="MINHA BOLSA")
+        
+        # Ajuste de Saldo na Coluna da Mochila
         new_money = st.number_input("Editar Saldo", value=int(user_data["backpack"]["money"]), step=100)
         if new_money != user_data["backpack"]["money"]:
             user_data["backpack"]["money"] = new_money
-            save_data_cloud(trainer_name, user_data)
+            save_data_cloud(trainer_name, user_data) [cite: 12]
+        
+        if st.button("🧹 Limpar Vazios"):
+            for k in ["medicine", "pokeballs", "tms", "key_items"]:
+                user_data["backpack"][k] = [i for i in user_data["backpack"][k] if i["name"] and i["qty"] > 0]
+            save_data_cloud(trainer_name, user_data) [cite: 12]
+            st.rerun()
 
     with col_content:
         tabs = st.tabs(["💊 Med", "🔴 Pokéballs", "💿 TMs", "🔑 Chave"])
-        
-        # Configuração das abas: (Tab, Chave no Banco, Mostrar Imagem)
-        cfg = [
-            (tabs[0], "medicine", True), 
-            (tabs[1], "pokeballs", True), 
-            (tabs[2], "tms", True), 
-            (tabs[3], "key_items", False)
-        ]
+        cfg = [(tabs[0], "medicine", True), (tabs[1], "pokeballs", True), 
+               (tabs[2], "tms", True), (tabs[3], "key_items", False)]
 
         for tab, key, use_img in cfg:
             with tab:
                 current_list = user_data["backpack"].get(key, [])
                 updated_items = []
                 
-                # Renderiza os itens e uma linha extra para novos
+                # Exibe itens atuais + linha extra para novo item
                 for i in range(len(current_list) + 1):
                     item_data = current_list[i] if i < len(current_list) else {"name": "", "qty": 0}
                     res = render_item_row(key, i, item_data, show_image=use_img)
                     if res["name"]:
                         updated_items.append(res)
                 
-                if st.button(f"Salvar {key.title()}", key=f"save_{key}"):
+                if st.button(f"💾 Salvar {key.title()}", key=f"sv_{key}"):
                     user_data["backpack"][key] = updated_items
-                    save_data_cloud(trainer_name, user_data)
-                    st.success(f"{key.title()} atualizado!")
+                    save_data_cloud(trainer_name, user_data) [cite: 12]
+                    st.success("Bolsa Atualizada!")
                     st.rerun()
-
-
-
 
 
 
