@@ -1006,14 +1006,17 @@ def get_pid_from_name(user_name: str, name_map: dict) -> str | None:
 
     return p_id
     
-def get_pokemon_image_url(user_name: str, name_map: dict, mode: str = "artwork") -> str:
+def get_pokemon_image_url(user_name: str, name_map: dict, mode: str = "artwork", shiny: bool = False) -> str:
+    # Busca o ID Nacional baseado no nome (ex: "Charizard" -> 6)
     p_id = get_pid_from_name(user_name, name_map)
+    
+    # Se não achou o ID pelo nome, retorna Pokébola
     if not p_id:
         return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
 
     if mode == "sprite":
-        return get_pokemon_sprite_url(p_id)
-    return get_pokemon_artwork_url(p_id)
+        return get_pokemon_sprite_url(p_id, shiny=shiny)
+    return get_pokemon_artwork_url(p_id, shiny=shiny)
 
 def get_image_from_name(user_name, name_map):
     if not isinstance(user_name, str): return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
@@ -1080,18 +1083,17 @@ def get_official_pokemon_map():
         return {}
         
 def get_pokemon_artwork_url(p_id: str, shiny: bool = False) -> str:
-    # Remove zeros a esquerda
     n = int(str(p_id).lstrip("0") or "0")
     if shiny:
-        return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/{p_id}.png"
-    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{p_id}.png"
+        return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/{n}.png"
+    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{n}.png"
 
 def get_pokemon_sprite_url(p_id: str, shiny: bool = False) -> str:
     n = int(str(p_id).lstrip("0") or "0")
     if shiny:
-        return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/{p_id}.png"
-    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{p_id}.png"
-
+        return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/{n}.png"
+    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{n}.png"
+    
 def extract_strategies(text):
     if not isinstance(text, str): return []
     pattern = r'(?:^|\n)\s*(?:\*\*|[\-\>])?\s*([CFS][ODFIC][RL])\b'
@@ -1157,25 +1159,31 @@ def load_excel_data():
         return None, None
 
 api_name_map = get_official_pokemon_map()
+
 def pokemon_pid_to_image(pid: str, mode: str = "artwork", shiny: bool = False) -> str:
     if not pid:
         return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
     pid_str = str(pid).strip()
     
-    # 1. Se for Visitante (EXT)
+    # Caso 1: Visitante (EXT)
     if pid_str.startswith("EXT:"):
         name = pid_str.replace("EXT:", "")
-        # Visitantes externos não tem suporte fácil a shiny pela API de nomes, mantemos padrão
-        return get_pokemon_image_url(name, api_name_map, mode=mode)
+        return get_pokemon_image_url(name, api_name_map, mode=mode, shiny=shiny)
         
-    # 2. Busca no EXCEL
-    row = df[df["Nº"].astype(str) == pid_str]
-    if not row.empty:
-        # Se for sprite ou artwork, usa a função que aceita shiny
-        if mode == "sprite":
-            return get_pokemon_sprite_url(pid_str, shiny)
-        return get_pokemon_artwork_url(pid_str, shiny)
+    # Caso 2: Busca no EXCEL (Correção do ID Regional)
+    # Procura o ID no Excel para pegar o NOME correto
+    if 'df' in globals() or 'df' in st.session_state:
+        # Tenta pegar o df de onde estiver disponível
+        local_df = st.session_state.get('df_data') if 'df_data' in st.session_state else df
+        
+        row = local_df[local_df["Nº"].astype(str) == pid_str]
+        if not row.empty:
+            # Pega o nome (ex: "MyStarter")
+            real_name = row.iloc[0]["Nome"]
+            # Busca a imagem pelo NOME, não pelo número
+            return get_pokemon_image_url(real_name, api_name_map, mode=mode, shiny=shiny)
 
+    # Fallback: Se não achou no Excel, retorna erro ou tenta direto (mas evita erro de imagem quebrada)
     return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
 
 
@@ -1523,7 +1531,7 @@ if page == "Trainer Hub (Meus Pokémons)":
                                 user_data["notes"][p_id] = note
                                 save_data_cloud(trainer_name, user_data)
 
-    with tab3: # ABA NOVA
+    with tab3:
         st.header("🌟 Lista de Desejo")
         wishlist = user_data.get("wishlist", [])
         if not wishlist:
@@ -1531,13 +1539,17 @@ if page == "Trainer Hub (Meus Pokémons)":
         else:
             # Mostra os pokémons desejados
             for p_id in wishlist:
+                # Busca dados no Excel
                 p_search = df[df['Nº'].astype(str) == str(p_id)]
                 if p_search.empty: continue
                 p_row = p_search.iloc[0]
                 
                 with st.expander(f"🌟 #{p_id} - {p_row['Nome']}"):
                     c1, c2 = st.columns([1, 4])
-                    with c1: st.image(get_pokemon_artwork_url(p_id), width=100)
+                    with c1: 
+                        # CORREÇÃO: Usa a função inteligente que converte ID Regional -> Imagem Real
+                        img_url = pokemon_pid_to_image(p_id, mode="artwork", shiny=False)
+                        st.image(img_url, width=100)
                     with c2:
                         st.write(f"**Tipo:** {p_row['Tipo']}")
                         st.write(f"**Região:** {p_row['Região']}")
@@ -2358,6 +2370,7 @@ elif page == "PvP – Arena Tática":
     
     
     
+
 
 
 
