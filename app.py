@@ -1510,12 +1510,9 @@ elif page == "PvP – Arena Tática":
 
 
 # =========================
-    # VIEW: BATTLE (Versão M&M 3e Logic + QOL Names)
+    # VIEW: BATTLE (CÓDIGO CONSOLIDADO E CORRIGIDO)
     # =========================
-# =========================
-    # VIEW: BATTLE (Versão Corrigida: Stats, Nomes e Efeito Secundário)
-    # =========================
-    if view == "battle":
+    elif view == "battle":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
@@ -1523,26 +1520,24 @@ elif page == "PvP – Arena Tática":
         if "last_click_processed" not in st.session_state:
             st.session_state["last_click_processed"] = None
 
-        # --- SYNC 1: Lista de Pokémons ---
+        # --- 1. SINCRONIZAÇÃO DE DADOS ---
         current_party = user_data.get("party") or []
         db.collection("rooms").document(rid).collection("public_state").document("players").set(
             {trainer_name: current_party}, merge=True
         )
 
-        # --- SYNC 2: Stats do Hub (FIX: Força conversão para String nos IDs) ---
         if "stats" in user_data:
             batch_stats = {}
             for pid in current_party:
-                # Garante que a chave de busca seja igual a de salvamento
                 hub_stats = user_data["stats"].get(pid, {}) or user_data["stats"].get(str(pid), {})
                 if hub_stats:
-                    # Salva no banco com ID string para evitar erro de leitura
+                    # Salva stats para acesso público na sala
                     batch_stats[f"{trainer_name}.{pid}.stats"] = hub_stats
                     batch_stats[f"{trainer_name}.{pid}.updatedAt"] = str(datetime.now())
             if batch_stats:
                 db.collection("rooms").document(rid).collection("public_state").document("party_states").set(batch_stats, merge=True)
 
-        # Carrega dados
+        # --- 2. CARREGAMENTO DO ESTADO ---
         state = get_state(db, rid)
         seed = state.get("seed")
         tiles_packed = state.get("tilesPacked")
@@ -1552,28 +1547,123 @@ elif page == "PvP – Arena Tática":
         seen_pids = state.get("seen") or []
         field_effects = state.get("effects") or []
 
-        # Helper Leitura Banco
+        # --- 3. HELPERS LOCAIS ---
         ps_doc = db.collection("rooms").document(rid).collection("public_state").document("party_states").get()
         party_states_data = ps_doc.to_dict() or {}
         
         def get_poke_data(t_name, p_id):
             user_dict = party_states_data.get(t_name, {})
-            # Busca robusta (tenta string e int)
             p_data = user_dict.get(str(p_id), {})
             return p_data.get("hp", 6), p_data.get("cond", []), p_data.get("stats", {})
 
-        # Helper Nome
         def get_poke_display_name(pid):
             row = df[df['Nº'].astype(str) == str(pid)]
             if not row.empty: return row.iloc[0]['Nome']
             return str(pid)
 
-# --- PREPARAÇÃO DE TIMES (CORRIGIDO) ---
+        # Definição da Função de Renderização da Coluna (DEFINIDA ANTES DE USAR)
+        def render_player_column(col_container, p_name, p_label, is_me):
+            with col_container:
+                st.markdown(f"### {p_label}")
+                
+                # Busca party do jogador alvo
+                p_doc_ref = db.collection("rooms").document(rid).collection("public_state").document("players").get()
+                p_doc_data = p_doc_ref.to_dict() or {}
+                party_list = p_doc_data.get(p_name, [])
+                
+                if not party_list:
+                    st.caption("Sem Pokémons.")
+                    return
+
+                # Filtra peças que estão no tabuleiro
+                pieces_on_board = [p for p in all_pieces if p.get("owner") == p_name]
+                pids_on_board = {str(p["pid"]) for p in pieces_on_board}
+
+                for pid in party_list:
+                    is_on_map = str(pid) in pids_on_board
+                    already_seen = str(pid) in seen_pids
+                    real_name = get_poke_display_name(pid)
+
+                    # --- VISÃO DO DONO (EU) ---
+                    if is_me:
+                        cur_hp, cur_cond, cur_stats = get_poke_data(p_name, pid)
+                        url = pokemon_pid_to_image(pid, mode="sprite")
+                        
+                        with st.container(border=True):
+                            ci, cc = st.columns([1, 2.5])
+                            with ci:
+                                if cur_hp == 0:
+                                    st.markdown(f'<img src="{url}" style="width:100%; filter:grayscale(100%); opacity:0.6;">', unsafe_allow_html=True)
+                                else:
+                                    st.image(url, use_container_width=True)
+                                
+                                if is_on_map:
+                                    p_obj = next((p for p in pieces_on_board if str(p["pid"]) == str(pid)), None)
+                                    if p_obj:
+                                        rev = p_obj.get("revealed", True)
+                                        # Botão Olho/Check
+                                        if st.button("👁️" if rev else "✅", key=f"v_{pid}"):
+                                            p_obj["revealed"] = not rev
+                                            upsert_piece(db, rid, p_obj)
+                                            if p_obj["revealed"]: mark_pid_seen(db, rid, pid)
+                                            st.rerun()
+                                        # Botão Remover
+                                        if st.button("❌", key=f"r_{pid}"):
+                                            delete_piece(db, rid, p_obj["id"])
+                                            add_public_event(db, rid, "removed", p_name, {"pid": pid})
+                                            st.rerun()
+                                else:
+                                    if cur_hp > 0 and st.button("📍 Por", key=f"p_{pid}"):
+                                        st.session_state["placing_pid"] = pid
+                                        st.session_state["placing_effect"] = None
+                                        st.rerun()
+                            with cc:
+                                if st.session_state.get("placing_pid") == pid:
+                                    st.info("Clique no mapa!")
+                                else:
+                                    hp_i = "💚" if cur_hp >= 5 else "💀"
+                                    st.markdown(f"**{real_name}**")
+                                    st.markdown(f"{hp_i} HP: {cur_hp}/6")
+                                    st.slider("HP", 0, 6, int(cur_hp), key=f"hp_{pid}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, p_name, pid))
+                                    st.multiselect("Status", ["🔥","❄️","⚡"], default=cur_cond, key=f"cond_{pid}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, p_name, pid))
+
+                    # --- VISÃO DO VISITANTE/OPONENTE ---
+                    else:
+                        piece_obj = next((p for p in pieces_on_board if str(p["pid"]) == str(pid)), None)
+                        is_revealed = piece_obj.get("revealed", True) if piece_obj else False
+                        
+                        show_full = False
+                        status_txt = ""
+                        
+                        if piece_obj and is_revealed:
+                            show_full = True
+                        elif already_seen:
+                            show_full = True 
+                            status_txt = "(Mochila)" if not piece_obj else "(Escondido)"
+                        else:
+                            show_full = False 
+                            status_txt = "Oculto"
+
+                        with st.container(border=True):
+                            if show_full:
+                                cur_hp, cur_cond, _ = get_poke_data(p_name, pid)
+                                url = pokemon_pid_to_image(pid, mode="sprite")
+                                c1, c2 = st.columns([1, 2])
+                                c1.image(url, width=50)
+                                c2.markdown(f"**{real_name}**")
+                                c2.caption(f"HP: {cur_hp}/6 {status_txt}")
+                                if cur_hp == 0: c2.caption("**FAINTED**")
+                            else:
+                                c1, c2 = st.columns([1, 2])
+                                c1.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=40)
+                                c2.caption(f"??? {status_txt}")
+
+        # --- 4. PREPARAÇÃO DE TIMES E VARIÁVEIS ---
         owner_name = (room.get("owner") or {}).get("name", "Host")
         chal_name = (room.get("challenger") or {}).get("name", "Desafiante")
         
+        # Define quem é P1 (Esquerda) e P2 (Direita) e se "Eu" sou o P1
         if trainer_name == owner_name:
-            # Eu sou o Dono: Fico na esquerda (P1), Desafiante na direita (P2)
             p1_name = owner_name
             p1_label = f"🎒 {owner_name} (Você)"
             viewer_is_p1 = True
@@ -1582,7 +1672,6 @@ elif page == "PvP – Arena Tática":
             p2_label = f"🆚 {chal_name}" if chal_name else "🆚 Aguardando..."
             
         elif trainer_name == chal_name:
-            # Eu sou Desafiante: Fico na esquerda (P1), Dono na direita (P2)
             p1_name = chal_name
             p1_label = f"🎒 {chal_name} (Você)"
             viewer_is_p1 = True 
@@ -1591,24 +1680,28 @@ elif page == "PvP – Arena Tática":
             p2_label = f"🆚 {owner_name}"
             
         else:
-            # Espectador: Dono na esquerda (P1), Desafiante na direita (P2)
+            # Visitante vê Owner na Esquerda, Challenger na Direita
             p1_name = owner_name
             p1_label = f"🔴 {owner_name}"
             viewer_is_p1 = False
             
             p2_name = chal_name
             p2_label = f"🔵 {chal_name}" if chal_name else "🔵 Aguardando..."
+
+        # Filtro de peças para desenhar no mapa e para a calculadora
         pieces_to_draw = []
         p1_pieces_board = [] 
-        p2_pieces_board = []
+        p2_pieces_board = [] # Alvos
 
         for p in all_pieces:
             hp_check, _, _ = get_poke_data(p.get("owner"), p.get("pid"))
             p["status"] = "fainted" if hp_check == 0 else "active"
 
+            # Quem vê o que no mapa
             if p.get("owner") == trainer_name: pieces_to_draw.append(p)
             elif p.get("revealed", True): pieces_to_draw.append(p)
             
+            # Listas para combobox
             if p.get("owner") == p1_name: p1_pieces_board.append(p)
             if p.get("owner") == p2_name: p2_pieces_board.append(p)
 
@@ -1617,7 +1710,7 @@ elif page == "PvP – Arena Tática":
 
         st.markdown("""<style>.block-container {max-width: 98%!important; padding-top:1rem; padding-bottom:5rem;} header {visibility:hidden; height:0px;} .stSlider {padding:0px; margin-bottom:-15px;} .stMultiSelect {padding-bottom:0px;} .stNumberInput {margin-bottom:5px;}</style>""", unsafe_allow_html=True)
 
-        # --- MENU SUPERIOR ---
+        # --- 5. INTERFACE DO TOPO ---
         top = st.columns([1, 1, 1, 1, 4])
         with top[0]:
             if st.button("⬅️ Lobby"):
@@ -1637,7 +1730,7 @@ elif page == "PvP – Arena Tática":
                 st.info(f"🎲 **{last_dice.get('by')}** rolou **{pl.get('result')}** (d{pl.get('sides')})")
 
         # ==========================================
-        # 🧮 CALCULADORA DE COMBATE (CORRIGIDA)
+        # 🧮 6. CALCULADORA DE COMBATE
         # ==========================================
         battle_ref = db.collection("rooms").document(rid).collection("public_state").document("battle")
         battle_doc = battle_ref.get()
@@ -1646,7 +1739,7 @@ elif page == "PvP – Arena Tática":
 
         with st.expander("⚔️ Calculadora de Combate", expanded=(b_data["status"] != "idle")):
             
-            # --- FASE 0: IDLE ---
+            # [FASE 0] IDLE
             if b_data["status"] == "idle":
                 if is_player:
                     if st.button("Nova Batalha (Atacar)"):
@@ -1655,11 +1748,12 @@ elif page == "PvP – Arena Tática":
                 else:
                     st.caption("Aguardando combate...")
             
-            # --- FASE 1: CONFIGURAR ATAQUE ---
+            # [FASE 1] CONFIGURAR ATAQUE
             elif b_data["status"] == "setup":
                 st.caption(f"**Atacante:** {b_data.get('attacker')}")
                 
                 if b_data.get("attacker") == trainer_name:
+                    # Inimigo é o "outro" lado
                     enemy_pieces = p2_pieces_board if trainer_name == p1_name else p1_pieces_board
                     
                     target_options = {}
@@ -1673,9 +1767,7 @@ elif page == "PvP – Arena Tática":
                     with c_atk2:
                         attack_mode = st.radio("Modo", ["Normal", "Área"], horizontal=True)
                     
-                    # Checkbox movido para próxima fase ou mantido aqui para Área
-                    # Vamos manter só para área aqui, no normal pergunta no dano
-                    
+                    # Se for Área
                     if attack_mode == "Área":
                         st.info("Ataque em Área: Dodge (CD 10 + Nível) reduz dano pela metade.")
                         lvl_effect = st.number_input("Nível do Efeito / Dano", min_value=1, value=1)
@@ -1696,7 +1788,7 @@ elif page == "PvP – Arena Tática":
                                 })
                                 st.rerun()
                     else:
-                        # ATAQUE NORMAL
+                        # Normal
                         with c_atk3:
                             atk_type = st.selectbox("Alcance", ["Distância (Dodge)", "Corpo-a-corpo (Parry)"])
                         
@@ -1707,7 +1799,7 @@ elif page == "PvP – Arena Tática":
                                 d20 = random.randint(1, 20)
                                 t_p = next((p for p in all_pieces if p['id'] == target_id), None)
                                 
-                                # BUSCA STATS E CONFIRMA SE VIERAM
+                                # Pega stats do alvo
                                 _, _, t_stats = get_poke_data(t_p['owner'], t_p['pid'])
                                 dodge = int(t_stats.get("dodge", 0))
                                 parry = int(t_stats.get("parry", 0))
@@ -1719,22 +1811,18 @@ elif page == "PvP – Arena Tática":
                                 hit = total_atk >= needed
                                 result_msg = "ACERTOU! ✅" if hit else "ERROU! ❌"
                                 
-                                # Log detalhado para conferência
-                                def_name = "Dodge" if "Distância" in atk_type else "Parry"
-                                log_txt = f"{trainer_name} rolou {d20}+{atk_mod}=**{total_atk}** (vs {def_name} {needed} [{defense_val}+10])... {result_msg}"
-                                
                                 battle_ref.update({
                                     "status": "hit_confirmed" if hit else "missed",
                                     "target_id": target_id,
                                     "target_owner": t_p['owner'],
                                     "target_pid": t_p['pid'],
-                                    "logs": [log_txt]
+                                    "logs": [f"{trainer_name} rolou {d20}+{atk_mod}=**{total_atk}** (vs Def {needed} [{defense_val}+10])... {result_msg}"]
                                 })
                                 st.rerun()
                 else:
                     st.info(f"Aguardando {b_data.get('attacker')}...")
 
-            # --- FASE 1.5: DEFESA DE ÁREA ---
+            # [FASE 1.5] DEFESA DE ÁREA
             elif b_data["status"] == "aoe_defense":
                 st.info(b_data["logs"][-1])
                 if b_data.get("target_owner") == trainer_name:
@@ -1764,7 +1852,7 @@ elif page == "PvP – Arena Tática":
                 else:
                     st.warning("Aguardando defensor...")
 
-            # --- FASE 2: INSERIR DANO (Ataque Normal ou Efeito Secundário) ---
+            # [FASE 2] INSERIR DANO (Se acertou)
             elif b_data["status"] == "hit_confirmed":
                 st.success(b_data["logs"][-1])
                 
@@ -1773,14 +1861,13 @@ elif page == "PvP – Arena Tática":
                     with c1:
                         dmg_input = st.number_input("Dano Base / Rank", min_value=0, value=0)
                     with c2:
-                        # CHECKBOX QUE VOCÊ PEDIU
                         is_eff_check = st.checkbox("É Efeito?", value=False, help="Se marcado, CD base será 10. Se não, 15.")
                     
                     if st.button("Enviar Dano/Efeito"):
                         battle_ref.update({
                             "status": "waiting_defense",
                             "dmg_base": dmg_input,
-                            "is_effect": is_eff_check, # Salva a escolha aqui
+                            "is_effect": is_eff_check,
                             "logs": firestore.ArrayUnion([f"Rank/Dano: {dmg_input} ({'Efeito' if is_eff_check else 'Dano'}). Aguardando resistência..."])
                         })
                         st.rerun()
@@ -1794,7 +1881,7 @@ elif page == "PvP – Arena Tática":
                         battle_ref.update({"status": "idle", "logs": []})
                         st.rerun()
 
-            # --- FASE 3: RESISTÊNCIA FINAL ---
+            # [FASE 3] RESISTÊNCIA FINAL
             elif b_data["status"] == "waiting_defense":
                 is_eff = b_data.get("is_effect", False)
                 base_val = 10 if is_eff else 15
@@ -1806,7 +1893,6 @@ elif page == "PvP – Arena Tática":
                 if b_data.get("target_owner") == trainer_name:
                     st.markdown("### 🛡️ Resistir com:")
                     c1, c2, c3, c4 = st.columns(4)
-                    
                     res_type = None
                     if c1.button("Dodge"): res_type = "dodge"
                     if c2.button("Parry"): res_type = "parry"
@@ -1821,15 +1907,14 @@ elif page == "PvP – Arena Tática":
                         
                         check_total = def_die + stat_val
                         
-                        # --- CÁLCULO M&M ---
-                        # Falha = CD - Check
+                        # Cálculo M&M: Falha = CD - Check
                         diff = dc_total - check_total
                         
                         if diff <= 0:
                             bars_lost = 0
                             res_msg = "SUCESSO (Nenhum dano)"
                         else:
-                            # 1-5 = 1 grau, 6-10 = 2 graus...
+                            # 1 grau a cada 5 pontos
                             bars_lost = math.ceil(diff / 5)
                             res_msg = f"FALHA por {diff}"
                         
@@ -1844,24 +1929,22 @@ elif page == "PvP – Arena Tática":
                 else:
                     st.warning("Aguardando defesa...")
 
-            # --- FASE 4: FIM / SECUNDÁRIO ---
+            # [FASE 4] FIM / SECUNDÁRIO
             elif b_data["status"] == "finished":
                 st.markdown(f"## 🩸 Resultado: -{b_data.get('final_bars')} Barras")
                 for log in b_data.get("logs", []): st.text(log)
                 
-                # Apenas o ATACANTE vê os botões
                 if b_data.get("attacker") == trainer_name:
                     c_end1, c_end2 = st.columns(2)
                     if c_end1.button("Encerrar Combate"):
                         battle_ref.update({"status": "idle", "logs": []})
                         st.rerun()
                     
-                    # Botão com nome do alvo para clareza
                     target_name = get_poke_display_name(b_data.get('target_pid'))
                     if c_end2.button(f"⚡ Efeito Secundário em {target_name}"):
                         battle_ref.update({
-                            "status": "hit_confirmed", # Volta para inserir dano
-                            "is_effect": False, # Reset do checkbox
+                            "status": "hit_confirmed", 
+                            "is_effect": False, 
                             "logs": [f"⚡ Efeito Secundário ativado em {target_name}!"]
                         })
                         st.rerun()
@@ -1869,13 +1952,15 @@ elif page == "PvP – Arena Tática":
                     st.info("Aguardando atacante encerrar...")
 
         # =========================
-        # LAYOUT PRINCIPAL (MANTIDO)
+        # 7. LAYOUT DAS COLUNAS (MAPA E JOGADORES)
         # =========================
         if not tiles:
             st.warning("Sem mapa.")
             st.stop()
 
         c_left, c_map, c_right = st.columns([1.3, 3, 1.3])
+
+        # Chama a função que definimos lá em cima
         render_player_column(c_left, p1_name, p1_label, is_me=viewer_is_p1)
         
         with c_map:
@@ -1902,6 +1987,9 @@ elif page == "PvP – Arena Tática":
 
         render_player_column(c_right, p2_name, p2_label, is_me=False)
 
+        # =========================
+        # 8. LÓGICA DE CLIQUE
+        # =========================
         if click and "x" in click and "y" in click:
             col = int(click["x"] // TILE_SIZE)
             row = int(click["y"] // TILE_SIZE)
@@ -1919,11 +2007,10 @@ elif page == "PvP – Arena Tática":
                     st.rerun()
                 elif ppid:
                     new_id = str(uuid.uuid4())[:8]
-                    _, _, p_stats = get_poke_data(trainer_name, ppid)
+                    # Stats já estão no banco, não precisa passar aqui
                     new_piece = {
                         "id": new_id, "pid": ppid, "owner": trainer_name,
-                        "row": row, "col": col, "revealed": True, "status": "active",
-                        "stats": p_stats
+                        "row": row, "col": col, "revealed": True, "status": "active"
                     }
                     upsert_piece(db, rid, new_piece)
                     mark_pid_seen(db, rid, ppid)
@@ -2256,6 +2343,7 @@ elif page == "PvP – Arena Tática":
                     by = ev.get("by", "?")
                     payload = ev.get("payload", {})
                     st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
