@@ -2485,3 +2485,4 @@ st.markdown(f'<div class="money-display">💰 Dinheiro: ₽ {user_data["backpack
 
 
 
+
