@@ -1515,18 +1515,6 @@ elif page == "PvP – Arena Tática":
         )
 
         if "stats" in user_data:
-            batch_stats = {}
-            for pid in current_party:
-                hub_stats = user_data["stats"].get(pid, {}) or user_data["stats"].get(str(pid), {})
-                if hub_stats:
-                    # Salva stats para acesso público na sala
-                    batch_stats[f"{trainer_name}.{pid}.stats"] = hub_stats
-                    batch_stats[f"{trainer_name}.{pid}.updatedAt"] = str(datetime.now())
-            if batch_stats:
-                db.collection("rooms").document(rid).collection("public_state").document("party_states").set(batch_stats, merge=True)
-
-        # --- 2.  Envia Stats do Hub para o Banco da Sala ---
-        if "stats" in user_data:
             # Prepara um dicionário estruturado para o merge funcionar direito
             # Estrutura: { "NomeTreinador": { "ID_Pokemon": { "stats": {...} } } }
             nested_update = {}
@@ -1538,6 +1526,13 @@ elif page == "PvP – Arena Tática":
                     if trainer_name not in nested_update:
                         nested_update[trainer_name] = {}
                     
+                    clean_stats = {
+                        "dodge": int(hub_stats.get("dodge", 0)),
+                        "parry": int(hub_stats.get("parry", 0)),
+                        "will": int(hub_stats.get("will", 0)),
+                        "fort": int(hub_stats.get("fort", 0)),
+                        "thg": int(hub_stats.get("thg", 0)),
+                    }
                     # Adiciona os dados do Pokémon
                     nested_update[trainer_name][str(pid)] = {
                         "stats": hub_stats,
@@ -1546,7 +1541,17 @@ elif page == "PvP – Arena Tática":
             
             if nested_update:
                 # Agora o .set(..., merge=True) vai entender a estrutura aninhada corretamente!
-                db.collection("rooms").document(rid).collection("public_state").document("party_states").set(nested_update, merge=True)      
+                db.collection("rooms").document(rid).collection("public_state").document("party_states").set(nested_update, merge=True)
+
+        # --- 2. CARREGAMENTO DO ESTADO ---
+        state = get_state(db, rid)
+        seed = state.get("seed")
+        tiles_packed = state.get("tilesPacked")
+        tiles = unpack_tiles(tiles_packed) if tiles_packed else None
+        
+        all_pieces = state.get("pieces") or []
+        seen_pids = state.get("seen") or []
+        field_effects = state.get("effects") or []
 
         # --- 3. HELPERS LOCAIS ---
         ps_doc = db.collection("rooms").document(rid).collection("public_state").document("party_states").get()
@@ -2366,24 +2371,5 @@ elif page == "PvP – Arena Tática":
                     by = ev.get("by", "?")
                     payload = ev.get("payload", {})
                     st.write(f"- **{et}** — _{by}_ — {payload}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
