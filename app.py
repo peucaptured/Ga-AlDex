@@ -1809,36 +1809,55 @@ elif page == "PvP – Arena Tática":
                                 c1.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=40)
                                 c2.caption(f"??? {status_txt}")
 
-        # --- 4. PREPARAÇÃO DE TIMES E VARIÁVEIS (MULTIPLAYER ATUALIZADO) ---
+        # --- 4. PREPARAÇÃO DE TIMES E VARIÁVEIS (UNIFICADO) ---
         owner_name = (room.get("owner") or {}).get("name", "Host")
         challengers = room.get("challengers") or []
         challenger_names = [c.get("name") for c in challengers]
         
-        # Lista total de quem está na arena para a lógica de cores
+        # Lista total de quem está na arena para a lógica de cores e calculadora
         all_players = [owner_name] + challenger_names
 
-        # Filtro de peças para desenhar no mapa e para a calculadora
+        # 1. MECÂNICA DE INTERFACE: Define quem é "Você" e as etiquetas (do código SEU)
+        if trainer_name == owner_name:
+            p1_name = owner_name
+            p1_label = f"🎒 {owner_name} (Você)"
+            viewer_is_p1 = True
+            p2_name = challenger_names[0] if challenger_names else None
+            p2_label = f"🆚 {p2_name}" if p2_name else "🆚 Aguardando..."
+        elif trainer_name in challenger_names:
+            p1_name = trainer_name
+            p1_label = f"🎒 {trainer_name} (Você)"
+            viewer_is_p1 = True 
+            p2_name = owner_name
+            p2_label = f"🆚 {owner_name}"
+        else:
+            p1_name = owner_name
+            p1_label = f"🔴 {owner_name}"
+            viewer_is_p1 = False
+            p2_name = challenger_names[0] if challenger_names else None
+            p2_label = f"🔵 {p2_name}" if p2_name else "🔵 Aguardando..."
+
+        # 2. MECÂNICA DE MAPA E CALCULADORA: Processa peças e visibilidade (do código MEU)
         pieces_to_draw = []
-        # Listas de peças por jogador para a calculadora
         player_pieces_map = {name: [] for name in all_players}
 
         for p in all_pieces:
-            # CORREÇÃO VALUEERROR: Adicionado o quarto "_" para o status de shiny
-            hp_check, _, _, _ = get_poke_data(p.get("owner"), p.get("pid")) [cite: 235]
+            # Mantém a correção do ValueError (4 valores) 
+            hp_check, _, _, _ = get_poke_data(p.get("owner"), p.get("pid"))
             p["status"] = "fainted" if hp_check == 0 else "active"
 
-            # Quem vê o que no mapa (Seu próprio ou o que está revelado)
+            # Lógica de Visibilidade: Dono vê tudo, outros veem apenas revelados [cite: 48, 49]
             if p.get("owner") == trainer_name: 
                 pieces_to_draw.append(p)
             elif p.get("revealed", True): 
                 pieces_to_draw.append(p)
             
-            # Organiza as peças por dono para usar na calculadora de alvos
+            # Popula o mapa para a calculadora encontrar os alvos corretamente
             if p.get("owner") in player_pieces_map:
                 player_pieces_map[p.get("owner")].append(p)
 
-        theme_key = room.get("theme", "cave_water") [cite: 237]
-        grid = len(tiles) if tiles else 10 [cite: 237]
+        theme_key = room.get("theme", "cave_water")
+        grid = len(tiles) if tiles else 10
 
         # --- 5. INTERFACE DO TOPO ---
         top = st.columns([1, 1, 1, 1, 4])
@@ -1902,7 +1921,7 @@ elif page == "PvP – Arena Tática":
             
             # [FASE 1] CONFIGURAR ATAQUE
             elif b_data["status"] == "setup":
-                st.caption(f"**Atacante:** {b_data.get('attacker')}"
+                st.caption(f"**Atacante:** {b_data.get('attacker')}")
                 
                 if b_data.get("attacker") == trainer_name:
                         # Busca peças de TODOS os outros jogadores que não são você
@@ -2409,6 +2428,7 @@ elif page == "PvP – Arena Tática":
     
     
     
+
 
 
 
