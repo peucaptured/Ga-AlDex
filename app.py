@@ -1730,14 +1730,13 @@ elif page == "PvP – Arena Tática":
                 pieces_on_board = [p for p in all_pieces if p.get("owner") == p_name]
                 pids_on_board = {str(p["pid"]) for p in pieces_on_board}
 
-                for pid in party_list:
+                for i, pid in enumerate(party_list): 
                     is_on_map = str(pid) in pids_on_board
                     already_seen = str(pid) in seen_pids
                     real_name = get_poke_display_name(pid)
-
-                    # --- VISÃO DO DONO (EU) ---
+        
                     if is_me:
-                        cur_hp, cur_cond, cur_stats, is_shiny = get_poke_data(p_name, pid) # <--- DESEMPACOTA
+                        cur_hp, cur_cond, cur_stats, is_shiny = get_poke_data(p_name, pid)
                         url = pokemon_pid_to_image(pid, mode="sprite", shiny=is_shiny)
                         
                         with st.container(border=True):
@@ -1752,19 +1751,20 @@ elif page == "PvP – Arena Tática":
                                     p_obj = next((p for p in pieces_on_board if str(p["pid"]) == str(pid)), None)
                                     if p_obj:
                                         rev = p_obj.get("revealed", True)
-                                        # Botão Olho/Check
-                                        if st.button("👁️" if rev else "✅", key=f"v_{p_name}_{pid}"):
+                                        # CHAVE ÚNICA: Adicionado _{i} no final
+                                        if st.button("👁️" if rev else "✅", key=f"v_{p_name}_{pid}_{i}"):
                                             p_obj["revealed"] = not rev
                                             upsert_piece(db, rid, p_obj)
                                             if p_obj["revealed"]: mark_pid_seen(db, rid, pid)
                                             st.rerun()
-                                        # Botão Remover
-                                        if st.button("❌", key=f"r_{p_name}_{pid}"):
+                                        # CHAVE ÚNICA: Adicionado _{i} no final
+                                        if st.button("❌", key=f"r_{p_name}_{pid}_{i}"):
                                             delete_piece(db, rid, p_obj["id"])
                                             add_public_event(db, rid, "removed", p_name, {"pid": pid})
                                             st.rerun()
                                 else:
-                                    if cur_hp > 0 and st.button("📍 Por", key=f"p_{p_name}_{pid}"):
+                                    # CHAVE ÚNICA: Adicionado _{i} no final (Resolve o erro da imagem 24d95e)
+                                    if cur_hp > 0 and st.button("📍 Por", key=f"p_{p_name}_{pid}_{i}"):
                                         st.session_state["placing_pid"] = pid
                                         st.session_state["placing_effect"] = None
                                         st.rerun()
@@ -1775,8 +1775,9 @@ elif page == "PvP – Arena Tática":
                                     hp_i = "💚" if cur_hp >= 5 else "💀"
                                     st.markdown(f"**{real_name}**")
                                     st.markdown(f"{hp_i} HP: {cur_hp}/6")
-                                    st.slider("HP", 0, 6, int(cur_hp), key=f"hp_{p_name}_{pid}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, p_name, pid))
-                                    st.multiselect("Status", ["🔥","❄️","⚡"], default=cur_cond, key=f"cond_{p_name}_{pid}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, p_name, pid))
+                                    # CHAVE ÚNICA: Sliders e Multiselect também precisam do _{i}
+                                    st.slider("HP", 0, 6, int(cur_hp), key=f"hp_{p_name}_{pid}_{i}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, p_name, pid))
+                                    st.multiselect("Status", ["🔥","❄️","⚡"], default=cur_cond, key=f"cond_{p_name}_{pid}_{i}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, p_name, pid))
 
                     # --- VISÃO DO VISITANTE/OPONENTE ---
                     else:
@@ -2152,7 +2153,7 @@ elif page == "PvP – Arena Tática":
         with c_opps:
             st.markdown("### 🆚 Oponentes")
             # Lista todos os jogadores que não são VOCÊ
-            opponents = [p for p in all_players if p != trainer_name]
+            opponents = sorted(list(set([p for p in all_players if p != trainer_name])))
             
             if not opponents:
                 st.caption("Aguardando desafiantes...")
@@ -2431,6 +2432,7 @@ elif page == "PvP – Arena Tática":
     
     
     
+
 
 
 
