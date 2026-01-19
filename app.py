@@ -57,52 +57,43 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-    /* Aplica a fonte a todo o corpo do app */
-    html, body, [class*="st-at"], .stMarkdown, p, h1, h2, h3, h4, span, label {
+    /* Aplica a fonte apenas em textos, evitando ícones do sistema */
+    html, body, .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, span {
         font-family: 'Press Start 2P', cursive !important;
     }
 
-    /* Ajuste de tamanho para textos normais (para não ficar gigante) */
-    p, span, label, li {
-        font-size: 12px !important;
-        line-height: 1.6;
-    }
-
-    /* Títulos em destaque */
-    h1 { font-size: 24px !important; color: #D32F2F; text-shadow: 2px 2px #000; }
-    h2 { font-size: 20px !important; color: #1976D2; }
-    h3 { font-size: 16px !important; }
-
-    /* Estilo para botões do Streamlit */
-    .stButton>button {
-        font-family: 'Press Start 2P', cursive !important;
-        font-size: 10px !important;
-        text-transform: uppercase;
-        border: 3px solid #000 !important;
-        box-shadow: 2px 2px 0px #888;
-    }
-
-    /* Estilo para inputs e barras de busca */
-    .stTextInput>div>div>input, .stSelectbox select {
+    /* Ajuste para evitar o bug do "arrow" em expanders e menus */
+    [data-testid="stExpander"] summary p, 
+    [data-testid="stHeader"] h1,
+    label p {
         font-family: 'Press Start 2P', cursive !important;
         font-size: 12px !important;
     }
 
-    /* Sidebar (Menu Lateral) */
-    [data-testid="stSidebar"] * {
-        font-family: 'Press Start 2P', cursive !important;
-        font-size: 10px !important;
+    /* Esconde o texto residual que o Streamlit usa para ícones quando a fonte muda */
+    [data-testid="stExpander"] svg, [data-baseweb="icon"] {
+        font-family: serif !important; /* Mantém ícones originais */
     }
 
-    /* Container de Dinheiro (Mochila) */
+    /* Ajuste de tamanho para não quebrar o layout */
+    p, span, label {
+        font-size: 10px !important;
+        line-height: 1.8;
+    }
+    
+    h1 { font-size: 20px !important; color: #D32F2F; }
+    h2 { font-size: 16px !important; color: #1976D2; }
+
     .money-display {
         background-color: #f8f8f8;
         border: 3px solid #555;
         border-radius: 10px;
         padding: 10px;
+        font-family: 'Press Start 2P', cursive !important;
         color: #2e7d32;
         text-align: right;
         margin-bottom: 20px;
+        font-size: 14px !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -1342,8 +1333,7 @@ if st.sidebar.button("🔄 Recarregar Excel"):
     st.rerun()
 
 st.sidebar.markdown("---")
-page = st.sidebar.radio("Ir para:", ["Pokédex (Busca)", "Trainer Hub (Meus Pokémons)", "PvP – Arena Tática"])
-
+page = st.sidebar.radio("Ir para:", ["Pokédex (Busca)", "Trainer Hub (Meus Pokémons)", "PvP – Arena Tática", "Mochila"])
 
 # ==============================================================================
 # PÁGINA 1: POKEDEX (COM FILTRO DE TIPO EXCLUSIVO/COMBINADO)
@@ -2584,6 +2574,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data)
                     st.success(f"{key.title()} atualizado!")
                     st.rerun()
+
 
 
 
