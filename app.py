@@ -2437,24 +2437,27 @@ elif page == "Mochila":
             "key_items": []
         }
 
-    # Cabeçalho com Dinheiro (Fonte Pixel)
-st.markdown(f'<div class="money-display">💰 Dinheiro: ₽ {user_data["backpack"]["money"]}</div>', unsafe_allow_html=True)    
+    # Cabeçalho com Dinheiro (AGORA IDENTADO CORRETAMENTE)
+    st.markdown(f'<div class="money-display">💰 Dinheiro: ₽ {user_data["backpack"]["money"]}</div>', unsafe_allow_html=True)    
 
     col_bag, col_content = st.columns([1, 2.5])
     
     with col_bag:
+        # Tenta carregar a imagem local; se não existir, usa o link reserva
+        try:
+            st.image("mochila.png", width=150, caption="MINHA BOLSA")
+        except:
+            st.image("https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/main-stats/adventure-guide.png", width=150)
         
-        st.image("mochila.png", width=150, caption="MINHA BOLSA")
-        
-        # Ajuste de Saldo na Coluna da Mochila
+        # Ajuste de Saldo
         new_money = st.number_input("Editar Saldo", value=int(user_data["backpack"]["money"]), step=100)
         if new_money != user_data["backpack"]["money"]:
             user_data["backpack"]["money"] = new_money
-            save_data_cloud(trainer_name, user_data)
+            save_data_cloud(trainer_name, user_data) [cite: 12]
         
         if st.button("🧹 Limpar Vazios"):
             for k in ["medicine", "pokeballs", "tms", "key_items"]:
-                user_data["backpack"][k] = [i for i in user_data["backpack"][k] if i["name"] and i["qty"] > 0]
+                user_data["backpack"][k] = [i for i in user_data["backpack"][k] if i["name"] and i.get("qty", 0) > 0]
             save_data_cloud(trainer_name, user_data) [cite: 12]
             st.rerun()
 
@@ -2480,11 +2483,6 @@ st.markdown(f'<div class="money-display">💰 Dinheiro: ₽ {user_data["backpack
                     save_data_cloud(trainer_name, user_data) [cite: 12]
                     st.success("Bolsa Atualizada!")
                     st.rerun()
-
-
-
-
-
 
 
 
