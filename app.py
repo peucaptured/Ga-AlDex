@@ -2215,25 +2215,32 @@ elif page == "PvP – Arena Tática":
                             if sel == clicked["id"]: st.session_state["selected_piece_id"] = None
                             else: st.session_state["selected_piece_id"] = clicked["id"]
                             st.rerun()
+                            
                     elif sel and is_player:
                         mover = next((p for p in all_p if p["id"] == sel), None)
                         if mover:
+                            # 1. Guarda a posição antiga para o Log
                             old_pos = [mover["row"], mover["col"]]
-                            mover["row"] = row; mover["col"] = col
-                            upsert_piece(db, rid, mover)
-                            st.session_state["selected_piece_id"] = None
-                            st.rerun()
-                        
-                        add_public_event(db, rid, "move", trainer_name, {
+                            
+                            # 2. Atualiza para a nova posição
+                            mover["row"] = row
+                            mover["col"] = col
+                            
+                            # 3. Registra o movimento publicamente NO LOG
+                            add_public_event(db, rid, "move", trainer_name, {
                                 "pid": mover["pid"],
                                 "from": old_pos,
                                 "to": [row, col]
-                            }) 
+                            })
                             
-                            upsert_piece(db, rid, mover) 
+                            # 4. Salva a peça no Firebase
+                            upsert_piece(db, rid, mover)
+                            
+                            # 5. Limpa a seleção e recarrega
                             st.session_state["selected_piece_id"] = None
                             st.rerun()
-       
+
+        # Fora da lógica de clique, mas no final da View Battle
         render_public_log_fragment(db, rid)
         st.stop()
         
@@ -2473,6 +2480,7 @@ st.markdown(f'<div class="money-display">💰 Dinheiro: ₽ {user_data["backpack
                     save_data_cloud(trainer_name, user_data) [cite: 12]
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
