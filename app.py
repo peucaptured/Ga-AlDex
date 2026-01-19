@@ -1874,7 +1874,7 @@ elif page == "PvP – Arena Tática":
 
         c_left, c_map, c_right = st.columns([1.3, 3, 1.3])
 
-        # --- FUNÇÃO HELPER PARA RENDERIZAR COLUNA DE PLAYER ---
+# --- FUNÇÃO HELPER PARA RENDERIZAR COLUNA DE PLAYER (CORRIGIDA) ---
         def render_player_column(col_container, p_name, p_label, is_me):
             with col_container:
                 st.markdown(f"### {p_label}")
@@ -1965,7 +1965,9 @@ elif page == "PvP – Arena Tática":
                                 c2.caption(f"HP: {cur_hp}/6 {status_txt}")
                                 if cur_hp == 0: c2.caption("**FAINTED**")
                             else:
-                                st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=40)
+                                # CORREÇÃO AQUI: Define as colunas c1 e c2 também no else
+                                c1, c2 = st.columns([1, 2])
+                                c1.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=40)
                                 c2.caption(f"??? {status_txt}")
 
         # --- RENDERIZA AS COLUNAS ---
@@ -2353,6 +2355,7 @@ elif page == "PvP – Arena Tática":
                     by = ev.get("by", "?")
                     payload = ev.get("payload", {})
                     st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
