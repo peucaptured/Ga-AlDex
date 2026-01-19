@@ -1877,22 +1877,7 @@ elif page == "PvP – Arena Tática":
             st.markdown(f"### 🏟️ Arena: `{rid}`") 
             
             col_me, col_map, col_opps = st.columns([1.5, 3, 2])
-            with col_me:
-                # Renderiza sua coluna (sempre azul)
-                render_player_column(st.container(), trainer_name, "🎒 Minha Equipe", is_me=True)
             
-            with col_opps:
-                st.markdown("### 🆚 Oponentes")
-                # Cria sub-colunas para até 3 oponentes
-                opp_cols = st.columns(len(all_players) - 1 if len(all_players) > 1 else 1)
-                
-                opp_idx = 0
-                for p_name in all_players:
-                    if p_name != trainer_name:
-                        label = f"Oponente {opp_idx + 1}"
-                        with opp_cols[opp_idx]:
-                            render_player_column(st.container(), p_name, p_name, is_me=False)
-                        opp_idx += 1
             
             # Última rolagem (feedback rápido)
             last_events = list_public_events(db, rid, limit=1)
@@ -2432,6 +2417,7 @@ elif page == "PvP – Arena Tática":
     
     
     
+
 
 
 
