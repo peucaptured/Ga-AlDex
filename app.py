@@ -378,7 +378,37 @@ def get_room(db, rid: str):
     data["_id"] = rid
     return data
 
-def join_room_as_challenger(db, rid: str, trainer_name: str):
+def get_perspective_color(viewer_name, player_name, room_data):
+    """
+    Retorna a cor baseada na perspectiva do visualizador.
+    Azul: Você | Vermelho: Oponente 1 | Amarelo: Oponente 2 | Rosa: Oponente 3
+    """
+    if viewer_name == player_name:
+        return (0, 150, 255) # Azul (Sempre você)
+    
+    owner = (room_data.get("owner") or {}).get("name")
+    challengers = [c.get("name") for c in (room_data.get("challengers") or [])]
+    
+    # Criar lista de "outros" (todos menos o espectador)
+    others = [owner] + challengers
+    if viewer_name in others:
+        others.remove(viewer_name)
+    
+    # Atribui cores aos oponentes na ordem em que aparecem
+    opp_colors = [
+        (255, 50, 50),   # Vermelho (Opp 1)
+        (255, 215, 0),  # Amarelo (Opp 2)
+        (255, 105, 180)  # Rosa (Opp 3)
+    ]
+    
+    try:
+        idx = others.index(player_name)
+        return opp_colors[idx] if idx < len(opp_colors) else (200, 200, 200)
+    except ValueError:
+        return (200, 200, 200) # Cor neutra para espectadores
+
+
+def join_room_as_challenger(db, rid: str, trainer_name: str, max_challengers: int = 4):
     ref = db.collection("rooms").document(rid)
     doc = ref.get()
     if not doc.exists:
@@ -386,32 +416,29 @@ def join_room_as_challenger(db, rid: str, trainer_name: str):
 
     data = doc.to_dict() or {}
     owner = (data.get("owner") or {}).get("name")
-    challenger = (data.get("challenger") or {}).get("name") if isinstance(data.get("challenger"), dict) else data.get("challenger")
-
+    # Agora lidamos com uma lista de desafiantes
+    challengers = data.get("challengers") or []
+    
+    # Se já estiver na lista ou for o dono
     if owner == trainer_name:
         add_room_to_user(db, trainer_name, rid)
         return "ALREADY_OWNER"
-
-    if not challenger:
-        ref.update({
-            "challenger": {"name": trainer_name},
-            "status": "running",
-        })
-        add_room_to_user(db, trainer_name, rid)
-        # evento público
-        ref.collection("public_events").add({
-            "type": "join_challenger",
-            "by": trainer_name,
-            "payload": {"room": rid},
-            "ts": firestore.SERVER_TIMESTAMP,
-        })
-        return "OK"
-
-    if challenger == trainer_name:
+    
+    if any(c.get("name") == trainer_name for c in challengers):
         add_room_to_user(db, trainer_name, rid)
         return "ALREADY_CHALLENGER"
 
-    return "CHALLENGER_TAKEN"
+    # Verifica se ainda há vaga (até 4 desafiantes)
+    if len(challengers) < max_challengers:
+        new_challenger = {"name": trainer_name}
+        ref.update({
+            "challengers": firestore.ArrayUnion([new_challenger]),
+            "status": "running",
+        })
+        add_room_to_user(db, trainer_name, rid)
+        return "OK"
+
+    return "ARENA_FULL"
 
 def join_room_as_spectator(db, rid: str, trainer_name: str):
     ref = db.collection("rooms").document(rid)
@@ -928,13 +955,13 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, eff
         if r < 0 or c < 0: continue
 
         owner = p.get("owner")
-        border_color = (0, 255, 255) if owner == viewer_name else (255, 50, 50)
+        border_color = get_perspective_color(viewer_name, owner, room)
 
         x = c * TILE_SIZE
         y = r * TILE_SIZE
         
         # Borda
-        draw.rectangle([x, y, x + TILE_SIZE - 1, y + TILE_SIZE - 1], outline=border_color, width=3)
+        draw.rectangle([x, y, x + TILE_SIZE - 1, y + TILE_SIZE - 1], outline=border_color, width=4)
 
         pid = str(p.get("pid", ""))
         is_p_shiny = p.get("shiny", False) #
@@ -1783,8 +1810,9 @@ elif page == "PvP – Arena Tática":
                                 c2.caption(f"??? {status_txt}")
 
         # --- 4. PREPARAÇÃO DE TIMES E VARIÁVEIS ---
-        owner_name = (room.get("owner") or {}).get("name", "Host")
-        chal_name = (room.get("challenger") or {}).get("name", "Desafiante")
+        owner_name = (room.get("owner") or {}).get("name")
+        challenger_list = room.get("challengers") or []
+        all_players = [owner_name] + [c.get("name") for c in challenger_list]
         
         # Define quem é P1 (Esquerda) e P2 (Direita) e se "Eu" sou o P1
         if trainer_name == owner_name:
@@ -1849,6 +1877,24 @@ elif page == "PvP – Arena Tática":
         with top[4]:
             # ✅ PEDIDO: Mostrar Código da Sala aqui em cima
             st.markdown(f"### 🏟️ Arena: `{rid}`") 
+            
+            col_me, col_map, col_opps = st.columns([1.5, 3, 2])
+            with col_me:
+                # Renderiza sua coluna (sempre azul)
+                render_player_column(st.container(), trainer_name, "🎒 Minha Equipe", is_me=True)
+            
+            with col_opps:
+                st.markdown("### 🆚 Oponentes")
+                # Cria sub-colunas para até 3 oponentes
+                opp_cols = st.columns(len(all_players) - 1 if len(all_players) > 1 else 1)
+                
+                opp_idx = 0
+                for p_name in all_players:
+                    if p_name != trainer_name:
+                        label = f"Oponente {opp_idx + 1}"
+                        with opp_cols[opp_idx]:
+                            render_player_column(st.container(), p_name, p_name, is_me=False)
+                        opp_idx += 1
             
             # Última rolagem (feedback rápido)
             last_events = list_public_events(db, rid, limit=1)
@@ -2382,6 +2428,7 @@ elif page == "PvP – Arena Tática":
     
     
     
+
 
 
 
