@@ -1357,7 +1357,7 @@ if page == "Pokédex (Busca)":
 # ==============================================================================
 # PÁGINA 2: TRAINER HUB
 # ==============================================================================
-elif page == "Trainer Hub (Meus Pokémons)":
+if page == "Trainer Hub (Meus Pokémons)":
     st.title("🏕️ Trainer Hub")
     # --- INICIALIZAÇÃO DE DADOS NOVOS ---
     if "stats" not in user_data: user_data["stats"] = {}
@@ -2358,5 +2358,6 @@ elif page == "PvP – Arena Tática":
     
     
     
+
 
 
