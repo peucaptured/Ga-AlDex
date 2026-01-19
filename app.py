@@ -1628,6 +1628,7 @@ elif page == "PvP – Arena Tática":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
+            click = None
 
         if "last_click_processed" not in st.session_state:
             st.session_state["last_click_processed"] = None
@@ -2421,7 +2422,7 @@ elif page == "PvP – Arena Tática":
                             st.session_state["pvp_view"] = "battle"
                             st.rerun()
                     else:
-                        img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name)
+                        img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name, room)
                         st.image(img, caption="Prévia do Campo")
                         
                         if st.button("⚔️ IR PARA O CAMPO DE BATALHA", type="primary"):
@@ -2439,6 +2440,7 @@ elif page == "PvP – Arena Tática":
     
     
     
+
 
 
 
