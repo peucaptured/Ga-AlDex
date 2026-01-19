@@ -1900,7 +1900,26 @@ elif page == "PvP – Arena Tática":
                 pl = last_dice.get("payload", {})
                 st.warning(f"🎲 {last_dice.get('by')}: **{pl.get('result')}** (d{pl.get('sides')})")
 
-      # [FASE 1] CONFIGURAR ATAQUE
+        # ==========================================
+        # 🧮 6. CALCULADORA DE COMBATE
+        # ==========================================
+        battle_ref = db.collection("rooms").document(rid).collection("public_state").document("battle")
+        battle_doc = battle_ref.get()
+        b_data = battle_doc.to_dict() or {"status": "idle", "logs": []}
+        import math
+
+        with st.expander("⚔️ Calculadora de Combate", expanded=(b_data["status"] != "idle")):
+            
+            # [FASE 0] IDLE
+            if b_data["status"] == "idle":
+                if is_player:
+                    if st.button("Nova Batalha (Atacar)"):
+                        battle_ref.set({"status": "setup", "attacker": trainer_name, "logs": []})
+                        st.rerun()
+                else:
+                    st.caption("Aguardando combate...")
+            
+            # [FASE 1] CONFIGURAR ATAQUE
             elif b_data["status"] == "setup":
                 # CORREÇÃO: Parêntese fechado corretamente aqui
                 st.caption(f"**Atacante:** {b_data.get('attacker')}")
@@ -1925,6 +1944,61 @@ elif page == "PvP – Arena Tática":
                     with c_atk2:
                         attack_mode = st.radio("Modo", ["Normal", "Área"], horizontal=True)
                     
+                    # Se for Área
+                    if attack_mode == "Área":
+                        st.info("Ataque em Área: Dodge (CD 10 + Nível) reduz dano pela metade.")
+                        lvl_effect = st.number_input("Nível do Efeito / Dano", min_value=1, value=1)
+                        is_eff_area = st.checkbox("É Efeito? (Affliction)", key="area_eff")
+
+                        if st.button("🚀 Lançar Área"):
+                            if target_id:
+                                t_p = next((p for p in all_pieces if p['id'] == target_id), None)
+                                battle_ref.update({
+                                    "status": "aoe_defense",
+                                    "target_id": target_id,
+                                    "target_owner": t_p['owner'],
+                                    "target_pid": t_p['pid'],
+                                    "aoe_dc": lvl_effect + 10,
+                                    "dmg_base": lvl_effect,
+                                    "is_effect": is_eff_area,
+                                    "logs": [f"{trainer_name} lançou Área (Nv {lvl_effect}). Defensor rola Dodge (CD {lvl_effect+10})."]
+                                })
+                                st.rerun()
+                    else:
+                        # Normal
+                        with c_atk3:
+                            atk_type = st.selectbox("Alcance", ["Distância (Dodge)", "Corpo-a-corpo (Parry)"])
+                        
+                        atk_mod = st.number_input("Acerto (Modificador)", value=0, step=1)
+                        
+                        if st.button("⚔️ Rolar Ataque"):
+                            if target_id:
+                                d20 = random.randint(1, 20)
+                                t_p = next((p for p in all_pieces if p['id'] == target_id), None)
+                                
+                                # Pega stats do alvo
+                                _, _, t_stats, _ = get_poke_data(t_p['owner'], t_p['pid']) [cite: 259]
+                                dodge = int(t_stats.get("dodge", 0))
+                                parry = int(t_stats.get("parry", 0))
+                                
+                                defense_val = dodge if "Distância" in atk_type else parry
+                                needed = defense_val + 10
+                                total_atk = atk_mod + d20
+                                
+                                hit = total_atk >= needed
+                                result_msg = "ACERTOU! ✅" if hit else "ERROU! ❌"
+                                
+                                battle_ref.update({
+                                    "status": "hit_confirmed" if hit else "missed",
+                                    "target_id": target_id,
+                                    "target_owner": t_p['owner'],
+                                    "target_pid": t_p['pid'],
+                                    "logs": [f"{trainer_name} rolou {d20}+{atk_mod}=**{total_atk}** (vs Def {needed} [{defense_val}+10])... {result_msg}"]
+                                })
+                                st.rerun()
+                else:
+                    st.info(f"Aguardando {b_data.get('attacker')}...")
+
             # [FASE 1.5] DEFESA DE ÁREA
             elif b_data["status"] == "aoe_defense":
                 st.info(b_data["logs"][-1])
@@ -2356,8 +2430,6 @@ elif page == "PvP – Arena Tática":
     
     
     
-
-
 
 
 
