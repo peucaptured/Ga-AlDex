@@ -121,44 +121,6 @@ def authenticate_user(name, password):
         st.error(f"Erro na autenticação: {e}")
         return None
 
-
-def get_item_image_url(item_name):
-    """Busca o sprite oficial do item na PokeAPI."""
-    if not item_name:
-        return "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/question-mark.png"
-    
-    clean_name = normalize_text(item_name).replace(" ", "-")
-    # Tenta o padrão da PokeAPI
-    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/{clean_name}.png"
-
-def render_item_row(category_key, index, item_data, show_image=True):
-    """Renderiza uma linha de item com input e imagem."""
-    cols = st.columns([1, 4, 1.5] if show_image else [4, 1.5])
-    
-    with cols[0 if show_image else 0]:
-        new_name = st.text_input("Nome do Item", value=item_data.get("name", ""), 
-                                key=f"item_name_{category_key}_{index}", label_visibility="collapsed", placeholder="Nome do item...")
-    
-    with cols[-1]:
-        new_qty = st.number_input("Qtd", min_value=0, value=item_data.get("qty", 1), 
-                                 key=f"item_qty_{category_key}_{index}", label_visibility="collapsed")
-
-    if show_image:
-        with cols[1]:
-            if new_name:
-                img_url = get_item_image_url(new_name)
-                # Verifica se a imagem existe (fallback para interrogação via HTML error)
-                st.markdown(f"""
-                    <div style="display: flex; align-items: center;">
-                        <img src="{img_url}" width="30" onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/question-mark.png';" style="margin-right: 10px;">
-                        <span class="poke-font">{new_name.upper()}</span>
-                    </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.write("")
-
-    return {"name": new_name, "qty": new_qty}
-
 def register_new_user(name, password):
     try:
         sheet = get_google_sheet()
@@ -271,6 +233,35 @@ def safe_doc_id(name: str) -> str:
     if not isinstance(name, str):
         name = str(name)
     return re.sub(r"[^a-zA-Z0-9_\-\.]", "_", name).strip("_")[:80] or "user"
+
+def get_item_image_url(item_name):
+    if not item_name:
+        return "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/question-mark.png"
+    # [cite_start]Usa a função de normalização que você já tem no código [cite: 106]
+    clean_name = normalize_text(item_name).replace(" ", "-")
+    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/{clean_name}.png"
+
+def render_item_row(category_key, index, item_data, show_image=True):
+    # Ajuste de colunas para o layout da mochila
+    cols = st.columns([2, 1, 1]) if show_image else st.columns([3, 1])
+    
+    with cols[0]:
+        # Input com a mesma fonte dos jogos via CSS
+        n_key = f"it_nm_{category_key}_{index}"
+        new_name = st.text_input("Nome", value=item_data.get("name", ""), key=n_key, label_visibility="collapsed")
+    
+    with cols[-1]:
+        q_key = f"it_qt_{category_key}_{index}"
+        new_qty = st.number_input("Qtd", min_value=0, value=item_data.get("qty", 1), key=q_key, label_visibility="collapsed")
+
+    if show_image and new_name:
+        with cols[1]:
+            img_url = get_item_image_url(new_name)
+            # Renderização em linha única para não quebrar o visual do editor
+            st.markdown(f'<img src="{img_url}" width="30">', unsafe_allow_html=True)
+
+    return {"name": new_name, "qty": new_qty}
+
 
 def room_id_new() -> str:
     # curto e fácil de digitar
@@ -1292,7 +1283,7 @@ if st.sidebar.button("🔄 Recarregar Excel"):
     st.rerun()
 
 st.sidebar.markdown("---")
-page = st.sidebar.radio("Ir para:", ["Pokédex (Busca)", "Trainer Hub (Meus Pokémons)", "PvP – Arena Tática", "Mochila"])
+page = st.sidebar.radio("Ir para:", ["Pokédex (Busca)", "Trainer Hub (Meus Pokémons)", "PvP – Arena Tática"])
 
 
 # ==============================================================================
@@ -2475,11 +2466,11 @@ elif page == "PvP – Arena Tática":
                              packed = pack_tiles(tiles)
                              state_ref.set({"seed": seed, "tilesPacked": packed, "noWater": bool(no_water)}, merge=True)
                              st.rerun()
-
-
-
-
-# Estilo para simular a interface de Pokémon
+    
+            
+    
+    
+    # Estilo para simular a interface de Pokémon
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
@@ -2501,86 +2492,49 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
-            
     
-    elif page == "Mochila":
-    # Inicialização da estrutura de dados se não existir
+
+
+elif page == "Mochila":
     if "backpack" not in user_data:
-        user_data["backpack"] = {
-            "money": 0,
-            "medicine": [],
-            "pokeballs": [],
-            "tms": [],
-            "key_items": []
-        }
+        user_data["backpack"] = {"money": 0, "medicine": [], "pokeballs": [], "tms": [], "key_items": []}
 
-    st.title("🎒 Bolsa de Itens")
-
-    # --- DINHEIRO NO TOPO ---
-    st.markdown(f"""
-        <div class="money-display">
-            Dinheiro: ₽ {user_data['backpack']['money']:,}
-        </div>
-    """, unsafe_allow_html=True)
+    # Dinheiro no topo conforme pedido
+    st.markdown(f'<div class="money-display">💰 Dinheiro: ₽ {user_data["backpack"]["money"]}</div>', unsafe_allow_html=True)
     
-    new_money = st.sidebar.number_input("Ajustar Dinheiro", value=int(user_data['backpack']['money']), step=100)
-    if new_money != user_data['backpack']['money']:
-        user_data['backpack']['money'] = new_money
-        save_data_cloud(trainer_name, user_data)
-
-    # --- LAYOUT PRINCIPAL (IMAGEM DA MOCHILA + ABAS) ---
-    col_bag, col_content = st.columns([1, 3])
-
+    col_bag, col_content = st.columns([1, 2])
+    
     with col_bag:
-        # Imagem temática da mochila (estilo HGSS/DPPt)
-        st.image("https://archives.bulbagarden.org/media/upload/c/c0/Bag_Medicine_HGSS_m.png", width=150)
-        st.caption("“Tudo o que você precisa para sua jornada!”")
+        # Imagem fixa da mochila ao lado
+        st.image("https://archives.bulbagarden.org/media/upload/c/c0/Bag_Medicine_HGSS_m.png")
+        new_money = st.number_input("Editar Saldo", value=int(user_data["backpack"]["money"]), step=100)
+        if new_money != user_data["backpack"]["money"]:
+            user_data["backpack"]["money"] = new_money
+            [cite_start]save_data_cloud(trainer_name, user_data) # [cite: 11, 16]
 
     with col_content:
-        tab_med, tab_ball, tab_tm, tab_key = st.tabs(["💊 Medicina", "🔴 Pokébolas", "💿 TMs", "🔑 Chave"])
+        tabs = st.tabs(["💊 Med", "🔴 Pokéballs", "💿 TMs", "🔑 Chave"])
+        
+        # Configuração das abas: (Tab, Chave no Banco, Mostrar Imagem)
+        cfg = [(tabs[0], "medicine", True), (tabs[1], "pokeballs", True), 
+               (tabs[2], "tms", True), (tabs[3], "key_items", False)]
 
-        categories = [
-            (tab_med, "medicine", True),
-            (tab_ball, "pokeballs", True),
-            (tab_tm, "tms", True),
-            (tab_key, "key_items", False)
-        ]
-
-        for tab, key, use_img in categories:
+        for tab, key, use_img in cfg:
             with tab:
-                st.markdown(f"### Lista de {key.replace('_', ' ').title()}")
-                
-                # Lista atual
-                updated_items = []
                 current_list = user_data["backpack"].get(key, [])
+                updated_items = []
                 
-                # Renderiza itens existentes + 1 linha vazia para novo item
+                # Renderiza os itens e uma linha extra para novos
                 for i in range(len(current_list) + 1):
-                    item_info = current_list[i] if i < len(current_list) else {"name": "", "qty": 0}
-                    res = render_item_row(key, i, item_info, show_image=use_img)
+                    item_data = current_list[i] if i < len(current_list) else {"name": "", "qty": 0}
+                    res = render_item_row(key, i, item_data, show_image=use_img)
                     if res["name"]:
                         updated_items.append(res)
                 
-                # Botão para Salvar alteração da aba
-                if st.button(f"Atualizar {key.title()}", key=f"btn_save_{key}"):
+                if st.button(f"Salvar {key}", key=f"save_{key}"):
                     user_data["backpack"][key] = updated_items
-                    save_data_cloud(trainer_name, user_data)
-                    st.success("Bolsa organizada!")
+                    [cite_start]save_data_cloud(trainer_name, user_data) # [cite: 11, 16]
                     st.rerun()
-
-    # Botão de Limpeza rápida
-    if st.sidebar.button("🧹 Limpar Itens Vazios"):
-        for k in ["medicine", "pokeballs", "tms", "key_items"]:
-            user_data["backpack"][k] = [i for i in user_data["backpack"][k] if i["name"]]
-        save_data_cloud(trainer_name, user_data)
-        st.rerun()
-    
-    
-
-
-
-
-
 
 
 
