@@ -2535,7 +2535,13 @@ elif page == "PvP – Arena Tática":
 
 elif page == "Mochila":
     if "backpack" not in user_data:
-        user_data["backpack"] = {"money": 0, "medicine": [], "pokeballs": [], "tms": [], "key_items": []}
+        user_data["backpack"] = {
+            "money": 0, 
+            "medicine": [], 
+            "pokeballs": [], 
+            "tms": [], 
+            "key_items": []
+        }
 
     # Dinheiro no topo conforme pedido
     st.markdown(f'<div class="money-display">💰 Dinheiro: ₽ {user_data["backpack"]["money"]}</div>', unsafe_allow_html=True)
@@ -2548,14 +2554,18 @@ elif page == "Mochila":
         new_money = st.number_input("Editar Saldo", value=int(user_data["backpack"]["money"]), step=100)
         if new_money != user_data["backpack"]["money"]:
             user_data["backpack"]["money"] = new_money
-            [cite_start]save_data_cloud(trainer_name, user_data) # [cite: 11, 16]
+            save_data_cloud(trainer_name, user_data)
 
     with col_content:
         tabs = st.tabs(["💊 Med", "🔴 Pokéballs", "💿 TMs", "🔑 Chave"])
         
         # Configuração das abas: (Tab, Chave no Banco, Mostrar Imagem)
-        cfg = [(tabs[0], "medicine", True), (tabs[1], "pokeballs", True), 
-               (tabs[2], "tms", True), (tabs[3], "key_items", False)]
+        cfg = [
+            (tabs[0], "medicine", True), 
+            (tabs[1], "pokeballs", True), 
+            (tabs[2], "tms", True), 
+            (tabs[3], "key_items", False)
+        ]
 
         for tab, key, use_img in cfg:
             with tab:
@@ -2569,9 +2579,10 @@ elif page == "Mochila":
                     if res["name"]:
                         updated_items.append(res)
                 
-                if st.button(f"Salvar {key}", key=f"save_{key}"):
+                if st.button(f"Salvar {key.title()}", key=f"save_{key}"):
                     user_data["backpack"][key] = updated_items
-                    [cite_start]save_data_cloud(trainer_name, user_data) # [cite: 11, 16]
+                    save_data_cloud(trainer_name, user_data)
+                    st.success(f"{key.title()} atualizado!")
                     st.rerun()
 
 
