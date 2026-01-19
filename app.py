@@ -1753,18 +1753,18 @@ elif page == "PvP – Arena Tática":
                                     if p_obj:
                                         rev = p_obj.get("revealed", True)
                                         # Botão Olho/Check
-                                        if st.button("👁️" if rev else "✅", key=f"v_{pid}"):
+                                        if st.button("👁️" if rev else "✅", key=f"v_{p_name}_{pid}"):
                                             p_obj["revealed"] = not rev
                                             upsert_piece(db, rid, p_obj)
                                             if p_obj["revealed"]: mark_pid_seen(db, rid, pid)
                                             st.rerun()
                                         # Botão Remover
-                                        if st.button("❌", key=f"r_{pid}"):
+                                        if st.button("❌", key=f"r_{p_name}_{pid}"):
                                             delete_piece(db, rid, p_obj["id"])
                                             add_public_event(db, rid, "removed", p_name, {"pid": pid})
                                             st.rerun()
                                 else:
-                                    if cur_hp > 0 and st.button("📍 Por", key=f"p_{pid}"):
+                                    if cur_hp > 0 and st.button("📍 Por", key=f"p_{p_name}_{pid}"):
                                         st.session_state["placing_pid"] = pid
                                         st.session_state["placing_effect"] = None
                                         st.rerun()
@@ -1775,8 +1775,8 @@ elif page == "PvP – Arena Tática":
                                     hp_i = "💚" if cur_hp >= 5 else "💀"
                                     st.markdown(f"**{real_name}**")
                                     st.markdown(f"{hp_i} HP: {cur_hp}/6")
-                                    st.slider("HP", 0, 6, int(cur_hp), key=f"hp_{pid}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, p_name, pid))
-                                    st.multiselect("Status", ["🔥","❄️","⚡"], default=cur_cond, key=f"cond_{pid}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, p_name, pid))
+                                    st.slider("HP", 0, 6, int(cur_hp), key=f"hp_{p_name}_{pid}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, p_name, pid))
+                                    st.multiselect("Status", ["🔥","❄️","⚡"], default=cur_cond, key=f"cond_{p_name}_{pid}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, p_name, pid))
 
                     # --- VISÃO DO VISITANTE/OPONENTE ---
                     else:
@@ -1939,16 +1939,17 @@ elif page == "PvP – Arena Tática":
                     # CORREÇÃO: Indentação alinhada com o bloco acima (4 espaços dentro do IF)
                     with c_atk1:
                         target_id = st.selectbox("Alvo", options=list(target_options.keys()), 
-                                    format_func=lambda x: target_options[x]) if target_options else None
+                                    format_func=lambda x: target_options[x],
+                                    key=f"atk_target_{rid}") if target_options else None
                     
                     with c_atk2:
-                        attack_mode = st.radio("Modo", ["Normal", "Área"], horizontal=True)
+                        attack_mode = st.radio("Modo", ["Normal", "Área"], horizontal=True, key=f"atk_mode_{rid}")
                     
                     # Se for Área
                     if attack_mode == "Área":
                         st.info("Ataque em Área: Dodge (CD 10 + Nível) reduz dano pela metade.")
                         lvl_effect = st.number_input("Nível do Efeito / Dano", min_value=1, value=1)
-                        is_eff_area = st.checkbox("É Efeito? (Affliction)", key="area_eff")
+                        is_eff_area = st.checkbox("É Efeito? (Affliction)", key=f"area_eff_{rid}")
 
                         if st.button("🚀 Lançar Área"):
                             if target_id:
@@ -2038,7 +2039,7 @@ elif page == "PvP – Arena Tática":
                     with c1:
                         dmg_input = st.number_input("Dano Base / Rank", min_value=0, value=0)
                     with c2:
-                        is_eff_check = st.checkbox("É Efeito?", value=False, help="Se marcado, CD base será 10. Se não, 15.")
+                        is_eff_check = st.checkbox("É Efeito?", value=False, key=f"norm_eff_{rid}", help="Se marcado, CD base será 10. Se não, 15.")
                     
                     if st.button("Enviar Dano/Efeito"):
                         battle_ref.update({
@@ -2430,6 +2431,7 @@ elif page == "PvP – Arena Tática":
     
     
     
+
 
 
 
