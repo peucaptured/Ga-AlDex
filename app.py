@@ -2110,18 +2110,19 @@ elif view == "lobby":
             "center_lake": "Lago Central"
         }
 
-        # --- Painel: criar arena ---
+        # ==========================================
+        # 1. PAINEL SUPERIOR (CRIAR / LISTAR / ENTRAR)
+        # ==========================================
+        
+        # --- Criar nova arena ---
         st.subheader("➕ Criar nova arena")
         c1, c2, c3 = st.columns([1, 1, 2])
         with c1:
-            # ✅ PEDIDO: Adicionado 12x12
             grid = st.selectbox("Tamanho do grid", [6, 8, 10, 12], index=0)
         with c2:
-            # Inverte o dicionário para o selectbox funcionar (Nome -> Key)
             inv_themes = {v: k for k, v in THEME_NAMES.items()}
             theme_label = st.selectbox("Tema", list(inv_themes.keys()), index=0)
             theme = inv_themes[theme_label]
-    
         with c3:
             st.write("")
             if st.button("🆕 Criar arena", type="primary"):
@@ -2135,37 +2136,32 @@ elif view == "lobby":
     
         st.markdown("---")
     
-        # --- Minhas arenas (LISTAGEM CORRIGIDA) ---
+        # --- Minhas arenas ---
         st.subheader("📌 Minhas arenas")
         my_rooms = list_my_rooms(db, trainer_name)
         
         if not my_rooms:
             st.info("Você ainda não tem arenas ativas. Crie uma acima.")
         else:
-            # ✅ PEDIDO: Nomes Amigáveis e Lógica de Seleção Robusta
-            map_choice = {} # Dicionário { "Texto Amigavel": "ID_DA_SALA" }
-            
-            for rid in my_rooms[:20]: # Limite de 20 para não travar
+            map_choice = {} 
+            for rid in my_rooms[:20]:
                 info = get_room(db, rid)
                 if info:
                     gs = info.get("gridSize", "?")
                     th_key = info.get("theme", "cave_water")
-                    th_nice = THEME_NAMES.get(th_key, th_key) # Tenta pegar nome bonito
-                    
+                    th_nice = THEME_NAMES.get(th_key, th_key)
                     chal = (info.get("challenger") or {})
                     chal_name = chal.get("name") if isinstance(chal, dict) else (chal or "Ninguém")
                     
-                    # Formato: (Tipo) vs (Desafiante) (Tamanho) [ID]
                     label = f"{th_nice} vs {chal_name} ({gs}x{gs}) [ID: {rid}]"
                     map_choice[label] = rid
     
             if map_choice:
                 chosen_label = st.selectbox("Selecionar Arena", list(map_choice.keys()))
-                chosen_rid = map_choice[chosen_label] # Pega o ID direto do dicionário
+                chosen_rid = map_choice[chosen_label]
     
                 b1, b2 = st.columns([1, 4])
                 with b1:
-                    # ✅ CORREÇÃO DO BUG DE NÃO ABRIR
                     if st.button("📂 Abrir Selecionada"):
                         st.session_state["active_room_id"] = chosen_rid
                         st.rerun()
@@ -2205,11 +2201,12 @@ elif view == "lobby":
                         st.rerun()
                     else:
                         st.error(res)
-        
+
         st.markdown("---")
-   
-else:
-        # --- Painel da arena ativa (PREVIEW) ---
+
+        # ==========================================
+        # 2. PAINEL INFERIOR (PRÉ-VISUALIZAÇÃO DA ARENA ATIVA)
+        # ==========================================
         rid = st.session_state.get("active_room_id")
         st.subheader("🎮 Arena Ativa (Pré-visualização)")
         
@@ -2229,14 +2226,12 @@ else:
             if not room:
                 st.error("Arena não encontrada.")
             else:
-                # Infos básicas
                 owner = (room.get("owner") or {}).get("name")
                 chal = room.get("challenger") or {}
                 chal_name = chal.get("name") if isinstance(chal, dict) else (chal or "Aguardando...")
                 
                 st.info(f"📍 **Arena {rid}** | {room.get('theme')} | {owner} vs {chal_name}")
 
-                # --- Lógica do Mapa (Mantida igual para gerar/ver mapa) ---
                 state_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
                 state_doc = state_ref.get()
                 state = state_doc.to_dict() if state_doc.exists else {}
@@ -2249,7 +2244,6 @@ else:
                 all_pieces = state.get("pieces") or []
                 pieces = visible_pieces_for(room, trainer_name, all_pieces)
                 
-                # Checkbox 'Sem Água'
                 role = get_role(room, trainer_name)
                 is_player = role in ["owner", "challenger"]
                 
@@ -2267,22 +2261,20 @@ else:
                         st.session_state["pvp_view"] = "battle"
                         st.rerun()
                 else:
-                     # Mostra a imagem estática
                     img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name)
                     st.image(img, caption="Prévia do Campo")
                     
-                    # ✅ PEDIDO: Botão Ir para Batalha
                     if st.button("⚔️ IR PARA O CAMPO DE BATALHA", type="primary"):
                         st.session_state["pvp_view"] = "battle"
                         st.rerun()
                     
                     if st.button("🔁 Regerar Mapa", disabled=not is_player):
-                         # Lógica de regerar (igual ao original)
                          tiles, seed = gen_tiles(grid, theme_key, seed=None, no_water=no_water)
                          packed = pack_tiles(tiles)
                          state_ref.set({"seed": seed, "tilesPacked": packed, "noWater": bool(no_water)}, merge=True)
                          st.rerun()
 
         
+
 
 
