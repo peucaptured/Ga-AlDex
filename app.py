@@ -57,36 +57,32 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-    /* Aplica a fonte apenas em textos e botões, protegendo ícones */
-    html, body, .stMarkdown p, .stButton button, label, .stTab p, .stTextInput input {
+    /* Define a fonte de jogo apenas para textos específicos, não para tudo */
+    .stMarkdown p, .stButton button, label, .stTab p, h1, h2, h3 {
         font-family: 'Press Start 2P', cursive !important;
-        font-size: 11px !important; /* Tamanho ajustado para legibilidade */
-        line-height: 1.5;
+        font-size: 14px !important; /* Aumentado para melhor leitura */
+        line-height: 1.8;
     }
 
-    /* REMOVE O BUG "ARROW": Força ícones de sistema a usarem fonte padrão */
+    /* Ajuste para inputs (caixas de texto) */
+    .stTextInput input {
+        font-family: 'Press Start 2P', cursive !important;
+        font-size: 12px !important;
+    }
+
+    /* RESOLVE O BUG DO "ARROW" E ÍCONES:
+       Força os ícones do sistema a usarem fontes padrão, 
+       impedindo que o navegador exiba o texto 'arrow' */
     [data-testid="stExpander"] svg, 
-    [data-testid="stSidebarNav"] svg,
+    [data-testid="stHeader"] svg,
     [data-baseweb="icon"] svg,
-    .st-at svg, 
-    summary svg {
-        font-family: serif !important;
+    summary span {
+        font-family: sans-serif !important;
     }
 
-    /* Ajuste para os Títulos */
-    h1 { font-size: 18px !important; color: #D32F2F; margin-bottom: 15px; }
-    h2 { font-size: 14px !important; color: #1976D2; }
-    h3 { font-size: 12px !important; }
-
-    /* Estilo da barra de dinheiro */
-    .money-display {
-        background-color: #222;
-        border: 3px solid #f1c40f;
-        padding: 10px;
-        color: #f1c40f;
-        text-align: center;
-        border-radius: 5px;
-        margin-bottom: 20px;
+    /* Mantém a fonte original (menor) para textos muito longos se necessário */
+    .small-font {
+        font-size: 10px !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -2108,10 +2104,13 @@ elif page == "PvP – Arena Tática":
         # ==========================================
         # 🧮 6. CALCULADORA DE COMBATE
         # ==========================================
-
+        battle_ref = db.collection("rooms").document(rid).collection("public_state").document("battle")
+        battle_doc = battle_ref.get()
+        b_data = battle_doc.to_dict() or {"status": "idle", "logs": []}
+        
+        # --- AGORA EXIBE A CALCULADORA ---
         with st.expander("⚔️ Calculadora de Combate", expanded=(b_data["status"] != "idle")):
-        # Chamada do fragmento isolado
-            render_battle_calculator_fragment(db, rid, trainer_name, all_pieces, player_pieces_map)
+            render_battle_calculator_fragment(db, rid, trainer_name, all_pieces, player_pieces_map, is_player)
 
 
         # =========================
@@ -2453,12 +2452,12 @@ elif page == "Mochila":
         new_money = st.number_input("Editar Saldo", value=int(user_data["backpack"]["money"]), step=100)
         if new_money != user_data["backpack"]["money"]:
             user_data["backpack"]["money"] = new_money
-            save_data_cloud(trainer_name, user_data) [cite: 12]
+            save_data_cloud(trainer_name, user_data) 
         
         if st.button("🧹 Limpar Vazios"):
             for k in ["medicine", "pokeballs", "tms", "key_items"]:
                 user_data["backpack"][k] = [i for i in user_data["backpack"][k] if i["name"] and i.get("qty", 0) > 0]
-            save_data_cloud(trainer_name, user_data) [cite: 12]
+            save_data_cloud(trainer_name, user_data) 
             st.rerun()
 
     with col_content:
@@ -2483,6 +2482,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) [cite: 12]
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
