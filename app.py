@@ -883,7 +883,8 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
 
     return img
 
-def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, effects=None):
+def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name, room, effects=None):
+    
     # 1. Base do Mapa (Cacheada)
     img = render_map_png(tiles, theme_key, seed).convert("RGBA")
     draw = ImageDraw.Draw(img)
@@ -2131,7 +2132,28 @@ elif page == "PvP – Arena Tática":
 
         with c_map:
             st.markdown("### 🗺️ Arena")
-            # ... (Mantenha seu código atual de Itens e renderização do mapa aqui) ...
+            can_edit = (trainer_name == "Ezenek" or is_player)
+            with st.expander("🛠️ Itens", expanded=False):
+                if can_edit:
+                    effects_map = {"Fogo":"🔥", "Gelo":"🧊", "Água":"💧", "Rocha":"🪨", "Nuvem":"☁️", "Sol":"☀️"}
+                    curr = st.session_state.get("placing_effect")
+                    if curr: st.info(f"Item: {curr}")
+                    cols = st.columns(6)
+                    for i, (k, v) in enumerate(effects_map.items()):
+                        if cols[i%6].button(v, key=f"ef_{k}"):
+                            st.session_state["placing_effect"] = v if curr != v else None
+                            st.session_state["placing_pid"] = None
+                            st.rerun()
+                    if st.button("Limpar"):
+                        db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": []})
+                        st.rerun()
+
+            if "selected_piece_id" not in st.session_state: st.session_state["selected_piece_id"] = None
+            img = render_map_with_pieces(
+                tiles, theme_key, seed, pieces_to_draw, trainer_name, room, effects=field_effects
+            )
+            click = streamlit_image_coordinates(img, key=f"map_{rid}")
+
             # Lembre-se que na renderização do mapa, a função 'get_perspective_color' 
             # deve ser usada para desenhar a borda da peça.
 
@@ -2417,6 +2439,7 @@ elif page == "PvP – Arena Tática":
     
     
     
+
 
 
 
