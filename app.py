@@ -1818,7 +1818,7 @@ elif page == "PvP – Arena Tática":
         p2_pieces_board = [] # Alvos
 
         for p in all_pieces:
-            hp_check, _, _ = get_poke_data(p.get("owner"), p.get("pid"))
+            hp_check, _, _, _ = get_poke_data(p.get("owner"), p.get("pid"))
             p["status"] = "fainted" if hp_check == 0 else "active"
 
             # Quem vê o que no mapa
@@ -1928,7 +1928,7 @@ elif page == "PvP – Arena Tática":
                                 t_p = next((p for p in all_pieces if p['id'] == target_id), None)
                                 
                                 # Pega stats do alvo
-                                _, _, t_stats = get_poke_data(t_p['owner'], t_p['pid'])
+                                _, _, t_stats, _ = get_poke_data(t_p['owner'], t_p['pid'])
                                 dodge = int(t_stats.get("dodge", 0))
                                 parry = int(t_stats.get("parry", 0))
                                 
@@ -1957,7 +1957,7 @@ elif page == "PvP – Arena Tática":
                     st.markdown("### 🏃 Rolar Esquiva (Dodge)")
                     if st.button("Rolar Dodge"):
                         d20 = random.randint(1, 20)
-                        _, _, t_stats = get_poke_data(trainer_name, b_data.get('target_pid'))
+                        _, _, t_stats, _ = get_poke_data(trainer_name, b_data.get('target_pid'))
                         dodge_val = int(t_stats.get("dodge", 0))
                         
                         total_roll = d20 + dodge_val
@@ -2030,7 +2030,7 @@ elif page == "PvP – Arena Tática":
 
                     if res_type:
                         def_die = random.randint(1, 20)
-                        _, _, t_stats = get_poke_data(trainer_name, b_data.get('target_pid'))
+                        _, _, t_stats, _ = get_poke_data(trainer_name, b_data.get('target_pid'))
                         stat_val = int(t_stats.get(res_type, 0))
                         
                         check_total = def_die + stat_val
