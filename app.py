@@ -57,32 +57,32 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-    /* Define a fonte de jogo apenas para textos específicos, não para tudo */
+    /* Aplica a fonte de jogo em tamanho legível */
     .stMarkdown p, .stButton button, label, .stTab p, h1, h2, h3 {
         font-family: 'Press Start 2P', cursive !important;
-        font-size: 14px !important; /* Aumentado para melhor leitura */
+        font-size: 14px !important; /* Tamanho aumentado para evitar 'zoom out' */
         line-height: 1.8;
     }
 
-    /* Ajuste para inputs (caixas de texto) */
-    .stTextInput input {
+    /* Ajuste para inputs e selects */
+    .stTextInput input, .stSelectbox div {
         font-family: 'Press Start 2P', cursive !important;
         font-size: 12px !important;
     }
 
-    /* RESOLVE O BUG DO "ARROW" E ÍCONES:
-       Força os ícones do sistema a usarem fontes padrão, 
-       impedindo que o navegador exiba o texto 'arrow' */
+    /* PROTEÇÃO DE ÍCONES: Remove o texto 'arrow' e recupera as setas do Streamlit */
     [data-testid="stExpander"] svg, 
     [data-testid="stHeader"] svg,
     [data-baseweb="icon"] svg,
-    summary span {
+    summary span, 
+    .st-emotion-cache-p5msec svg {
         font-family: sans-serif !important;
     }
 
-    /* Mantém a fonte original (menor) para textos muito longos se necessário */
-    .small-font {
-        font-size: 10px !important;
+    /* Melhora o contraste dos botões */
+    .stButton>button {
+        border: 2px solid #555 !important;
+        padding: 5px 15px !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -180,7 +180,7 @@ def render_public_log_fragment(db, rid):
                     st.write(f"🔹 **{by}** ({et}): {pl}") # 
 
 @st.fragment(run_every="5s") # Atualiza a calculadora a cada 5 segundos automaticamente
-def render_battle_calculator_fragment(db, rid, trainer_name, all_pieces, player_pieces_map):
+def render_battle_calculator_fragment(db, rid, trainer_name, all_pieces, player_pieces_map, is_player):
     battle_ref = db.collection("rooms").document(rid).collection("public_state").document("battle")
     battle_doc = battle_ref.get()
     b_data = battle_doc.to_dict() or {"status": "idle", "logs": []}
@@ -2482,6 +2482,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
