@@ -197,7 +197,7 @@ def save_data_cloud(trainer_name, data):
 
 # --- TELA DE LOGIN ---
 if 'trainer_name' not in st.session_state:
-    st.title("🔒 Acesso Seguro à Pokédex RPG")
+    st.title("Bem Vindo(a) à Ga'Al")
     
     tab_login, tab_register = st.tabs(["🔑 Entrar", "📝 Criar Conta"])
     
@@ -2532,22 +2532,19 @@ elif page == "Mochila":
         }
 
     # Cabeçalho com Dinheiro (Fonte Pixel)
-    st.markdown(f'<div class="money-display">DINHEIRO: ₽ {user_data["backpack"]["money"]}</div>', unsafe_allow_html=True)
-    
+st.markdown(f'<div class="money-display">💰 Dinheiro: ₽ {user_data["backpack"]["money"]}</div>', unsafe_allow_html=True)    
+
     col_bag, col_content = st.columns([1, 2.5])
     
     with col_bag:
-        # Ícone da Mochila (URL Estável do Wikimedia/PokeAPI)
-        bag_url = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/adventure-guide.png" 
-        # Alternativa (HGSS Style): "https://www.pokewiki.de/images/e/e3/Itemicon_Beutel_M_HGSS.png"
         
-        st.image(bag_url, width=150, caption="MINHA BOLSA")
+        st.image("mochila.png", width=150, caption="MINHA BOLSA")
         
         # Ajuste de Saldo na Coluna da Mochila
         new_money = st.number_input("Editar Saldo", value=int(user_data["backpack"]["money"]), step=100)
         if new_money != user_data["backpack"]["money"]:
             user_data["backpack"]["money"] = new_money
-            save_data_cloud(trainer_name, user_data) [cite: 12]
+            save_data_cloud(trainer_name, user_data)
         
         if st.button("🧹 Limpar Vazios"):
             for k in ["medicine", "pokeballs", "tms", "key_items"]:
@@ -2577,6 +2574,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) [cite: 12]
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
