@@ -2111,7 +2111,7 @@ elif page == "PvP – Arena Tática":
 
         with st.expander("⚔️ Calculadora de Combate", expanded=(b_data["status"] != "idle")):
         # Chamada do fragmento isolado
-        render_battle_calculator_fragment(db, rid, trainer_name, all_pieces, player_pieces_map)
+            render_battle_calculator_fragment(db, rid, trainer_name, all_pieces, player_pieces_map)
 
 
         # =========================
@@ -2473,6 +2473,7 @@ st.markdown(f'<div class="money-display">💰 Dinheiro: ₽ {user_data["backpack
                     save_data_cloud(trainer_name, user_data) [cite: 12]
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
