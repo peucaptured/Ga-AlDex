@@ -216,12 +216,15 @@ def roll_die(db, rid: str, by: str, sides: int = 20):
     
 def get_role(room: dict, trainer_name: str) -> str:
     owner = (room.get("owner") or {}).get("name")
-    chal = room.get("challenger") or {}
-    chal_name = chal.get("name") if isinstance(chal, dict) else (chal or None)
+    
+    # CORREÇÃO: Pega a lista de desafiantes (plural)
+    challengers = room.get("challengers") or []
+    # Cria uma lista apenas com os nomes dos desafiantes
+    challenger_names = [c.get("name") for c in challengers]
 
     if trainer_name == owner:
         return "owner"
-    if trainer_name == chal_name:
+    if trainer_name in challenger_names:
         return "challenger"
     return "spectator"
 
@@ -2440,6 +2443,7 @@ elif page == "PvP – Arena Tática":
     
     
     
+
 
 
 
