@@ -1580,10 +1580,9 @@ if page == "Trainer Hub (Meus Pokémons)":
 # PVP ARENA
 
 elif page == "PvP – Arena Tática":
-    st.title("⚔️ PvP – Arena Tática (MVP)")
+    st.title("⚔️ PvP – Arena Tática")
     st.caption(
         "Base multiplayer: criar/abrir arena, entrar por código, espectadores "
-        "e log público (dado visível para todos)."
     )
 
     db, bucket = init_firebase()
@@ -1617,6 +1616,7 @@ elif page == "PvP – Arena Tática":
             nested_update = {}
             
             for pid in current_party:
+                is_shiny = pid in user_data.get("shinies", [])
                 hub_stats = user_data["stats"].get(pid, {})
                 if hub_stats:
                     # Se o treinador ainda não está no dicionário, cria
@@ -2382,6 +2382,7 @@ elif page == "PvP – Arena Tática":
     
     
     
+
 
 
 
