@@ -2479,9 +2479,10 @@ elif page == "Mochila":
                 
                 if st.button(f"💾 Salvar {key.title()}", key=f"sv_{key}"):
                     user_data["backpack"][key] = updated_items
-                    save_data_cloud(trainer_name, user_data) [cite: 12]
+                    save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
