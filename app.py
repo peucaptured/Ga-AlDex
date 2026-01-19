@@ -1006,17 +1006,72 @@ def get_pid_from_name(user_name: str, name_map: dict) -> str | None:
 
     return p_id
     
+
+# ==========================================
+# 🖼️ SISTEMA DE IMAGENS (CORRIGIDO E ROBUSTO)
+# ==========================================
+
+# 1. Funções Base: URLs Oficiais (com suporte a Shiny)
+def get_pokemon_artwork_url(p_id: str, shiny: bool = False) -> str:
+    # Garante que é numérico para API
+    try:
+        n = int(str(p_id).lstrip("0") or "0")
+    except ValueError:
+        return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
+        
+    if shiny:
+        return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/{n}.png"
+    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{n}.png"
+
+def get_pokemon_sprite_url(p_id: str, shiny: bool = False) -> str:
+    try:
+        n = int(str(p_id).lstrip("0") or "0")
+    except ValueError:
+        return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
+
+    if shiny:
+        return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/{n}.png"
+    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{n}.png"
+
+# 2. Converte Nome -> ID Oficial -> URL
 def get_pokemon_image_url(user_name: str, name_map: dict, mode: str = "artwork", shiny: bool = False) -> str:
-    # Busca o ID Nacional baseado no nome (ex: "Charizard" -> 6)
+    # Tenta achar o ID da National Dex pelo nome
     p_id = get_pid_from_name(user_name, name_map)
     
-    # Se não achou o ID pelo nome, retorna Pokébola
     if not p_id:
         return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
 
     if mode == "sprite":
         return get_pokemon_sprite_url(p_id, shiny=shiny)
     return get_pokemon_artwork_url(p_id, shiny=shiny)
+
+# 3. Função Mestra: ID Regional/Excel -> Nome -> Imagem Correta
+def pokemon_pid_to_image(pid: str, mode: str = "artwork", shiny: bool = False) -> str:
+    if not pid:
+        return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
+    pid_str = str(pid).strip()
+    
+    # Caso 1: Visitante Externo (EXT:Nome)
+    if pid_str.startswith("EXT:"):
+        name = pid_str.replace("EXT:", "")
+        return get_pokemon_image_url(name, api_name_map, mode=mode, shiny=shiny)
+        
+    # Caso 2: Busca no Excel (Pelo ID Regional)
+    # Tenta acessar o dataframe de forma segura (Session State ou Global)
+    local_df = st.session_state.get('df_data')
+    if local_df is None and 'df' in globals():
+        local_df = df
+        
+    if local_df is not None:
+        # Filtra pelo número (coluna Nº)
+        row = local_df[local_df["Nº"].astype(str) == pid_str]
+        if not row.empty:
+            real_name = row.iloc[0]["Nome"]
+            # ✨ AQUI ESTÁ O TRUQUE: Usa o NOME do Excel para buscar a imagem na API
+            return get_pokemon_image_url(real_name, api_name_map, mode=mode, shiny=shiny)
+
+    # Fallback: Se não achou nada (ou df não carregou), retorna Pokébola para não quebrar o mapa
+    return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
 
 def get_image_from_name(user_name, name_map):
     if not isinstance(user_name, str): return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
@@ -1082,17 +1137,6 @@ def get_official_pokemon_map():
     except:
         return {}
         
-def get_pokemon_artwork_url(p_id: str, shiny: bool = False) -> str:
-    n = int(str(p_id).lstrip("0") or "0")
-    if shiny:
-        return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/{n}.png"
-    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{n}.png"
-
-def get_pokemon_sprite_url(p_id: str, shiny: bool = False) -> str:
-    n = int(str(p_id).lstrip("0") or "0")
-    if shiny:
-        return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/{n}.png"
-    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{n}.png"
     
 def extract_strategies(text):
     if not isinstance(text, str): return []
@@ -1160,38 +1204,7 @@ def load_excel_data():
 
 api_name_map = get_official_pokemon_map()
 
-def pokemon_pid_to_image(pid: str, mode: str = "artwork", shiny: bool = False) -> str:
-    if not pid:
-        return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
-    pid_str = str(pid).strip()
-    
-    # Caso 1: Visitante (EXT)
-    if pid_str.startswith("EXT:"):
-        name = pid_str.replace("EXT:", "")
-        return get_pokemon_image_url(name, api_name_map, mode=mode, shiny=shiny)
-        
-    # Caso 2: Busca no EXCEL (Correção do ID Regional)
-    # Procura o ID no Excel para pegar o NOME correto
-    if 'df' in globals() or 'df' in st.session_state:
-        # Tenta pegar o df de onde estiver disponível
-        local_df = st.session_state.get('df_data') if 'df_data' in st.session_state else df
-        
-        row = local_df[local_df["Nº"].astype(str) == pid_str]
-        if not row.empty:
-            # Pega o nome (ex: "MyStarter")
-            real_name = row.iloc[0]["Nome"]
-            # Busca a imagem pelo NOME, não pelo número
-            return get_pokemon_image_url(real_name, api_name_map, mode=mode, shiny=shiny)
 
-    # Fallback: Se não achou no Excel, retorna erro ou tenta direto (mas evita erro de imagem quebrada)
-    return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
-
-
-if 'df_data' not in st.session_state:
-    st.session_state['df_data'], st.session_state['cols_map'] = load_excel_data()
-
-df = st.session_state['df_data']
-cols_map = st.session_state.get('cols_map', {})
 
 # --- INTERFACE PRINCIPAL ---
 
@@ -2370,6 +2383,7 @@ elif page == "PvP – Arena Tática":
     
     
     
+
 
 
 
