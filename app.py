@@ -1538,12 +1538,34 @@ elif page == "PvP – Arena Tática":
         # --- 3. HELPERS LOCAIS ---
         ps_doc = db.collection("rooms").document(rid).collection("public_state").document("party_states").get()
         party_states_data = ps_doc.to_dict() or {}
-        
+
+        # --- FUNÇÃO DE LEITURA INTELIGENTE (CORRIGIDA) ---
         def get_poke_data(t_name, p_id):
             user_dict = party_states_data.get(t_name, {})
             p_data = user_dict.get(str(p_id), {})
-            return p_data.get("hp", 6), p_data.get("cond", []), p_data.get("stats", {})
-
+            
+            # Pega HP e Condições do Banco de Dados (PvP)
+            hp = p_data.get("hp", 6)
+            cond = p_data.get("cond", [])
+            
+            # Pega Stats. Se estiver vazio ou zerado, tenta o Fallback Local
+            stats = p_data.get("stats", {})
+            
+            # VERIFICAÇÃO DE SEGURANÇA:
+            # Se for o MEU pokemon e o banco estiver zerado, puxa do meu Hub local
+            if t_name == trainer_name:
+                # Checa se stats é None, vazio ou só tem zeros
+                stats_is_bad = not stats or all(int(v) == 0 for v in stats.values())
+                
+                if stats_is_bad:
+                    # Tenta achar no user_data local (Hub)
+                    if "stats" in user_data:
+                        local_s = user_data["stats"].get(str(p_id)) or user_data["stats"].get(p_id)
+                        if local_s:
+                            stats = local_s
+            
+            return hp, cond, stats
+        
         def get_poke_display_name(pid):
             row = df[df['Nº'].astype(str) == str(pid)]
             if not row.empty: return row.iloc[0]['Nome']
@@ -2331,6 +2353,7 @@ elif page == "PvP – Arena Tática":
                     by = ev.get("by", "?")
                     payload = ev.get("payload", {})
                     st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
