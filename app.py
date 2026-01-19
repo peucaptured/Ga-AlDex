@@ -1512,7 +1512,7 @@ elif page == "PvP – Arena Tática":
 # =========================
     # VIEW: BATTLE (CÓDIGO CONSOLIDADO E CORRIGIDO)
     # =========================
-    elif view == "battle":
+    if view == "battle":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
@@ -2343,6 +2343,7 @@ elif page == "PvP – Arena Tática":
                     by = ev.get("by", "?")
                     payload = ev.get("payload", {})
                     st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
