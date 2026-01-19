@@ -937,7 +937,8 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name: str, eff
         draw.rectangle([x, y, x + TILE_SIZE - 1, y + TILE_SIZE - 1], outline=border_color, width=3)
 
         pid = str(p.get("pid", ""))
-        url = pokemon_pid_to_image(pid, mode="sprite")
+        is_p_shiny = p.get("shiny", False) #
+        url = pokemon_pid_to_image(pid, mode="sprite", shiny=is_p_shiny)
 
         if url not in local_cache:
             local_cache[url] = fetch_image_pil(url)
@@ -1078,14 +1079,17 @@ def get_official_pokemon_map():
     except:
         return {}
         
-def get_pokemon_artwork_url(p_id: str) -> str:
+def get_pokemon_artwork_url(p_id: str, shiny: bool = False) -> str:
+    # Remove zeros a esquerda
     n = int(str(p_id).lstrip("0") or "0")
-    # grande (fora do PvP)
+    if shiny:
+        return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/{p_id}.png"
     return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{p_id}.png"
 
-def get_pokemon_sprite_url(p_id: str) -> str:
+def get_pokemon_sprite_url(p_id: str, shiny: bool = False) -> str:
     n = int(str(p_id).lstrip("0") or "0")
-    # pequeno (PvP)
+    if shiny:
+        return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/{p_id}.png"
     return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{p_id}.png"
 
 def extract_strategies(text):
@@ -1153,25 +1157,25 @@ def load_excel_data():
         return None, None
 
 api_name_map = get_official_pokemon_map()
-def pokemon_pid_to_image(pid: str, mode: str = "artwork") -> str:
+def pokemon_pid_to_image(pid: str, mode: str = "artwork", shiny: bool = False) -> str:
     if not pid:
         return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
     pid_str = str(pid).strip()
-    # 1. Se for Visitante (EXT), usa o nome direto
+    
+    # 1. Se for Visitante (EXT)
     if pid_str.startswith("EXT:"):
         name = pid_str.replace("EXT:", "")
+        # Visitantes externos não tem suporte fácil a shiny pela API de nomes, mantemos padrão
         return get_pokemon_image_url(name, api_name_map, mode=mode)
-    # 2. Busca no EXCEL pelo ID Customizado
-    # Garante que estamos comparando string com string
+        
+    # 2. Busca no EXCEL
     row = df[df["Nº"].astype(str) == pid_str]
- 
     if not row.empty:
-        # Achou no Excel! Pega o nome (ex: "Nidoran")
-        name = row.iloc[0]["Nome"]
-        # Passa o NOME para a função que busca a URL correta na API
-        return get_pokemon_image_url(name, api_name_map, mode=mode)
+        # Se for sprite ou artwork, usa a função que aceita shiny
+        if mode == "sprite":
+            return get_pokemon_sprite_url(pid_str, shiny)
+        return get_pokemon_artwork_url(pid_str, shiny)
 
-    # 3. Fallback: Se não achou no Excel, tenta pelo ID direto (caso raro) ou retorna pokébola
     return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
 
 
@@ -1312,7 +1316,21 @@ if page == "Pokédex (Busca)":
                 st.write("") 
                 is_seen = dex_num in user_data["seen"]
                 is_caught = dex_num in user_data["caught"]
+
+                # --- NOVO: WISHLIST ---
+                if "wishlist" not in user_data: user_data["wishlist"] = []
+                is_wished = dex_num in user_data["wishlist"]
                 
+                if st.checkbox("🌟 Desejo", value=is_wished, key=f"wish_{dex_num}_{index}"):
+                    if dex_num not in user_data["wishlist"]:
+                        user_data["wishlist"].append(dex_num)
+                        save_data_cloud(trainer_name, user_data)
+                else:
+                    if dex_num in user_data["wishlist"]:
+                        user_data["wishlist"].remove(dex_num)
+                        save_data_cloud(trainer_name, user_data)
+               
+                # ----------------------
                 if st.checkbox("👁️ Visto", value=is_seen, key=key_seen):
                     if dex_num not in user_data["seen"]:
                         user_data["seen"].append(dex_num)
@@ -1341,33 +1359,52 @@ if page == "Pokédex (Busca)":
 # ==============================================================================
 elif page == "Trainer Hub (Meus Pokémons)":
     st.title("🏕️ Trainer Hub")
-    tab1, tab2, tab3 = st.tabs(["🎒 Minha Party", "🔴 Capturados", "👁️ Pokedex (Vistos)"])
+    # --- INICIALIZAÇÃO DE DADOS NOVOS ---
+    if "stats" not in user_data: user_data["stats"] = {}
+    if "wishlist" not in user_data: user_data["wishlist"] = [] # Nova Lista de Desejo
+    if "shinies" not in user_data: user_data["shinies"] = []   # Nova Lista de Shinies
+    
+    # Adicionei a nova aba "Lista de Desejo" aqui
+    tab1, tab2, tab3, tab4 = st.tabs(["🎒 Minha Party", "🔴 Capturados", "🌟 Lista de Desejo", "👁️ Pokedex (Vistos)"])
     # Garante que existe o dicionário de stats no save
     if "stats" not in user_data:
         user_data["stats"] = {}
         
-    with tab1:
+with tab1:
         with st.expander("➕ Adicionar Pokémon à Equipe", expanded=False):
             col_add1, col_add2 = st.columns(2)
             with col_add1:
-                st.subheader("Da Dex")
-                options_all = df.apply(lambda x: f"#{x['Nº']} - {x['Nome']}", axis=1).tolist()
+                st.subheader("Da Dex (Apenas Capturados)")
+                
+                # --- NOVO FILTRO: APENAS CAPTURADOS ---
+                # Filtra o dataframe para pegar apenas IDs que estão em user_data['caught']
+                caught_ids = [str(c) for c in user_data['caught'] if not str(c).startswith("EXT:")]
+                df_caught = df[df['Nº'].astype(str).isin(caught_ids)]
+                
+                options_all = df_caught.apply(lambda x: f"#{x['Nº']} - {x['Nome']}", axis=1).tolist()
+                # --------------------------------------
+
                 current_pc_in_party = [m for m in user_data['party'] if not str(m).startswith("EXT:")]
                 current_ext_in_party = [m for m in user_data['party'] if str(m).startswith("EXT:")]
+                
                 default_names = []
                 for pid in current_pc_in_party:
-                        res = df[df['Nº'] == pid]['Nome'].values
+                        res = df[df['Nº'].astype(str) == str(pid)]['Nome'].values
                         if len(res) > 0: default_names.append(f"#{pid} - {res[0]}")
+                
                 selected_names = st.multiselect("Selecione para Equipe", options=options_all, default=default_names)
+                
+                # ... (Lógica de salvar mantém igual, pode manter o resto do bloco if set(full_new_party)...)
                 new_pc_ids = [n.split(" - ")[0].replace("#", "") for n in selected_names]
                 full_new_party = new_pc_ids + current_ext_in_party
+                
                 if set(full_new_party) != set(user_data['party']) or len(full_new_party) != len(user_data['party']):
-                        for pid in new_pc_ids:
-                            if pid not in user_data['caught']: user_data['caught'].append(pid)
-                            if pid not in user_data['seen']: user_data['seen'].append(pid)
-                        user_data['party'] = full_new_party
-                        save_data_cloud(trainer_name, user_data)
-                        st.rerun()
+                    # (Lógica de adicionar mantém a mesma)
+                    user_data['party'] = full_new_party
+                    save_data_cloud(trainer_name, user_data)
+                    st.rerun()
+
+            # ... (Código da col_add2 mantém igual) ...
             with col_add2:
                 st.subheader("Visitante")
                 external_name = st.text_input("Nome (ex: Sawsbuck)")
@@ -1375,8 +1412,6 @@ elif page == "Trainer Hub (Meus Pokémons)":
                     if external_name:
                         ext_id = f"EXT:{external_name}"
                         user_data['party'].append(ext_id)
-                        if ext_id not in user_data['caught']: user_data['caught'].append(ext_id)
-                        if ext_id not in user_data['seen']: user_data['seen'].append(ext_id)
                         save_data_cloud(trainer_name, user_data)
                         st.rerun()
         
@@ -1385,17 +1420,21 @@ elif page == "Trainer Hub (Meus Pokémons)":
         if user_data['party']:
             cols = st.columns(3)
             for i, member in enumerate(user_data['party']):
+                # Checa se é shiny
+                is_shiny = member in user_data.get("shinies", [])
+
                 is_ext = str(member).startswith("EXT:")
                 if is_ext:
                     p_name = member.replace("EXT:", "")
-                    p_img = get_image_from_name(p_name, api_name_map)
+                    p_img = get_image_from_name(p_name, api_name_map) # Visitantes sem shiny por enquanto
                     p_subtitle = "Visitante"
                 else:
-                    p_search = df[df['Nº'] == member]
+                    p_search = df[df['Nº'].astype(str) == str(member)]
                     if not p_search.empty:
                         r = p_search.iloc[0]
                         p_name = r['Nome']
-                        p_img = get_image_from_name(p_name, api_name_map)
+                        # --- USA A NOVA FUNÇÃO COM SHINY ---
+                        p_img = pokemon_pid_to_image(member, mode="artwork", shiny=is_shiny)
                         p_subtitle = f"⚡ NP: {r['Nivel_Poder']} | {r['Tipo']}"
                     else:
                         p_name, p_subtitle = f"ID: {member}", "?"
@@ -1412,33 +1451,44 @@ elif page == "Trainer Hub (Meus Pokémons)":
                                 st.rerun()
                         
                         st.image(p_img, width=120)
+                        
+                        # --- CHECKBOX SHINY ---
+                        if not is_ext:
+                            # Se marcar, adiciona na lista de shinies. Se desmarcar, remove.
+                            shiny_check = st.checkbox("✨ Shiny", value=is_shiny, key=f"shiny_{member}_{i}")
+                            if shiny_check != is_shiny:
+                                if shiny_check:
+                                    if member not in user_data["shinies"]: user_data["shinies"].append(member)
+                                else:
+                                    if member in user_data["shinies"]: user_data["shinies"].remove(member)
+                                save_data_cloud(trainer_name, user_data)
+                                st.rerun()
+                        # ----------------------
+
                         st.caption(p_subtitle)
                         
-                        # --- FICHA DE STATUS (DODGE, PARRY, ETC) ---
-                        # Recupera stats salvos ou inicia zerado
+                        # ... (O resto do código de Stats e Notas mantém igual) ...
                         my_stats = user_data["stats"].get(member, {})
-                        
                         with st.expander("📊 Ficha de Combate"):
-                            s1, s2 = st.columns(2)
-                            d = s1.number_input("Dodge", value=int(my_stats.get("dodge", 0)), key=f"hub_dod_{member}")
-                            p = s2.number_input("Parry", value=int(my_stats.get("parry", 0)), key=f"hub_par_{member}")
-                            w = s1.number_input("Will", value=int(my_stats.get("will", 0)), key=f"hub_wil_{member}")
-                            f = s2.number_input("Fort", value=int(my_stats.get("fort", 0)), key=f"hub_for_{member}")
-                            t = st.number_input("THG", value=int(my_stats.get("thg", 0)), key=f"hub_thg_{member}")
-                            
-                            # Atualiza automaticamente no objeto local ao mudar
-                            current_vals = {"dodge": d, "parry": p, "will": w, "fort": f, "thg": t}
-                            if current_vals != my_stats:
-                                user_data["stats"][member] = current_vals
-                                # Opcional: Salvar na nuvem a cada alteração (pode ser lento)
-                                # save_data_cloud(trainer_name, user_data) 
-
-                        # Notas
+                             # (Código dos inputs Dodge, Parry etc mantém igual)
+                             s1, s2 = st.columns(2)
+                             d = s1.number_input("Dodge", value=int(my_stats.get("dodge", 0)), key=f"hub_dod_{member}")
+                             p = s2.number_input("Parry", value=int(my_stats.get("parry", 0)), key=f"hub_par_{member}")
+                             w = s1.number_input("Will", value=int(my_stats.get("will", 0)), key=f"hub_wil_{member}")
+                             f = s2.number_input("Fort", value=int(my_stats.get("fort", 0)), key=f"hub_for_{member}")
+                             t = st.number_input("THG", value=int(my_stats.get("thg", 0)), key=f"hub_thg_{member}")
+                             
+                             current_vals = {"dodge": d, "parry": p, "will": w, "fort": f, "thg": t}
+                             if current_vals != my_stats:
+                                 user_data["stats"][member] = current_vals
+                                 
                         nk = f"note_party_{i}_{member}"
                         curr = user_data["notes"].get(nk, "")
                         new = st.text_area("Notas", value=curr, height=60, key=nk)
                         if new != curr:
                             user_data["notes"][nk] = new
+
+    
         else: 
             st.info("Sua equipe está vazia.")
     with tab2:
@@ -1473,7 +1523,31 @@ elif page == "Trainer Hub (Meus Pokémons)":
                                 user_data["notes"][p_id] = note
                                 save_data_cloud(trainer_name, user_data)
 
-    with tab3:
+
+    with tab3: # ABA NOVA
+        st.header("🌟 Lista de Desejo")
+        wishlist = user_data.get("wishlist", [])
+        if not wishlist:
+            st.info("Sua lista de desejos está vazia. Marque pokémons na aba Pokédex.")
+        else:
+            # Mostra os pokémons desejados
+            for p_id in wishlist:
+                p_search = df[df['Nº'].astype(str) == str(p_id)]
+                if p_search.empty: continue
+                p_row = p_search.iloc[0]
+                
+                with st.expander(f"🌟 #{p_id} - {p_row['Nome']}"):
+                    c1, c2 = st.columns([1, 4])
+                    with c1: st.image(get_pokemon_artwork_url(p_id), width=100)
+                    with c2:
+                        st.write(f"**Tipo:** {p_row['Tipo']}")
+                        st.write(f"**Região:** {p_row['Região']}")
+                        if st.button("Remover da Lista", key=f"rm_wish_{p_id}"):
+                            user_data["wishlist"].remove(p_id)
+                            save_data_cloud(trainer_name, user_data)
+                            st.rerun()
+
+    with tab4:
         total = len(df)
         vistos = len(user_data['seen'])
         st.markdown(f"### Progresso da Pokédex")
@@ -1536,6 +1610,7 @@ elif page == "PvP – Arena Tática":
                     # Adiciona os dados do Pokémon
                     nested_update[trainer_name][str(pid)] = {
                         "stats": hub_stats,
+                        "shiny": is_shiny,
                         "updatedAt": str(datetime.now())
                     }
             
@@ -1562,12 +1637,10 @@ elif page == "PvP – Arena Tática":
             user_dict = party_states_data.get(t_name, {})
             p_data = user_dict.get(str(p_id), {})
             
-            # Pega HP e Condições do Banco de Dados (PvP)
             hp = p_data.get("hp", 6)
             cond = p_data.get("cond", [])
-            
-            # Pega Stats. Se estiver vazio ou zerado, tenta o Fallback Local
             stats = p_data.get("stats", {})
+            shiny_status = p_data.get("shiny", False)
             
             # VERIFICAÇÃO DE SEGURANÇA:
             # Se for o MEU pokemon e o banco estiver zerado, puxa do meu Hub local
@@ -1582,7 +1655,7 @@ elif page == "PvP – Arena Tática":
                         if local_s:
                             stats = local_s
             
-            return hp, cond, stats
+            return hp, cond, stats, shiny_status
         
         def get_poke_display_name(pid):
             row = df[df['Nº'].astype(str) == str(pid)]
@@ -1614,8 +1687,8 @@ elif page == "PvP – Arena Tática":
 
                     # --- VISÃO DO DONO (EU) ---
                     if is_me:
-                        cur_hp, cur_cond, cur_stats = get_poke_data(p_name, pid)
-                        url = pokemon_pid_to_image(pid, mode="sprite")
+                        cur_hp, cur_cond, cur_stats, is_shiny = get_poke_data(p_name, pid) # <--- DESEMPACOTA
+                        url = pokemon_pid_to_image(pid, mode="sprite", shiny=is_shiny)
                         
                         with st.container(border=True):
                             ci, cc = st.columns([1, 2.5])
@@ -1674,8 +1747,8 @@ elif page == "PvP – Arena Tática":
 
                         with st.container(border=True):
                             if show_full:
-                                cur_hp, cur_cond, _ = get_poke_data(p_name, pid)
-                                url = pokemon_pid_to_image(pid, mode="sprite")
+                                cur_hp, cur_cond, _, is_shiny = get_poke_data(p_name, pid) # <--- DESEMPACOTA
+                                url = pokemon_pid_to_image(pid, mode="sprite", shiny=is_shiny) # <--- USA
                                 c1, c2 = st.columns([1, 2])
                                 c1.image(url, width=50)
                                 c2.markdown(f"**{real_name}**")
@@ -2040,9 +2113,16 @@ elif page == "PvP – Arena Tática":
                 elif ppid:
                     new_id = str(uuid.uuid4())[:8]
                     # Stats já estão no banco, não precisa passar aqui
+                    am_i_shiny = ppid in user_data.get("shinies", [])
                     new_piece = {
-                        "id": new_id, "pid": ppid, "owner": trainer_name,
-                        "row": row, "col": col, "revealed": True, "status": "active"
+                        "id": new_id, 
+                        "pid": ppid, 
+                        "owner": trainer_name, 
+                        "row": row, 
+                        "col": col, 
+                        "revealed": True, 
+                        "status": "active",
+                        "shiny": am_i_shiny # <--- SALVA NA PEÇA
                     }
                     upsert_piece(db, rid, new_piece)
                     mark_pid_seen(db, rid, ppid)
@@ -2279,3 +2359,4 @@ elif page == "PvP – Arena Tática":
     
     
     
+
