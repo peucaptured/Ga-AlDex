@@ -272,46 +272,33 @@ def remove_room_from_user(db, trainer_name: str, rid: str):
          "updatedAt": firestore.SERVER_TIMESTAMP},
         merge=True
     )
-# --- FUNÇÃO DE CALLBACK PARA SLIDERS E STATUS ---
-# --- FUNÇÃO DE CALLBACK CORRIGIDA ---
+# --- FUNÇÃO DE CALLBACK CORRIGIDA (CORREÇÃO DO BUG DE STATS 0) ---
 def update_poke_state_callback(db, rid, trainer_name, pid):
     # Pega valores atuais da sessão (HP e Condições)
     new_hp = st.session_state.get(f"hp_{pid}")
     new_cond = st.session_state.get(f"cond_{pid}")
     
-    # Pega os novos Stats (com valor padrão 0 se não existir)
-    new_dodge = st.session_state.get(f"s_dod_{pid}")
-    new_parry = st.session_state.get(f"s_par_{pid}")
-    new_will = st.session_state.get(f"s_wil_{pid}")
-    new_fort = st.session_state.get(f"s_for_{pid}")
-    new_thg = st.session_state.get(f"s_thg_{pid}")
-
-    # Se qualquer um for None (widget não carregou), aborta para não estragar dados
+    # Se widget não carregou, aborta
     if new_hp is None: return
 
     # Referência ao documento
     ref = db.collection("rooms").document(rid).collection("public_state").document("party_states")
     
-    # Estrutura de dados completa
+    # --- CORREÇÃO AQUI ---
+    # Removemos a parte que gravava "stats" com valor 0.
+    # Como usamos merge=True, isso vai atualizar o HP mas MANTER os stats que já estão lá.
     data = {
         trainer_name: {
             str(pid): {
                 "hp": int(new_hp),
                 "cond": new_cond,
-                "stats": {
-                    "dodge": int(new_dodge or 0),
-                    "parry": int(new_parry or 0),
-                    "will": int(new_will or 0),
-                    "fort": int(new_fort or 0),
-                    "thg": int(new_thg or 0),
-                },
                 "updatedAt": str(datetime.now())
             }
         }
     }
     ref.set(data, merge=True)
     
-    # Lógica de Fainted no Mapa (Visual)
+    # Lógica de Fainted no Mapa (Visual) - Mantém igual
     if new_hp == 0:
         state_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
         stt = state_ref.get().to_dict() or {}
@@ -335,6 +322,7 @@ def update_poke_state_callback(db, rid, trainer_name, pid):
                     p["status"] = "active"
                     dirty = True
         if dirty: state_ref.update({"pieces": pieces})
+
 
 def create_room(db, trainer_name: str, grid_size: int, theme: str, max_active: int = 5):
     my_rooms = list_my_rooms(db, trainer_name)
@@ -2343,6 +2331,7 @@ elif page == "PvP – Arena Tática":
                     by = ev.get("by", "?")
                     payload = ev.get("payload", {})
                     st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
