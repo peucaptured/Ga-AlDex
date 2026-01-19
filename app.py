@@ -1568,20 +1568,36 @@ elif page == "PvP – Arena Tática":
             if not row.empty: return row.iloc[0]['Nome']
             return str(pid)
 
-        # --- PREPARAÇÃO DE TIMES ---
+# --- PREPARAÇÃO DE TIMES (CORRIGIDO) ---
         owner_name = (room.get("owner") or {}).get("name", "Host")
         chal_name = (room.get("challenger") or {}).get("name", "Desafiante")
         
         if trainer_name == owner_name:
-            p1_name, p1_label, viewer_is_p1 = owner_name, f"🎒 {owner_name} (Você)", True
-            p2_name, p2_label = chal_name, f"🆚 {chal_name}" if chal_name else "🆚 Aguardando...", True
+            # Eu sou o Dono: Fico na esquerda (P1), Desafiante na direita (P2)
+            p1_name = owner_name
+            p1_label = f"🎒 {owner_name} (Você)"
+            viewer_is_p1 = True
+            
+            p2_name = chal_name
+            p2_label = f"🆚 {chal_name}" if chal_name else "🆚 Aguardando..."
+            
         elif trainer_name == chal_name:
-            p1_name, p1_label, viewer_is_p1 = chal_name, f"🎒 {chal_name} (Você)", True
-            p2_name, p2_label = owner_name, f"🆚 {owner_name}", True 
+            # Eu sou Desafiante: Fico na esquerda (P1), Dono na direita (P2)
+            p1_name = chal_name
+            p1_label = f"🎒 {chal_name} (Você)"
+            viewer_is_p1 = True 
+            
+            p2_name = owner_name
+            p2_label = f"🆚 {owner_name}"
+            
         else:
-            p1_name, p1_label, viewer_is_p1 = owner_name, f"🔴 {owner_name}", False
-            p2_name, p2_label = chal_name, f"🔵 {chal_name}" if chal_name else "🔵 Aguardando...", False
-
+            # Espectador: Dono na esquerda (P1), Desafiante na direita (P2)
+            p1_name = owner_name
+            p1_label = f"🔴 {owner_name}"
+            viewer_is_p1 = False
+            
+            p2_name = chal_name
+            p2_label = f"🔵 {chal_name}" if chal_name else "🔵 Aguardando..."
         pieces_to_draw = []
         p1_pieces_board = [] 
         p2_pieces_board = []
@@ -2240,6 +2256,7 @@ elif page == "PvP – Arena Tática":
                     by = ev.get("by", "?")
                     payload = ev.get("payload", {})
                     st.write(f"- **{et}** — _{by}_ — {payload}")
+
 
 
 
