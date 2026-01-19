@@ -1370,7 +1370,7 @@ if page == "Trainer Hub (Meus Pokémons)":
     if "stats" not in user_data:
         user_data["stats"] = {}
         
-with tab1:
+    with tab1:
         with st.expander("➕ Adicionar Pokémon à Equipe", expanded=False):
             col_add1, col_add2 = st.columns(2)
             with col_add1:
@@ -1491,37 +1491,37 @@ with tab1:
     
         else: 
             st.info("Sua equipe está vazia.")
-with tab2:
-    st.markdown(f"### Total Capturados: {len(user_data['caught'])}")
-    if not user_data['caught']: st.info("Sua caixa está vazia.")
-    else:
-        for p_id in user_data['caught']:
-            is_in_party = p_id in user_data['party']
-            status_text = "Na Equipe" if is_in_party else "No PC"
-            if str(p_id).startswith("EXT:"):
-                p_name = p_id.replace("EXT:", "")
-                icon = "🌐"
-                with st.expander(f"{icon} {p_name} ({status_text})"):
-                        st.image(get_image_from_name(p_name, api_name_map), width=100)
-                        st.write("**Origem:** Visitante de fora de Ga'al.")
-            else:
-                p_search = df[df['Nº'] == p_id]
-                if p_search.empty: continue
-                p_row = p_search.iloc[0]
-                icon = "🎒" if is_in_party else "🖥️"
-                header = f"{icon} #{p_id} - {p_row['Nome']} (NP: {p_row['Nivel_Poder']})"
-                with st.expander(header):
-                    c1, c2 = st.columns([1, 4])
-                    with c1: st.image(get_image_from_name(p_row['Nome'], api_name_map), width=100)
-                    with c2:
-                        st.write(f"**Status:** {status_text}")
-                        st.write(f"**Estratégia:** {p_row['Viabilidade'][:150]}...")
-                        nk = f"pc_note_{p_id}"
-                        curr = user_data["notes"].get(p_id, "")
-                        note = st.text_area("Notas", value=curr, key=nk)
-                        if note != curr:
-                            user_data["notes"][p_id] = note
-                            save_data_cloud(trainer_name, user_data)
+    with tab2:
+        st.markdown(f"### Total Capturados: {len(user_data['caught'])}")
+        if not user_data['caught']: st.info("Sua caixa está vazia.")
+        else:
+            for p_id in user_data['caught']:
+                is_in_party = p_id in user_data['party']
+                status_text = "Na Equipe" if is_in_party else "No PC"
+                if str(p_id).startswith("EXT:"):
+                    p_name = p_id.replace("EXT:", "")
+                    icon = "🌐"
+                    with st.expander(f"{icon} {p_name} ({status_text})"):
+                            st.image(get_image_from_name(p_name, api_name_map), width=100)
+                            st.write("**Origem:** Visitante de fora de Ga'al.")
+                else:
+                    p_search = df[df['Nº'] == p_id]
+                    if p_search.empty: continue
+                    p_row = p_search.iloc[0]
+                    icon = "🎒" if is_in_party else "🖥️"
+                    header = f"{icon} #{p_id} - {p_row['Nome']} (NP: {p_row['Nivel_Poder']})"
+                    with st.expander(header):
+                        c1, c2 = st.columns([1, 4])
+                        with c1: st.image(get_image_from_name(p_row['Nome'], api_name_map), width=100)
+                        with c2:
+                            st.write(f"**Status:** {status_text}")
+                            st.write(f"**Estratégia:** {p_row['Viabilidade'][:150]}...")
+                            nk = f"pc_note_{p_id}"
+                            curr = user_data["notes"].get(p_id, "")
+                            note = st.text_area("Notas", value=curr, key=nk)
+                            if note != curr:
+                                user_data["notes"][p_id] = note
+                                save_data_cloud(trainer_name, user_data)
 
     with tab3: # ABA NOVA
         st.header("🌟 Lista de Desejo")
@@ -2358,6 +2358,7 @@ elif page == "PvP – Arena Tática":
     
     
     
+
 
 
 
