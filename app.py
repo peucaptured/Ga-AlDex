@@ -17,6 +17,8 @@ import gzip
 import base64
 from io import BytesIO
 from PIL import ImageFont
+if "carousel_click" not in st.session_state:
+    st.session_state["carousel_click"] = None
 
 
 
@@ -1599,6 +1601,42 @@ h1, h2, h3 {
     border: 2px solid #FFCC00;
     background: rgba(255, 204, 0, 0.10);
 }
+.pokedex-tile button {
+    width: 100%;
+    max-width: 90px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+    font-size: 11px;
+    line-height: 1.2;
+}
+.info-label {
+  color: #ffd166;             /* amarelo */
+  font-weight: 800;
+}
+
+.section-title {
+  color: #80ed99;             /* verde */
+  font-weight: 900;
+  margin-top: 10px;
+}
+
+.hi-red { color: #ff5c5c; font-weight: 900; }    /* FIR / alertas */
+.hi-cyan { color: #4dd6ff; font-weight: 900; }   /* palavras-chave */
+.hi-purple { color: #b197ff; font-weight: 900; } /* tags extras */
+
+.power-badge {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #ffd166;
+  font-weight: 900;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -1745,10 +1783,20 @@ if page == "Pokédex (Busca)":
 
         # Helpers locais (não depende do resto do arquivo)
         def build_info_entries():
+            hidden = {
+                "Estágio",
+                "Tipo de Evolução",
+                "Nivel_Poder",
+                "Nível de Poder",
+            }
+        
             entries = []
             for col in row.index:
                 if col in {"Nome", "Nº", "Codigos_Estrategia"}:
                     continue
+                if col in hidden:
+                    continue
+        
                 value = row[col]
                 if pd.isna(value):
                     continue
@@ -1758,24 +1806,42 @@ if page == "Pokédex (Busca)":
                 entries.append((col, value_str))
             return entries
 
+
         def render_info_columns(entries):
             for label, value in entries:
+                # Título: Descrição
+                if label == "Descrição da Pokedex":
+                    st.markdown("<div class='section-title'>📘 Descrição da Pokédex</div>", unsafe_allow_html=True)
+                    st.write(value)
+                    continue
+        
+                # Título: Viabilidade (texto grande)
                 if label == "Viabilidade":
-                    st.markdown(f"**{label}:**")
+                    st.markdown("<div class='section-title'>🧠 Viabilidade</div>", unsafe_allow_html=True)
+        
                     viab = (
                         str(value)
                         .replace("PARCEIROS:", "\n\n**👥 PARCEIROS:**")
                         .replace("Explicação:", "\n\n**💡 EXPLICAÇÃO:**")
                         .replace("Habilidade:", "**✨ Habilidade:**")
                     )
+        
+                    # pinta o FIR (e outros códigos se quiser)
+                    viab = viab.replace("FIR", "<span class='hi-red'>FIR</span>")
+        
+                    # destaca os códigos de estratégia no texto (mantém o que você já tinha)
                     for code in codes:
-                        viab = re.sub(rf"\b{re.escape(code)}\b", f":red[**{code}**]", viab)
-                    st.markdown(viab)
-                elif label == "Descrição da Pokedex":
-                    st.markdown(f"**{label}:**")
-                    st.write(value)
-                else:
-                    st.markdown(f"**{label}:** {value}")
+                        viab = re.sub(rf"\b{re.escape(code)}\b", f"<span class='hi-purple'>{code}</span>", viab)
+        
+                    st.markdown(viab, unsafe_allow_html=True)
+                    continue
+        
+                # Campos normais (Tipo, Raridade, Biomas, Região etc.)
+                st.markdown(
+                    f"<span class='info-label'>{label}:</span> {value}",
+                    unsafe_allow_html=True
+                )
+
 
         def render_info_tags():
             tags_html = "".join([f"<span>{c}</span>" for c in codes])
@@ -1838,6 +1904,12 @@ if page == "Pokédex (Busca)":
         with top_center:
             st.image(pokemon_pid_to_image(dex_num, mode="artwork", shiny=False), use_container_width=True)
 
+    # Nível de Poder abaixo da imagem
+    np = row.get("Nivel_Poder", "")
+    if str(np).strip() != "" and str(np).lower() != "nan":
+        st.markdown(f"<div class='power-badge'>⚡ Nível de Poder: {np}</div>", unsafe_allow_html=True)
+
+
         with top_right:
             render_info_columns(info_entries[midpoint:])
 
@@ -1855,34 +1927,61 @@ if page == "Pokédex (Busca)":
         # --- CARROSSEL INFERIOR (navegação) ---
         st.subheader("🔄 Navegar pela Dex")
         
-        # leitura do clique via query param (pra funcionar no HTML)
-        qp = st.query_params
-        clicked = qp.get("dex", None)
+        # recebe clique via JS
+        clicked = st.session_state.get("carousel_click", None)
         if clicked:
-            st.session_state["pokedex_selected"] = str(clicked)
-            # limpa o parâmetro pra não ficar “travado”
-            try:
-                del st.query_params["dex"]
-            except Exception:
-                pass
+            st.session_state["pokedex_selected"] = clicked
+            st.session_state["carousel_click"] = None
             st.rerun()
         
         items_html = []
         for _, r_car in filtered_df.iterrows():
             pid = str(r_car["Nº"])
             sprite = pokemon_pid_to_image(pid, mode="sprite", shiny=False)
-            active_class = "carousel-item carousel-item-active" if pid == dex_num else "carousel-item"
-            # clique: muda o query param dex=...
+            active = "carousel-item-active" if pid == dex_num else ""
+        
             items_html.append(
-                f"<a class='{active_class}' href='?dex={pid}' title='#{pid}' style='text-decoration:none;'>"
-                f"<img src='{sprite}'/>"
-                f"</a>"
+                f"""
+                <div class="carousel-item {active}"
+                     onclick="selectDex('{pid}')">
+                    <img src="{sprite}">
+                </div>
+                """
             )
         
         st.markdown(
-            "<div class='pokedex-footer-carousel'>" + "".join(items_html) + "</div>",
-            unsafe_allow_html=True
+            f"""
+            <div id="dex-carousel" class="pokedex-footer-carousel">
+                {''.join(items_html)}
+            </div>
+        
+            <script>
+            // converte scroll vertical em horizontal
+            const carousel = document.getElementById("dex-carousel");
+            carousel.addEventListener("wheel", (evt) => {{
+                evt.preventDefault();
+                carousel.scrollLeft += evt.deltaY;
+            }});
+        
+            // envia clique para o Streamlit (mesma aba)
+            function selectDex(pid) {{
+                const input = document.createElement("input");
+                input.type = "hidden";
+                input.name = "carousel_click";
+                input.value = pid;
+        
+                const form = document.createElement("form");
+                form.method = "POST";
+                form.appendChild(input);
+        
+                document.body.appendChild(form);
+                form.submit();
+            }}
+            </script>
+            """,
+            unsafe_allow_html=True,
         )
+        
 
     # ==============================================================================
     # GRID (visão geral)
@@ -3037,6 +3136,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
