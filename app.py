@@ -1957,79 +1957,79 @@ if page == "Pokédex (Busca)":
         for _, r_car in filtered_df.iterrows():
             pid = str(r_car["Nº"])
             sprite = pokemon_pid_to_image(pid, mode="sprite", shiny=False)
-            active = "active" if pid == dex_num else ""
-            items_html.append(
-                f"""
-                <div class="item {active}" onclick="selectDex('{pid}')">
-                    <img src="{sprite}" />
-                </div>
-                """
-            )
+            active_class = "active" if pid == str(dex_num) else ""
+            
+            # Usando aspas simples para delimitar a string e duplas dentro do HTML
+            item_div = f'<div class="item {active_class}" onclick="selectDex(\'{pid}\')"><img src="{sprite}" /></div>'
+            items_html.append(item_div)
         
-        html = f"""
+        # 3. Bloco HTML Principal
+        # Unimos os itens antes para não poluir a f-string principal
+        all_items_joined = "".join(items_html)
+        
+        html_content = f"""
         <style>
-        .dex-carousel {{
-          display:flex;
-          gap:12px;
-          overflow-x:auto;
-          padding:12px;
-          background: rgba(0,0,0,0.30);
-          border-radius: 15px;
-          border: 1px solid rgba(255,255,255,0.18);
-          scroll-behavior:smooth;
-        }}
-        .dex-carousel::-webkit-scrollbar {{ height:8px; }}
-        .dex-carousel::-webkit-scrollbar-thumb {{ background:#FFCC00; border-radius:10px; }}
+            .dex-carousel {{
+                display: flex;
+                gap: 12px;
+                overflow-x: auto;
+                padding: 12px;
+                background: rgba(0,0,0,0.30);
+                border-radius: 15px;
+                border: 1px solid rgba(255,255,255,0.18);
+                scroll-behavior: smooth;
+            }}
+            .dex-carousel::-webkit-scrollbar {{ height: 8px; }}
+            .dex-carousel::-webkit-scrollbar-thumb {{ background: #FFCC00; border-radius: 10px; }}
         
-        .item {{
-          flex:0 0 auto;
-          width:70px;
-          height:70px;
-          border-radius:12px;
-          display:grid;
-          place-items:center;
-          cursor:pointer;
-          background: rgba(255,255,255,0.08);
-          border: 1px solid rgba(255,255,255,0.18);
-          transition: transform .12s;
-        }}
-        .item:hover {{ transform: scale(1.12); }}
-        .item.active {{
-          border: 2px solid #FFCC00;
-          background: rgba(255, 204, 0, 0.10);
-        }}
-        
-        .item img {{
-          width:54px;
-          height:54px;
-          image-rendering: pixelated;
-        }}
+            .item {{
+                flex: 0 0 auto;
+                width: 70px;
+                height: 70px;
+                border-radius: 12px;
+                display: grid;
+                place-items: center;
+                cursor: pointer;
+                background: rgba(255,255,255,0.08);
+                border: 1px solid rgba(255,255,255,0.18);
+                transition: transform .12s;
+            }}
+            .item:hover {{ transform: scale(1.12); }}
+            .item.active {{
+                border: 2px solid #FFCC00;
+                background: rgba(255, 204, 0, 0.10);
+            }}
+            .item img {{
+                width: 54px;
+                height: 54px;
+                image-rendering: pixelated;
+            }}
         </style>
         
         <div id="dex-carousel" class="dex-carousel">
-          {''.join(items_html)}
+            {all_items_joined}
         </div>
         
         <script>
-        const carousel = document.getElementById("dex-carousel");
+            const carousel = document.getElementById("dex-carousel");
+            if (carousel) {{
+                carousel.addEventListener("wheel", (evt) => {{
+                    evt.preventDefault();
+                    carousel.scrollLeft += evt.deltaY;
+                }}, {{ passive: false }});
+            }}
         
-        // roda do mouse = scroll horizontal
-        carousel.addEventListener("wheel", (evt) => {{
-          evt.preventDefault();
-          carousel.scrollLeft += evt.deltaY;
-        }}, {{ passive: false }});
-        
-        // clique troca o pokemon na MESMA aba
-        function selectDex(pid) {{
-          const url = new URL(window.location.href);
-          url.searchParams.set("dex", pid);
-          window.location.assign(url.toString());
-        }}
+            function selectDex(pid) {{
+                // window.parent é necessário para Streamlit Components
+                const url = new URL(window.parent.location.href);
+                url.searchParams.set("dex", pid);
+                window.parent.location.assign(url.toString());
+            }}
         </script>
         """
         
-        # ✅ renderiza HTML de verdade (não vira texto/lista)
-        components.html(html, height=110, scrolling=False)
+        # 4. Renderização final
+        components.html(html_content, height=110, scrolling=False)
 
         
 
@@ -2436,7 +2436,7 @@ elif page == "PvP – Arena Tática":
                                 st.markdown(f'<img src="{sprite_url}" style="width:100%; filter:grayscale(100%); opacity:0.6;">', unsafe_allow_html=True)
                                 st.caption("**FAINTED**")
                             else:
-                                st.image(sprite_url, width="stretch"
+                                st.image(sprite_url, width="stretch")
         
                             if is_on_map:
                                 p_obj = next((p for p in p_pieces_on_board if str(p["pid"]) == str(pid)), None)
@@ -3186,6 +3186,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
