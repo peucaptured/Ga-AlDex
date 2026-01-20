@@ -55,47 +55,56 @@ st.set_page_config(
 # ==========================================
 # 🎨 ESTILO VISUAL GLOBAL (POKÉMON RETRÔ)
 # ==========================================
-# ==========================================
-# 🎨 ESTILO VISUAL GLOBAL (POKÉMON RETRÔ)
-# ==========================================
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-    /* Aplica a fonte aos textos principais, exceto ícones */
-    .stApp, .stMarkdown p, .stButton button, .stTab p, h1, h2, h3 {
+    /* 1. Aplica a fonte retrô apenas a textos de conteúdo */
+    .stApp, .stMarkdown p, .stButton button, .stTab p, h1, h2, h3, .stWidget label {
         font-family: 'Press Start 2P', cursive !important;
         font-size: 13px !important;
         line-height: 1.6;
     }
 
-    /* 🛡️ PROTEÇÃO CONTRA O BUG 'keyboard_arrow_right' */
-    /* Garante que elementos de ícone e marcadores usem fontes padrão */
-    [data-testid="stExpander"] svg, 
+    /* 🛡️ 2. PROTEÇÃO TOTAL CONTRA O BUG 'keyboard_arrow_right' */
+    /* Remove a fonte pixelada de qualquer elemento que contenha ícones do Material Design */
+    [data-testid="stExpander"] summary, 
+    [data-testid="stExpander"] svg,
     [data-testid="stHeader"] svg,
-    [data-baseweb="icon"] svg,
-    [data-testid="stExpander"] summary span,
     .stSelectbox svg,
-    .st-emotion-cache-p5msec, 
-    summary::marker,
-    span[data-baseweb="tag"] svg {
-        font-family: sans-serif !important;
-        display: inline-block !important;
-    }
-
-    /* Remove especificamente o texto que aparece nos seletores/expanders */
-    [data-testid="stExpander"] summary::before,
-    .stSelectbox div[role="button"]::after {
+    .stMultiSelect svg,
+    div[data-baseweb="icon"],
+    span[class*="icon"],
+    i[class*="icon"] {
         font-family: sans-serif !important;
     }
 
-    /* Ajuste para inputs e labels */
-    .stWidget label, .stTextInput input, .stSelectbox div[role="button"] {
-        font-family: 'Press Start 2P', cursive !important;
-        font-size: 12px !important;
+    /* Esconde especificamente o texto que vaza dos ícones */
+    .st-emotion-cache-1vt4yqh, .st-emotion-cache-p5msec {
+        font-family: sans-serif !important;
+        color: transparent !important; /* Torna o texto invisível se ele vazar */
+    }
+
+    /* 🏟️ 3. Estilo do Título da Arena */
+    .arena-header {
+        display: flex; 
+        align-items: center; 
+        gap: 15px; 
+        margin-bottom: 25px;
+        font-family: 'Press Start 2P', cursive;
+    }
+    .arena-title { font-size: 20px; color: white; }
+    .arena-id { 
+        font-size: 28px; 
+        color: #FFCC00; 
+        background: #1E1E1E; 
+        padding: 8px 15px; 
+        border: 2px solid #FFCC00;
+        border-radius: 5px;
     }
     </style>
     """, unsafe_allow_html=True)
+
 
 # --- CONEXÃO COM GOOGLE SHEETS ---
 def get_google_sheet():
@@ -1044,39 +1053,19 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name, room, ef
             try:
                 r, c = int(eff.get("row")), int(eff.get("col"))
                 icon_char = eff.get("icon", "?")
+                x, y = c * TILE_SIZE, r * TILE_SIZE
                 
-                # Coordenadas
-                x = c * TILE_SIZE
-                y = r * TILE_SIZE
-                
-                # Fundo semi-transparente para o ícone
-                draw.ellipse([x+4, y+4, x+TILE_SIZE-4, y+TILE_SIZE-4], fill=(0, 0, 0, 60))
-                
-                # Pega a URL baseada no Emoji
-                url = EMOJI_TO_URL.get(icon_char)
-                
-                if url:
-                    # Baixa (ou pega do cache) a imagem do ícone
-                    if url not in local_cache_icons:
-                        local_cache_icons[url] = fetch_image_pil(url)
-                    
-                    icon_img = local_cache_icons[url]
-                    
-                    if icon_img:
-                        # Redimensiona para caber no quadrado (um pouco menor que o pokemon)
-                        icon_sp = icon_img.copy()
-                        icon_sp.thumbnail((int(TILE_SIZE * 0.7), int(TILE_SIZE * 0.7)), Image.Resampling.LANCZOS)
-                        
-                        # Centraliza
-                        ix = x + (TILE_SIZE - icon_sp.size[0]) // 2
-                        iy = y + (TILE_SIZE - icon_sp.size[1]) // 2
-                        img.alpha_composite(icon_sp, (ix, iy))
+                path = EMOJI_TO_PATH.get(icon_char)
+                if path and os.path.exists(path):
+                    icon_img = Image.open(path).convert("RGBA")
+                    icon_img.thumbnail((int(TILE_SIZE * 0.7), int(TILE_SIZE * 0.7)))
+                    ix = x + (TILE_SIZE - icon_img.size[0]) // 2
+                    iy = y + (TILE_SIZE - icon_img.size[1]) // 2
+                    img.alpha_composite(icon_img, (ix, iy))
                 else:
-                    # Fallback (se não tiver imagem, desenha bolinha branca)
-                    draw.text((x + 10, y + 5), "?", fill="white")
-
-            except Exception:
-                continue
+                    # Fallback caso a imagem local não exista
+                    draw.ellipse([x+8, y+8, x+TILE_SIZE-8, y+TILE_SIZE-8], fill=(255, 255, 255, 100))
+            except: continue
 
     # 3. CAMADA DE POKÉMONS
     local_cache = {}
@@ -2412,7 +2401,7 @@ elif page == "PvP – Arena Tática":
                 theme_label = st.selectbox("Tema", list(inv_themes.keys()), index=0)
                 theme = inv_themes[theme_label]
             with c3:
-                st.write("")
+                st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
                 if st.button("🆕 Criar arena", type="primary"):
                     rid, err = create_room(db, trainer_name, grid, theme, max_active=5)
                     if err:
@@ -2629,6 +2618,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
