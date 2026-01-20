@@ -1094,13 +1094,13 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
                 img.alpha_composite(assets[obj_asset], (x, y))
 
     # --- CAMADA 4: GRID TÁTICO FINO ---
-    draw = ImageDraw.Draw(img)
+    #draw = ImageDraw.Draw(img)
     # Cor branca com baixa opacidade (40/255) para ser sutil
-    grid_color = (255, 255, 255, 40) 
-    for i in range(grid + 1):
-        pos = i * TILE_SIZE
-        draw.line([(0, pos), (grid * TILE_SIZE, pos)], fill=grid_color, width=1)
-        draw.line([(pos, 0), (pos, grid * TILE_SIZE)], fill=grid_color, width=1)
+    #grid_color = (255, 255, 255, 40) 
+    #for i in range(grid + 1):
+        #pos = i * TILE_SIZE
+        #draw.line([(0, pos), (grid * TILE_SIZE, pos)], fill=grid_color, width=1)
+        #draw.line([(pos, 0), (pos, grid * TILE_SIZE)], fill=grid_color, width=1)
 
     return img.convert("RGB")
 
@@ -2700,6 +2700,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
