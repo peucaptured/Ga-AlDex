@@ -220,12 +220,17 @@ def load_map_assets():
     def normalize_floor(img: Image.Image) -> Image.Image:
         if img.mode != "RGBA":
             img = img.convert("RGBA")
-        if img.getextrema()[3][0] == 255:
-            return img
-        solid = pick_solid_color(img)
-        base = Image.new("RGBA", img.size, (*solid, 255))
-        base.alpha_composite(img)
-        return base
+        alpha = img.getchannel("A")
+        bbox = alpha.getbbox()
+        if bbox and bbox != (0, 0, img.size[0], img.size[1]):
+            img = img.crop(bbox).resize((TILE_SIZE, TILE_SIZE), Image.Resampling.NEAREST)
+            alpha = img.getchannel("A")
+        if alpha.getextrema()[0] < 255:
+            solid = pick_solid_color(img)
+            base = Image.new("RGBA", img.size, (*solid, 255))
+            base.alpha_composite(img)
+            img = base
+        return img
 
     assets = {}
     for name in asset_names:
@@ -2722,6 +2727,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
