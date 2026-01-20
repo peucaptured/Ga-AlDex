@@ -1602,14 +1602,19 @@ h1, h2, h3 {
     background: rgba(255, 204, 0, 0.10);
 }
 .pokedex-tile button {
-    width: 100%;
-    max-width: 90px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    text-align: center;
-    font-size: 11px;
-    line-height: 1.2;
+  width: 100%;
+  max-width: 90px;
+
+  height: 28px;              /* ✅ força todos iguais */
+  padding: 0 6px;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  text-align: center;
+  font-size: 11px;
+  line-height: 28px;         /* ✅ centraliza vertical */
 }
 .info-label {
   color: #ffd166;             /* amarelo */
@@ -1627,14 +1632,16 @@ h1, h2, h3 {
 .hi-purple { color: #b197ff; font-weight: 900; } /* tags extras */
 
 .power-badge {
-  display: inline-block;
-  margin-top: 10px;
+  display: block;
+  width: fit-content;
+  margin: 10px auto 0 auto;   /* ✅ centraliza */
   padding: 6px 12px;
   border-radius: 999px;
   background: rgba(255,255,255,0.10);
   border: 1px solid rgba(255,255,255,0.25);
   color: #ffd166;
   font-weight: 900;
+  text-align: center;
 }
 
 </style>
@@ -1761,6 +1768,11 @@ if page == "Pokédex (Busca)":
     # VISÃO DE FOCO (selecionado)
     # ==============================================================================
     if selected_id:
+        dex_param = st.query_params.get("dex", None)
+        if dex_param:
+            st.session_state["pokedex_selected"] = str(dex_param)
+            st.query_params.clear()
+            st.rerun()
         selected_df = df[df["Nº"].astype(str) == str(selected_id)]
         if selected_df.empty:
             st.session_state["pokedex_selected"] = None
@@ -1931,13 +1943,6 @@ if page == "Pokédex (Busca)":
         # --- CARROSSEL INFERIOR (navegação) ---
         st.subheader("🔄 Navegar pela Dex")
         
-        # recebe clique via JS
-        clicked = st.session_state.get("carousel_click", None)
-        if clicked:
-            st.session_state["pokedex_selected"] = clicked
-            st.session_state["carousel_click"] = None
-            st.rerun()
-        
         items_html = []
         for _, r_car in filtered_df.iterrows():
             pid = str(r_car["Nº"])
@@ -1946,8 +1951,7 @@ if page == "Pokédex (Busca)":
         
             items_html.append(
                 f"""
-                <div class="carousel-item {active}"
-                     onclick="selectDex('{pid}')">
+                <div class="carousel-item {active}" onclick="selectDex('{pid}')">
                     <img src="{sprite}">
                 </div>
                 """
@@ -1960,31 +1964,24 @@ if page == "Pokédex (Busca)":
             </div>
         
             <script>
-            // converte scroll vertical em horizontal
             const carousel = document.getElementById("dex-carousel");
-            carousel.addEventListener("wheel", (evt) => {{
-                evt.preventDefault();
-                carousel.scrollLeft += evt.deltaY;
-            }});
+            if (carousel) {{
+                carousel.addEventListener("wheel", (evt) => {{
+                    evt.preventDefault();
+                    carousel.scrollLeft += evt.deltaY;
+                }}, {{ passive: false }});
+            }}
         
-            // envia clique para o Streamlit (mesma aba)
             function selectDex(pid) {{
-                const input = document.createElement("input");
-                input.type = "hidden";
-                input.name = "carousel_click";
-                input.value = pid;
-        
-                const form = document.createElement("form");
-                form.method = "POST";
-                form.appendChild(input);
-        
-                document.body.appendChild(form);
-                form.submit();
+                const url = new URL(window.location.href);
+                url.searchParams.set("dex", pid);
+                window.location.href = url.toString();
             }}
             </script>
             """,
-            unsafe_allow_html=True,
+            unsafe_allow_html=True
         )
+
         
 
     # ==============================================================================
@@ -3140,6 +3137,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
