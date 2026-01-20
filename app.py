@@ -1494,349 +1494,324 @@ page = st.sidebar.radio("Ir para:", ["Pokédex (Busca)", "Trainer Hub (Meus Pok�
 # ==============================================================================
 # PÁGINA 1: POKEDEX (COM FILTRO DE TIPO EXCLUSIVO/COMBINADO)
 # ==============================================================================
+# ==============================================================================
+# PÁGINA 1: POKEDEX (VISÃO DE FOCO + CARROSSEL INFERIOR)
+# ==============================================================================
 if page == "Pokédex (Busca)":
     st.sidebar.header("🔍 Filtros")
     search_query = st.sidebar.text_input("Buscar (Nome ou Nº)", "")
-    
-    # 1. FILTRO DE REGIÃO
-    all_regions = sorted(list(set([r.strip() for region in df['Região'].unique() for r in region.split('/')])))
+
+    # 1) FILTRO DE REGIÃO
+    all_regions = sorted(list(set([r.strip() for region in df["Região"].unique() for r in str(region).split("/")])) )
     selected_regions = st.sidebar.multiselect("Região", all_regions)
-    
-    # 2. FILTRO DE BIOMA (Cascata)
+
+    # 2) FILTRO DE BIOMA (CASCATA)
     if selected_regions:
-        df_for_biomes = df[df['Região'].apply(lambda x: any(reg in x for reg in selected_regions))]
-        raw_biomes = df_for_biomes['Biomas'].unique()
+        df_for_biomes = df[df["Região"].apply(lambda x: any(reg in str(x) for reg in selected_regions))]
+        raw_biomes = df_for_biomes["Biomas"].unique()
     else:
-        raw_biomes = df['Biomas'].unique()
-        
-    all_biomes = sorted(list(set([b.strip() for biome in raw_biomes for b in str(biome).split('/')])))
+        raw_biomes = df["Biomas"].unique()
+
+    all_biomes = sorted(list(set([b.strip() for biome in raw_biomes for b in str(biome).split("/")])) )
     biomes_clean = [b for b in all_biomes if "toda" not in b.lower() and "ga" not in b.lower()]
     selected_biomes = st.sidebar.multiselect("Bioma", biomes_clean)
 
-    # 3. FILTRO DE TIPO (COMBINADO)
-    all_types = sorted(list(set([t.strip() for t_str in df['Tipo'].unique() for t in str(t_str).split('/')])))
+    # 3) FILTRO DE TIPO (COMBINAÇÃO)
+    all_types = sorted(list(set([t.strip() for t_str in df["Tipo"].unique() for t in str(t_str).split("/")])) )
     selected_types = st.sidebar.multiselect("Tipo Elementar (Combinação)", all_types)
-    
-    # 4. Outros Filtros
-    min_p, max_p = int(df['Nivel_Poder'].min()), int(df['Nivel_Poder'].max())
+
+    # 4) NÍVEL DE PODER
+    min_p, max_p = int(df["Nivel_Poder"].min()), int(df["Nivel_Poder"].max())
     power_range = st.sidebar.slider("⚡ Nível de Poder", min_p, max_p, (min_p, max_p))
-    
+
+    # 5) ESTRATÉGIA
     st.sidebar.subheader("⚔️ Estratégia")
     sel_func = st.sidebar.selectbox("Função", ["Todos", "C - Controlador", "F - Finalizador", "S - Suporte"])
     sel_style = st.sidebar.selectbox("Estilo", ["Todos", "O - Ofensivo", "D - Defensivo", "F - Furtivo", "I - Incompleto", "C - Completo"])
     sel_speed = st.sidebar.selectbox("Velocidade", ["Todos", "R - Rápido", "L - Lento"])
-    
+
     l1 = sel_func[0] if sel_func != "Todos" else ""
     l2 = sel_style[0] if sel_style != "Todos" else ""
     l3 = sel_speed[0] if sel_speed != "Todos" else ""
 
-    # --- APLICAÇÃO DOS FILTROS ---
+    # -----------------------------
+    # APLICAÇÃO DOS FILTROS
+    # -----------------------------
     filtered_df = df.copy()
-    
+
     if search_query:
-        filtered_df = filtered_df[filtered_df['Nome'].str.contains(search_query, case=False, na=False) | filtered_df['Nº'].str.contains(search_query, case=False, na=False)]
-    
+        filtered_df = filtered_df[
+            filtered_df["Nome"].str.contains(search_query, case=False, na=False)
+            | filtered_df["Nº"].astype(str).str.contains(search_query, case=False, na=False)
+        ]
+
     if selected_regions:
-        filtered_df = filtered_df[filtered_df['Região'].apply(lambda x: any(region in x for region in selected_regions))]
-    
+        filtered_df = filtered_df[filtered_df["Região"].apply(lambda x: any(region in str(x) for region in selected_regions))]
+
     if selected_biomes:
-        filtered_df = filtered_df[filtered_df['Biomas'].apply(lambda x: ("toda" in str(x).lower() and "ga" in str(x).lower()) or any(b in x for b in selected_biomes))]
+        filtered_df = filtered_df[
+            filtered_df["Biomas"].apply(
+                lambda x: ("toda" in str(x).lower() and "ga" in str(x).lower())
+                or any(b in str(x) for b in selected_biomes)
+            )
+        ]
 
-    # --- AQUI MUDOU: LÓGICA 'AND' (E) ---
     if selected_types:
-        # Usa 'all' em vez de 'any'. O Pokemon precisa ter TODOS os tipos selecionados.
-        filtered_df = filtered_df[filtered_df['Tipo'].apply(lambda x: all(t in str(x) for t in selected_types))]
-    
+        # “Combinação”: precisa conter TODOS os tipos marcados
+        filtered_df = filtered_df[filtered_df["Tipo"].apply(lambda x: all(t in str(x) for t in selected_types))]
+
     filtered_df = filtered_df[
-        (filtered_df['Nivel_Poder'] >= power_range[0]) & 
-        (filtered_df['Nivel_Poder'] <= power_range[1])
+        (filtered_df["Nivel_Poder"] >= power_range[0]) & (filtered_df["Nivel_Poder"] <= power_range[1])
     ]
-    
+
     if l1 or l2 or l3:
-            filtered_df = filtered_df[filtered_df['Codigos_Estrategia'].apply(lambda codes: any(((not l1 or c[0]==l1) and (not l2 or c[1]==l2) and (not l3 or c[2]==l3)) for c in codes))]
+        def _match_codes(codes):
+            if not isinstance(codes, list):
+                codes = [c.strip() for c in str(codes).split(",") if c.strip()]
+            for c in codes:
+                if len(c) >= 3:
+                    ok = (not l1 or c[0] == l1) and (not l2 or c[1] == l2) and (not l3 or c[2] == l3)
+                    if ok:
+                        return True
+            return False
 
-    # --- EXIBIÇÃO ---
-    st.title("📕 Pokédex Universal")
-    st.markdown(f"**Resultados:** {len(filtered_df)}")
-    st.markdown("""
+        filtered_df = filtered_df[filtered_df["Codigos_Estrategia"].apply(_match_codes)]
+
+    # -----------------------------
+    # CSS DO CARROSSEL INFERIOR
+    # -----------------------------
+    st.markdown(
+        """
         <style>
-        [data-testid="stAppViewContainer"] {
-            background: linear-gradient(180deg, #1f4e79 0%, #3b7ca6 45%, #5fb2cf 100%);
-        }
-        h1, h2, h3 {
-            color: #0b1f2a;
-            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
-        }
-        .pokedex-shell {
-            border-radius: 18px;
-            padding: 18px 18px 8px 18px;
-            border: 3px solid rgba(255,255,255,0.65);
-            box-shadow: inset 0 0 15px rgba(255,255,255,0.35);
-            background: rgba(10, 36, 58, 0.45);
-        }
-        .pokedex-header {
+        .footer-carousel {
             display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            background: rgba(255,255,255,0.65);
-            padding: 6px 16px;
-            border-radius: 16px;
-            font-size: 12px;
-            color: #0b1f2a;
-        }
-        .pokedex-grid-note {
-            font-size: 11px;
-            color: #e7f5ff;
-            text-align: center;
-            margin: 6px 0 10px 0;
-        }
-        .pokedex-card {
-            background: rgba(10, 25, 40, 0.65);
-            color: #f5f5f5;
-            padding: 18px;
-            border-radius: 16px;
-            border: 2px solid rgba(255,255,255,0.35);
-            margin-top: 18px;
-        }
-        .pokedex-tags span {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 999px;
-            font-size: 10px;
-            margin-right: 6px;
-            margin-bottom: 4px;
-            background: rgba(0,0,0,0.35);
-            color: #ffffff;
-        }
-        .pokedex-carousel {
-            display: flex;
-            gap: 12px;
+            flex-wrap: nowrap;
             overflow-x: auto;
-            padding: 10px 4px;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.2);
         }
-        .pokedex-carousel img {
-            width: 72px;
-            height: 72px;
-            image-rendering: pixelated;
-            background: rgba(255,255,255,0.25);
-            border-radius: 10px;
-            padding: 6px;
-        }
-        .pokedex-grid img {
-            image-rendering: pixelated;
-        }
-        .pokedex-tile {
-            position: relative;
-            width: 88px;
-            height: 100px;
-            margin: 0 auto;
-        }
-        .pokedex-tile [data-testid="stImage"] {
-            position: relative;
-            z-index: 1;
-        }
-        .pokedex-tile [data-testid="stImage"] img {
-            margin: 0 auto;
-            display: block;
-        }
-        .pokedex-tile .stButton {
-            position: absolute;
-            inset: 0;
-            z-index: 2;
-            height: 100%;
-            width: 100%;
-        }
-        .pokedex-tile .stButton button {
-            width: 100%;
-            height: 100%;
-            background: transparent;
-            border: none;
-            color: transparent;
-            padding: 0 6px 8px;
-            font-size: 10px;
-            white-space: normal;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            text-align: center;
-            line-height: 1.2;
-        }
-        .pokedex-tile .stButton button:hover,
-        .pokedex-tile .stButton button:focus {
-            color: #ffffff;
-            background: rgba(0,0,0,0.35);
-        }
+        .footer-carousel::-webkit-scrollbar { height: 8px; }
+        .footer-carousel::-webkit-scrollbar-thumb { background: #FFCC00; border-radius: 10px; }
         </style>
-        """, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True,
+    )
 
+    # -----------------------------
+    # SESSION STATE (garante que existe)
+    # -----------------------------
     if "pokedex_selected" not in st.session_state:
         st.session_state["pokedex_selected"] = None
-    if "pokedex_detail_mode" not in st.session_state:
-        st.session_state["pokedex_detail_mode"] = True
 
     def select_pokedex_entry(pid: str) -> None:
-        st.session_state["pokedex_selected"] = pid
-        st.session_state["pokedex_detail_mode"] = True
-    
-    if filtered_df.empty: 
-        st.warning("Nenhum Pokémon encontrado.")
-        if len(selected_types) > 1:
-            st.caption("Dica: Você selecionou múltiplos tipos. O sistema está buscando Pokémons que tenham **TODOS** esses tipos simultaneamente.")
+        st.session_state["pokedex_selected"] = str(pid)
 
-    if not filtered_df.empty:
-        obtained_count = len(user_data.get("caught", []))
-        seen_count = len(user_data.get("seen", []))
-        st.markdown("<div class='pokedex-shell'>", unsafe_allow_html=True)
-        st.markdown(
-            f"<div class='pokedex-header'><span>Pokémon Obtidos {obtained_count}</span><span>Pokémon Vistos {seen_count}</span></div>",
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-           "<div class='pokedex-grid-note'>Passe o mouse sobre o Pokémon para ver o nome. Clique em um Pokémon para ver os detalhes completos.</div>",
-        )
+    selected_id = st.session_state.get("pokedex_selected")
 
-        grid_cols = 8
-        rows = list(filtered_df.iterrows())
-        st.markdown("<div class='pokedex-grid'>", unsafe_allow_html=True)
-        for start in range(0, len(rows), grid_cols):
-            cols = st.columns(grid_cols)
-            for col, (index, row) in zip(cols, rows[start:start + grid_cols]):
-                dex_num = str(row['Nº'])
-                p_name = row['Nome']
-                sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
-                with col:
-                    st.markdown("<div class='pokedex-tile'>", unsafe_allow_html=True)
-                    st.image(sprite_url, width=64)
-                    st.button(
-                        f"{p_name}",
-                        key=f"dex_tile_{dex_num}_{index}",
-                        help=f"#{dex_num} • {p_name}",
-                        on_click=select_pokedex_entry,
-                        args=(dex_num,),
+    # ==============================================================================
+    # VISÃO DE FOCO (selecionado)
+    # ==============================================================================
+    if selected_id:
+        selected_df = df[df["Nº"].astype(str) == str(selected_id)]
+        if selected_df.empty:
+            st.session_state["pokedex_selected"] = None
+            st.rerun()
+
+        row = selected_df.iloc[0]
+        dex_num = str(row["Nº"])
+        p_name = row["Nome"]
+        codes = row.get("Codigos_Estrategia", [])
+        if not isinstance(codes, list):
+            codes = [c.strip() for c in str(codes).split(",") if c.strip()]
+
+        if "wishlist" not in user_data:
+            user_data["wishlist"] = []
+
+        # Botão sair
+        if st.button("⬅️ Sair da Visão de Foco"):
+            st.session_state["pokedex_selected"] = None
+            st.rerun()
+
+        # Helpers locais (não depende do resto do arquivo)
+        def build_info_entries():
+            entries = []
+            for col in row.index:
+                if col in {"Nome", "Nº", "Codigos_Estrategia"}:
+                    continue
+                value = row[col]
+                if pd.isna(value):
+                    continue
+                value_str = str(value).strip()
+                if not value_str or value_str.lower() == "nan":
+                    continue
+                entries.append((col, value_str))
+            return entries
+
+        def render_info_columns(entries):
+            for label, value in entries:
+                if label == "Viabilidade":
+                    st.markdown(f"**{label}:**")
+                    viab = (
+                        str(value)
+                        .replace("PARCEIROS:", "\n\n**👥 PARCEIROS:**")
+                        .replace("Explicação:", "\n\n**💡 EXPLICAÇÃO:**")
+                        .replace("Habilidade:", "**✨ Habilidade:**")
                     )
-                    st.markdown("</div>", unsafe_allow_html=True)
-            st.write("")
+                    for code in codes:
+                        viab = re.sub(rf"\b{re.escape(code)}\b", f":red[**{code}**]", viab)
+                    st.markdown(viab)
+                elif label == "Descrição da Pokedex":
+                    st.markdown(f"**{label}:**")
+                    st.write(value)
+                else:
+                    st.markdown(f"**{label}:** {value}")
+
+        def render_info_tags():
+            tags_html = "".join([f"<span>{c}</span>" for c in codes])
+            st.markdown(f"<div class='pokedex-tags'>{tags_html}</div>", unsafe_allow_html=True)
+
+        def render_status_controls():
+            # precisa existir no save
+            if "seen" not in user_data:
+                user_data["seen"] = []
+            if "caught" not in user_data:
+                user_data["caught"] = []
+
+            is_seen = dex_num in user_data["seen"]
+            is_caught = dex_num in user_data["caught"]
+            is_wished = dex_num in user_data["wishlist"]
+
+            s1, s2, s3 = st.columns(3)
+
+            with s1:
+                label = "👁️ Visto" if not is_seen else "✅ Visto"
+                if st.button(label, key=f"seen_{dex_num}"):
+                    if dex_num not in user_data["seen"]:
+                        user_data["seen"].append(dex_num)
+                    save_data_cloud(trainer_name, user_data)
+                    st.rerun()
+
+            with s2:
+                label = "🔴 Capturar" if not is_caught else "✅ Capturado"
+                if st.button(label, key=f"caught_{dex_num}"):
+                    if dex_num in user_data["caught"]:
+                        user_data["caught"].remove(dex_num)
+                    else:
+                        user_data["caught"].append(dex_num)
+                        if dex_num not in user_data["seen"]:
+                            user_data["seen"].append(dex_num)
+                    save_data_cloud(trainer_name, user_data)
+                    st.rerun()
+
+            with s3:
+                label = "⭐ Desejar" if not is_wished else "✅ Na Lista"
+                if st.button(label, key=f"wish_{dex_num}"):
+                    if dex_num in user_data["wishlist"]:
+                        user_data["wishlist"].remove(dex_num)
+                    else:
+                        user_data["wishlist"].append(dex_num)
+                    save_data_cloud(trainer_name, user_data)
+                    st.rerun()
+
+        # --- LAYOUT DO FOCO (seu estilo) ---
+        st.markdown("<div class='pokedex-card'>", unsafe_allow_html=True)
+        st.markdown(f"### #{dex_num} • {p_name}")
+
+        info_entries = build_info_entries()
+        midpoint = (len(info_entries) + 1) // 2
+        top_left, top_center, top_right = st.columns([1.3, 1.7, 1.3])
+
+        with top_left:
+            render_info_columns(info_entries[:midpoint])
+
+        with top_center:
+            st.image(pokemon_pid_to_image(dex_num, mode="artwork", shiny=False), use_container_width=True)
+
+        with top_right:
+            render_info_columns(info_entries[midpoint:])
+
+        render_status_controls()
+        render_info_tags()
+
+        st.markdown("#### 🎞️ Variações")
+        sprite_urls = [pokemon_pid_to_image(dex_num, mode="sprite", shiny=s) for s in [False, True]]
+        sprites_html = "".join([f"<img src='{url}' style='width:70px; image-rendering: pixelated;'>" for url in sprite_urls])
+        st.markdown(f"<div class='pokedex-carousel'>{sprites_html}</div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
+
+        st.divider()
+
+        # --- CARROSSEL INFERIOR (navegação) ---
+        st.subheader("🔄 Navegar pela Dex")
+        st.markdown('<div class="footer-carousel">', unsafe_allow_html=True)
+
+        # se tiver MUITOS, isso pode ficar pesado, mas funciona.
+        carousel_cols = st.columns([1] * len(filtered_df))
+        for i, (_, r_car) in enumerate(filtered_df.iterrows()):
+            p_id_car = str(r_car["Nº"])
+            with carousel_cols[i]:
+                st.image(pokemon_pid_to_image(p_id_car, mode="sprite", shiny=False), width=50)
+                if st.button(f"{r_car['Nome']}", key=f"car_btn_{p_id_car}_{i}"):
+                    select_pokedex_entry(p_id_car)
+                    st.rerun()
+
         st.markdown("</div>", unsafe_allow_html=True)
 
-        selected_id = st.session_state.get("pokedex_selected")
-        if selected_id:
-            selected_df = df[df['Nº'].astype(str) == str(selected_id)]
-            if not selected_df.empty:
-                row = selected_df.iloc[0]
-                dex_num = str(row['Nº'])
-                p_name = row['Nome']
-                power = row['Nivel_Poder']
-                types = row['Tipo']
-                region = row['Região']
-                biomes = row['Biomas']
-                description = row['Descrição da Pokedex']
-                codes = row['Codigos_Estrategia']
-                if not isinstance(codes, list):
-                    codes = [c.strip() for c in str(codes).split(",") if c.strip()]
-                if "wishlist" not in user_data:
-                    user_data["wishlist"] = []
+    # ==============================================================================
+    # GRID (visão geral)
+    # ==============================================================================
+    else:
+        if filtered_df.empty:
+            st.warning("Nenhum Pokémon encontrado.")
+        else:
+            st.title("📕 Pokédex Universal")
+            st.markdown(f"**Resultados:** {len(filtered_df)}")
 
-                def build_info_entries() -> list[tuple[str, str]]:
-                    entries: list[tuple[str, str]] = []
-                    for col in row.index:
-                        if col in {"Nome", "Nº", "Codigos_Estrategia"}:
-                            continue
-                        value = row[col]
-                        if pd.isna(value):
-                            continue
-                        value_str = str(value).strip()
-                        if not value_str or value_str.lower() == "nan":
-                            continue
-                        entries.append((col, value_str))
-                    return entries
+            # contadores (igual seu arquivo)
+            obtained_count = len(user_data.get("caught", []))
+            seen_count = len(user_data.get("seen", []))
 
-                def render_info_columns(entries: list[tuple[str, str]]) -> None:
-                    for label, value in entries:
-                        if label == "Viabilidade":
-                            st.markdown(f"**{label}:**")
-                            viab = (
-                                str(value)
-                                .replace("PARCEIROS:", "\n\n**👥 PARCEIROS:**")
-                                .replace("Explicação:", "\n\n**💡 EXPLICAÇÃO:**")
-                                .replace("Habilidade:", "**✨ Habilidade:**")
-                            )
-                            for code in codes:
-                                viab = re.sub(rf'\b{code}\b', f":red[**{code}**]", viab)
-                            st.markdown(viab)
-                        elif label == "Descrição da Pokedex":
-                            st.markdown(f"**{label}:**")
-                            st.write(value)
-                        else:
-                            st.markdown(f"**{label}:** {value}")
+            st.markdown("<div class='pokedex-shell'>", unsafe_allow_html=True)
+            st.markdown(
+                f"<div class='pokedex-header'><span>Pokémon Obtidos {obtained_count}</span><span>Pokémon Vistos {seen_count}</span></div>",
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                "<div class='pokedex-grid-note'>Passe o mouse sobre o Pokémon para ver o nome. Clique em um Pokémon para ver os detalhes completos.</div>",
+                unsafe_allow_html=True,
+            )
 
-                def render_info_tags() -> None:
-                    tags_html = "".join([f"<span>{c}</span>" for c in codes])
-                    st.markdown(f"<div class='pokedex-tags'>{tags_html}</div>", unsafe_allow_html=True)
+            grid_cols = 8
+            rows = list(filtered_df.iterrows())
 
-                def render_status_controls() -> None:
-                    is_seen = dex_num in user_data["seen"]
-                    is_caught = dex_num in user_data["caught"]
-                    is_wished = dex_num in user_data["wishlist"]
-                    s1, s2, s3 = st.columns(3)
-                    with s1:
-                        if st.checkbox("🌟 Desejo", value=is_wished, key=f"wish_{dex_num}"):
-                            if dex_num not in user_data["wishlist"]:
-                                user_data["wishlist"].append(dex_num)
-                                save_data_cloud(trainer_name, user_data)
-                        else:
-                            if dex_num in user_data["wishlist"]:
-                                user_data["wishlist"].remove(dex_num)
-                                save_data_cloud(trainer_name, user_data)
-                    with s2:
-                        if st.checkbox("👁️ Visto", value=is_seen, key=f"seen_{dex_num}"):
-                            if dex_num not in user_data["seen"]:
-                                user_data["seen"].append(dex_num)
-                                save_data_cloud(trainer_name, user_data)
-                        else:
-                            if dex_num in user_data["seen"]:
-                                user_data["seen"].remove(dex_num)
-                                save_data_cloud(trainer_name, user_data)
-                    with s3:
-                        if st.checkbox("🔴 Capturado", value=is_caught, key=f"caught_{dex_num}"):
-                            if dex_num not in user_data["caught"]:
-                                user_data["caught"].append(dex_num)
-                                if dex_num not in user_data["seen"]:
-                                    user_data["seen"].append(dex_num)
-                                save_data_cloud(trainer_name, user_data)
-                                st.rerun()
-                        else:
-                            if dex_num in user_data["caught"]:
-                                user_data["caught"].remove(dex_num)
-                                save_data_cloud(trainer_name, user_data)
+            st.markdown("<div class='pokedex-grid'>", unsafe_allow_html=True)
+            for start in range(0, len(rows), grid_cols):
+                cols = st.columns(grid_cols)
+                for col, (index, row_g) in zip(cols, rows[start : start + grid_cols]):
+                    dex_num = str(row_g["Nº"])
+                    p_name = row_g["Nome"]
+                    sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
 
-                if st.session_state["pokedex_detail_mode"]:
-                    st.markdown("<div class='pokedex-card'>", unsafe_allow_html=True)
-                    st.markdown(f"### #{dex_num} • {p_name}")
-                    info_entries = build_info_entries()
-                    midpoint = (len(info_entries) + 1) // 2
-                    left_entries = info_entries[:midpoint]
-                    right_entries = info_entries[midpoint:]
-                    top_left, top_center, top_right = st.columns([1.3, 1.7, 1.3])
-                    with top_left:
-                        render_info_columns(left_entries)
-                    with top_center:
-                        st.image(pokemon_pid_to_image(dex_num, mode="artwork", shiny=False), width=320)
-                    with top_right:
-                        render_info_columns(right_entries)
-                    render_status_controls()
-                    render_info_tags()
-                    st.markdown("#### 🎞️ Sprites")
-                    sprite_urls = [
-                        pokemon_pid_to_image(dex_num, mode="sprite", shiny=False),
-                        pokemon_pid_to_image(dex_num, mode="sprite", shiny=True),
-                    ]
-                    sprites_html = "".join([f"<img src='{url}' alt='{p_name} sprite'>" for url in sprite_urls])
-                    st.markdown(f"<div class='pokedex-carousel'>{sprites_html}</div>", unsafe_allow_html=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    with col:
+                        st.markdown("<div class='pokedex-tile'>", unsafe_allow_html=True)
+                        st.image(sprite_url, width=64)
 
+                        # botão “invisível” (clique no tile)
+                        st.button(
+                            f"{p_name}",
+                            key=f"dex_tile_{dex_num}_{index}",
+                            help=f"#{dex_num} • {p_name}",
+                            on_click=select_pokedex_entry,
+                            args=(dex_num,),
+                        )
+
+                        st.markdown("</div>", unsafe_allow_html=True)
+                st.write("")
+            st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
 # ==============================================================================
 # PÁGINA 2: TRAINER HUB
@@ -2938,6 +2913,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
