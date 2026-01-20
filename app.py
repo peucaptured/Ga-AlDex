@@ -53,36 +53,48 @@ st.set_page_config(
 # ==========================================
 # 🎨 ESTILO VISUAL GLOBAL (POKÉMON RETRÔ)
 # ==========================================
+# ==========================================
+# 🎨 ESTILO VISUAL GLOBAL (POKÉMON RETRÔ)
+# ==========================================
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-    /* Aplica a fonte de jogo em tamanho legível */
-    .stMarkdown p, .stButton button, label, .stTab p, h1, h2, h3 {
+    /* Aplica a fonte aos textos principais */
+    .stApp, .stMarkdown p, .stButton button, .stTab p, h1, h2, h3 {
         font-family: 'Press Start 2P', cursive !important;
-        font-size: 14px !important; /* Tamanho aumentado para evitar 'zoom out' */
-        line-height: 1.8;
+        font-size: 13px !important;
+        line-height: 1.6;
     }
 
-    /* Ajuste para inputs e selects */
-    .stTextInput input, .stSelectbox div {
+    /* Estiliza os labels dos inputs (ajustado para funcionar melhor) */
+    .stWidget label {
         font-family: 'Press Start 2P', cursive !important;
         font-size: 12px !important;
     }
 
-    /* PROTEÇÃO DE ÍCONES: Remove o texto 'arrow' e recupera as setas do Streamlit */
+    /* 🛡️ PROTEÇÃO TOTAL DE ÍCONES: Remove o texto '_arrow_' */
     [data-testid="stExpander"] svg, 
     [data-testid="stHeader"] svg,
     [data-baseweb="icon"] svg,
-    summary span, 
-    .st-emotion-cache-p5msec svg {
+    [data-testid="stExpander"] summary span,
+    .st-emotion-cache-p5msec svg,
+    .st-emotion-cache-1vt4yqh, 
+    summary::marker {
         font-family: sans-serif !important;
+        display: inline-block !important;
     }
 
-    /* Melhora o contraste dos botões */
-    .stButton>button {
-        border: 2px solid #555 !important;
-        padding: 5px 15px !important;
+    /* Mantém a fonte no título dos Expanders, mas remove o bug da seta */
+    [data-testid="stExpander"] summary p {
+        font-family: 'Press Start 2P', cursive !important;
+        margin: 0;
+    }
+
+    /* Ajuste para inputs e selects */
+    .stTextInput input, .stSelectbox div[role="button"] {
+        font-family: 'Press Start 2P', cursive !important;
+        font-size: 12px !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -1842,72 +1854,95 @@ elif page == "PvP – Arena Tática":
             return str(pid)
 
         # Definição da Função de Renderização da Coluna (DEFINIDA ANTES DE USAR)
-        def render_player_column(col_container, p_name, p_label, is_me):
-            with col_container:
-                st.markdown(f"### {p_label}")
-                
-                # Busca party do jogador alvo
-                p_doc_ref = db.collection("rooms").document(rid).collection("public_state").document("players").get()
-                p_doc_data = p_doc_ref.to_dict() or {}
-                party_list = p_doc_data.get(p_name, [])
-                
-                if not party_list:
-                    st.caption("Sem Pokémons.")
-                    return
-
-                # Filtra peças que estão no tabuleiro
-                pieces_on_board = [p for p in all_pieces if p.get("owner") == p_name]
-                pids_on_board = {str(p["pid"]) for p in pieces_on_board}
-
-                for i, pid in enumerate(party_list): 
-                    is_on_map = str(pid) in pids_on_board
-                    already_seen = str(pid) in seen_pids
-                    real_name = get_poke_display_name(pid)
+        def render_player_column(p_name, p_label, is_me):
+            st.markdown(f"### {p_label}")
+            
+            # Busca party e estado público
+            p_doc_data = db.collection("rooms").document(rid).collection("public_state").document("players").get().to_dict() or {}
+            party_list = p_doc_data.get(p_name, [])[:8] # Limite de 8 [como no seu original]
+            
+            state = get_state(db, rid)
+            all_pieces = state.get("pieces") or []
+            seen_pids = state.get("seen") or []
+            
+            if not party_list:
+                st.caption("Aguardando...")
+                return
         
+            # Mapeia peças no tabuleiro para este jogador
+            p_pieces_on_board = [p for p in all_pieces if p.get("owner") == p_name]
+        
+            for i, pid in enumerate(party_list):
+                cur_hp, cur_cond, cur_stats, is_shiny = get_poke_data(p_name, pid) [cite: 219]
+                is_on_map = any(str(p["pid"]) == str(pid) for p in p_pieces_on_board)
+                already_seen = str(pid) in seen_pids [cite: 227]
+                
+                # --- Lógica de Ícones de HP do seu Original ---
+                if cur_hp >= 5: hpi = "💚"
+                elif cur_hp >= 3: hpi = "🟡"
+                elif cur_hp >= 1: hpi = "🔴"
+                else: hpi = "💀"
+                
+                sprite_url = pokemon_pid_to_image(pid, mode="sprite", shiny=is_shiny) [cite: 140, 228]
+        
+                with st.container(border=True):
                     if is_me:
-                        cur_hp, cur_cond, cur_stats, is_shiny = get_poke_data(p_name, pid)
-                        url = pokemon_pid_to_image(pid, mode="sprite", shiny=is_shiny)
-                        
-                        with st.container(border=True):
-                            ci, cc = st.columns([1, 2.5])
-                            with ci:
-                                if cur_hp == 0:
-                                    st.markdown(f'<img src="{url}" style="width:100%; filter:grayscale(100%); opacity:0.6;">', unsafe_allow_html=True)
-                                else:
-                                    st.image(url, use_container_width=True)
-                                
-                                if is_on_map:
-                                    p_obj = next((p for p in pieces_on_board if str(p["pid"]) == str(pid)), None)
-                                    if p_obj:
-                                        rev = p_obj.get("revealed", True)
-                                        # CHAVE ÚNICA: Adicionado _{i} no final
-                                        if st.button("👁️" if rev else "✅", key=f"v_{p_name}_{pid}_{i}"):
-                                            p_obj["revealed"] = not rev
-                                            upsert_piece(db, rid, p_obj)
-                                            if p_obj["revealed"]: mark_pid_seen(db, rid, pid)
-                                            st.rerun()
-                                        # CHAVE ÚNICA: Adicionado _{i} no final
-                                        if st.button("❌", key=f"r_{p_name}_{pid}_{i}"):
-                                            delete_piece(db, rid, p_obj["id"])
-                                            add_public_event(db, rid, "removed", p_name, {"pid": pid})
-                                            st.rerun()
-                                else:
-                                    # CHAVE ÚNICA: Adicionado _{i} no final (Resolve o erro da imagem 24d95e)
-                                    if cur_hp > 0 and st.button("📍 Por", key=f"p_{p_name}_{pid}_{i}"):
-                                        st.session_state["placing_pid"] = pid
-                                        st.session_state["placing_effect"] = None
+                        c_img, c_ctrl = st.columns([1, 2.5])
+                        with c_img:
+                            if cur_hp == 0:
+                                st.markdown(f'<img src="{sprite_url}" style="width:100%; filter:grayscale(100%); opacity:0.6;">', unsafe_allow_html=True)
+                                st.caption("**FAINTED**")
+                            else:
+                                st.image(sprite_url, use_container_width=True)
+        
+                            if is_on_map:
+                                p_obj = next((p for p in p_pieces_on_board if str(p["pid"]) == str(pid)), None)
+                                if p_obj:
+                                    is_rev = p_obj.get("revealed", True)
+                                    if st.button("👁️" if is_rev else "✅", key=f"v_{p_name}_{pid}_{i}"):
+                                        p_obj["revealed"] = not is_rev
+                                        upsert_piece(db, rid, p_obj) [cite: 66, 234]
+                                        if p_obj["revealed"]: mark_pid_seen(db, rid, pid) [cite: 39]
                                         st.rerun()
-                            with cc:
-                                if st.session_state.get("placing_pid") == pid:
-                                    st.info("Clique no mapa!")
-                                else:
-                                    hp_i = "💚" if cur_hp >= 5 else "💀"
-                                    st.markdown(f"**{real_name}**")
-                                    st.markdown(f"{hp_i} HP: {cur_hp}/6")
-                                    # CHAVE ÚNICA: Sliders e Multiselect também precisam do _{i}
-                                    st.slider("HP", 0, 6, int(cur_hp), key=f"hp_{p_name}_{pid}_{i}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, p_name, pid))
-                                    st.multiselect("Status", ["🔥","❄️","⚡"], default=cur_cond, key=f"cond_{p_name}_{pid}_{i}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, p_name, pid))
-
+                                    if st.button("❌", key=f"r_{p_name}_{pid}_{i}"):
+                                        delete_piece(db, rid, p_obj["id"]) [cite: 67]
+                                        add_public_event(db, rid, "pokemon_removed", p_name, {"pid": pid}) [cite: 60]
+                                        st.rerun()
+                            elif cur_hp > 0:
+                                if st.button("📍 Por", key=f"p_{p_name}_{pid}_{i}"):
+                                    st.session_state["placing_pid"] = pid
+                                    st.session_state["placing_effect"] = None
+                                    st.rerun()
+                        
+                        with c_ctrl:
+                            if st.session_state.get("placing_pid") == pid:
+                                st.info("Clique no mapa!")
+                            else:
+                                st.markdown(f"**{hpi} HP: {cur_hp}/6**")
+                                st.slider("HP", 0, 6, value=int(cur_hp), key=f"hp_{p_name}_{pid}_{i}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, p_name, pid)) [cite: 42, 243]
+                                st.multiselect("Status", ["⚡", "❄️", "🔥", "💤", "☠️", "💓"], default=cur_cond, key=f"cond_{p_name}_{pid}_{i}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, p_name, pid)) [cite: 42, 244]
+        
+                    else:
+                        # --- Lógica de Visibilidade do Inimigo ---
+                        found_on_board = next((p for p in p_pieces_on_board if str(p["pid"]) == str(pid)), None)
+                        show_full = (found_on_board and found_on_board.get("revealed", True)) or already_seen
+                        status_msg = "(Escondido)" if (found_on_board and not found_on_board.get("revealed")) else "(Mochila)" if not found_on_board else ""
+        
+                        if show_full:
+                            cols = st.columns([1, 2])
+                            with cols[0]: st.image(sprite_url, width=50)
+                            with cols[1]:
+                                p_real_name = get_poke_display_name(pid) [cite: 223]
+                                st.markdown(f"**{p_real_name}**")
+                                if status_msg: st.caption(status_msg)
+                                st.markdown(f"{hpi} HP: {cur_hp}/6")
+                                if cur_hp == 0: st.caption("**FAINTED**")
+                        else:
+                            st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=40)
+                            st.caption("Desconhecido")
+        
+        
+                            
                     # --- VISÃO DO VISITANTE/OPONENTE ---
                     else:
                         piece_obj = next((p for p in pieces_on_board if str(p["pid"]) == str(pid)), None)
@@ -2458,6 +2493,7 @@ elif page == "PvP – Arena Tática":
             with cc1:
                 code = st.text_input("Código da arena (roomId)", value="")
             with cc2:
+                st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
                 if st.button("🥊 Desafiante"):
                     if code.strip():
                         res = join_room_as_challenger(db, code.strip(), trainer_name)
@@ -2470,7 +2506,10 @@ elif page == "PvP – Arena Tática":
                             st.rerun()
                         else:
                             st.error(res)
+                            pass
             with cc3:
+                # Adiciona um espaço para alinhar com o input que tem label
+                st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
                 if st.button("👀 Espectador"):
                     if code.strip():
                         res = join_room_as_spectator(db, code.strip(), trainer_name)
@@ -2479,6 +2518,7 @@ elif page == "PvP – Arena Tática":
                             st.rerun()
                         else:
                             st.error(res)
+                            pass
     
             st.markdown("---")
     
@@ -2614,6 +2654,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
