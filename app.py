@@ -763,6 +763,10 @@ THEMES = {
 }
 
 def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool = False):
+    # REGRA: Bloqueia água em 6x6, exceto se o tema tiver "water", "river", "lake" ou "sea" no nome
+    themes_com_agua = ["water", "river", "lake", "sea", "coast"]
+    if grid <= 6 and not any(word in theme_key.lower() for word in themes_com_agua):
+        no_water = True
     if seed is None:
         seed = random.randint(1, 999999999)
 
@@ -1028,68 +1032,71 @@ def fetch_image_pil(url: str) -> Image.Image | None:
 @st.cache_data(show_spinner=False)
 def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
     grid = len(tiles)
-    # Criamos a imagem base em RGBA para suportar as transparências dos seus PNGs
+    # Criamos a imagem base. RGBA é essencial para a transparência das árvores
     img = Image.new("RGBA", (grid * TILE_SIZE, grid * TILE_SIZE))
-    assets = load_map_assets()
+    assets = load_map_assets() # Carrega seus PNGs 64x64
     rng = random.Random(int(seed or 0) + 1337)
 
-    # Define o "chão" base para cada tema (evita o fundo preto)
-    theme_to_floor = {
-        "forest": "grama_1", "plains": "grama_1", "river": "grama_1",
-        "cave_water": "pedra_1", "mountain_slopes": "pedra_1",
-        "dirt": "terra_1", "sea_coast": "areia_1", "center_lake": "grama_1"
+    # 1. Definimos o "Chão Base" do tema para não haver buracos pretos
+    theme_floors = {
+        "forest": "grama_1", "cave_water": "pedra_1", "mountain_slopes": "pedra_1",
+        "plains": "grama_1", "dirt": "terra_1", "sea_coast": "areia_1"
     }
-    base_floor_key = theme_to_floor.get(theme_key, "grama_1")
+    base_floor = theme_floors.get(theme_key, "grama_1")
 
     for r in range(grid):
         for c in range(grid):
             x, y = c * TILE_SIZE, r * TILE_SIZE
             t_type = tiles[r][c]
 
-            # --- CAMADA 1: CHÃO BASE ---
-            # Sempre desenha o chão primeiro para garantir que não haja buracos
-            img.paste(assets[base_floor_key], (x, y))
+            # --- CAMADA 1: O CHÃO SEMPRE PRESENTE ---
+            # Colamos a grama ou pedra base primeiro em TODOS os tiles
+            img.paste(assets[base_floor], (x, y))
 
-            # --- CAMADA 2: OBJETOS E TERRENOS ESPECÍFICOS ---
+            # --- CAMADA 2: TERRENOS ESPECÍFICOS E TRANSIÇÃO ---
             asset_to_draw = None
             
-            if t_type == "water":
-                # Lógica para margem da água (agua_2)
+            if t_type == "water" or t_type == "sea":
+                # Lógica de Suavização: Se houver terra vizinha, usa agua_2 (margem)
                 is_margin = False
                 for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
                     if 0 <= r+dr < grid and 0 <= c+dc < grid:
                         if tiles[r+dr][c+dc] not in ["water", "sea"]:
-                            is_margin = True; break
+                            is_margin = True
+                            break
                 asset_to_draw = "agua_2" if is_margin else rng.choice(["agua_1", "agua_3"])
             
-            elif t_type == "tree":
-                asset_to_draw = rng.choice(["tree_1", "tree_2", "tree_3"])
-            
-            elif t_type == "rock":
-                asset_to_draw = rng.choice(["rochas", "rochas_2"])
-                
-            elif t_type.startswith("slope"):
-                # Mapeia 'slope1' para 'slope_1', etc.
-                asset_to_draw = t_type.replace("slope", "slope_")
-            
             elif t_type in ["sand", "stone", "dirt", "grass"]:
-                # Variedade aleatória para o próprio chão
+                # Variação aleatória do próprio chão
                 prefix = {"sand":"areia", "stone":"pedra", "dirt":"terra", "grass":"grama"}[t_type]
                 asset_to_draw = f"{prefix}_{rng.randint(1,3)}"
 
-            # Coloca o asset por cima do chão base usando o canal Alpha (transparência)
             if asset_to_draw in assets:
                 img.alpha_composite(assets[asset_to_draw], (x, y))
-            
-            # --- CAMADA 3: PEDRAS ALEATÓRIAS (Em todos os terrenos) ---
-            if rng.random() > 0.85: # 15% de chance de uma pedrinha extra de detalhe
-                extra_rock = assets[rng.choice(["pedra_1", "pedra_2", "pedra_3"])]
-                img.alpha_composite(extra_rock, (x, y))
 
-    # --- CAMADA 4: O GRID ---
-    # Desenhamos o grid por último, usando uma cor suave para não "rachar" o mapa
+            # --- CAMADA 3: OBJETOS (Árvores e Rochas em vários mapas) ---
+            obj_asset = None
+            if t_type == "tree":
+                obj_asset = rng.choice(["tree_1", "tree_2", "tree_3"])
+            elif t_type == "stalagmite":
+                obj_asset = "estalagmite_1"
+            elif t_type == "peak":
+                obj_asset = "pico_1"
+            
+            # Adiciona ROCHAS aleatórias em qualquer terreno (conforme pedido)
+            # 10% de chance de aparecer uma rocha de detalhe em tiles de chão
+            if t_type in ["grass", "stone", "dirt", "sand"] and rng.random() < 0.10:
+                obj_asset = rng.choice(["rochas", "rochas_2"])
+            elif t_type == "rock": # Se o tile for nominalmente rocha
+                obj_asset = rng.choice(["rochas", "rochas_2"])
+
+            if obj_asset in assets:
+                img.alpha_composite(assets[obj_asset], (x, y))
+
+    # --- CAMADA 4: GRID TÁTICO FINO ---
     draw = ImageDraw.Draw(img)
-    grid_color = (255, 255, 255, 50) # Branco com 50/255 de opacidade
+    # Cor branca com baixa opacidade (40/255) para ser sutil
+    grid_color = (255, 255, 255, 40) 
     for i in range(grid + 1):
         pos = i * TILE_SIZE
         draw.line([(0, pos), (grid * TILE_SIZE, pos)], fill=grid_color, width=1)
@@ -2693,6 +2700,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
