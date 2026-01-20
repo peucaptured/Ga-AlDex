@@ -26,6 +26,8 @@ from PIL import ImageFont
 import firebase_admin
 from firebase_admin import credentials, firestore, storage
 
+
+
 def init_firebase():
     if not firebase_admin._apps:
         raw = st.secrets["firebase_service_account"]
@@ -1855,7 +1857,7 @@ elif page == "PvP – Arena Tática":
             
             # Busca party e estado público
             p_doc_data = db.collection("rooms").document(rid).collection("public_state").document("players").get().to_dict() or {}
-            party_list = p_doc_data.get(p_name, [])[:8] # Limite de 8 [como no seu original]
+            party_list = p_doc_data.get(p_name, [])[:8] # Limite de 8
             
             state = get_state(db, rid)
             all_pieces = state.get("pieces") or []
@@ -1869,11 +1871,12 @@ elif page == "PvP – Arena Tática":
             p_pieces_on_board = [p for p in all_pieces if p.get("owner") == p_name]
         
             for i, pid in enumerate(party_list):
+                # Busca dados do Pokémon (HP, Condições, Stats, Shiny)
                 cur_hp, cur_cond, cur_stats, is_shiny = get_poke_data(p_name, pid) [cite: 219]
                 is_on_map = any(str(p["pid"]) == str(pid) for p in p_pieces_on_board)
                 already_seen = str(pid) in seen_pids [cite: 227]
                 
-                # --- Lógica de Ícones de HP do seu Original ---
+                # Lógica de Ícones de HP
                 if cur_hp >= 5: hpi = "💚"
                 elif cur_hp >= 3: hpi = "🟡"
                 elif cur_hp >= 1: hpi = "🔴"
@@ -1883,10 +1886,11 @@ elif page == "PvP – Arena Tática":
         
                 with st.container(border=True):
                     if is_me:
+                        # --- VISÃO DO DONO (CONTROLES TOTAIS) ---
                         c_img, c_ctrl = st.columns([1, 2.5])
                         with c_img:
                             if cur_hp == 0:
-                                st.markdown(f'<img src="{sprite_url}" style="width:100%; filter:grayscale(100%); opacity:0.6;">', unsafe_allow_html=True)
+                                st.markdown(f'<img src="{sprite_url}" style="width:100%; filter:grayscale(100%); opacity:0.6;">', unsafe_allow_html=True) [cite: 231]
                                 st.caption("**FAINTED**")
                             else:
                                 st.image(sprite_url, use_container_width=True)
@@ -1895,17 +1899,19 @@ elif page == "PvP – Arena Tática":
                                 p_obj = next((p for p in p_pieces_on_board if str(p["pid"]) == str(pid)), None)
                                 if p_obj:
                                     is_rev = p_obj.get("revealed", True)
+                                    # Botão de Revelar/Ocultar
                                     if st.button("👁️" if is_rev else "✅", key=f"v_{p_name}_{pid}_{i}"):
                                         p_obj["revealed"] = not is_rev
                                         upsert_piece(db, rid, p_obj) [cite: 66, 234]
                                         if p_obj["revealed"]: mark_pid_seen(db, rid, pid) [cite: 39]
                                         st.rerun()
+                                    # Botão de Remover do Mapa
                                     if st.button("❌", key=f"r_{p_name}_{pid}_{i}"):
                                         delete_piece(db, rid, p_obj["id"]) [cite: 67]
                                         add_public_event(db, rid, "pokemon_removed", p_name, {"pid": pid}) [cite: 60]
                                         st.rerun()
                             elif cur_hp > 0:
-                                if st.button("📍 Por", key=f"p_{p_name}_{pid}_{i}"):
+                                if st.button("📍 Por", key=f"p_{p_name}_{pid}_{i}"): [cite: 237]
                                     st.session_state["placing_pid"] = pid
                                     st.session_state["placing_effect"] = None
                                     st.rerun()
@@ -1915,61 +1921,45 @@ elif page == "PvP – Arena Tática":
                                 st.info("Clique no mapa!")
                             else:
                                 st.markdown(f"**{hpi} HP: {cur_hp}/6**")
+                                # Sliders sincronizados com o Firebase via Callback
                                 st.slider("HP", 0, 6, value=int(cur_hp), key=f"hp_{p_name}_{pid}_{i}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, p_name, pid)) [cite: 42, 243]
                                 st.multiselect("Status", ["⚡", "❄️", "🔥", "💤", "☠️", "💓"], default=cur_cond, key=f"cond_{p_name}_{pid}_{i}", label_visibility="collapsed", on_change=update_poke_state_callback, args=(db, rid, p_name, pid)) [cite: 42, 244]
         
                     else:
-                        # --- Lógica de Visibilidade do Inimigo ---
-                        found_on_board = next((p for p in p_pieces_on_board if str(p["pid"]) == str(pid)), None)
-                        show_full = (found_on_board and found_on_board.get("revealed", True)) or already_seen
-                        status_msg = "(Escondido)" if (found_on_board and not found_on_board.get("revealed")) else "(Mochila)" if not found_on_board else ""
-        
-                        if show_full:
-                            cols = st.columns([1, 2])
-                            with cols[0]: st.image(sprite_url, width=50)
-                            with cols[1]:
-                                p_real_name = get_poke_display_name(pid) [cite: 223]
-                                st.markdown(f"**{p_real_name}**")
-                                if status_msg: st.caption(status_msg)
-                                st.markdown(f"{hpi} HP: {cur_hp}/6")
-                                if cur_hp == 0: st.caption("**FAINTED**")
-                        else:
-                            st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=40)
-                            st.caption("Desconhecido")
-        
-        
-                            
-                    # --- VISÃO DO VISITANTE/OPONENTE ---
-                    else:
-                        piece_obj = next((p for p in pieces_on_board if str(p["pid"]) == str(pid)), None)
+                        # --- VISÃO DO OPONENTE/VISITANTE (LÓGICA CONSOLIDADA) ---
+                        piece_obj = next((p for p in p_pieces_on_board if str(p["pid"]) == str(pid)), None)
                         is_revealed = piece_obj.get("revealed", True) if piece_obj else False
                         
-                        show_full = False
-                        status_txt = ""
+                        # O Pokémon é exibido se estiver revelado no mapa OU se já tiver sido capturado/visto antes
+                        show_full = (piece_obj and is_revealed) or already_seen [cite: 243, 250]
                         
-                        if piece_obj and is_revealed:
-                            show_full = True
-                        elif already_seen:
-                            show_full = True 
-                            status_txt = "(Mochila)" if not piece_obj else "(Escondido)"
+                        # Define a mensagem de status visual
+                        if not piece_obj:
+                            status_txt = "(Mochila)"
+                        elif not is_revealed:
+                            status_txt = "(Escondido)"
                         else:
-                            show_full = False 
-                            status_txt = "Oculto"
+                            status_txt = ""
+        
+                        if show_full:
+                            p_real_name = get_poke_display_name(pid) [cite: 223]
+                            c1, c2 = st.columns([1, 2])
+                            with c1:
+                                st.image(sprite_url, width=50)
+                            with c2:
+                                st.markdown(f"**{p_real_name}**")
+                                st.caption(f"{hpi} HP: {cur_hp}/6 {status_txt}")
+                                if cur_hp == 0: st.caption("**FAINTED**")
+                        else:
+                            # Se estiver oculto e nunca visto, mostra apenas a Pokebola
+                            c1, c2 = st.columns([1, 2])
+                            with c1:
+                                st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=40) [cite: 246, 256]
+                            with c2:
+                                st.caption(f"??? {status_txt}") [cite: 247, 257]
 
-                        with st.container(border=True):
-                            if show_full:
-                                cur_hp, cur_cond, _, is_shiny = get_poke_data(p_name, pid) # <--- DESEMPACOTA
-                                url = pokemon_pid_to_image(pid, mode="sprite", shiny=is_shiny) # <--- USA
-                                c1, c2 = st.columns([1, 2])
-                                c1.image(url, width=50)
-                                c2.markdown(f"**{real_name}**")
-                                c2.caption(f"HP: {cur_hp}/6 {status_txt}")
-                                if cur_hp == 0: c2.caption("**FAINTED**")
-                            else:
-                                c1, c2 = st.columns([1, 2])
-                                c1.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=40)
-                                c2.caption(f"??? {status_txt}")
 
+        
         # --- 4. PREPARAÇÃO DE TIMES E VARIÁVEIS (UNIFICADO) ---
         owner_name = (room.get("owner") or {}).get("name", "Host")
         challengers = room.get("challengers") or []
@@ -2650,6 +2640,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
