@@ -202,22 +202,20 @@ def render_public_log_fragment(db, rid):
 @st.cache_resource
 def load_map_assets():
     base_path = "Assets/Texturas"
-    assets = {}
-    
-    # Lista de arquivos baseada no seu print
-    asset_files = [
+    asset_names = [
         "agua_1", "agua_2", "agua_3", "areia_1", "areia_2", "areia_3",
         "brush_1", "brush_2", "estalagmite_1", "grama_1", "grama_2", "grama_3",
         "pedra_1", "pedra_2", "pedra_3", "pico_1", "rochas", "rochas_2",
         "slope_1", "slope_2", "slope_3", "slope_4", "terra_1", "terra_2", "terra_3",
         "tree_1", "tree_2", "tree_3", "wall_1"
     ]
-    
-    for name in asset_files:
+    assets = {}
+    for name in asset_names:
         path = f"{base_path}/{name}.png"
         if os.path.exists(path):
             assets[name] = Image.open(path).convert("RGBA")
     return assets
+    
 
 def authenticate_user(name, password):
     try:
@@ -1030,24 +1028,74 @@ def fetch_image_pil(url: str) -> Image.Image | None:
 @st.cache_data(show_spinner=False)
 def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
     grid = len(tiles)
-    img = Image.new("RGBA", (grid * TILE_SIZE, grid * TILE_SIZE), (0, 0, 0, 0))
-    assets = load_map_assets() # Carrega os PNGs do GitHub/Local
-    
+    # Criamos a imagem base em RGBA para suportar as transparências dos seus PNGs
+    img = Image.new("RGBA", (grid * TILE_SIZE, grid * TILE_SIZE))
+    assets = load_map_assets()
     rng = random.Random(int(seed or 0) + 1337)
+
+    # Define o "chão" base para cada tema (evita o fundo preto)
+    theme_to_floor = {
+        "forest": "grama_1", "plains": "grama_1", "river": "grama_1",
+        "cave_water": "pedra_1", "mountain_slopes": "pedra_1",
+        "dirt": "terra_1", "sea_coast": "areia_1", "center_lake": "grama_1"
+    }
+    base_floor_key = theme_to_floor.get(theme_key, "grama_1")
 
     for r in range(grid):
         for c in range(grid):
-            # Chama a nova função baseada em assets
-            draw_tile_asset(img, r, c, tiles, assets, rng)
+            x, y = c * TILE_SIZE, r * TILE_SIZE
+            t_type = tiles[r][c]
 
-    # Linhas de grid opcionais (Mantenha se quiser o aspecto tático)
+            # --- CAMADA 1: CHÃO BASE ---
+            # Sempre desenha o chão primeiro para garantir que não haja buracos
+            img.paste(assets[base_floor_key], (x, y))
+
+            # --- CAMADA 2: OBJETOS E TERRENOS ESPECÍFICOS ---
+            asset_to_draw = None
+            
+            if t_type == "water":
+                # Lógica para margem da água (agua_2)
+                is_margin = False
+                for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
+                    if 0 <= r+dr < grid and 0 <= c+dc < grid:
+                        if tiles[r+dr][c+dc] not in ["water", "sea"]:
+                            is_margin = True; break
+                asset_to_draw = "agua_2" if is_margin else rng.choice(["agua_1", "agua_3"])
+            
+            elif t_type == "tree":
+                asset_to_draw = rng.choice(["tree_1", "tree_2", "tree_3"])
+            
+            elif t_type == "rock":
+                asset_to_draw = rng.choice(["rochas", "rochas_2"])
+                
+            elif t_type.startswith("slope"):
+                # Mapeia 'slope1' para 'slope_1', etc.
+                asset_to_draw = t_type.replace("slope", "slope_")
+            
+            elif t_type in ["sand", "stone", "dirt", "grass"]:
+                # Variedade aleatória para o próprio chão
+                prefix = {"sand":"areia", "stone":"pedra", "dirt":"terra", "grass":"grama"}[t_type]
+                asset_to_draw = f"{prefix}_{rng.randint(1,3)}"
+
+            # Coloca o asset por cima do chão base usando o canal Alpha (transparência)
+            if asset_to_draw in assets:
+                img.alpha_composite(assets[asset_to_draw], (x, y))
+            
+            # --- CAMADA 3: PEDRAS ALEATÓRIAS (Em todos os terrenos) ---
+            if rng.random() > 0.85: # 15% de chance de uma pedrinha extra de detalhe
+                extra_rock = assets[rng.choice(["pedra_1", "pedra_2", "pedra_3"])]
+                img.alpha_composite(extra_rock, (x, y))
+
+    # --- CAMADA 4: O GRID ---
+    # Desenhamos o grid por último, usando uma cor suave para não "rachar" o mapa
     draw = ImageDraw.Draw(img)
+    grid_color = (255, 255, 255, 50) # Branco com 50/255 de opacidade
     for i in range(grid + 1):
         pos = i * TILE_SIZE
-        draw.line([(0, pos), (grid * TILE_SIZE, pos)], fill=(255, 255, 255, 30))
-        draw.line([(pos, 0), (pos, grid * TILE_SIZE)], fill=(255, 255, 255, 30))
+        draw.line([(0, pos), (grid * TILE_SIZE, pos)], fill=grid_color, width=1)
+        draw.line([(pos, 0), (pos, grid * TILE_SIZE)], fill=grid_color, width=1)
 
-    return img
+    return img.convert("RGB")
 
 def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name, room, effects=None):
     
@@ -2645,6 +2693,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
