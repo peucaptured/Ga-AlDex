@@ -2378,7 +2378,7 @@ elif page == "PvP – Arena Tática":
         with c_map:
             st.markdown("### 🗺️ Arena")
             can_edit = (trainer_name == "Ezenek" or is_player)
-            with st.expander("🛠️ Itens", expanded=False)
+            with st.expander("🛠️ Itens", expanded=False):
                 if can_edit:
                     effects_map = {"Fogo":"🔥", "Gelo":"🧊", "Água":"💧", "Rocha":"🪨", "Nuvem":"☁️", "Sol":"☀️", "Terreno Grama":"🍃", "Terreno Eletrico":"⚡"}
                     curr = st.session_state.get("placing_effect")
@@ -2738,6 +2738,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
