@@ -1035,19 +1035,17 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name, room, ef
     
     # 2. CAMADA DE EFEITOS (Agora usando Imagens Reais)
     if effects:
-        # Mapeamento: Emoji -> URL da Imagem (Ícones Oficiais)
-        EMOJI_TO_URL = {
-            "🔥": "Assets/fogo.png", # Fogo
-            "🧊": "Assets/gelo.png",   # Gelo
-            "💧": "Assets/agua.png", # Água
-            "🪨": "Assets/rocha.png",  # Rocha
-            "☁️": "Assets/nuvem.png", # Nuvem (Flying)
-            "☀️": "Assets/sol.png",                                         # Sol
-            "🍃": "Assets/terrenograma.png", # Folha
-            "⚡": "Assets/terrenoeletrico.png", # Raio
+        # Mapeamento: Emoji -> Caminho do Arquivo (Deve coincidir com a variável usada abaixo)
+        EMOJI_TO_PATH = {
+            "🔥": "Assets/fogo.png",
+            "🧊": "Assets/gelo.png",
+            "💧": "Assets/agua.png",
+            "🪨": "Assets/rocha.png",
+            "☁️": "Assets/nuvem.png",
+            "☀️": "Assets/sol.png",
+            "🍃": "Assets/terrenograma.png",
+            "⚡": "Assets/terrenoeletrico.png",
         }
-
-        local_cache_icons = {}
 
         for eff in effects:
             try:
@@ -1056,16 +1054,23 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name, room, ef
                 x, y = c * TILE_SIZE, r * TILE_SIZE
                 
                 path = EMOJI_TO_PATH.get(icon_char)
+                
                 if path and os.path.exists(path):
                     icon_img = Image.open(path).convert("RGBA")
+                    # Ajusta o tamanho do ícone para 70% do tile
                     icon_img.thumbnail((int(TILE_SIZE * 0.7), int(TILE_SIZE * 0.7)))
+                    
+                    # Centraliza o ícone no tile
                     ix = x + (TILE_SIZE - icon_img.size[0]) // 2
                     iy = y + (TILE_SIZE - icon_img.size[1]) // 2
                     img.alpha_composite(icon_img, (ix, iy))
                 else:
-                    # Fallback caso a imagem local não exista
-                    draw.ellipse([x+8, y+8, x+TILE_SIZE-8, y+TILE_SIZE-8], fill=(255, 255, 255, 100))
-            except: continue
+                    # Fallback visual caso o arquivo não seja encontrado
+                    draw.ellipse([x+16, y+16, x+TILE_SIZE-16, y+TILE_SIZE-16], fill=(255, 255, 255, 150))
+            except Exception as e:
+                # Opcional: imprimir o erro no console para debug
+                print(f"Erro ao renderizar efeito {icon_char}: {e}")
+                continue
 
     # 3. CAMADA DE POKÉMONS
     local_cache = {}
@@ -2618,6 +2623,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
