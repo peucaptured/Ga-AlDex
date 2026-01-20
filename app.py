@@ -179,92 +179,6 @@ def render_public_log_fragment(db, rid):
                 else:
                     st.write(f"🔹 **{by}** ({et}): {pl}") # 
 
-@st.fragment(run_every="5s") # Atualiza a calculadora a cada 5 segundos automaticamente
-def render_battle_calculator_fragment(db, rid, trainer_name, all_pieces, player_pieces_map, is_player):
-    battle_ref = db.collection("rooms").document(rid).collection("public_state").document("battle")
-    battle_doc = battle_ref.get()
-    b_data = battle_doc.to_dict() or {"status": "idle", "logs": []}
-
-    with st.container(border=True):
-        st.markdown("### ⚔️ Painel de Combate")
-        
-        # [FASE 0] IDLE - Iniciar Batalha [cite: 250, 251]
-        if b_data["status"] == "idle":
-            if st.button("Nova Batalha (Atacar)", type="primary"):
-                battle_ref.set({"status": "setup", "attacker": trainer_name, "logs": []})
-                st.rerun() # Dentro do fragmento, isso recarrega apenas o fragmento
-        
-        # [FASE 1] CONFIGURAR ATAQUE [cite: 252, 253]
-        elif b_data["status"] == "setup":
-            st.caption(f"**Atacante:** {b_data.get('attacker')}")
-            
-            if b_data.get("attacker") == trainer_name:
-                target_options = {}
-                for p_name, p_pieces in player_pieces_map.items():
-                    if p_name != trainer_name:
-                        for p in p_pieces:
-                            label = f"{get_poke_display_name(p['pid'])} ({p_name})"
-                            target_options[p['id']] = label
-                
-                target_id = st.selectbox("Alvo", options=list(target_options.keys()), 
-                                        format_func=lambda x: target_options[x]) if target_options else None
-                
-                atk_type = st.radio("Tipo", ["Distância (Dodge)", "Corpo-a-corpo (Parry)"], horizontal=True)
-                atk_mod = st.number_input("Modificador de Acerto", value=0)
-
-                if st.button("⚔️ Lançar Ataque"):
-                    if target_id:
-                        d20 = random.randint(1, 20)
-                        t_p = next((p for p in all_pieces if p['id'] == target_id), None)
-                        _, _, t_stats, _ = get_poke_data(t_p['owner'], t_p['pid']) # [cite: 202, 269]
-                        
-                        defense_val = int(t_stats.get("dodge" if "Dodge" in atk_type else "parry", 0))
-                        needed = defense_val + 10 # [cite: 271]
-                        hit = (d20 + atk_mod) >= needed
-                        
-                        battle_ref.update({
-                            "status": "hit_confirmed" if hit else "missed",
-                            "target_id": target_id,
-                            "target_owner": t_p['owner'],
-                            "target_pid": t_p['pid'],
-                            "logs": [f"{trainer_name} rolou {d20}+{atk_mod}={d20+atk_mod} (vs Def {needed}). {'ACERTOU!' if hit else 'ERROU!'}"]
-                        })
-                        st.rerun()
-            else:
-                st.info(f"Aguardando {b_data.get('attacker')} preparar o ataque...")
-
-        # [FASE 3] RESISTÊNCIA FINAL [cite: 292, 293]
-        elif b_data["status"] == "waiting_defense":
-            is_eff = b_data.get("is_effect", False)
-            rank = int(b_data.get("dmg_base", 0))
-            dc_total = (10 if is_eff else 15) + rank # [cite: 292]
-            
-            st.warning(f"🛡️ Defenda-se! CD total: {dc_total}")
-            
-            if b_data.get("target_owner") == trainer_name:
-                res_type = st.selectbox("Resistir com:", ["dodge", "parry", "fort", "will", "thg"])
-                if st.button("Rolar Defesa"):
-                    def_die = random.randint(1, 20)
-                    _, _, t_stats, _ = get_poke_data(trainer_name, b_data.get('target_pid'))
-                    stat_val = int(t_stats.get(res_type, 0))
-                    check_total = def_die + stat_val
-                    
-                    diff = dc_total - check_total
-                    bars_lost = math.ceil(diff / 5) if diff > 0 else 0 # Regra de Graus de Falha [cite: 299]
-                    
-                    battle_ref.update({
-                        "status": "finished",
-                        "final_bars": bars_lost,
-                        "logs": firestore.ArrayUnion([f"Defesa: {def_die}+{stat_val}={check_total}. Perdeu {bars_lost} barras."])
-                    })
-                    st.rerun()
-
-        # [FASE 4] RESULTADO [cite: 303, 304]
-        elif b_data["status"] == "finished":
-            st.error(f"Resultado Final: -{b_data.get('final_bars')} Barras")
-            if st.button("Encerrar"):
-                battle_ref.update({"status": "idle", "logs": []})
-                st.rerun()
 
 
 def authenticate_user(name, password):
@@ -2107,10 +2021,228 @@ elif page == "PvP – Arena Tática":
         battle_ref = db.collection("rooms").document(rid).collection("public_state").document("battle")
         battle_doc = battle_ref.get()
         b_data = battle_doc.to_dict() or {"status": "idle", "logs": []}
-        
-        # --- AGORA EXIBE A CALCULADORA ---
+        import math
+
         with st.expander("⚔️ Calculadora de Combate", expanded=(b_data["status"] != "idle")):
-            render_battle_calculator_fragment(db, rid, trainer_name, all_pieces, player_pieces_map, is_player)
+            
+            # [FASE 0] IDLE
+            if b_data["status"] == "idle":
+                if is_player:
+                    if st.button("Nova Batalha (Atacar)"):
+                        battle_ref.set({"status": "setup", "attacker": trainer_name, "logs": []})
+                        st.rerun()
+                else:
+                    st.caption("Aguardando combate...")
+            
+            # [FASE 1] CONFIGURAR ATAQUE
+            elif b_data["status"] == "setup":
+                # CORREÇÃO: Parêntese fechado corretamente aqui
+                st.caption(f"**Atacante:** {b_data.get('attacker')}")
+                
+                if b_data.get("attacker") == trainer_name:
+                    # Busca peças de TODOS os outros jogadores que não são você
+                    target_options = {}
+                    for p_name, p_pieces in player_pieces_map.items():
+                        if p_name != trainer_name:
+                            for p in p_pieces:
+                                # Nome do Pokemon + Dono para identificar no 2v1 ou 2v2
+                                label = f"{get_poke_display_name(p['pid'])} ({p_name})"
+                                target_options[p['id']] = label
+                    
+                    c_atk1, c_atk2, c_atk3 = st.columns(3)
+                    
+                    # CORREÇÃO: Indentação alinhada com o bloco acima (4 espaços dentro do IF)
+                    with c_atk1:
+                        target_id = st.selectbox("Alvo", options=list(target_options.keys()), 
+                                    format_func=lambda x: target_options[x],
+                                    key=f"atk_target_{rid}") if target_options else None
+                    
+                    with c_atk2:
+                        attack_mode = st.radio("Modo", ["Normal", "Área"], horizontal=True, key=f"atk_mode_{rid}")
+                    
+                    # Se for Área
+                    if attack_mode == "Área":
+                        st.info("Ataque em Área: Dodge (CD 10 + Nível) reduz dano pela metade.")
+                        lvl_effect = st.number_input("Nível do Efeito / Dano", min_value=1, value=1)
+                        is_eff_area = st.checkbox("É Efeito? (Affliction)", key=f"area_eff_{rid}")
+
+                        if st.button("🚀 Lançar Área"):
+                            if target_id:
+                                t_p = next((p for p in all_pieces if p['id'] == target_id), None)
+                                battle_ref.update({
+                                    "status": "aoe_defense",
+                                    "target_id": target_id,
+                                    "target_owner": t_p['owner'],
+                                    "target_pid": t_p['pid'],
+                                    "aoe_dc": lvl_effect + 10,
+                                    "dmg_base": lvl_effect,
+                                    "is_effect": is_eff_area,
+                                    "logs": [f"{trainer_name} lançou Área (Nv {lvl_effect}). Defensor rola Dodge (CD {lvl_effect+10})."]
+                                })
+                                st.rerun()
+                    else:
+                        # Normal
+                        with c_atk3:
+                            atk_type = st.selectbox("Alcance", ["Distância (Dodge)", "Corpo-a-corpo (Parry)"])
+                        
+                        atk_mod = st.number_input("Acerto (Modificador)", value=0, step=1)
+                        
+                        if st.button("⚔️ Rolar Ataque"):
+                            if target_id:
+                                d20 = random.randint(1, 20)
+                                t_p = next((p for p in all_pieces if p['id'] == target_id), None)
+                                
+                                # Pega stats do alvo
+                                _, _, t_stats, _ = get_poke_data(t_p['owner'], t_p['pid'])
+                                dodge = int(t_stats.get("dodge", 0))
+                                parry = int(t_stats.get("parry", 0))
+                                
+                                defense_val = dodge if "Distância" in atk_type else parry
+                                needed = defense_val + 10
+                                total_atk = atk_mod + d20
+                                
+                                hit = total_atk >= needed
+                                result_msg = "ACERTOU! ✅" if hit else "ERROU! ❌"
+                                
+                                battle_ref.update({
+                                    "status": "hit_confirmed" if hit else "missed",
+                                    "target_id": target_id,
+                                    "target_owner": t_p['owner'],
+                                    "target_pid": t_p['pid'],
+                                    "logs": [f"{trainer_name} rolou {d20}+{atk_mod}=**{total_atk}** (vs Def {needed} [{defense_val}+10])... {result_msg}"]
+                                })
+                                st.rerun()
+                else:
+                    st.info(f"Aguardando {b_data.get('attacker')}...")
+
+            # [FASE 1.5] DEFESA DE ÁREA
+            elif b_data["status"] == "aoe_defense":
+                st.info(b_data["logs"][-1])
+                if b_data.get("target_owner") == trainer_name:
+                    st.markdown("### 🏃 Rolar Esquiva (Dodge)")
+                    if st.button("Rolar Dodge"):
+                        d20 = random.randint(1, 20)
+                        _, _, t_stats, _ = get_poke_data(trainer_name, b_data.get('target_pid'))
+                        dodge_val = int(t_stats.get("dodge", 0))
+                        
+                        total_roll = d20 + dodge_val
+                        dc = b_data.get("aoe_dc", 10)
+                        base_rank = b_data.get("dmg_base", 0)
+                        
+                        if total_roll >= dc:
+                            final_rank = math.floor(base_rank / 2)
+                            msg = f"Sucesso! ({total_roll} vs {dc}). Rank reduzido: {base_rank} -> {final_rank}."
+                        else:
+                            final_rank = base_rank
+                            msg = f"Falha! ({total_roll} vs {dc}). Rank total: {final_rank}."
+                        
+                        battle_ref.update({
+                            "status": "waiting_defense",
+                            "dmg_base": final_rank,
+                            "logs": firestore.ArrayUnion([msg + " Escolha a resistência agora."])
+                        })
+                        st.rerun()
+                else:
+                    st.warning("Aguardando defensor...")
+
+            # [FASE 2] INSERIR DANO (Se acertou)
+            elif b_data["status"] == "hit_confirmed":
+                st.success(b_data["logs"][-1])
+                
+                if b_data.get("attacker") == trainer_name:
+                    c1, c2 = st.columns([2, 1])
+                    with c1:
+                        dmg_input = st.number_input("Dano Base / Rank", min_value=0, value=0)
+                    with c2:
+                        is_eff_check = st.checkbox("É Efeito?", value=False, key=f"norm_eff_{rid}", help="Se marcado, CD base será 10. Se não, 15.")
+                    
+                    if st.button("Enviar Dano/Efeito"):
+                        battle_ref.update({
+                            "status": "waiting_defense",
+                            "dmg_base": dmg_input,
+                            "is_effect": is_eff_check,
+                            "logs": firestore.ArrayUnion([f"Rank/Dano: {dmg_input} ({'Efeito' if is_eff_check else 'Dano'}). Aguardando resistência..."])
+                        })
+                        st.rerun()
+                else:
+                    st.info("Aguardando atacante definir o dano...")
+
+            elif b_data["status"] == "missed":
+                st.error(b_data["logs"][-1])
+                if b_data.get("attacker") == trainer_name:
+                    if st.button("Encerrar"):
+                        battle_ref.update({"status": "idle", "logs": []})
+                        st.rerun()
+
+            # [FASE 3] RESISTÊNCIA FINAL
+            elif b_data["status"] == "waiting_defense":
+                is_eff = b_data.get("is_effect", False)
+                base_val = 10 if is_eff else 15
+                rank = int(b_data.get("dmg_base", 0))
+                dc_total = base_val + rank
+                
+                st.info(f"Resistir contra: **CD {dc_total}** ({base_val} + {rank})")
+                
+                if b_data.get("target_owner") == trainer_name:
+                    st.markdown("### 🛡️ Resistir com:")
+                    c1, c2, c3, c4 = st.columns(4)
+                    res_type = None
+                    if c1.button("Dodge"): res_type = "dodge"
+                    if c2.button("Parry"): res_type = "parry"
+                    if c3.button("Fort"): res_type = "fort"
+                    if c4.button("Will"): res_type = "will"
+                    if st.button("THG (Toughness)"): res_type = "thg"
+
+                    if res_type:
+                        def_die = random.randint(1, 20)
+                        _, _, t_stats, _ = get_poke_data(trainer_name, b_data.get('target_pid')) 
+                        stat_val = int(t_stats.get(res_type, 0))
+                        
+                        check_total = def_die + stat_val
+                        
+                        # Cálculo M&M: Falha = CD - Check
+                        diff = dc_total - check_total
+                        
+                        if diff <= 0:
+                            bars_lost = 0
+                            res_msg = "SUCESSO (Nenhum dano)"
+                        else:
+                            # 1 grau a cada 5 pontos
+                            bars_lost = math.ceil(diff / 5)
+                            res_msg = f"FALHA por {diff}"
+                        
+                        final_msg = f"🛡️ Defensor rolou {def_die} + {stat_val} = **{check_total}** ({res_type.upper()}). {res_msg}. Perdeu **{bars_lost}** barras."
+                        
+                        battle_ref.update({
+                            "status": "finished",
+                            "final_bars": bars_lost,
+                            "logs": firestore.ArrayUnion([final_msg])
+                        })
+                        st.rerun()
+                else:
+                    st.warning("Aguardando defesa...")
+
+            # [FASE 4] FIM / SECUNDÁRIO
+            elif b_data["status"] == "finished":
+                st.markdown(f"## 🩸 Resultado: -{b_data.get('final_bars')} Barras")
+                for log in b_data.get("logs", []): st.text(log)
+                
+                if b_data.get("attacker") == trainer_name:
+                    c_end1, c_end2 = st.columns(2)
+                    if c_end1.button("Encerrar Combate"):
+                        battle_ref.update({"status": "idle", "logs": []})
+                        st.rerun()
+                    
+                    target_name = get_poke_display_name(b_data.get('target_pid'))
+                    if c_end2.button(f"⚡ Efeito Secundário em {target_name}"):
+                        battle_ref.update({
+                            "status": "hit_confirmed", 
+                            "is_effect": False, 
+                            "logs": [f"⚡ Efeito Secundário ativado em {target_name}!"]
+                        })
+                        st.rerun()
+                else:
+                    st.info("Aguardando atacante encerrar...")
 
 
         # =========================
@@ -2482,6 +2614,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
