@@ -1674,14 +1674,11 @@ if page == "Pokédex (Busca)":
     if "pokedex_selected" not in st.session_state:
         st.session_state["pokedex_selected"] = None
     if "pokedex_detail_mode" not in st.session_state:
-        st.session_state["pokedex_detail_mode"] = False
+        st.session_state["pokedex_detail_mode"] = True
 
     def select_pokedex_entry(pid: str) -> None:
-        if st.session_state["pokedex_selected"] == pid:
-            st.session_state["pokedex_detail_mode"] = not st.session_state["pokedex_detail_mode"]
-        else:
-            st.session_state["pokedex_selected"] = pid
-            st.session_state["pokedex_detail_mode"] = False
+        st.session_state["pokedex_selected"] = pid
+        st.session_state["pokedex_detail_mode"] = True
     
     if filtered_df.empty: 
         st.warning("Nenhum Pokémon encontrado.")
@@ -1697,8 +1694,7 @@ if page == "Pokédex (Busca)":
             unsafe_allow_html=True,
         )
         st.markdown(
-           "<div class='pokedex-grid-note'>Passe o mouse sobre o Pokémon para ver o nome. Clique no mesmo Pokémon para alternar para a tela detalhada.</div>",
-            unsafe_allow_html=True,
+           "<div class='pokedex-grid-note'>Passe o mouse sobre o Pokémon para ver o nome. Clique em um Pokémon para ver os detalhes completos.</div>",
         )
 
         grid_cols = 8
@@ -1743,12 +1739,40 @@ if page == "Pokédex (Busca)":
                 if "wishlist" not in user_data:
                     user_data["wishlist"] = []
 
-                def render_info_blocks() -> None:
-                    st.markdown(f"### #{dex_num} • {p_name}")
-                    st.markdown(f"**⚡ NP:** {power}")
-                    st.markdown(f"**🧬 Tipo:** {types}")
-                    st.markdown(f"**📍 Região:** {region}")
-                    st.markdown(f"**🌿 Bioma:** {biomes}")
+                def build_info_entries() -> list[tuple[str, str]]:
+                    entries: list[tuple[str, str]] = []
+                    for col in row.index:
+                        if col in {"Nome", "Nº", "Codigos_Estrategia"}:
+                            continue
+                        value = row[col]
+                        if pd.isna(value):
+                            continue
+                        value_str = str(value).strip()
+                        if not value_str or value_str.lower() == "nan":
+                            continue
+                        entries.append((col, value_str))
+                    return entries
+
+                def render_info_columns(entries: list[tuple[str, str]]) -> None:
+                    for label, value in entries:
+                        if label == "Viabilidade":
+                            st.markdown(f"**{label}:**")
+                            viab = (
+                                str(value)
+                                .replace("PARCEIROS:", "\n\n**👥 PARCEIROS:**")
+                                .replace("Explicação:", "\n\n**💡 EXPLICAÇÃO:**")
+                                .replace("Habilidade:", "**✨ Habilidade:**")
+                            )
+                            for code in codes:
+                                viab = re.sub(rf'\b{code}\b', f":red[**{code}**]", viab)
+                            st.markdown(viab)
+                        elif label == "Descrição da Pokedex":
+                            st.markdown(f"**{label}:**")
+                            st.write(value)
+                        else:
+                            st.markdown(f"**{label}:** {value}")
+
+                def render_info_tags() -> None:
                     tags_html = "".join([f"<span>{c}</span>" for c in codes])
                     st.markdown(f"<div class='pokedex-tags'>{tags_html}</div>", unsafe_allow_html=True)
 
@@ -1790,20 +1814,20 @@ if page == "Pokédex (Busca)":
 
                 if st.session_state["pokedex_detail_mode"]:
                     st.markdown("<div class='pokedex-card'>", unsafe_allow_html=True)
-                    top_left, top_center, top_right = st.columns([1.2, 1.6, 1.2])
+                    st.markdown(f"### #{dex_num} • {p_name}")
+                    info_entries = build_info_entries()
+                    midpoint = (len(info_entries) + 1) // 2
+                    left_entries = info_entries[:midpoint]
+                    right_entries = info_entries[midpoint:]
+                    top_left, top_center, top_right = st.columns([1.3, 1.7, 1.3])
                     with top_left:
-                        render_info_blocks()
+                        render_info_columns(left_entries)
                     with top_center:
-                        st.image(pokemon_pid_to_image(dex_num, mode="artwork", shiny=False), width=280)
+                        st.image(pokemon_pid_to_image(dex_num, mode="artwork", shiny=False), width=320)
                     with top_right:
-                        st.markdown("### 📖 Descrição")
-                        st.write(description)
-                        st.markdown("### ⚔️ Estratégia")
-                        viab = str(row['Viabilidade']).replace("PARCEIROS:", "\n\n**👥 PARCEIROS:**").replace("Explicação:", "\n\n**💡 EXPLICAÇÃO:**").replace("Habilidade:", "**✨ Habilidade:**")
-                        for code in codes:
-                            viab = re.sub(rf'\b{code}\b', f":red[**{code}**]", viab)
-                        st.write(viab)
+                        render_info_columns(right_entries)
                     render_status_controls()
+                    render_info_tags()
                     st.markdown("#### 🎞️ Sprites")
                     sprite_urls = [
                         pokemon_pid_to_image(dex_num, mode="sprite", shiny=False),
@@ -1811,17 +1835,6 @@ if page == "Pokédex (Busca)":
                     ]
                     sprites_html = "".join([f"<img src='{url}' alt='{p_name} sprite'>" for url in sprite_urls])
                     st.markdown(f"<div class='pokedex-carousel'>{sprites_html}</div>", unsafe_allow_html=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
-                else:
-                    st.markdown("<div class='pokedex-card'>", unsafe_allow_html=True)
-                    card_left, card_right = st.columns([1.2, 2])
-                    with card_left:
-                        st.image(pokemon_pid_to_image(dex_num, mode="artwork", shiny=False), width=200)
-                    with card_right:
-                        render_info_blocks()
-                        st.markdown("### 📖 Descrição")
-                        st.write(description)
-                        render_status_controls()
                     st.markdown("</div>", unsafe_allow_html=True)
 
 
@@ -2925,6 +2938,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
