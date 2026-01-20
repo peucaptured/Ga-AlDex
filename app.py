@@ -199,6 +199,25 @@ def render_public_log_fragment(db, rid):
                     st.write(f"🔹 **{by}** ({et}): {pl}") # 
 
 
+@st.cache_resource
+def load_map_assets():
+    base_path = "Assets/Texturas"
+    assets = {}
+    
+    # Lista de arquivos baseada no seu print
+    asset_files = [
+        "agua_1", "agua_2", "agua_3", "areia_1", "areia_2", "areia_3",
+        "brush_1", "brush_2", "estalagmite_1", "grama_1", "grama_2", "grama_3",
+        "pedra_1", "pedra_2", "pedra_3", "pico_1", "rochas", "rochas_2",
+        "slope_1", "slope_2", "slope_3", "slope_4", "terra_1", "terra_2", "terra_3",
+        "tree_1", "tree_2", "tree_3", "wall_1"
+    ]
+    
+    for name in asset_files:
+        path = f"{base_path}/{name}.png"
+        if os.path.exists(path):
+            assets[name] = Image.open(path).convert("RGBA")
+    return assets
 
 def authenticate_user(name, password):
     try:
@@ -938,55 +957,60 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool
 
     return tiles, seed
 
-def draw_tile(draw: ImageDraw.ImageDraw, x: int, y: int, t: str, rng: random.Random):
-    colors = {
-        "rock": (60, 60, 70),
-        "wall": (45, 46, 50),
-        "water": (35, 90, 140),
-        "stalagmite": (90, 92, 98),
-        "grass": (60, 130, 70),
-        "tree": (30, 70, 35),
-        "path": (120, 95, 60),
-        "stone": (125, 125, 140),
-        "peak": (175, 175, 190),
-        "slope1": (110, 110, 125),
-        "slope2": (95, 95, 110),
-        "flower": (150, 80, 110),
-        "trail": (105, 85, 55),
-        "dirt": (110, 85, 55),
-        "rut": (85, 65, 40),
-        "sea": (20, 60, 120),
-        "sand": (180, 165, 120),
-        "bush": (40, 95, 50),        
-    }
-    base = colors.get(t, (200, 0, 200))
+def draw_tile_asset(img, r, c, tiles, assets, rng):
+    grid = len(tiles)
+    t = tiles[r][c]
+    x, y = c * TILE_SIZE, r * TILE_SIZE
+    
+    asset_key = None
 
-    draw.rectangle([x, y, x + TILE_SIZE - 1, y + TILE_SIZE - 1], fill=base)
+    # LÓGICA DE SELEÇÃO DE ASSET
+    if t == "water":
+        # Verifica se há terra/grama/areia ao redor (Margem)
+        is_shore = False
+        for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < grid and 0 <= nc < grid:
+                if tiles[nr][nc] not in ["water", "sea"]:
+                    is_shore = True
+                    break
+        asset_key = "agua_2" if is_shore else rng.choice(["agua_1", "agua_3"])
 
-    for _ in range(18):
-        px = x + rng.randint(0, TILE_SIZE - 1)
-        py = y + rng.randint(0, TILE_SIZE - 1)
-        tweak = rng.randint(-10, 10)
-        c = (max(0, min(255, base[0] + tweak)),
-             max(0, min(255, base[1] + tweak)),
-             max(0, min(255, base[2] + tweak)))
-        draw.point((px, py), fill=c)
+    elif t == "grass":
+        asset_key = rng.choice(["grama_1", "grama_2", "grama_3"])
+    
+    elif t == "sand":
+        asset_key = rng.choice(["areia_1", "areia_2", "areia_3"])
 
-    if t in ["water", "sea"]:
-        for _ in range(6):
-            px = x + rng.randint(2, TILE_SIZE - 3)
-            py = y + rng.randint(2, TILE_SIZE - 3)
-            draw.point((px, py), fill=(210, 230, 255))
+    elif t == "tree":
+        asset_key = rng.choice(["tree_1", "tree_2", "tree_3"])
 
-    if t == "tree":
-        draw.rectangle([x + 10, y + 8, x + 21, y + 24], fill=(20, 55, 25))
-        draw.rectangle([x + 14, y + 24, x + 17, y + 30], fill=(80, 60, 35))
+    elif t == "rock":
+        asset_key = "rochas" if rng.random() > 0.5 else "rochas_2"
 
-    if t == "stalagmite":
-        draw.polygon([(x + 16, y + 6), (x + 8, y + 26), (x + 24, y + 26)], fill=(120, 120, 125))
+    elif t.startswith("slope"):
+        # Mapeia slope1/slope2 do gerador para os assets slope_1 a slope_4
+        # Exemplo: slope1 -> slope_1 (subida), slope2 -> slope_2 (descida)
+        asset_key = t.replace("slope", "slope_") 
 
-    if t == "path":
-        draw.rectangle([x + 2, y + 12, x + TILE_SIZE - 3, y + 20], fill=(150, 120, 80))
+    elif t == "stone":
+        asset_key = rng.choice(["pedra_1", "pedra_2", "pedra_3"])
+
+    # Fallbacks genéricos para outros nomes
+    else:
+        mapping = {
+            "wall": "wall_1",
+            "stalagmite": "estalagmite_1",
+            "peak": "pico_1",
+            "dirt": "terra_1",
+            "bush": "brush_1"
+        }
+        asset_key = mapping.get(t, "terra_1")
+
+    # DESENHO NA IMAGEM
+    if asset_key in assets:
+        tile_img = assets[asset_key]
+        img.paste(tile_img, (x, y), tile_img)
         
 
 # ==========================================
@@ -1005,25 +1029,23 @@ def fetch_image_pil(url: str) -> Image.Image | None:
 
 @st.cache_data(show_spinner=False)
 def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
-    # Cria a imagem base com CACHE para não piscar
     grid = len(tiles)
-    img = Image.new("RGB", (grid * TILE_SIZE, grid * TILE_SIZE), (0, 0, 0))
-    draw = ImageDraw.Draw(img)
+    img = Image.new("RGBA", (grid * TILE_SIZE, grid * TILE_SIZE), (0, 0, 0, 0))
+    assets = load_map_assets() # Carrega os PNGs do GitHub/Local
+    
     rng = random.Random(int(seed or 0) + 1337)
 
     for r in range(grid):
         for c in range(grid):
-            x = c * TILE_SIZE
-            y = r * TILE_SIZE
-            draw_tile(draw, x, y, tiles[r][c], rng)
+            # Chama a nova função baseada em assets
+            draw_tile_asset(img, r, c, tiles, assets, rng)
 
-    # Grid lines
-    for r in range(grid + 1):
-        y = r * TILE_SIZE
-        draw.line([(0, y), (grid * TILE_SIZE, y)], fill=(0, 0, 0))
-    for c in range(grid + 1):
-        x = c * TILE_SIZE
-        draw.line([(x, 0), (x, grid * TILE_SIZE)], fill=(0, 0, 0))
+    # Linhas de grid opcionais (Mantenha se quiser o aspecto tático)
+    draw = ImageDraw.Draw(img)
+    for i in range(grid + 1):
+        pos = i * TILE_SIZE
+        draw.line([(0, pos), (grid * TILE_SIZE, pos)], fill=(255, 255, 255, 30))
+        draw.line([(pos, 0), (pos, grid * TILE_SIZE)], fill=(255, 255, 255, 30))
 
     return img
 
@@ -2623,6 +2645,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
