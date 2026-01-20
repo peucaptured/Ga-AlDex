@@ -1033,18 +1033,14 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name, room, ef
     if effects:
         # Mapeamento: Emoji -> URL da Imagem (Ícones Oficiais)
         EMOJI_TO_URL = {
-            "🔥": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Pok%C3%A9mon_Fire_Type_Icon.svg/512px-Pok%C3%A9mon_Fire_Type_Icon.svg.png", # Fogo
-            "🧊": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Pok%C3%A9mon_Ice_Type_Icon.svg/512px-Pok%C3%A9mon_Ice_Type_Icon.svg.png",   # Gelo
-            "💧": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Pok%C3%A9mon_Water_Type_Icon.svg/512px-Pok%C3%A9mon_Water_Type_Icon.svg.png", # Água
-            "🪨": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Pok%C3%A9mon_Rock_Type_Icon.svg/512px-Pok%C3%A9mon_Rock_Type_Icon.svg.png",  # Rocha
-            "☁️": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Pok%C3%A9mon_Flying_Type_Icon.svg/512px-Pok%C3%A9mon_Flying_Type_Icon.svg.png", # Nuvem (Flying)
-            "☀️": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Sun_icon.svg/512px-Sun_icon.svg.png",                                         # Sol
-            "❄️": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Pok%C3%A9mon_Ice_Type_Icon.svg/512px-Pok%C3%A9mon_Ice_Type_Icon.svg.png",   # Floco (Ice)
-            "🍃": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Pok%C3%A9mon_Grass_Type_Icon.svg/512px-Pok%C3%A9mon_Grass_Type_Icon.svg.png", # Folha
-            "✨": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Pok%C3%A9mon_Fairy_Type_Icon.svg/512px-Pok%C3%A9mon_Fairy_Type_Icon.svg.png", # Fada
-            "⚡": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Pok%C3%A9mon_Electric_Type_Icon.svg/512px-Pok%C3%A9mon_Electric_Type_Icon.svg.png", # Raio
-            "🥄": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Pok%C3%A9mon_Psychic_Type_Icon.svg/512px-Pok%C3%A9mon_Psychic_Type_Icon.svg.png", # Colher (Psychic)
-            "🌵": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Pok%C3%A9mon_Ground_Type_Icon.svg/512px-Pok%C3%A9mon_Ground_Type_Icon.svg.png", # Deserto (Ground)
+            "🔥": "assets/fogo.png", # Fogo
+            "🧊": "assets/gelo.png",   # Gelo
+            "💧": "assets/agua.png", # Água
+            "🪨": "assets/rocha.png",  # Rocha
+            "☁️": "assets/nuvem.png", # Nuvem (Flying)
+            "☀️": "assets/sol.png",                                         # Sol
+            "🍃": "assets/terrenograma.png", # Folha
+            "⚡": "assets/terrenoeletrico.png", # Raio
         }
 
         local_cache_icons = {}
@@ -2299,7 +2295,7 @@ elif page == "PvP – Arena Tática":
             can_edit = (trainer_name == "Ezenek" or is_player)
             with st.expander("🛠️ Itens", expanded=False):
                 if can_edit:
-                    effects_map = {"Fogo":"🔥", "Gelo":"🧊", "Água":"💧", "Rocha":"🪨", "Nuvem":"☁️", "Sol":"☀️"}
+                    effects_map = {"Fogo":"🔥", "Gelo":"🧊", "Água":"💧", "Rocha":"🪨", "Nuvem":"☁️", "Sol":"☀️", "Terreno Grama":"🍃", "Terreno Eletrico":"⚡"}
                     curr = st.session_state.get("placing_effect")
                     if curr: st.info(f"Item: {curr}")
                     cols = st.columns(6)
@@ -2654,6 +2650,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
