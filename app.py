@@ -1491,12 +1491,120 @@ if st.sidebar.button("🔄 Recarregar Excel"):
 st.sidebar.markdown("---")
 page = st.sidebar.radio("Ir para:", ["Pokédex (Busca)", "Trainer Hub (Meus Pokémons)", "PvP – Arena Tática", "Mochila"])
 
-# ==============================================================================
-# PÁGINA 1: POKEDEX (COM FILTRO DE TIPO EXCLUSIVO/COMBINADO)
-# ==============================================================================
+
 # ==============================================================================
 # PÁGINA 1: POKEDEX (VISÃO DE FOCO + CARROSSEL INFERIOR)
 # ==============================================================================
+st.markdown("""
+<style>
+[data-testid="stAppViewContainer"] {
+    background: linear-gradient(180deg, #1f4e79 0%, #3b7ca6 45%, #5fb2cf 100%);
+}
+h1, h2, h3 {
+    color: #0b1f2a;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.pokedex-shell {
+    border-radius: 18px;
+    padding: 18px 18px 8px 18px;
+    border: 3px solid rgba(255,255,255,0.65);
+    box-shadow: inset 0 0 15px rgba(255,255,255,0.35);
+    background: rgba(10, 36, 58, 0.45);
+}
+.pokedex-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    background: rgba(255,255,255,0.65);
+    padding: 6px 16px;
+    border-radius: 16px;
+    font-size: 12px;
+    color: #0b1f2a;
+}
+.pokedex-grid-note {
+    font-size: 11px;
+    color: #e7f5ff;
+    text-align: center;
+    margin: 6px 0 10px 0;
+}
+.pokedex-card {
+    background: rgba(10, 25, 40, 0.65);
+    color: #f5f5f5;
+    padding: 18px;
+    border-radius: 16px;
+    border: 2px solid rgba(255,255,255,0.35);
+    margin-top: 18px;
+}
+.pokedex-tags span {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    margin-right: 6px;
+    margin-bottom: 4px;
+    background: rgba(0,0,0,0.35);
+    color: #ffffff;
+}
+.pokedex-carousel {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 10px 4px;
+}
+.pokedex-carousel img {
+    width: 72px;
+    height: 72px;
+    image-rendering: pixelated;
+    background: rgba(255,255,255,0.25);
+    border-radius: 10px;
+    padding: 6px;
+}
+.pokedex-grid img { image-rendering: pixelated; }
+
+/* CARROSSEL INFERIOR (o seu estilo) */
+.pokedex-footer-carousel {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 12px;
+    padding: 14px;
+    background: rgba(0, 0, 0, 0.30);
+    border-radius: 15px;
+    border: 1px solid rgba(255,255,255,0.18);
+    scroll-behavior: smooth;
+}
+.pokedex-footer-carousel::-webkit-scrollbar { height: 8px; }
+.pokedex-footer-carousel::-webkit-scrollbar-thumb { background: #FFCC00; border-radius: 10px; }
+
+.carousel-item {
+    flex: 0 0 auto;
+    width: 70px;
+    height: 70px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    transition: transform 0.15s;
+}
+.carousel-item:hover { transform: scale(1.12); }
+
+.carousel-item img {
+    width: 54px;
+    height: 54px;
+    image-rendering: pixelated;
+}
+.carousel-item-active {
+    border: 2px solid #FFCC00;
+    background: rgba(255, 204, 0, 0.10);
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+
+
 if page == "Pokédex (Busca)":
     st.sidebar.header("🔍 Filtros")
     search_query = st.sidebar.text_input("Buscar (Nome ou Nº)", "")
@@ -1746,19 +1854,35 @@ if page == "Pokédex (Busca)":
 
         # --- CARROSSEL INFERIOR (navegação) ---
         st.subheader("🔄 Navegar pela Dex")
-        st.markdown('<div class="footer-carousel">', unsafe_allow_html=True)
-
-        # se tiver MUITOS, isso pode ficar pesado, mas funciona.
-        carousel_cols = st.columns([1] * len(filtered_df))
-        for i, (_, r_car) in enumerate(filtered_df.iterrows()):
-            p_id_car = str(r_car["Nº"])
-            with carousel_cols[i]:
-                st.image(pokemon_pid_to_image(p_id_car, mode="sprite", shiny=False), width=50)
-                if st.button(f"{r_car['Nome']}", key=f"car_btn_{p_id_car}_{i}"):
-                    select_pokedex_entry(p_id_car)
-                    st.rerun()
-
-        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # leitura do clique via query param (pra funcionar no HTML)
+        qp = st.query_params
+        clicked = qp.get("dex", None)
+        if clicked:
+            st.session_state["pokedex_selected"] = str(clicked)
+            # limpa o parâmetro pra não ficar “travado”
+            try:
+                del st.query_params["dex"]
+            except Exception:
+                pass
+            st.rerun()
+        
+        items_html = []
+        for _, r_car in filtered_df.iterrows():
+            pid = str(r_car["Nº"])
+            sprite = pokemon_pid_to_image(pid, mode="sprite", shiny=False)
+            active_class = "carousel-item carousel-item-active" if pid == dex_num else "carousel-item"
+            # clique: muda o query param dex=...
+            items_html.append(
+                f"<a class='{active_class}' href='?dex={pid}' title='#{pid}' style='text-decoration:none;'>"
+                f"<img src='{sprite}'/>"
+                f"</a>"
+            )
+        
+        st.markdown(
+            "<div class='pokedex-footer-carousel'>" + "".join(items_html) + "</div>",
+            unsafe_allow_html=True
+        )
 
     # ==============================================================================
     # GRID (visão geral)
@@ -2913,6 +3037,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
