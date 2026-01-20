@@ -1139,7 +1139,7 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
     return img.convert("RGB")
 
 def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name, room, effects=None, show_grid: bool = True):
-    ␊
+    
     # 1. Base do Mapa (Cacheada)␊
     img = render_map_png(tiles, theme_key, seed, show_grid=show_grid).convert("RGBA")
     draw = ImageDraw.Draw(img)
@@ -2374,7 +2374,7 @@ elif page == "PvP – Arena Tática":
             # Sua coluna é sempre azul
             render_player_column(trainer_name, "🎒 Sua Equipe (Você)", is_me=True)
 
-        with c_map:␊
+        with c_map:
             st.markdown("### 🗺️ Arena")
             can_edit = (trainer_name == "Ezenek" or is_player)
             with st.expander("🛠️ Itens", expanded=False):
@@ -2737,6 +2737,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
