@@ -1631,6 +1631,10 @@ if page == "Pokédex (Busca)":
             height: 100px;
             margin: 0 auto;
         }
+        .pokedex-tile [data-testid="stImage"] {
+            position: relative;
+            z-index: 1;
+        }
         .pokedex-tile [data-testid="stImage"] img {
             margin: 0 auto;
             display: block;
@@ -1638,6 +1642,9 @@ if page == "Pokédex (Busca)":
         .pokedex-tile .stButton {
             position: absolute;
             inset: 0;
+            z-index: 2;
+            height: 100%;
+            width: 100%;
         }
         .pokedex-tile .stButton button {
             width: 100%;
@@ -1690,7 +1697,7 @@ if page == "Pokédex (Busca)":
             unsafe_allow_html=True,
         )
         st.markdown(
-            "<div class='pokedex-grid-note'>Passe o mouse ou foque com o teclado para ver o nome. Clique no mesmo Pokémon para alternar para a tela detalhada.</div>",
+           "<div class='pokedex-grid-note'>Passe o mouse sobre o Pokémon para ver o nome. Clique no mesmo Pokémon para alternar para a tela detalhada.</div>",
             unsafe_allow_html=True,
         )
 
@@ -2918,6 +2925,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
