@@ -1904,14 +1904,14 @@ if page == "Pokédex (Busca)":
         with top_center:
             st.image(pokemon_pid_to_image(dex_num, mode="artwork", shiny=False), use_container_width=True)
         
-            # ✅ Nível de Poder abaixo da imagem (AGORA row EXISTE aqui)
-            np = row.get("Nivel_Poder", row.get("Nivel_Poder", ""))
-            if str(np).strip() and str(np).lower() != "nan":
-                st.markdown(f"<div class='power-badge'>⚡ Nível de Poder: {np}</div>", unsafe_allow_html=True)
+            # ✅ Nível de Poder abaixo da imagem (np definido aqui)
+            np = row.get("Nivel_Poder", row.get("Nível de Poder", ""))
+            if str(np).strip() != "" and str(np).lower() != "nan":
+                st.markdown(
+                    f"<div class='power-badge'>⚡ Nível de Poder: {np}</div>",
+                    unsafe_allow_html=True
+                )
 
-    # Nível de Poder abaixo da imagem
-    if str(np).strip() != "" and str(np).lower() != "nan":
-        st.markdown(f"<div class='power-badge'>⚡ Nível de Poder: {np}</div>", unsafe_allow_html=True)
 
 
         with top_right:
@@ -3140,6 +3140,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
