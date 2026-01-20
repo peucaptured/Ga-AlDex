@@ -222,6 +222,14 @@ def load_map_assets():
             return max(counts, key=counts.get)
         return (0, 0, 0)
 
+    def crop_to_alpha(img: Image.Image) -> Image.Image:
+        if img.mode != "RGBA":
+            img = img.convert("RGBA")
+        bbox = img.getchannel("A").getbbox()
+        if bbox:
+            img = img.crop(bbox)
+        return img
+
     def normalize_floor(img: Image.Image) -> Image.Image:
         if img.mode != "RGBA":
             img = img.convert("RGBA")
@@ -238,20 +246,13 @@ def load_map_assets():
         path = f"{base_path}/{name}.png"
         if os.path.exists(path):
             img = Image.open(path).convert("RGBA")
+            if name.startswith(FLOOR_PREFIXES):
+                img = crop_to_alpha(img)
             if img.size != (TILE_SIZE, TILE_SIZE):
                 img = img.resize((TILE_SIZE, TILE_SIZE), Image.Resampling.NEAREST)
             if name.startswith(FLOOR_PREFIXES):
                 img = normalize_floor(img)
             assets[name] = img
-            if name.startswith(FLOOR_PREFIXES):
-                rotations = {
-                    f"{name}__r90": img.rotate(90, resample=Image.Resampling.NEAREST),
-                    f"{name}__r180": img.rotate(180, resample=Image.Resampling.NEAREST),
-                    f"{name}__r270": img.rotate(270, resample=Image.Resampling.NEAREST),
-                    f"{name}__fx": img.transpose(Image.Transpose.FLIP_LEFT_RIGHT),
-                    f"{name}__fy": img.transpose(Image.Transpose.FLIP_TOP_BOTTOM),
-                }
-                assets.update(rotations)
     return assets
 
 def authenticate_user(name, password):
@@ -2738,6 +2739,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
