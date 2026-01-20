@@ -1560,12 +1560,15 @@ if page == "Pokédex (Busca)":
     st.markdown(f"**Resultados:** {len(filtered_df)}")
     st.markdown("""
         <style>
-        .pokedex-shell {
+        [data-testid="stAppViewContainer"] {
             background: linear-gradient(180deg, #6fd3e0 0%, #43b8cc 100%);
+        }
+        .pokedex-shell {
             border-radius: 18px;
             padding: 18px 18px 8px 18px;
             border: 3px solid rgba(255,255,255,0.65);
             box-shadow: inset 0 0 15px rgba(255,255,255,0.35);
+            background: rgba(255,255,255,0.08);
         }
         .pokedex-header {
             display: flex;
@@ -1617,6 +1620,36 @@ if page == "Pokédex (Busca)":
         .pokedex-grid img {
             image-rendering: pixelated;
         }
+        .pokedex-tile {
+            position: relative;
+            width: 88px;
+            height: 100px;
+            margin: 0 auto;
+        }
+        .pokedex-tile [data-testid="stImage"] img {
+            margin: 0 auto;
+        }
+        .pokedex-tile .stButton {
+            position: absolute;
+            inset: 0;
+        }
+        .pokedex-tile .stButton button {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: none;
+            color: transparent;
+            padding-top: 70px;
+            font-size: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .pokedex-tile .stButton button:hover,
+        .pokedex-tile .stButton button:focus {
+            color: #ffffff;
+            background: rgba(0,0,0,0.35);
+        }
         </style>
         """, unsafe_allow_html=True)
 
@@ -1660,9 +1693,11 @@ if page == "Pokédex (Busca)":
                 p_name = row['Nome']
                 sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
                 with col:
-                    st.image(sprite_url, width=64, caption=p_name)
+                    st.markdown("<div class='pokedex-tile'>", unsafe_allow_html=True)
+                    st.image(sprite_url, width=64)
                     if st.button(f"{p_name}", key=f"dex_tile_{dex_num}_{index}", help=f"#{dex_num} • {p_name}"):
                         select_pokedex_entry(dex_num)
+                    st.markdown("</div>", unsafe_allow_html=True)
             st.write("")
         st.markdown("</div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
@@ -2867,6 +2902,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
