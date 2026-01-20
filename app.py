@@ -1618,6 +1618,20 @@ h1, h2, h3 {
   font-size: 11px;
   line-height: 28px;         /* ✅ centraliza vertical */
 }
+.pokedex-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.pokedex-tile img {
+  display: block;
+  margin: 0 auto;
+}
 .info-label {
   color: #ffd166;             /* amarelo */
   font-weight: 800;
@@ -2012,10 +2026,11 @@ if page == "Pokédex (Busca)":
         
         <script>
             const carousel = document.getElementById("dex-carousel");
+            const scrollMultiplier = 2.5;
             if (carousel) {{
                 carousel.addEventListener("wheel", (evt) => {{
                     evt.preventDefault();
-                    carousel.scrollLeft += evt.deltaY;
+                    carousel.scrollLeft += evt.deltaY * scrollMultiplier;
                 }}, {{ passive: false }});
             }}
         
@@ -3186,6 +3201,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
