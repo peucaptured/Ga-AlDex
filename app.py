@@ -1033,14 +1033,14 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name, room, ef
     if effects:
         # Mapeamento: Emoji -> URL da Imagem (Ícones Oficiais)
         EMOJI_TO_URL = {
-            "🔥": "assets/fogo.png", # Fogo
-            "🧊": "assets/gelo.png",   # Gelo
-            "💧": "assets/agua.png", # Água
-            "🪨": "assets/rocha.png",  # Rocha
-            "☁️": "assets/nuvem.png", # Nuvem (Flying)
-            "☀️": "assets/sol.png",                                         # Sol
-            "🍃": "assets/terrenograma.png", # Folha
-            "⚡": "assets/terrenoeletrico.png", # Raio
+            "🔥": "Assets/fogo.png", # Fogo
+            "🧊": "Assets/gelo.png",   # Gelo
+            "💧": "Assets/agua.png", # Água
+            "🪨": "Assets/rocha.png",  # Rocha
+            "☁️": "Assets/nuvem.png", # Nuvem (Flying)
+            "☀️": "Assets/sol.png",                                         # Sol
+            "🍃": "Assets/terrenograma.png", # Folha
+            "⚡": "Assets/terrenoeletrico.png", # Raio
         }
 
         local_cache_icons = {}
@@ -2650,6 +2650,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
