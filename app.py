@@ -1539,6 +1539,40 @@ h1, h2, h3 {
     border: 2px solid rgba(255,255,255,0.35);
     margin-top: 18px;
 }
+.pokedex-detail-grid {
+    display: grid;
+    gap: 12px;
+}
+.pokedex-info-card {
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #f7e7b5;
+    color: #2a1b0f;
+    border: 2px solid #5b3f23;
+    box-shadow: inset 0 0 0 2px #d1b36a, 0 4px 0 #2a1b0f;
+}
+.pokedex-info-card--dark {
+    background: #ffe7a3;
+}
+.pokedex-info-title {
+    font-size: 11px;
+    color: #5b3f23;
+    margin-bottom: 4px;
+}
+.pokedex-info-value {
+    font-size: 12px;
+    color: #2a1b0f;
+    line-height: 1.4;
+}
+.pokedex-info-card--wide {
+    padding: 12px 14px;
+}
+.pokedex-info-card--wide .pokedex-info-value {
+    font-size: 12px;
+}
+.pokedex-info-card--wide .section-title {
+    margin-top: 0;
+}
 .pokedex-tags span {
     display: inline-block;
     padding: 2px 8px;
@@ -1650,7 +1684,7 @@ h1, h2, h3 {
 .power-badge {
   display: block;
   width: fit-content;
-  margin: 10px auto 0 auto;   /* ✅ centraliza */
+  margin: 10px auto 0 auto; 
   padding: 6px 12px;
   border-radius: 999px;
   background: rgba(255,255,255,0.10);
@@ -1836,39 +1870,63 @@ if page == "Pokédex (Busca)":
 
 
         def render_info_columns(entries):
+            st.markdown("<div class='pokedex-detail-grid'>", unsafe_allow_html=True)
             for label, value in entries:
                 # Título: Descrição
                 if label == "Descrição da Pokedex":
-                    st.markdown("<div class='section-title'>📘 Descrição da Pokédex</div>", unsafe_allow_html=True)
-                    st.write(value)
+                    value_html = str(value).replace("\n", "<br>")
+                    st.markdown(
+                        f"""
+                        <div class='pokedex-info-card pokedex-info-card--wide'>
+                            <div class='section-title'>📘 Descrição da Pokédex</div>
+                            <div class='pokedex-info-value'>{value_html}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
                     continue
-        
+
                 # Título: Viabilidade (texto grande)
                 if label == "Viabilidade":
-                    st.markdown("<div class='section-title'>🧠 Viabilidade</div>", unsafe_allow_html=True)
-        
                     viab = (
                         str(value)
-                        .replace("PARCEIROS:", "\n\n**👥 PARCEIROS:**")
-                        .replace("Explicação:", "\n\n**💡 EXPLICAÇÃO:**")
-                        .replace("Habilidade:", "**✨ Habilidade:**")
+                        .replace("PARCEIROS:", "<br><br><strong>👥 PARCEIROS:</strong>")
+                        .replace("Explicação:", "<br><br><strong>💡 EXPLICAÇÃO:</strong>")
+                        .replace("Habilidade:", "<strong>✨ Habilidade:</strong>")
                     )
-        
+
+                    viab = viab.replace("\n", "<br>")
+
                     # pinta o FIR (e outros códigos se quiser)
                     viab = viab.replace("FIR", "<span class='hi-red'>FIR</span>")
-        
+
                     # destaca os códigos de estratégia no texto (mantém o que você já tinha)
                     for code in codes:
                         viab = re.sub(rf"\b{re.escape(code)}\b", f"<span class='hi-purple'>{code}</span>", viab)
-        
-                    st.markdown(viab, unsafe_allow_html=True)
+
+                    st.markdown(
+                        f"""
+                        <div class='pokedex-info-card pokedex-info-card--wide pokedex-info-card--dark'>
+                            <div class='section-title'>🧠 Viabilidade</div>
+                            <div class='pokedex-info-value'>{viab}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
                     continue
-        
+
                 # Campos normais (Tipo, Raridade, Biomas, Região etc.)
+                value_html = str(value).replace("\n", "<br>")
                 st.markdown(
-                    f"<span class='info-label'>{label}:</span> {value}",
+                    f"""
+                    <div class='pokedex-info-card'>
+                        <div class='pokedex-info-title'>{label}</div>
+                        <div class='pokedex-info-value'>{value_html}</div>
+                    </div>
+                    """,
                     unsafe_allow_html=True
                 )
+            st.markdown("</div>", unsafe_allow_html=True)
 
 
         def render_info_tags():
@@ -1974,7 +2032,12 @@ if page == "Pokédex (Busca)":
             active_class = "active" if pid == str(dex_num) else ""
             
             # Usando aspas simples para delimitar a string e duplas dentro do HTML
-            item_div = f'<div class="item {active_class}" onclick="selectDex(\'{pid}\')"><img src="{sprite}" /></div>'
+            item_div = (
+                f'<button type="button" class="item {active_class}" '
+                f'data-pid="{pid}" aria-label="Selecionar {pid}">'
+                f'<img src="{sprite}" alt="Sprite {pid}" />'
+                "</button>"
+            )
             items_html.append(item_div)
         
         # 3. Bloco HTML Principal
@@ -2006,6 +2069,9 @@ if page == "Pokédex (Busca)":
                 cursor: pointer;
                 background: rgba(255,255,255,0.08);
                 border: 1px solid rgba(255,255,255,0.18);
+                padding: 0;
+                appearance: none;
+                box-shadow: none;
                 transition: transform .12s;
             }}
             .item:hover {{ transform: scale(1.12); }}
@@ -2023,7 +2089,7 @@ if page == "Pokédex (Busca)":
         <div id="dex-carousel" class="dex-carousel">
             {all_items_joined}
         </div>
-        
+
         <script>
             const carousel = document.getElementById("dex-carousel");
             const scrollMultiplier = 2.5;
@@ -2033,12 +2099,23 @@ if page == "Pokédex (Busca)":
                     carousel.scrollLeft += evt.deltaY * scrollMultiplier;
                 }}, {{ passive: false }});
             }}
-        
+
             function selectDex(pid) {{
                 // window.parent é necessário para Streamlit Components
                 const url = new URL(window.parent.location.href);
                 url.searchParams.set("dex", pid);
                 window.parent.location.assign(url.toString());
+            }}
+
+            if (carousel) {{
+                carousel.querySelectorAll(".item").forEach((item) => {{
+                    item.addEventListener("click", () => {{
+                        const pid = item.getAttribute("data-pid");
+                        if (pid) {{
+                            selectDex(pid);
+                        }}
+                    }});
+                }});
             }}
         </script>
         """
@@ -3201,6 +3278,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
