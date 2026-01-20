@@ -1558,85 +1558,213 @@ if page == "Pokédex (Busca)":
     # --- EXIBIÇÃO ---
     st.title("📕 Pokédex Universal")
     st.markdown(f"**Resultados:** {len(filtered_df)}")
+    st.markdown("""
+        <style>
+        .pokedex-shell {
+            background: linear-gradient(180deg, #6fd3e0 0%, #43b8cc 100%);
+            border-radius: 18px;
+            padding: 18px 18px 8px 18px;
+            border: 3px solid rgba(255,255,255,0.65);
+            box-shadow: inset 0 0 15px rgba(255,255,255,0.35);
+        }
+        .pokedex-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            background: rgba(255,255,255,0.35);
+            padding: 6px 16px;
+            border-radius: 16px;
+            font-size: 12px;
+        }
+        .pokedex-grid-note {
+            font-size: 11px;
+            color: #f5f5f5;
+            text-align: center;
+            margin: 6px 0 10px 0;
+        }
+        .pokedex-card {
+            background: rgba(10, 25, 40, 0.65);
+            color: #f5f5f5;
+            padding: 18px;
+            border-radius: 16px;
+            border: 2px solid rgba(255,255,255,0.35);
+            margin-top: 18px;
+        }
+        .pokedex-tags span {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            margin-right: 6px;
+            margin-bottom: 4px;
+            background: rgba(0,0,0,0.35);
+            color: #ffffff;
+        }
+        .pokedex-carousel {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 10px 4px;
+        }
+        .pokedex-carousel img {
+            width: 72px;
+            height: 72px;
+            image-rendering: pixelated;
+            background: rgba(255,255,255,0.25);
+            border-radius: 10px;
+            padding: 6px;
+        }
+        .pokedex-grid img {
+            image-rendering: pixelated;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+    if "pokedex_selected" not in st.session_state:
+        st.session_state["pokedex_selected"] = None
+    if "pokedex_detail_mode" not in st.session_state:
+        st.session_state["pokedex_detail_mode"] = False
+
+    def select_pokedex_entry(pid: str) -> None:
+        if st.session_state["pokedex_selected"] == pid:
+            st.session_state["pokedex_detail_mode"] = not st.session_state["pokedex_detail_mode"]
+        else:
+            st.session_state["pokedex_selected"] = pid
+            st.session_state["pokedex_detail_mode"] = False
     
     if filtered_df.empty: 
         st.warning("Nenhum Pokémon encontrado.")
         if len(selected_types) > 1:
             st.caption("Dica: Você selecionou múltiplos tipos. O sistema está buscando Pokémons que tenham **TODOS** esses tipos simultaneamente.")
 
-    for index, row in filtered_df.iterrows():
-        dex_num = row['Nº']
-        p_name = row['Nome']
-        img_url = get_image_from_name(p_name, api_name_map)
-        power = row['Nivel_Poder']
-        
-        # Chaves Únicas
-        key_seen = f"seen_{dex_num}_{index}"
-        key_caught = f"caught_{dex_num}_{index}"
-        
-        with st.container():
-            c_img, c_info, c_check = st.columns([0.5, 3, 1.5])
-            with c_img: st.image(img_url, width=80)
-            with c_info:
-                st.markdown(f"### #{dex_num} {p_name}")
-                tags_html = "".join([f"<span style='background-color:#444;color:white;padding:2px 5px;border-radius:4px;margin-right:5px;font-size:0.8em'>{c}</span>" for c in row['Codigos_Estrategia']])
-                
-                if power >= 13: p_color = "#D32F2F"
-                elif power >= 8: p_color = "#F57C00"
-                else: p_color = "#388E3C"
+    if not filtered_df.empty:
+        obtained_count = len(user_data.get("caught", []))
+        seen_count = len(user_data.get("seen", []))
+        st.markdown("<div class='pokedex-shell'>", unsafe_allow_html=True)
+        st.markdown(
+            f"<div class='pokedex-header'><span>Pokémon Obtidos {obtained_count}</span><span>Pokémon Vistos {seen_count}</span></div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            "<div class='pokedex-grid-note'>Passe o mouse ou foque com o teclado para ver o nome. Clique no mesmo Pokémon para alternar para a tela detalhada.</div>",
+            unsafe_allow_html=True,
+        )
 
-                power_badge = f"<span style='background-color:{p_color};color:white;padding:2px 8px;border-radius:10px;font-weight:bold;font-size:0.8em'>⚡ NP: {power}</span>"
-                st.markdown(f"**{row['Tipo']}** | {power_badge} {tags_html}", unsafe_allow_html=True)
-                
-                with st.expander("📖 Detalhes"):
-                    st.markdown(f"**📍 Região:** {row['Região']} | **🌿 Bioma:** {row['Biomas']}")
-                    st.info(row['Descrição da Pokedex'])
-                    
-                    viab = str(row['Viabilidade']).replace("PARCEIROS:", "\n\n**👥 PARCEIROS:**").replace("Explicação:", "\n\n**💡 EXPLICAÇÃO:**").replace("Habilidade:", "**✨ Habilidade:**")
-                    for code in row['Codigos_Estrategia']:
-                        viab = re.sub(rf'\b{code}\b', f":red[**{code}**]", viab)
-                    st.write(viab)
+        grid_cols = 8
+        rows = list(filtered_df.iterrows())
+        st.markdown("<div class='pokedex-grid'>", unsafe_allow_html=True)
+        for start in range(0, len(rows), grid_cols):
+            cols = st.columns(grid_cols)
+            for col, (index, row) in zip(cols, rows[start:start + grid_cols]):
+                dex_num = str(row['Nº'])
+                p_name = row['Nome']
+                sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
+                with col:
+                    st.image(sprite_url, width=64, caption=p_name)
+                    if st.button(f"{p_name}", key=f"dex_tile_{dex_num}_{index}", help=f"#{dex_num} • {p_name}"):
+                        select_pokedex_entry(dex_num)
+            st.write("")
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-            with c_check:
-                st.write("") 
-                is_seen = dex_num in user_data["seen"]
-                is_caught = dex_num in user_data["caught"]
+        selected_id = st.session_state.get("pokedex_selected")
+        if selected_id:
+            selected_df = df[df['Nº'].astype(str) == str(selected_id)]
+            if not selected_df.empty:
+                row = selected_df.iloc[0]
+                dex_num = str(row['Nº'])
+                p_name = row['Nome']
+                power = row['Nivel_Poder']
+                types = row['Tipo']
+                region = row['Região']
+                biomes = row['Biomas']
+                description = row['Descrição da Pokedex']
+                codes = row['Codigos_Estrategia']
+                if not isinstance(codes, list):
+                    codes = [c.strip() for c in str(codes).split(",") if c.strip()]
+                if "wishlist" not in user_data:
+                    user_data["wishlist"] = []
 
-                # --- NOVO: WISHLIST ---
-                if "wishlist" not in user_data: user_data["wishlist"] = []
-                is_wished = dex_num in user_data["wishlist"]
-                
-                if st.checkbox("🌟 Desejo", value=is_wished, key=f"wish_{dex_num}_{index}"):
-                    if dex_num not in user_data["wishlist"]:
-                        user_data["wishlist"].append(dex_num)
-                        save_data_cloud(trainer_name, user_data)
+                def render_info_blocks() -> None:
+                    st.markdown(f"### #{dex_num} • {p_name}")
+                    st.markdown(f"**⚡ NP:** {power}")
+                    st.markdown(f"**🧬 Tipo:** {types}")
+                    st.markdown(f"**📍 Região:** {region}")
+                    st.markdown(f"**🌿 Bioma:** {biomes}")
+                    tags_html = "".join([f"<span>{c}</span>" for c in codes])
+                    st.markdown(f"<div class='pokedex-tags'>{tags_html}</div>", unsafe_allow_html=True)
+
+                def render_status_controls() -> None:
+                    is_seen = dex_num in user_data["seen"]
+                    is_caught = dex_num in user_data["caught"]
+                    is_wished = dex_num in user_data["wishlist"]
+                    s1, s2, s3 = st.columns(3)
+                    with s1:
+                        if st.checkbox("🌟 Desejo", value=is_wished, key=f"wish_{dex_num}"):
+                            if dex_num not in user_data["wishlist"]:
+                                user_data["wishlist"].append(dex_num)
+                                save_data_cloud(trainer_name, user_data)
+                        else:
+                            if dex_num in user_data["wishlist"]:
+                                user_data["wishlist"].remove(dex_num)
+                                save_data_cloud(trainer_name, user_data)
+                    with s2:
+                        if st.checkbox("👁️ Visto", value=is_seen, key=f"seen_{dex_num}"):
+                            if dex_num not in user_data["seen"]:
+                                user_data["seen"].append(dex_num)
+                                save_data_cloud(trainer_name, user_data)
+                        else:
+                            if dex_num in user_data["seen"]:
+                                user_data["seen"].remove(dex_num)
+                                save_data_cloud(trainer_name, user_data)
+                    with s3:
+                        if st.checkbox("🔴 Capturado", value=is_caught, key=f"caught_{dex_num}"):
+                            if dex_num not in user_data["caught"]:
+                                user_data["caught"].append(dex_num)
+                                if dex_num not in user_data["seen"]:
+                                    user_data["seen"].append(dex_num)
+                                save_data_cloud(trainer_name, user_data)
+                                st.rerun()
+                        else:
+                            if dex_num in user_data["caught"]:
+                                user_data["caught"].remove(dex_num)
+                                save_data_cloud(trainer_name, user_data)
+
+                if st.session_state["pokedex_detail_mode"]:
+                    st.markdown("<div class='pokedex-card'>", unsafe_allow_html=True)
+                    top_left, top_center, top_right = st.columns([1.2, 1.6, 1.2])
+                    with top_left:
+                        render_info_blocks()
+                    with top_center:
+                        st.image(pokemon_pid_to_image(dex_num, mode="artwork", shiny=False), width=280)
+                    with top_right:
+                        st.markdown("### 📖 Descrição")
+                        st.write(description)
+                        st.markdown("### ⚔️ Estratégia")
+                        viab = str(row['Viabilidade']).replace("PARCEIROS:", "\n\n**👥 PARCEIROS:**").replace("Explicação:", "\n\n**💡 EXPLICAÇÃO:**").replace("Habilidade:", "**✨ Habilidade:**")
+                        for code in codes:
+                            viab = re.sub(rf'\b{code}\b', f":red[**{code}**]", viab)
+                        st.write(viab)
+                    render_status_controls()
+                    st.markdown("#### 🎞️ Sprites")
+                    sprite_urls = [
+                        pokemon_pid_to_image(dex_num, mode="sprite", shiny=False),
+                        pokemon_pid_to_image(dex_num, mode="sprite", shiny=True),
+                    ]
+                    sprites_html = "".join([f"<img src='{url}' alt='{p_name} sprite'>" for url in sprite_urls])
+                    st.markdown(f"<div class='pokedex-carousel'>{sprites_html}</div>", unsafe_allow_html=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
                 else:
-                    if dex_num in user_data["wishlist"]:
-                        user_data["wishlist"].remove(dex_num)
-                        save_data_cloud(trainer_name, user_data)
-               
-                # ----------------------
-                if st.checkbox("👁️ Visto", value=is_seen, key=key_seen):
-                    if dex_num not in user_data["seen"]:
-                        user_data["seen"].append(dex_num)
-                        save_data_cloud(trainer_name, user_data)
-                else:
-                    if dex_num in user_data["seen"]:
-                        user_data["seen"].remove(dex_num)
-                        save_data_cloud(trainer_name, user_data)
-
-                if st.checkbox("🔴 Capturado", value=is_caught, key=key_caught):
-                    if dex_num not in user_data["caught"]:
-                        user_data["caught"].append(dex_num)
-                        if dex_num not in user_data["seen"]: user_data["seen"].append(dex_num)
-                        save_data_cloud(trainer_name, user_data)
-                        st.rerun()
-                else:
-                    if dex_num in user_data["caught"]:
-                        user_data["caught"].remove(dex_num)
-                        save_data_cloud(trainer_name, user_data)
-            st.divider()
-
+                    st.markdown("<div class='pokedex-card'>", unsafe_allow_html=True)
+                    card_left, card_right = st.columns([1.2, 2])
+                    with card_left:
+                        st.image(pokemon_pid_to_image(dex_num, mode="artwork", shiny=False), width=200)
+                    with card_right:
+                        render_info_blocks()
+                        st.markdown("### 📖 Descrição")
+                        st.write(description)
+                        render_status_controls()
+                    st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ==============================================================================
@@ -2739,6 +2867,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
