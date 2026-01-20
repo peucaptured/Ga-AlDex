@@ -2278,7 +2278,7 @@ elif page == "PvP – Arena Tática":
 
         with c_me:
             # Sua coluna é sempre azul
-            render_player_column(st.container(), trainer_name, "🎒 Sua Equipe (Você)", is_me=True)
+            render_player_column(trainer_name, "🎒 Sua Equipe (Você)", is_me=True)
 
         with c_map:
             st.markdown("### 🗺️ Arena")
@@ -2320,7 +2320,7 @@ elif page == "PvP – Arena Tática":
                     colors_icons = ["🔴", "🟡", "🌸"] # Vermelho, Amarelo, Rosa
                     icon = colors_icons[idx] if idx < len(colors_icons) else "⚪"
                     
-                    render_player_column(st.container(), opp_name, f"{icon} {opp_name}", is_me=False)
+                    render_player_column(opp_name, f"{icon} {opp_name}", is_me=False)
 
         # =========================
         # 8. LÓGICA DE CLIQUE
@@ -2640,6 +2640,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
