@@ -200,6 +200,8 @@ def render_public_log_fragment(db, rid):
                     st.write(f"🔹 **{by}** ({et}): {pl}") # 
 
 
+FLOOR_PREFIXES = ("agua", "areia", "grama", "pedra", "terra", "slope")
+
 @st.cache_resource
 def load_map_assets():
     base_path = "Assets/Texturas"
@@ -210,22 +212,20 @@ def load_map_assets():
         "slope_1", "slope_2", "slope_3", "slope_4", "terra_1", "terra_2", "terra_3",
         "tree_1", "tree_2", "tree_3", "wall_1"
     ]
-    floor_prefixes = ("agua", "areia", "grama", "pedra", "terra", "slope")
 
     def pick_solid_color(img: Image.Image) -> tuple[int, int, int]:
+        counts = {}
         for r, g, b, a in img.getdata():
             if a > 0:
-                return (r, g, b)
+                counts[(r, g, b)] = counts.get((r, g, b), 0) + 1
+        if counts:
+            return max(counts, key=counts.get)
         return (0, 0, 0)
 
     def normalize_floor(img: Image.Image) -> Image.Image:
         if img.mode != "RGBA":
             img = img.convert("RGBA")
         alpha = img.getchannel("A")
-        bbox = alpha.getbbox()
-        if bbox and bbox != (0, 0, img.size[0], img.size[1]):
-            img = img.crop(bbox).resize((TILE_SIZE, TILE_SIZE), Image.Resampling.NEAREST)
-            alpha = img.getchannel("A")
         if alpha.getextrema()[0] < 255:
             solid = pick_solid_color(img)
             base = Image.new("RGBA", img.size, (*solid, 255))
@@ -240,9 +240,18 @@ def load_map_assets():
             img = Image.open(path).convert("RGBA")
             if img.size != (TILE_SIZE, TILE_SIZE):
                 img = img.resize((TILE_SIZE, TILE_SIZE), Image.Resampling.NEAREST)
-            if name.startswith(floor_prefixes):
+            if name.startswith(FLOOR_PREFIXES):
                 img = normalize_floor(img)
             assets[name] = img
+            if name.startswith(FLOOR_PREFIXES):
+                rotations = {
+                    f"{name}__r90": img.rotate(90, resample=Image.Resampling.NEAREST),
+                    f"{name}__r180": img.rotate(180, resample=Image.Resampling.NEAREST),
+                    f"{name}__r270": img.rotate(270, resample=Image.Resampling.NEAREST),
+                    f"{name}__fx": img.transpose(Image.Transpose.FLIP_LEFT_RIGHT),
+                    f"{name}__fy": img.transpose(Image.Transpose.FLIP_TOP_BOTTOM),
+                }
+                assets.update(rotations)
     return assets
 
 def authenticate_user(name, password):
@@ -801,17 +810,7 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool
     rng = random.Random(seed)
     theme = THEMES.get(theme_key, THEMES["cave_water"])
     base = theme["base"]
-    border = theme["border"]
-
     tiles = [[base for _ in range(grid)] for _ in range(grid)]
-
-    # bordas sólidas
-    for r in range(grid):
-        tiles[r][0] = border
-        tiles[r][grid - 1] = border
-    for c in range(grid):
-        tiles[0][c] = border
-        tiles[grid - 1][c] = border
 
     def inside(r, c):
         return 1 <= r <= grid - 2 and 1 <= c <= grid - 2
@@ -1058,12 +1057,17 @@ def fetch_image_pil(url: str) -> Image.Image | None:
         return None
 
 @st.cache_data(show_spinner=False)
-def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
+def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid: bool = True):
     grid = len(tiles)
     # Criamos a imagem base. RGBA é essencial para a transparência das árvores
     img = Image.new("RGBA", (grid * TILE_SIZE, grid * TILE_SIZE))
     assets = load_map_assets() # Carrega seus PNGs 64x64
     rng = random.Random(int(seed or 0) + 1337)
+    floor_variants = {}
+    for key in assets:
+        base = key.split("__", 1)[0]
+        if base.startswith(FLOOR_PREFIXES):
+            floor_variants.setdefault(base, []).append(key)
 
     # 1. Definimos o "Chão Base" do tema para não haver buracos pretos
     theme_floors = {
@@ -1100,7 +1104,9 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
                 asset_to_draw = f"{prefix}_{rng.randint(1,3)}"
 
             if asset_to_draw in assets:
-                img.alpha_composite(assets[asset_to_draw], (x, y))
+                choices = floor_variants.get(asset_to_draw, [asset_to_draw])
+                asset_choice = rng.choice(choices)
+                img.alpha_composite(assets[asset_choice], (x, y))
 
             # --- CAMADA 3: OBJETOS (Árvores e Rochas em vários mapas) ---
             obj_asset = None
@@ -1122,20 +1128,21 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int):
                 img.alpha_composite(assets[obj_asset], (x, y))
 
     # --- CAMADA 4: GRID TÁTICO FINO ---
-    draw = ImageDraw.Draw(img)
-    # Cor branca com baixa opacidade (40/255) para ser sutil
-    grid_color = (255, 255, 255, 40) 
-    for i in range(grid + 1):
-        pos = i * TILE_SIZE
-        draw.line([(0, pos), (grid * TILE_SIZE, pos)], fill=grid_color, width=1)
-        draw.line([(pos, 0), (pos, grid * TILE_SIZE)], fill=grid_color, width=1)
+    if show_grid:
+        draw = ImageDraw.Draw(img)
+        # Cor branca com baixa opacidade (40/255) para ser sutil
+        grid_color = (255, 255, 255, 40)
+        for i in range(grid + 1):
+            pos = i * TILE_SIZE
+            draw.line([(0, pos), (grid * TILE_SIZE, pos)], fill=grid_color, width=1)
+            draw.line([(pos, 0), (pos, grid * TILE_SIZE)], fill=grid_color, width=1)
 
     return img.convert("RGB")
 
-def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name, room, effects=None):
+def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name, room, effects=None, show_grid: bool = True):
     
-    # 1. Base do Mapa (Cacheada)
-    img = render_map_png(tiles, theme_key, seed).convert("RGBA")
+    # 1. Base do Mapa (Cacheada)␊
+    img = render_map_png(tiles, theme_key, seed, show_grid=show_grid).convert("RGBA")
     draw = ImageDraw.Draw(img)
     
     # 2. CAMADA DE EFEITOS (Agora usando Imagens Reais)
@@ -2371,7 +2378,7 @@ elif page == "PvP – Arena Tática":
         with c_map:
             st.markdown("### 🗺️ Arena")
             can_edit = (trainer_name == "Ezenek" or is_player)
-            with st.expander("🛠️ Itens", expanded=False):
+            with st.expander("🛠️ Itens", expanded=False)
                 if can_edit:
                     effects_map = {"Fogo":"🔥", "Gelo":"🧊", "Água":"💧", "Rocha":"🪨", "Nuvem":"☁️", "Sol":"☀️", "Terreno Grama":"🍃", "Terreno Eletrico":"⚡"}
                     curr = st.session_state.get("placing_effect")
@@ -2386,9 +2393,11 @@ elif page == "PvP – Arena Tática":
                         db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": []})
                         st.rerun()
 
+            show_grid = st.checkbox("Mostrar grade tática", value=False, key=f"show_grid_battle_{rid}")
+
             if "selected_piece_id" not in st.session_state: st.session_state["selected_piece_id"] = None
             img = render_map_with_pieces(
-                tiles, theme_key, seed, pieces_to_draw, trainer_name, room, effects=field_effects
+                tiles, theme_key, seed, pieces_to_draw, trainer_name, room, effects=field_effects, show_grid=show_grid
             )
             click = streamlit_image_coordinates(img, key=f"map_{rid}")
 
@@ -2653,7 +2662,8 @@ elif page == "PvP – Arena Tática":
                             st.session_state["pvp_view"] = "battle"
                             st.rerun()
                     else:
-                        img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name, room)
+                        show_grid = st.checkbox("Mostrar grade tática", value=False, key=f"show_grid_preview_{rid}")
+                        img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name, room, show_grid=show_grid)
                         st.image(img, caption="Prévia do Campo")
                         
                         if st.button("⚔️ IR PARA O CAMPO DE BATALHA", type="primary"):
@@ -2728,6 +2738,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
