@@ -1561,27 +1561,32 @@ if page == "Pokédex (Busca)":
     st.markdown("""
         <style>
         [data-testid="stAppViewContainer"] {
-            background: linear-gradient(180deg, #6fd3e0 0%, #43b8cc 100%);
+            background: linear-gradient(180deg, #1f4e79 0%, #3b7ca6 45%, #5fb2cf 100%);
+        }
+        h1, h2, h3 {
+            color: #0b1f2a;
+            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
         }
         .pokedex-shell {
             border-radius: 18px;
             padding: 18px 18px 8px 18px;
             border: 3px solid rgba(255,255,255,0.65);
             box-shadow: inset 0 0 15px rgba(255,255,255,0.35);
-            background: rgba(255,255,255,0.08);
+            background: rgba(10, 36, 58, 0.45);
         }
         .pokedex-header {
             display: flex;
             justify-content: space-between;
             gap: 12px;
-            background: rgba(255,255,255,0.35);
+            background: rgba(255,255,255,0.65);
             padding: 6px 16px;
             border-radius: 16px;
             font-size: 12px;
+            color: #0b1f2a;
         }
         .pokedex-grid-note {
             font-size: 11px;
-            color: #f5f5f5;
+            color: #e7f5ff;
             text-align: center;
             margin: 6px 0 10px 0;
         }
@@ -1628,6 +1633,7 @@ if page == "Pokédex (Busca)":
         }
         .pokedex-tile [data-testid="stImage"] img {
             margin: 0 auto;
+            display: block;
         }
         .pokedex-tile .stButton {
             position: absolute;
@@ -1639,11 +1645,16 @@ if page == "Pokédex (Busca)":
             background: transparent;
             border: none;
             color: transparent;
-            padding-top: 70px;
+            padding: 0 6px 8px;
             font-size: 10px;
-            white-space: nowrap;
+            white-space: normal;
             overflow: hidden;
             text-overflow: ellipsis;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            text-align: center;
+            line-height: 1.2;
         }
         .pokedex-tile .stButton button:hover,
         .pokedex-tile .stButton button:focus {
@@ -1695,8 +1706,13 @@ if page == "Pokédex (Busca)":
                 with col:
                     st.markdown("<div class='pokedex-tile'>", unsafe_allow_html=True)
                     st.image(sprite_url, width=64)
-                    if st.button(f"{p_name}", key=f"dex_tile_{dex_num}_{index}", help=f"#{dex_num} • {p_name}"):
-                        select_pokedex_entry(dex_num)
+                    st.button(
+                        f"{p_name}",
+                        key=f"dex_tile_{dex_num}_{index}",
+                        help=f"#{dex_num} • {p_name}",
+                        on_click=select_pokedex_entry,
+                        args=(dex_num,),
+                    )
                     st.markdown("</div>", unsafe_allow_html=True)
             st.write("")
         st.markdown("</div>", unsafe_allow_html=True)
@@ -2902,6 +2918,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
