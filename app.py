@@ -209,13 +209,35 @@ def load_map_assets():
         "slope_1", "slope_2", "slope_3", "slope_4", "terra_1", "terra_2", "terra_3",
         "tree_1", "tree_2", "tree_3", "wall_1"
     ]
+    floor_prefixes = ("agua", "areia", "grama", "pedra", "terra", "slope")
+
+    def pick_solid_color(img: Image.Image) -> tuple[int, int, int]:
+        for r, g, b, a in img.getdata():
+            if a > 0:
+                return (r, g, b)
+        return (0, 0, 0)
+
+    def normalize_floor(img: Image.Image) -> Image.Image:
+        if img.mode != "RGBA":
+            img = img.convert("RGBA")
+        if img.getextrema()[3][0] == 255:
+            return img
+        solid = pick_solid_color(img)
+        base = Image.new("RGBA", img.size, (*solid, 255))
+        base.alpha_composite(img)
+        return base
+
     assets = {}
     for name in asset_names:
         path = f"{base_path}/{name}.png"
         if os.path.exists(path):
-            assets[name] = Image.open(path).convert("RGBA")
+            img = Image.open(path).convert("RGBA")
+            if img.size != (TILE_SIZE, TILE_SIZE):
+                img = img.resize((TILE_SIZE, TILE_SIZE), Image.Resampling.NEAREST)
+            if name.startswith(floor_prefixes):
+                img = normalize_floor(img)
+            assets[name] = img
     return assets
-    
 
 def authenticate_user(name, password):
     try:
@@ -2700,6 +2722,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
