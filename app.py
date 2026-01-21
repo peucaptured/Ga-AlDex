@@ -65,7 +65,8 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
     /* 1. Aplica a fonte retrô apenas a textos de conteúdo */
-    .stApp, .stMarkdown p, .stButton button, .stTab p, h1, h2, h3, .stWidget label {
+    .stApp, .stMarkdown p, .stButton button, .stTab p, h1, h2, h3, .stWidget label,
+    .pokedex-info-title, .pokedex-info-value, .section-title, .power-badge, .pokedex-info-card {
         font-family: 'Press Start 2P', cursive !important;
         font-size: 13px !important;
         line-height: 1.6;
@@ -1701,6 +1702,7 @@ h1, h2, h3 {
 
 
 if page == "Pokédex (Busca)":
+    dex_param = st.query_params.get("dex", None)
     st.sidebar.header("🔍 Filtros")
     search_query = st.sidebar.text_input("Buscar (Nome ou Nº)", "")
 
@@ -1818,7 +1820,7 @@ if page == "Pokédex (Busca)":
     # VISÃO DE FOCO (selecionado)
     # ==============================================================================
     if selected_id:
-        dex_param = st.query_params.get("dex", None)
+        
         if dex_param:
             st.session_state["pokedex_selected"] = str(dex_param)
             st.query_params.clear()
@@ -2144,12 +2146,9 @@ if page == "Pokédex (Busca)":
                 f"<div class='pokedex-header'><span>Pokémon Obtidos {obtained_count}</span><span>Pokémon Vistos {seen_count}</span></div>",
                 unsafe_allow_html=True,
             )
-            st.markdown(
-                "<div class='pokedex-grid-note'>Passe o mouse sobre o Pokémon para ver o nome. Clique em um Pokémon para ver os detalhes completos.</div>",
-                unsafe_allow_html=True,
-            )
+            st.markdown("<div class='pokedex-grid-note'>Clique em um Pokémon para ver os detalhes.</div>", unsafe_allow_html=True)
 
-            grid_cols = 8
+            grid_cols = 6 # Reduzi para 6 para as bordas não ficarem espremidas
             rows = list(filtered_df.iterrows())
 
             st.markdown("<div class='pokedex-grid'>", unsafe_allow_html=True)
@@ -2161,22 +2160,17 @@ if page == "Pokédex (Busca)":
                     sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
 
                     with col:
-                        st.markdown("<div class='pokedex-tile'>", unsafe_allow_html=True)
-                        st.image(sprite_url, width=64)
 
-                        # botão “invisível” (clique no tile)
-                        st.button(
-                            f"{p_name}",
-                            key=f"dex_tile_{dex_num}_{index}",
-                            help=f"#{dex_num} • {p_name}",
-                            on_click=select_pokedex_entry,
-                            args=(dex_num,),
-                        )
-
-                        st.markdown("</div>", unsafe_allow_html=True)
-                st.write("")
-            st.markdown("</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+                        with st.container(border=True):
+                            st.image(sprite_url, use_container_width=True)
+                            st.button(
+                                f"{p_name}",
+                                key=f"dex_tile_{dex_num}_{index}",
+                                help=f"#{dex_num} • {p_name}",
+                                on_click=select_pokedex_entry,
+                                args=(dex_num,),
+                                use_container_width=True # Faz o botão ocupar a largura da borda
+                            )
 
 # ==============================================================================
 # PÁGINA 2: TRAINER HUB
@@ -3278,6 +3272,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
