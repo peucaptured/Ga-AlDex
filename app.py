@@ -2027,31 +2027,113 @@ if page == "Pokédex (Busca)":
 
         # --- CARROSSEL INFERIOR (navegação) ---
         st.subheader("🔄 Navegar pela Dex")
-        # Estilo para criar o scroll horizontal nativo com botões Streamlit
-        st.markdown("""
-            <style>
-            .stHorizontalBlock {
-                overflow-x: auto;
-                padding: 10px;
-                background: rgba(0, 0, 0, 0.2);
-                border-radius: 15px;
-            }
-            </style>
-        """, unsafe_allow_html=True)
+
+# ✅ captura clique via query param (mesma aba)
+        dex_param = st.query_params.get("dex", None)
+        if dex_param:
+            st.session_state["pokedex_selected"] = str(dex_param)
+            st.query_params.clear()
+            st.rerun()
         
-        # Container horizontal para os itens
-        with st.container():
-            cols_dex = st.columns(len(filtered_df) if not filtered_df.empty else 1)
-            for idx, (_, r_car) in enumerate(filtered_df.iterrows()):
-                pid_car = str(r_car["Nº"])
-                sprite_car = pokemon_pid_to_image(pid_car, mode="sprite", shiny=False)
-                
-                with cols_dex[idx]:
-                    # O uso de on_click garante a mudança de estado imediata [cite: 253, 254]
-                    st.image(sprite_car, width=60)
-                    if st.button("Ver", key=f"btn_nav_{pid_car}_{idx}"):
-                        st.session_state["pokedex_selected"] = pid_car
-                        st.rerun()
+        # monta os itens do carrossel
+        items_html = []
+        for _, r_car in filtered_df.iterrows():
+            pid = str(r_car["Nº"])
+            sprite = pokemon_pid_to_image(pid, mode="sprite", shiny=False)
+            active_class = "active" if pid == str(dex_num) else ""
+            
+            # Usando aspas simples para delimitar a string e duplas dentro do HTML
+            item_div = (
+                f'<button type="button" class="item {active_class}" '
+                f'data-pid="{pid}" aria-label="Selecionar {pid}">'
+                f'<img src="{sprite}" alt="Sprite {pid}" />'
+                "</button>"
+            )
+            items_html.append(item_div)
+        
+        # 3. Bloco HTML Principal
+        # Unimos os itens antes para não poluir a f-string principal
+        all_items_joined = "".join(items_html)
+        
+        html_content = f"""
+        <style>
+            .dex-carousel {{
+                display: flex;
+                gap: 12px;
+                overflow-x: auto;
+                padding: 12px;
+                background: rgba(0,0,0,0.30);
+                border-radius: 15px;
+                border: 1px solid rgba(255,255,255,0.18);
+                scroll-behavior: smooth;
+            }}
+            .dex-carousel::-webkit-scrollbar {{ height: 8px; }}
+            .dex-carousel::-webkit-scrollbar-thumb {{ background: #FFCC00; border-radius: 10px; }}
+        
+            .item {{
+                flex: 0 0 auto;
+                width: 70px;
+                height: 70px;
+                border-radius: 12px;
+                display: grid;
+                place-items: center;
+                cursor: pointer;
+                background: rgba(255,255,255,0.08);
+                border: 1px solid rgba(255,255,255,0.18);
+                padding: 0;
+                appearance: none;
+                box-shadow: none;
+                transition: transform .12s;
+            }}
+            .item:hover {{ transform: scale(1.12); }}
+            .item.active {{
+                border: 2px solid #FFCC00;
+                background: rgba(255, 204, 0, 0.10);
+            }}
+            .item img {{
+                width: 54px;
+                height: 54px;
+                image-rendering: pixelated;
+            }}
+        </style>
+        
+        <div id="dex-carousel" class="dex-carousel">
+            {all_items_joined}
+        </div>
+
+        <script>
+            const carousel = document.getElementById("dex-carousel");
+            const scrollMultiplier = 2.5;
+            if (carousel) {{
+                carousel.addEventListener("wheel", (evt) => {{
+                    evt.preventDefault();
+                    carousel.scrollLeft += evt.deltaY * scrollMultiplier;
+                }}, {{ passive: false }});
+            }}
+
+            function selectDex(pid) {{
+                // window.parent é necessário para Streamlit Components
+                const url = new URL(window.parent.location.href);
+                url.searchParams.set("dex", pid);
+                window.parent.location.assign(url.toString());
+            }}
+
+            if (carousel) {{
+                carousel.querySelectorAll(".item").forEach((item) => {{
+                    item.addEventListener("click", () => {{
+                        const pid = item.getAttribute("data-pid");
+                        if (pid) {{
+                            selectDex(pid);
+                        }}
+                    }});
+                }});
+            }}
+        </script>
+        """
+        
+        # 4. Renderização final
+        components.html(html_content, height=110, scrolling=False)
+
 
         
 
@@ -3217,6 +3299,7 @@ elif page == "Mochila":
     
     
     
+
 
 
 
