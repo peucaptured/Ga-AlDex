@@ -2027,112 +2027,31 @@ if page == "Pokédex (Busca)":
 
         # --- CARROSSEL INFERIOR (navegação) ---
         st.subheader("🔄 Navegar pela Dex")
-
-# ✅ captura clique via query param (mesma aba)
-        dex_param = st.query_params.get("dex", None)
-        if dex_param:
-            st.session_state["pokedex_selected"] = str(dex_param)
-            st.query_params.clear()
-            st.rerun()
-        
-        # monta os itens do carrossel
-        items_html = []
-        for _, r_car in filtered_df.iterrows():
-            pid = str(r_car["Nº"])
-            sprite = pokemon_pid_to_image(pid, mode="sprite", shiny=False)
-            active_class = "active" if pid == str(dex_num) else ""
-            
-            # Usando aspas simples para delimitar a string e duplas dentro do HTML
-            item_div = (
-                f'<button type="button" class="item {active_class}" '
-                f'data-pid="{pid}" aria-label="Selecionar {pid}">'
-                f'<img src="{sprite}" alt="Sprite {pid}" />'
-                "</button>"
-            )
-            items_html.append(item_div)
-        
-        # 3. Bloco HTML Principal
-        # Unimos os itens antes para não poluir a f-string principal
-        all_items_joined = "".join(items_html)
-        
-        html_content = f"""
-        <style>
-            .dex-carousel {{
-                display: flex;
-                gap: 12px;
+        # Estilo para criar o scroll horizontal nativo com botões Streamlit
+        st.markdown("""
+            <style>
+            .stHorizontalBlock {
                 overflow-x: auto;
-                padding: 12px;
-                background: rgba(0,0,0,0.30);
+                padding: 10px;
+                background: rgba(0, 0, 0, 0.2);
                 border-radius: 15px;
-                border: 1px solid rgba(255,255,255,0.18);
-                scroll-behavior: smooth;
-            }}
-            .dex-carousel::-webkit-scrollbar {{ height: 8px; }}
-            .dex-carousel::-webkit-scrollbar-thumb {{ background: #FFCC00; border-radius: 10px; }}
+            }
+            </style>
+        """, unsafe_allow_html=True)
         
-            .item {{
-                flex: 0 0 auto;
-                width: 70px;
-                height: 70px;
-                border-radius: 12px;
-                display: grid;
-                place-items: center;
-                cursor: pointer;
-                background: rgba(255,255,255,0.08);
-                border: 1px solid rgba(255,255,255,0.18);
-                padding: 0;
-                appearance: none;
-                box-shadow: none;
-                transition: transform .12s;
-            }}
-            .item:hover {{ transform: scale(1.12); }}
-            .item.active {{
-                border: 2px solid #FFCC00;
-                background: rgba(255, 204, 0, 0.10);
-            }}
-            .item img {{
-                width: 54px;
-                height: 54px;
-                image-rendering: pixelated;
-            }}
-        </style>
-        
-        <div id="dex-carousel" class="dex-carousel">
-            {all_items_joined}
-        </div>
-
-        <script>
-            const carousel = document.getElementById("dex-carousel");
-            const scrollMultiplier = 2.5;
-            if (carousel) {{
-                carousel.addEventListener("wheel", (evt) => {{
-                    evt.preventDefault();
-                    carousel.scrollLeft += evt.deltaY * scrollMultiplier;
-                }}, {{ passive: false }});
-            }}
-
-            function selectDex(pid) {{
-                // window.parent é necessário para Streamlit Components
-                const url = new URL(window.parent.location.href);
-                url.searchParams.set("dex", pid);
-                window.parent.location.assign(url.toString());
-            }}
-
-            if (carousel) {{
-                carousel.querySelectorAll(".item").forEach((item) => {{
-                    item.addEventListener("click", () => {{
-                        const pid = item.getAttribute("data-pid");
-                        if (pid) {{
-                            selectDex(pid);
-                        }}
-                    }});
-                }});
-            }}
-        </script>
-        """
-        
-        # 4. Renderização final
-        components.html(html_content, height=110, scrolling=False)
+        # Container horizontal para os itens
+        with st.container():
+            cols_dex = st.columns(len(filtered_df) if not filtered_df.empty else 1)
+            for idx, (_, r_car) in enumerate(filtered_df.iterrows()):
+                pid_car = str(r_car["Nº"])
+                sprite_car = pokemon_pid_to_image(pid_car, mode="sprite", shiny=False)
+                
+                with cols_dex[idx]:
+                    # O uso de on_click garante a mudança de estado imediata [cite: 253, 254]
+                    st.image(sprite_car, width=60)
+                    if st.button("Ver", key=f"btn_nav_{pid_car}_{idx}"):
+                        st.session_state["pokedex_selected"] = pid_car
+                        st.rerun()
 
         
 
@@ -3258,36 +3177,46 @@ elif page == "Mochila":
                 user_data["backpack"][k] = [i for i in user_data["backpack"][k] if i["name"] and i.get("qty", 0) > 0]
             save_data_cloud(trainer_name, user_data) 
             st.rerun()
-
+    =
     with col_content:
-        tabs = st.tabs(["💊 Med", "🔴 Pokéballs", "💿 TMs", "🔑 Chave"])
-        cfg = [(tabs[0], "medicine", True), (tabs[1], "pokeballs", True), 
-               (tabs[2], "tms", True), (tabs[3], "key_items", False)]
-
-        for tab, key, use_img in cfg:
-            with tab:
-                current_list = user_data["backpack"].get(key, [])
-                updated_items = []
-                
-                # Exibe itens atuais + linha extra para novo item
-                for i in range(len(current_list) + 1):
-                    item_data = current_list[i] if i < len(current_list) else {"name": "", "qty": 0}
-                    res = render_item_row(key, i, item_data, show_image=use_img)
-                    if res["name"]:
-                        updated_items.append(res)
-                
-                if st.button(f"💾 Salvar {key.title()}", key=f"sv_{key}"):
-                    user_data["backpack"][key] = updated_items
-                    save_data_cloud(trainer_name, user_data) 
-                    st.success("Bolsa Atualizada!")
-                    st.rerun()
-
-
-
-
-
-
-
+            tabs = st.tabs(["💊 Med", "🔴 Pokéballs", "💿 TMs", "🔑 Chave"])
+            cfg = [(tabs[0], "medicine", True), (tabs[1], "pokeballs", True), 
+                   (tabs[2], "tms", True), (tabs[3], "key_items", False)]
+    
+            for tab, key, use_img in cfg:
+                with tab:
+                    current_list = user_data["backpack"].get(key, [])
+                    
+                    # Interface de edição [cite: 488]
+                    updated_items = []
+                    # Exibimos a lista atual + 1 linha sempre vazia no final
+                    display_count = len(current_list) + 1
+                    
+                    for i in range(display_count):
+                        item_data = current_list[i] if i < len(current_list) else {"name": "", "qty": 0}
+                        res = render_item_row(key, i, item_data, show_image=use_img)
+                        
+                        if res["name"]: # Se o usuário digitou algo 
+                            updated_items.append(res)
+    
+                    # Se a lista atualizada for maior que a original, salvamos 
+                    # automaticamente para gerar a nova linha vazia 
+                    if len(updated_items) > len(current_list):
+                        user_data["backpack"][key] = updated_items
+                        save_data_cloud(trainer_name, user_data)
+                        st.rerun()
+    
+                    if st.button(f"💾 Confirmar {key.title()}", key=f"sv_{key}"):
+                        user_data["backpack"][key] = updated_items
+                        save_data_cloud(trainer_name, user_data)
+                        st.success("Bolsa Sincronizada!")
+    
+    
+    
+    
+    
+    
+    
 
 
 
