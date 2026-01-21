@@ -1502,7 +1502,11 @@ if st.sidebar.button("🔄 Recarregar Excel"):
     st.rerun()
 
 st.sidebar.markdown("---")
-page = st.sidebar.radio("Ir para:", ["Pokédex (Busca)", "Trainer Hub (Meus Pokémons)", "PvP – Arena Tática", "Mochila"])
+page = st.sidebar.radio(
+    "Ir para:",
+    ["Pokédex (Busca)", "Trainer Hub (Meus Pokémons)", "PvP – Arena Tática", "Golpes (Criar)", "Mochila"]
+)
+
 
 
 # ==============================================================================
@@ -3181,6 +3185,449 @@ elif page == "PvP – Arena Tática":
             
     
     
+elif page == "Golpes (Criar)":
+    st.title("🧾 Criador de Golpes (M&M Pokémon)")
+    st.caption("Digite o nome do golpe. Se existir nos TM do sistema, sai pronto. Se não existir, escolha um template e gere.")
+
+    # ==============================================================================
+    # Helpers
+    # ==============================================================================
+    def _norm(s: str) -> str:
+        return normalize_text(s).replace(" ", "").replace("-", "")
+
+    def _dc(rank: int) -> int:
+        return 10 + int(rank)
+
+    def _resisted_by_for_stat(stat_key: str) -> str:
+        # PDF: reduções de SpAtk/SpDef entram na Will; demais normalmente Fortitude. :contentReference[oaicite:2]{index=2}
+        sk = stat_key.lower()
+        if sk in ["spatk", "spdef", "int", "will", "ataque especial", "defesa especial"]:
+            return "Will"
+        return "Fortitude"
+
+    def _fmt_range_squares(sq: int) -> str:
+        return f"Range (Target): {int(sq)} squares"
+
+    def _fmt_area(area_type: str, area_rank: int) -> str:
+        # Regras de área do PDF (Cloud/Line, rank 1-3). :contentReference[oaicite:3]{index=3}
+        if area_type == "Cloud":
+            radius = {1: 1, 2: 2, 3: 3}.get(area_rank, 1)
+            return f"Area: Cloud {area_rank} (radius {radius} squares)"
+        if area_type == "Line":
+            length = {1: 2, 2: 3, 3: 4}.get(area_rank, 2)
+            return f"Area: Line {area_rank} (length {length} squares)"
+        return ""
+
+    def _header(name: str, ptype: str, category: str, range_squares: int, area_txt: str | None = None) -> str:
+        parts = [f"**{name}**", f"Type: {ptype}", f"Category: {category}", _fmt_range_squares(range_squares)]
+        if area_txt:
+            parts.append(area_txt)
+        return "\n".join(parts)
+
+    # ==============================================================================
+    # Templates (saída no seu padrão: DC / Resisted by / Limited / etc.)
+    # ==============================================================================
+    def tpl_damage(name, ptype, category, dmg_rank, range_squares, area_txt=None, notes=None):
+        txt = _header(name, ptype, category, range_squares, area_txt)
+        txt += f"\n\nEffect: Damage {int(dmg_rank)}"
+        if notes:
+            txt += f"\nNotes: {notes}"
+        return txt
+
+    def tpl_damage_plus_poison(name, ptype, category, dmg_rank, poison_rank, range_squares, poison_secondary=True, area_txt=None):
+        # Poison: 2 de dano no fim do turno, dobra até alcançar o rank do golpe. :contentReference[oaicite:4]{index=4}
+        custom = "Custom: -1/r (secondary Poison)" if poison_secondary else "Custom: (primary Poison)"
+        txt = _header(name, ptype, category, range_squares, area_txt)
+        txt += f"\n\nEffect (Primary): Damage {int(dmg_rank)}"
+        txt += (
+            f"\nLinked: Poison\n"
+            f" - Rule: At end of target's turn, take 2 damage; damage doubles each turn until it reaches rank {int(poison_rank)}.\n"
+            f" - Build note: {custom}"
+        )
+        return txt
+
+    def tpl_damage_plus_burn(name, ptype, category, dmg_rank, burn_rank, range_squares, area_txt=None):
+        # Burn: linked com fonte primária do dano (ex Ember) :contentReference[oaicite:5]{index=5}
+        txt = _header(name, ptype, category, range_squares, area_txt)
+        txt += f"\n\nEffect (Primary): Damage {int(dmg_rank)}"
+        txt += (
+            f"\nLinked: Burn\n"
+            f" - DC {_dc(burn_rank)}; Resisted by: Fortitude\n"
+            f" - Limited: Cause damage\n"
+            f" - Build note: Burn is linked alongside the primary damage (e.g., Ember)."
+        )
+        return txt
+
+    def tpl_damage_plus_paralyze(name, ptype, category, dmg_rank, para_rank, range_squares, area_txt=None):
+        # Paralyze: linked com fonte primária do dano (ex Thunder) :contentReference[oaicite:6]{index=6}
+        txt = _header(name, ptype, category, range_squares, area_txt)
+        txt += f"\n\nEffect (Primary): Damage {int(dmg_rank)}"
+        txt += (
+            f"\nLinked: Paralyze\n"
+            f" - DC {_dc(para_rank)}; Resisted by: Fortitude\n"
+            f" - Limited: Cause damage\n"
+            f" - Tip: consider Progressive/Cumulative to keep the chance relevant."
+        )
+        return txt
+
+    def tpl_damage_plus_freeze(name, ptype, category, dmg_rank, freeze_rank, range_squares, area_txt=None):
+        # Freeze: “parecido com Legends Arceus”; vira gelo e reduz SpAtk. :contentReference[oaicite:7]{index=7}
+        txt = _header(name, ptype, category, range_squares, area_txt)
+        txt += f"\n\nEffect (Primary): Damage {int(dmg_rank)}"
+        txt += (
+            f"\nLinked: Freeze\n"
+            f" - DC {_dc(freeze_rank)}; Resisted by: Fortitude\n"
+            f" - Linked Weaken: Intellect {int(freeze_rank)} (special attack reduced)\n"
+            f" - Notes: Frozen target becomes ice-like; special attack is reduced."
+        )
+        return txt
+
+    def tpl_confusion(name, ptype, category, conf_rank, range_squares, is_physical=False, area_txt=None):
+        # Confusion: dano fixo “similar ao Burn”; dano entra no Affliction; custom só físico. :contentReference[oaicite:8]{index=8}
+        custom_note = "Custom applies ONLY to physical moves." if is_physical else "Custom note: only relevant if this is a physical move."
+        txt = _header(name, ptype, category, range_squares, area_txt)
+        txt += (
+            f"\n\nEffect: Confusion (Affliction {int(conf_rank)})\n"
+            f" - DC {_dc(conf_rank)}; Resisted by: Will\n"
+            f" - Notes: Confusion includes a fixed self-hit style damage similar to Burn, but the damage is tied to the Affliction (not Limited: cause damage).\n"
+            f" - {custom_note}"
+        )
+        return txt
+
+    def tpl_sleep(name, ptype, category, sleep_rank, range_squares, area_txt=None):
+        # Sleep: idêntico aos jogos; “sugestivo como se faz” (affliction). :contentReference[oaicite:9]{index=9}
+        txt = _header(name, ptype, category, range_squares, area_txt)
+        txt += (
+            f"\n\nEffect: Sleep (Affliction {int(sleep_rank)})\n"
+            f" - DC {_dc(sleep_rank)}; Resisted by: Will\n"
+            f" - Notes: Sleep as per games; you may add Progressive/Cumulative with GM approval."
+        )
+        return txt
+
+    def tpl_weather(name, ptype, category, env_rank, range_squares, weather_kind: str):
+        # Climas: duração 5 turnos (8 com item); conflito faz teste rank+10 vs rank+dado; área por rank 1-4. :contentReference[oaicite:10]{index=10}
+        area_radius = {1: 1, 2: 2, 3: 3, 4: 4}.get(int(env_rank), 1)
+        txt = _header(name, ptype, category, range_squares, f"Area: Environment {int(env_rank)} (radius {area_radius} squares)")
+        txt += (
+            f"\n\nEffect: Environment ({weather_kind}) {int(env_rank)}\n"
+            f" - Duration: 5 turns (8 turns if the associated weather item is held)\n"
+            f" - Weather conflict: check (old weather rank + 10) vs (new weather rank + d20)\n"
+            f" - Notes: ranks above 4 mainly make the weather harder to remove."
+        )
+        return txt
+
+    def tpl_buff_stats(name, ptype, category, range_squares, buffs: list[tuple[str, int]]):
+        # Alteradores: bônus conforme jogos, limitado a +5 por status. :contentReference[oaicite:11]{index=11}
+        txt = _header(name, ptype, category, range_squares)
+        txt += "\n\nEffect: Buff (Self)"
+        txt += "\n - Limited: max +5 per stat"
+        for stat, val in buffs:
+            txt += f"\n - Enhanced Trait: {stat} +{int(val)}"
+        return txt
+
+    def tpl_debuff_stats(name, ptype, category, range_squares, debuffs: list[tuple[str, int]]):
+        txt = _header(name, ptype, category, range_squares)
+        txt += "\n\nEffect: Debuff (Target)"
+        for stat, val in debuffs:
+            rb = _resisted_by_for_stat(stat)
+            txt += f"\n - Weaken: {stat} {int(val)} | DC {_dc(val)} | Resisted by: {rb}"
+        return txt
+
+    def tpl_return_to_pokeball(name, ptype, category, range_squares):
+        # Você confirmou: Teleport, Medium pokeball (imagem do PDF mostra isso). :contentReference[oaicite:12]{index=12}
+        txt = _header(name, ptype, category, range_squares)
+        txt += "\n\nEffect: Teleport (Medium: Pokéball)"
+        txt += "\nNotes: Returns user to Pokéball / switches user out (as appropriate)."
+        return txt
+
+    def tpl_force_switch(name, ptype, category, range_squares):
+        # Roar/Dragon Tail: “faz o alvo sair da batalha”. :contentReference[oaicite:13]{index=13} :contentReference[oaicite:14]{index=14}
+        txt = _header(name, ptype, category, range_squares)
+        txt += "\n\nEffect: Forced Switch"
+        txt += "\n - Resisted by: Will (GM may adjust)"
+        txt += "\nNotes: Forces the target to leave battle (fails vs wild Pokémon, per your list)."
+        return txt
+
+    def tpl_light_screen(name, ptype, category, range_squares):
+        # Você confirmou a receita exata (e o PDF tem a imagem do Light Screen). :contentReference[oaicite:15]{index=15}
+        txt = _header(name, ptype, category, range_squares)
+        txt += (
+            "\n\nEffect: Immunity (Will Effects)\n"
+            " - Affect Others\n"
+            " - Limited: Half effect\n"
+            " - Activation: 2 (Standard)\n"
+            " - Fades (expires over time)\n"
+        )
+        return txt
+
+    # ==============================================================================
+    # Banco de TM (do PDF) — usamos a lista do próprio documento
+    # ==============================================================================
+    TM_LIST = [
+        # (tm_code, move, type, category, desc)
+        ("TM01", "Work Up", "Normal", "Status", "Aumenta o Ataque e o Ataque Especial do usuário."),
+        ("TM02", "Dragon Claw", "Dragon", "Físico", "Causa dano com garras afiadas."),
+        ("TM03", "Psyshock", "Psychic", "Especial", "Causa dano com base na Defesa do alvo."),
+        ("TM04", "Calm Mind", "Psychic", "Status", "Aumenta o Ataque Especial e a Defesa Especial do usuário."),
+        ("TM05", "Roar", "Normal", "Status", "Faz o alvo sair da batalha (falha em batalhas contra Pokémon selvagens)."),
+        ("TM07", "Hail", "Ice", "Status", "Cria uma tempestade de granizo."),
+        ("TM08", "Bulk Up", "Fighting", "Status", "Aumenta o Ataque e a Defesa do usuário."),
+        ("TM11", "Sunny Day", "Fire", "Status", "Cria luz solar intensa."),
+        ("TM18", "Rain Dance", "Water", "Status", "Cria uma chuva intensa."),
+        ("TM24", "Thunderbolt", "Electric", "Especial", "Dispara um raio elétrico no alvo."),
+        ("TM25", "Thunder", "Electric", "Especial", "Ataque elétrico poderoso, pode causar paralisia no alvo."),
+        ("TM26", "Earthquake", "Ground", "Físico", "Causa um terremoto que atinge todos os Pokémon em campo."),
+        ("TM28", "Leech Life", "Bug", "Físico", "Suga o sangue do alvo para restaurar os pontos de vida do usuário."),
+        ("TM29", "Psychic", "Psychic", "Especial", "Ataque psíquico que pode diminuir a Defesa Especial do alvo."),
+        ("TM31", "Brick Break", "Fighting", "Físico", "Quebra barreiras reflexivas como Light Screen e Reflect."),
+        ("TM37", "Sandstorm", "Rock", "Status", "Cria uma tempestade de areia."),
+        ("TM38", "Fire Blast", "Fire", "Especial", "Ataque de fogo poderoso, com chance de queimar o alvo."),
+        ("TM39", "Rock Tomb", "Rock", "Físico", "Lança pedras no alvo e pode diminuir sua Velocidade."),
+        ("TM61", "Will-O-Wisp", "Fire", "Status", "Causa queimaduras no alvo, reduzindo seus PS gradualmente."),
+        ("TM70", "Aurora Veil", "Ice", "Status", "Cria uma barreira de luz que reduz os danos de movimentos especiais e físicos por vários turnos."),
+        ("TM72", "Volt Switch", "Electric", "Especial", "Ataca o alvo e, em seguida, o usuário é trocado."),
+        ("TM73", "Thunder Wave", "Electric", "Status", "Causa paralisia no alvo."),
+        ("TM75", "Swords Dance", "Normal", "Status", "Aumenta o Ataque do usuário."),
+        ("TM78", "Bulldoze", "Ground", "Físico", "Provoca um terremoto que atinge todos os Pokémon em campo e diminui a Velocidade do alvo."),
+        ("TM82", "Dragon Tail", "Dragon", "Físico", "Força o alvo a sair da batalha (falha contra Pokémon selvagens)."),
+        ("TM87", "Swagger", "Normal", "Status", "Confunde o alvo, mas aumenta muito seu Ataque."),
+        ("TM89", "U-turn", "Bug", "Físico", "Ataque que causa dano e permite ao usuário trocar de Pokémon."),
+        ("TM95", "Snarl", "Dark", "Especial", "O usuário emite um som irritante que diminui o Ataque Especial do alvo."),
+        ("TM100", "Confide", "Normal", "Status", "O usuário sussurra palavras de incentivo, diminuindo o Ataque Especial do alvo."),
+    ]
+    # Obs: a lista completa de TM está no PDF (páginas 20–28). :contentReference[oaicite:16]{index=16}
+    # Aqui eu já deixei vários exemplos. Você pode ir adicionando o resto no mesmo formato.
+
+    # ==============================================================================
+    # Resolver TM -> Template (heurística baseada na descrição)
+    # ==============================================================================
+    def resolve_from_tm(move_name: str):
+        key = _norm(move_name)
+        for tm_code, m, t, cat, desc in TM_LIST:
+            if _norm(m) == key:
+                return {"tm": tm_code, "name": m, "type": t, "category": cat, "desc": desc}
+        return None
+
+    def build_from_entry(entry: dict):
+        name = entry["name"]
+        ptype = entry["type"]
+        category = entry["category"]
+        desc = entry["desc"].lower()
+
+        # inputs padrões (o jogador pode ajustar)
+        range_squares = 6
+        dmg_rank = 6
+        status_rank = 4
+        env_rank = 2
+
+        # Switch/Return
+        if "usuário é trocado" in desc or "permite ao usuário trocar" in desc:
+            return tpl_return_to_pokeball(name, ptype, category, range_squares)
+
+        # Force switch
+        if "alvo sair da batalha" in desc or "força o alvo a sair" in desc:
+            return tpl_force_switch(name, ptype, category, range_squares)
+
+        # Weather
+        if "chuva" in desc:
+            return tpl_weather(name, ptype, category, env_rank, range_squares, "Rain")
+        if "luz solar" in desc or "sol" in desc:
+            return tpl_weather(name, ptype, category, env_rank, range_squares, "Sun")
+        if "tempestade de areia" in desc:
+            return tpl_weather(name, ptype, category, env_rank, range_squares, "Sandstorm")
+        if "granizo" in desc or "neve" in desc:
+            return tpl_weather(name, ptype, category, env_rank, range_squares, "Hail/Snow")
+
+        # Light Screen (você vai digitar pelo nome na busca)
+        if _norm(name) in ["lightscreen", "reflect"]:
+            return tpl_light_screen(name, ptype, category, range_squares)
+
+        # Buff
+        if "aumenta" in desc and "usuário" in desc:
+            buffs = []
+            if "ataque especial" in desc: buffs.append(("Intellect", 2))
+            if "ataque" in desc and "ataque especial" not in desc: buffs.append(("Strength", 2))
+            if "defesa especial" in desc: buffs.append(("Will", 2))
+            if "defesa" in desc and "defesa especial" not in desc: buffs.append(("Toughness", 2))
+            if "velocidade" in desc: buffs.append(("Speed", 2))
+            if not buffs:
+                buffs = [("Trait", 1)]
+            return tpl_buff_stats(name, ptype, category, range_squares, buffs)
+
+        # Debuff
+        if "diminui" in desc:
+            debuffs = []
+            if "ataque especial" in desc: debuffs.append(("Intellect", 1))
+            if "defesa especial" in desc: debuffs.append(("Will", 1))
+            if "velocidade" in desc: debuffs.append(("Speed", 1))
+            if "precisão" in desc: debuffs.append(("Accuracy", 1))
+            if not debuffs:
+                debuffs = [("Trait", 1)]
+            return tpl_debuff_stats(name, ptype, category, range_squares, debuffs)
+
+        # Status chances (heurística simples)
+        if "paralis" in desc:
+            return tpl_damage_plus_paralyze(name, ptype, category, dmg_rank, status_rank, range_squares)
+        if "queim" in desc:
+            return tpl_damage_plus_burn(name, ptype, category, dmg_rank, status_rank, range_squares)
+        if "congel" in desc:
+            return tpl_damage_plus_freeze(name, ptype, category, dmg_rank, status_rank, range_squares)
+
+        # Default: dano simples
+        return tpl_damage(name, ptype, category, dmg_rank, range_squares)
+
+    # ==============================================================================
+    # UI — Busca por nome
+    # ==============================================================================
+    st.subheader("🔎 Buscar golpe (nome)")
+    jogador = st.text_input("Nome do golpe", placeholder="Ex: Thunder, Swords Dance, Volt Switch, Roar, Light Screen")
+
+    entry = resolve_from_tm(jogador) if jogador else None
+
+    # Também aceita “Light Screen” mesmo não estando na TM_LIST (é mecânica do PDF)
+    if jogador and _norm(jogador) in ["lightscreen", "reflect"]:
+        entry = {"tm": None, "name": "Light Screen", "type": "Psychic", "category": "Status", "desc": "Barrier"}
+
+    if entry:
+        st.success(f"Encontrado ✅ {('(' + entry['tm'] + ')' ) if entry.get('tm') else ''}")
+        out = build_from_entry(entry)
+        st.text_area("Golpe pronto (copiar e colar):", value=out, height=320)
+
+        if st.button("💾 Salvar em Minha Lista de Golpes"):
+            if "moves" not in user_data:
+                user_data["moves"] = []
+            user_data["moves"].append({"name": entry["name"], "text": out})
+            save_data_cloud(trainer_name, user_data)
+            st.success("Salvo!")
+
+    else:
+        st.warning("Não encontrado. Você precisa escolher um template para criar.")
+        st.markdown("---")
+
+        st.subheader("🛠️ Criar por template (obrigatório quando não existe)")
+        col1, col2 = st.columns(2)
+        with col1:
+            name = st.text_input("Nome do golpe (novo)", value=jogador or "")
+            ptype = st.text_input("Tipo (ex: Fire, Water, Normal)", value="Normal")
+            category = st.selectbox("Categoria", ["Físico", "Especial", "Status"], index=1)
+        with col2:
+            range_squares = st.number_input("Range (squares)", min_value=1, max_value=40, value=6, step=1)
+            use_area = st.checkbox("Tem área?", value=False)
+            area_txt = None
+            if use_area:
+                area_type = st.selectbox("Tipo de Área", ["Cloud", "Line"])
+                area_rank = st.selectbox("Rank da Área (1–3)", [1, 2, 3], index=0)
+                area_txt = _fmt_area(area_type, area_rank)
+
+        template = st.selectbox(
+            "Template",
+            [
+                "Dano simples",
+                "Dano + Poison",
+                "Dano + Burn",
+                "Dano + Paralyze",
+                "Dano + Freeze",
+                "Confusion (Affliction)",
+                "Sleep (Affliction)",
+                "Clima (Rain/Sun/Sandstorm/Hail)",
+                "Buff (Self)",
+                "Debuff (Target)",
+                "Voltar para Pokébola (Teleport Medium)",
+                "Forçar Troca (Roar/Dragon Tail)",
+                "Light Screen",
+            ]
+        )
+
+        # Campos por template
+        if template in ["Dano simples", "Dano + Poison", "Dano + Burn", "Dano + Paralyze", "Dano + Freeze"]:
+            dmg_rank = st.number_input("Rank do Damage", min_value=1, max_value=20, value=6, step=1)
+
+        if template == "Dano + Poison":
+            poison_rank = st.number_input("Rank do Poison", min_value=1, max_value=20, value=4, step=1)
+            poison_secondary = st.checkbox("Poison é efeito secundário? (Custom -1/r)", value=True)
+
+        if template == "Dano + Burn":
+            burn_rank = st.number_input("Rank do Burn", min_value=1, max_value=20, value=4, step=1)
+
+        if template == "Dano + Paralyze":
+            para_rank = st.number_input("Rank do Paralyze", min_value=1, max_value=20, value=4, step=1)
+
+        if template == "Dano + Freeze":
+            freeze_rank = st.number_input("Rank do Freeze", min_value=1, max_value=20, value=4, step=1)
+
+        if template == "Confusion (Affliction)":
+            conf_rank = st.number_input("Rank do Confusion", min_value=1, max_value=20, value=4, step=1)
+            is_physical = st.checkbox("Esse golpe é Físico?", value=False)
+
+        if template == "Sleep (Affliction)":
+            sleep_rank = st.number_input("Rank do Sleep", min_value=1, max_value=20, value=4, step=1)
+
+        if template == "Clima (Rain/Sun/Sandstorm/Hail)":
+            env_rank = st.selectbox("Rank do Environment (1–4)", [1, 2, 3, 4], index=1)
+            weather_kind = st.selectbox("Qual clima?", ["Rain", "Sun", "Sandstorm", "Hail/Snow"])
+
+        if template == "Buff (Self)":
+            st.caption("Regra: bônus conforme jogos, limitado a +5 por status.")
+            buffs = []
+            b1 = st.selectbox("Stat 1", ["Strength", "Intellect", "Toughness", "Will", "Speed"])
+            v1 = st.selectbox("Valor 1", [1, 2, 3, 4, 5], index=1)
+            buffs.append((b1, v1))
+            if st.checkbox("Adicionar Stat 2"):
+                b2 = st.selectbox("Stat 2", ["Strength", "Intellect", "Toughness", "Will", "Speed"], key="b2")
+                v2 = st.selectbox("Valor 2", [1, 2, 3, 4, 5], index=1, key="v2")
+                buffs.append((b2, v2))
+
+        if template == "Debuff (Target)":
+            debuffs = []
+            d1 = st.selectbox("Debuff 1", ["Strength", "Intellect", "Toughness", "Will", "Speed", "Accuracy"])
+            dv1 = st.selectbox("Rank 1", [1, 2, 3, 4, 5], index=0)
+            debuffs.append((d1, dv1))
+            if st.checkbox("Adicionar Debuff 2"):
+                d2 = st.selectbox("Debuff 2", ["Strength", "Intellect", "Toughness", "Will", "Speed", "Accuracy"], key="d2")
+                dv2 = st.selectbox("Rank 2", [1, 2, 3, 4, 5], index=0, key="dv2")
+                debuffs.append((d2, dv2))
+
+        if st.button("✨ Gerar golpe", type="primary"):
+            if not name:
+                st.error("Digite o nome do golpe.")
+            else:
+                if template == "Dano simples":
+                    out = tpl_damage(name, ptype, category, dmg_rank, range_squares, area_txt)
+                elif template == "Dano + Poison":
+                    out = tpl_damage_plus_poison(name, ptype, category, dmg_rank, poison_rank, range_squares, poison_secondary, area_txt)
+                elif template == "Dano + Burn":
+                    out = tpl_damage_plus_burn(name, ptype, category, dmg_rank, burn_rank, range_squares, area_txt)
+                elif template == "Dano + Paralyze":
+                    out = tpl_damage_plus_paralyze(name, ptype, category, dmg_rank, para_rank, range_squares, area_txt)
+                elif template == "Dano + Freeze":
+                    out = tpl_damage_plus_freeze(name, ptype, category, dmg_rank, freeze_rank, range_squares, area_txt)
+                elif template == "Confusion (Affliction)":
+                    out = tpl_confusion(name, ptype, category, conf_rank, range_squares, is_physical=is_physical, area_txt=area_txt)
+                elif template == "Sleep (Affliction)":
+                    out = tpl_sleep(name, ptype, category, sleep_rank, range_squares, area_txt=area_txt)
+                elif template == "Clima (Rain/Sun/Sandstorm/Hail)":
+                    out = tpl_weather(name, ptype, category, env_rank, range_squares, weather_kind)
+                elif template == "Buff (Self)":
+                    out = tpl_buff_stats(name, ptype, category, range_squares, buffs)
+                elif template == "Debuff (Target)":
+                    out = tpl_debuff_stats(name, ptype, category, range_squares, debuffs)
+                elif template == "Voltar para Pokébola (Teleport Medium)":
+                    out = tpl_return_to_pokeball(name, ptype, category, range_squares)
+                elif template == "Forçar Troca (Roar/Dragon Tail)":
+                    out = tpl_force_switch(name, ptype, category, range_squares)
+                elif template == "Light Screen":
+                    out = tpl_light_screen(name, ptype, category, range_squares)
+                else:
+                    out = "Template não implementado."
+
+                st.text_area("Golpe pronto (copiar e colar):", value=out, height=340)
+
+                if st.button("💾 Salvar esse golpe"):
+                    if "moves" not in user_data:
+                        user_data["moves"] = []
+                    user_data["moves"].append({"name": name, "text": out})
+                    save_data_cloud(trainer_name, user_data)
+                    st.success("Salvo!")
 
     
 
@@ -3257,6 +3704,7 @@ elif page == "Mochila":
     
     
     
+
 
 
 
