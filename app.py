@@ -3177,7 +3177,7 @@ elif page == "Mochila":
                 user_data["backpack"][k] = [i for i in user_data["backpack"][k] if i["name"] and i.get("qty", 0) > 0]
             save_data_cloud(trainer_name, user_data) 
             st.rerun()
-    =
+    
     with col_content:
             tabs = st.tabs(["💊 Med", "🔴 Pokéballs", "💿 TMs", "🔑 Chave"])
             cfg = [(tabs[0], "medicine", True), (tabs[1], "pokeballs", True), 
@@ -3217,6 +3217,7 @@ elif page == "Mochila":
     
     
     
+
 
 
 
