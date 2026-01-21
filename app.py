@@ -71,6 +71,14 @@ st.markdown("""
         font-size: 13px !important;
         line-height: 1.6;
     }
+    
+    /* 🆕 ADICIONE ESTE TRECHO AQUI PARA AS BORDAS FICAREM GROSSAS */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        border: 4px solid rgba(255, 255, 255, 0.4) !important;
+        border-radius: 12px !important;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 10px !important;
+    }
 
     /* 🛡️ 2. PROTEÇÃO TOTAL CONTRA O BUG 'keyboard_arrow_right' */
     /* Remove a fonte pixelada de qualquer elemento que contenha ícones do Material Design */
@@ -1703,6 +1711,10 @@ h1, h2, h3 {
 
 if page == "Pokédex (Busca)":
     dex_param = st.query_params.get("dex", None)
+    if dex_param:
+        st.session_state["pokedex_selected"] = str(dex_param)
+        st.query_params.clear() # Limpa a URL após capturar
+        st.rerun()
     st.sidebar.header("🔍 Filtros")
     search_query = st.sidebar.text_input("Buscar (Nome ou Nº)", "")
 
@@ -1821,10 +1833,7 @@ if page == "Pokédex (Busca)":
     # ==============================================================================
     if selected_id:
         
-        if dex_param:
-            st.session_state["pokedex_selected"] = str(dex_param)
-            st.query_params.clear()
-            st.rerun()
+
         selected_df = df[df["Nº"].astype(str) == str(selected_id)]
         if selected_df.empty:
             st.session_state["pokedex_selected"] = None
@@ -3272,6 +3281,7 @@ elif page == "Mochila":
                     save_data_cloud(trainer_name, user_data) 
                     st.success("Bolsa Atualizada!")
                     st.rerun()
+
 
 
 
