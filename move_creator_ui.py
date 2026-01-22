@@ -1,6 +1,7 @@
 # move_creator_ui.py
 import streamlit as st
 from move_db import MoveDB
+from move_interpreter import interpret_effects_to_build
 
 @st.cache_resource
 def load_move_db(excel_path: str) -> MoveDB:
@@ -20,7 +21,7 @@ def render_move_creator(excel_path: str, state_key_prefix: str = "mc"):
         st.session_state["cg_moves"] = []
 
     st.subheader("⚔️ Criação de Golpes (M&M)")
-    tab1, tab2 = st.tabs(["🔎 Buscar por nome", "🧩 Criar por descrição"])
+    tab1, tab2 = st.tabs(["🔎 Buscar por nome", "🧩 Criar por descrição", "🛠️ Criar do zero"])
 
     def _render_move_card(mv, rank: int):
         st.markdown(f"### 🌀 {mv.name}  ({mv.tipo} / {mv.categoria})")
@@ -102,3 +103,53 @@ def render_move_creator(excel_path: str, state_key_prefix: str = "mc"):
                 if st.button("❌ Remover", key=f"{state_key_prefix}_remove_{i}"):
                     st.session_state["cg_moves"].pop(i)
                     st.rerun()
+                    
+        with tab3:
+            st.subheader("🛠️ Criar Golpe do Zero")
+        
+            rank = st.slider("Rank do golpe", 1, 20, 10)
+            is_special = st.checkbox("Golpe Especial (Intelect Based)", value=True)
+        
+            st.markdown("### Efeitos")
+            effects = {
+                "damage": st.checkbox("Causar Dano"),
+                "affliction": st.checkbox("Causar Affliction"),
+                "weaken": st.checkbox("Causar Weaken"),
+                "healing": st.checkbox("Cura"),
+                "create": st.checkbox("Create"),
+                "environment": st.checkbox("Environment"),
+            }
+        
+            st.markdown("### Detalhes do Weaken")
+            effects["weaken_stgr"] = st.checkbox("Weaken Strength")
+            effects["weaken_int"] = st.checkbox("Weaken Intellect")
+            effects["weaken_dodge"] = st.checkbox("Weaken Dodge")
+            effects["weaken_will"] = st.checkbox("Weaken Will")
+        
+            st.markdown("### Modificadores")
+            area = st.selectbox("Área", ["Nenhuma", "Burst", "Cone", "Line"])
+            perception = st.checkbox("Perception Area")
+            ranged = st.checkbox("Ranged")
+        
+            build = interpret_effects_to_build(
+                rank=rank,
+                is_special=is_special,
+                effects=effects,
+                area=None if area == "Nenhuma" else area,
+                perception=perception,
+                ranged=ranged,
+            )
+        
+            st.markdown("### Build Gerada")
+            st.code(build, language="text")
+        
+            if st.button("✅ Confirmar golpe criado do zero"):
+                st.session_state["cg_moves"].append({
+                    "name": "Golpe Customizado",
+                    "rank": rank,
+                    "build": build,
+                    "pp_cost": None,
+                    "meta": {"custom": True}
+                })
+                st.success("Golpe customizado adicionado à ficha.")
+
