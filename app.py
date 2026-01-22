@@ -369,8 +369,8 @@ def render_move_creator(
     st.session_state.setdefault(last_name_key, None)
     st.session_state.setdefault(last_desc_key, [])
 
-    st.subheader("⚔️ Criação de Golpes (M&M)")
-    tab1, tab2, tab3 = st.tabs(["🔎 Buscar por nome", "🧩 Criar por descrição", "🛠️ Criar do zero"])
+    st.subheader("⚔️ Criação de Golpes (M&M 3e)")
+    tab1, tab2, tab3 = st.tabs(["🔎 Buscar por nome", "🧩 Gerar por descrição", "🛠️ Criar manualmente"])
 
     def _confirm_move(mv, rank: int, build: str, pp):
         st.session_state["cg_moves"].append({
@@ -1353,24 +1353,24 @@ def save_data_cloud(trainer_name, data):
 
 # --- TELA DE LOGIN ---
 if 'trainer_name' not in st.session_state:
-    st.title("Bem Vindo(a) à Ga'Al")
+    st.title("Bem-vindo(a) ao Ga'Al")
     
-    tab_login, tab_register = st.tabs(["🔑 Entrar", "📝 Criar Conta"])
+    tab_login, tab_register = st.tabs(["🔑 Acessar", "📝 Cadastrar"])
     
     # ABA DE LOGIN
     with tab_login:
-        l_user = st.text_input("Nome do Treinador", key="l_user")
+        l_user = st.text_input("Nome do treinador", key="l_user")
         l_pass = st.text_input("Senha", type="password", key="l_pass")
         
-        if st.button("Entrar", type="primary"):
+        if st.button("Acessar", type="primary"):
             if l_user and l_pass:
                 with st.spinner("Verificando credenciais..."):
                     result = authenticate_user(l_user, l_pass)
                     
                     if result == "WRONG_PASS":
-                        st.error("🚫 Senha incorreta!")
+                        st.error("🚫 Senha incorreta. Verifique e tente novamente.")
                     elif result == "NOT_FOUND":
-                        st.warning("Usuário não encontrado. Crie uma conta na aba ao lado.")
+                        st.warning("Treinador não encontrado. Cadastre-se na aba ao lado.")
                     elif isinstance(result, dict):
                         st.session_state['trainer_name'] = l_user
                         st.session_state['user_data'] = result
@@ -1378,9 +1378,9 @@ if 'trainer_name' not in st.session_state:
     
     # ABA DE REGISTRO
     with tab_register:
-        st.info("Crie um novo usuário. Se apagou o antigo no Excel, pode recriar aqui.")
-        r_user = st.text_input("Escolha seu Nome", key="r_user")
-        r_pass = st.text_input("Escolha sua Senha", type="password", key="r_pass")
+        st.info("Crie sua conta para salvar seu progresso e sincronizar seus dados.")
+        r_user = st.text_input("Nome do treinador", key="r_user")
+        r_pass = st.text_input("Senha", type="password", key="r_pass")
         
         if st.button("Criar Conta"):
             if r_user and r_pass:
@@ -1389,12 +1389,12 @@ if 'trainer_name' not in st.session_state:
                     if res == "SUCCESS":
                         st.success("Conta criada! Vá na aba 'Entrar' para fazer login.")
                     elif res == "EXISTS":
-                        st.error("Esse nome de treinador já existe na Coluna A da planilha.")
+                        st.error("Esse nome de treinador já está em uso.")
                     else:
-                        st.error("Erro ao criar conta.")
+                        st.error("Não foi possível criar a conta. Tente novamente.")
             else:
-                st.warning("Preencha nome e senha.")
-
+                st.warning("Preencha nome e senha para continuar.")
+                
     st.stop() 
 
 # --- APP PRINCIPAL ---
@@ -2536,18 +2536,98 @@ page = st.sidebar.radio(
     ],
 )
 
+def apply_non_pokedex_theme() -> None:
+    st.markdown(
+        """
+        <style>
+        [data-testid="stAppViewContainer"] {
+            background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 45%, #e2e8f0 100%);
+            color: #0f172a;
+            animation: pageFade 0.35s ease-in;
+        }
+        [data-testid="stMainBlockContainer"] {
+            animation: contentSlide 0.35s ease-in;
+        }
+        h1, h2, h3 {
+            color: #0f172a;
+            letter-spacing: -0.02em;
+        }
+        [data-testid="stHeader"] {
+            background: rgba(248, 250, 252, 0.8);
+            backdrop-filter: blur(6px);
+        }
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 0.35rem;
+            background: #e2e8f0;
+            padding: 0.35rem;
+            border-radius: 999px;
+            box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.5);
+        }
+        .stTabs [data-baseweb="tab"] {
+            border-radius: 999px;
+            padding: 0.35rem 0.9rem;
+            font-weight: 600;
+            color: #475569;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .stTabs [data-baseweb="tab"]:hover {
+            color: #0f172a;
+            background: rgba(15, 23, 42, 0.08);
+        }
+        .stTabs [aria-selected="true"] {
+            background: #0f172a;
+            color: #f8fafc;
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.15);
+        }
+        [data-testid="stTabs"] [role="tabpanel"] {
+            animation: tabFade 0.3s ease-in;
+        }
+        div[data-testid="stMetric"] {
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 0.85rem;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+        }
+        [data-testid="stContainer"] > div {
+            border-radius: 16px;
+        }
+        @keyframes pageFade {
+            from { opacity: 0.92; }
+            to { opacity: 1; }
+        }
+        @keyframes contentSlide {
+            from { transform: translateY(8px); opacity: 0.92; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes tabFade {
+            from { opacity: 0.9; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 # ==============================================================================
 # PÁGINA 1: POKEDEX (VISÃO DE FOCO + CARROSSEL INFERIOR)
 # ==============================================================================
-st.markdown("""
-<style>
-[data-testid="stAppViewContainer"] {
-    background: linear-gradient(180deg, #1f4e79 0%, #3b7ca6 45%, #5fb2cf 100%);
-}
-h1, h2, h3 {
-    color: #0b1f2a;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
-}
+if page == "Pokédex (Busca)":
+    st.markdown("""
+    <style>
+    [data-testid="stAppViewContainer"] {
+        background: linear-gradient(180deg, #1f4e79 0%, #3b7ca6 45%, #5fb2cf 100%);
+        animation: pageFade 0.35s ease-in;
+    }
+    [data-testid="stMainBlockContainer"] {
+        animation: contentSlide 0.35s ease-in;
+    }
+    h1, h2, h3 {
+        color: #0b1f2a;
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+    }
 .pokedex-shell {
     border-radius: 18px;
     padding: 18px 18px 8px 18px;
@@ -2733,10 +2813,19 @@ h1, h2, h3 {
   font-weight: 900;
   text-align: center;
 }
+@keyframes pageFade {
+    from { opacity: 0.92; }
+    to { opacity: 1; }
+}
+@keyframes contentSlide {
+    from { transform: translateY(8px); opacity: 0.92; }
+    to { transform: translateY(0); opacity: 1; }
+}
 
-</style>
-""", unsafe_allow_html=True)
-
+    </style>
+    """, unsafe_allow_html=True)
+else:
+    apply_non_pokedex_theme()
 
 
 
@@ -3175,24 +3264,23 @@ if page == "Pokédex (Busca)":
 # PÁGINA 2: TRAINER HUB
 # ==============================================================================
 if page == "Trainer Hub (Meus Pokémons)":
-    st.title("🏕️ Trainer Hub")
+    st.title("🏕️ Central do Treinador")
     # --- INICIALIZAÇÃO DE DADOS NOVOS ---
     if "stats" not in user_data: user_data["stats"] = {}
     if "wishlist" not in user_data: user_data["wishlist"] = [] # Nova Lista de Desejo
     if "shinies" not in user_data: user_data["shinies"] = []   # Nova Lista de Shinies
     
     # Adicionei a nova aba "Lista de Desejo" aqui
-    tab1, tab2, tab3, tab4 = st.tabs(["🎒 Minha Party", "🔴 Capturados", "🌟 Lista de Desejo", "👁️ Pokedex (Vistos)"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🎒 Equipe Ativa", "🔴 Pokémon Capturados", "🌟 Lista de Interesses", "👁️ Pokedex (Vistos)"])
     # Garante que existe o dicionário de stats no save
     if "stats" not in user_data:
         user_data["stats"] = {}
         
     with tab1:
-        with st.expander("➕ Adicionar Pokémon à Equipe", expanded=False):
+        with st.expander("➕ Adicionar Pokémon à equipe ativa", expanded=False):
             col_add1, col_add2 = st.columns(2)
             with col_add1:
-                st.subheader("Da Dex (Apenas Capturados)")
-                
+                st.subheader("Da Pokédex (apenas capturados)")                
                 # --- NOVO FILTRO: APENAS CAPTURADOS ---
                 # Filtra o dataframe para pegar apenas IDs que estão em user_data['caught']
                 caught_ids = [str(c) for c in user_data['caught'] if not str(c).startswith("EXT:")]
@@ -3209,8 +3297,7 @@ if page == "Trainer Hub (Meus Pokémons)":
                         res = df[df['Nº'].astype(str) == str(pid)]['Nome'].values
                         if len(res) > 0: default_names.append(f"#{pid} - {res[0]}")
                 
-                selected_names = st.multiselect("Selecione para Equipe", options=options_all, default=default_names)
-                
+                selected_names = st.multiselect("Selecione para a equipe", options=options_all, default=default_names)                
                 # ... (Lógica de salvar mantém igual, pode manter o resto do bloco if set(full_new_party)...)
                 new_pc_ids = [n.split(" - ")[0].replace("#", "") for n in selected_names]
                 full_new_party = new_pc_ids + current_ext_in_party
@@ -3224,8 +3311,8 @@ if page == "Trainer Hub (Meus Pokémons)":
             # ... (Código da col_add2 mantém igual) ...
             with col_add2:
                 st.subheader("Visitante")
-                external_name = st.text_input("Nome (ex: Sawsbuck)")
-                if st.button("Adicionar"):
+                external_name = st.text_input("Nome do visitante (ex: Sawsbuck)")
+                if st.button("Adicionar visitante"):
                     if external_name:
                         ext_id = f"EXT:{external_name}"
                         user_data['party'].append(ext_id)
@@ -3307,10 +3394,10 @@ if page == "Trainer Hub (Meus Pokémons)":
 
     
         else: 
-            st.info("Sua equipe está vazia.")
+            st.info("Sua equipe ainda está vazia.")
     with tab2:
-        st.markdown(f"### Total Capturados: {len(user_data['caught'])}")
-        if not user_data['caught']: st.info("Sua caixa está vazia.")
+        st.markdown(f"### Total de capturados: {len(user_data['caught'])}")
+        if not user_data['caught']: st.info("Sua caixa está vazia no momento.")
         else:
             for p_id in user_data['caught']:
                 is_in_party = p_id in user_data['party']
@@ -3320,7 +3407,7 @@ if page == "Trainer Hub (Meus Pokémons)":
                     icon = "🌐"
                     with st.expander(f"{icon} {p_name} ({status_text})"):
                             st.image(get_image_from_name(p_name, api_name_map), width=100)
-                            st.write("**Origem:** Visitante de fora de Ga'al.")
+                            st.write("**Origem:** visitante externo a Ga'al.")
                 else:
                     p_search = df[df['Nº'] == p_id]
                     if p_search.empty: continue
@@ -3332,7 +3419,7 @@ if page == "Trainer Hub (Meus Pokémons)":
                         with c1: st.image(get_image_from_name(p_row['Nome'], api_name_map), width=100)
                         with c2:
                             st.write(f"**Status:** {status_text}")
-                            st.write(f"**Estratégia:** {p_row['Viabilidade'][:150]}...")
+                            st.write(f"**Estratégia sugerida:** {p_row['Viabilidade'][:150]}...")
                             nk = f"pc_note_{p_id}"
                             curr = user_data["notes"].get(p_id, "")
                             note = st.text_area("Notas", value=curr, key=nk)
@@ -3341,7 +3428,7 @@ if page == "Trainer Hub (Meus Pokémons)":
                                 save_data_cloud(trainer_name, user_data)
 
     with tab3:
-        st.header("🌟 Lista de Desejo")
+        st.header("🌟 Lista de Interesses")
         wishlist = user_data.get("wishlist", [])
         if not wishlist:
             st.info("Sua lista de desejos está vazia. Marque pokémons na aba Pokédex.")
@@ -3529,11 +3616,11 @@ elif page == "Criação Guiada de Fichas":
 
         tabs = st.tabs(
             [
-                "1️⃣ Básico",
-                "2️⃣ Abilities & Defesas",
-                "3️⃣ Skills & Advantages",
+                "1️⃣ Visão Geral",
+                "2️⃣ Abilities e Defesas",
+                "3️⃣ Skills e Advantages",
                 "4️⃣ Golpes",
-                "5️⃣ Revisão & Exportação",
+                "5️⃣ Revisão e Exportação",
             ]
         )
         pp_abilities = 0
@@ -4846,24 +4933,24 @@ elif page == "Mochila":
     with col_bag:
         # Tenta carregar a imagem local; se não existir, usa o link reserva
         try:
-            st.image("mochila.png", width=150, caption="MINHA BOLSA")
+            st.image("mochila.png", width=150, caption="MINHA MOCHILA")
         except:
             st.image("https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/main-stats/adventure-guide.png", width=150)
         
         # Ajuste de Saldo
-        new_money = st.number_input("Editar Saldo", value=int(user_data["backpack"]["money"]), step=100)
+        new_money = st.number_input("Ajustar saldo", value=int(user_data["backpack"]["money"]), step=100)
         if new_money != user_data["backpack"]["money"]:
             user_data["backpack"]["money"] = new_money
             save_data_cloud(trainer_name, user_data) 
         
-        if st.button("🧹 Limpar Vazios"):
+        if st.button("🧹 Limpar itens vazios"):
             for k in ["medicine", "pokeballs", "tms", "key_items"]:
                 user_data["backpack"][k] = [i for i in user_data["backpack"][k] if i["name"] and i.get("qty", 0) > 0]
             save_data_cloud(trainer_name, user_data) 
             st.rerun()
     
     with col_content:
-            tabs = st.tabs(["💊 Med", "🔴 Pokéballs", "💿 TMs", "🔑 Chave"])
+            tabs = st.tabs(["💊 Medicamentos", "🔴 Poké Bolas", "💿 TMs", "🔑 Itens-chave"])
             cfg = [(tabs[0], "medicine", True), (tabs[1], "pokeballs", True), 
                    (tabs[2], "tms", True), (tabs[3], "key_items", False)]
     
@@ -4893,8 +4980,7 @@ elif page == "Mochila":
                     if st.button(f"💾 Confirmar {key.title()}", key=f"sv_{key}"):
                         user_data["backpack"][key] = updated_items
                         save_data_cloud(trainer_name, user_data)
-                        st.success("Bolsa Sincronizada!")
-    
+                        st.success("Mochila sincronizada com sucesso.")    
     
     
     
