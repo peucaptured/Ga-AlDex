@@ -2246,91 +2246,7 @@ if page == "Pokédex (Busca)":
         final_carousel_html = html_template.replace("REPLACE_ME", all_items_string)
         components.html(final_carousel_html, height=120)
                 
-                # 3. Bloco HTML Principal
-                # Unimos os itens antes para não poluir a f-string principal
-                all_items_joined = "".join(items_html)
-                
-                html_content = f"""
-                <style>
-                    .dex-carousel {{
-                        display: flex;
-                        gap: 12px;
-                        overflow-x: auto;
-                        padding: 12px;
-                        background: rgba(0,0,0,0.30);
-                        border-radius: 15px;
-                        border: 1px solid rgba(255,255,255,0.18);
-                        scroll-behavior: smooth;
-                    }}
-                    .dex-carousel::-webkit-scrollbar {{ height: 8px; }}
-                    .dex-carousel::-webkit-scrollbar-thumb {{ background: #FFCC00; border-radius: 10px; }}
-                
-                    .item {{
-                        flex: 0 0 auto;
-                        width: 70px;
-                        height: 70px;
-                        border-radius: 12px;
-                        display: grid;
-                        place-items: center;
-                        cursor: pointer;
-                        background: rgba(255,255,255,0.08);
-                        border: 1px solid rgba(255,255,255,0.18);
-                        padding: 0;
-                        appearance: none;
-                        box-shadow: none;
-                        transition: transform .12s;
-                    }}
-                    .item:hover {{ transform: scale(1.12); }}
-                    .item.active {{
-                        border: 2px solid #FFCC00;
-                        background: rgba(255, 204, 0, 0.10);
-                    }}
-                    .item img {{
-                        width: 54px;
-                        height: 54px;
-                        image-rendering: pixelated;
-                    }}
-                </style>
-                
-                <div id="dex-carousel" class="dex-carousel">
-                    {all_items_joined}
-                </div>
-        
-                <script>
-                    const carousel = document.getElementById("dex-carousel");
-                    const scrollMultiplier = 2.5;
-                    if (carousel) {{
-                        carousel.addEventListener("wheel", (evt) => {{
-                            evt.preventDefault();
-                            carousel.scrollLeft += evt.deltaY * scrollMultiplier;
-                        }}, {{ passive: false }});
-                    }}
-        
-                    function selectDex(pid) {{
-                        // window.parent é necessário para Streamlit Components
-                        const url = new URL(window.parent.location.href);
-                        url.searchParams.set("dex", pid);
-                        window.parent.location.assign(url.toString());
-                    }}
-        
-                    if (carousel) {{
-                        carousel.querySelectorAll(".item").forEach((item) => {{
-                            item.addEventListener("click", () => {{
-                                const pid = item.getAttribute("data-pid");
-                                if (pid) {{
-                                    selectDex(pid);
-                                }}
-                            }});
-                        }});
-                    }}
-                </script>
-                """
-                
-                # 4. Renderização final
-                final_html = html_template.replace("REPLACE_ITEMS", all_items_joined)
-        components.html(final_html, height=120)
-
-
+               
         
 
     # ==============================================================================
@@ -3711,6 +3627,7 @@ elif page == "Mochila":
     
     
     
+
 
 
 
