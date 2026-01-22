@@ -50,38 +50,73 @@ def render_move_creator(
         st.write(mv.descricao or "—")
 
         st.write("**Build M&M (rank escolhido):**")
-        build = mv.render_build(rank)
+
+        custom_sub = st.checkbox(
+            "Quero escolher rank por sub-efeito (Damage/Affliction/Weaken etc.)",
+            key=f"{state_key_prefix}_customsub_{mv.name}_{rank}"
+        )
+
+        sub_ranks = None
+        manual_pp = None
+
+        if custom_sub:
+            st.caption("Defina o rank de cada sub-efeito. Se deixar 0, ele não entra / não altera.")
+            cA, cB, cC = st.columns(3)
+
+            with cA:
+                r_damage = st.number_input("Rank Damage", min_value=0, max_value=30, value=int(rank),
+                                           key=f"{state_key_prefix}_r_damage_{mv.name}_{rank}")
+                r_aff = st.number_input("Rank Affliction", min_value=0, max_value=30, value=int(rank),
+                                        key=f"{state_key_prefix}_r_aff_{mv.name}_{rank}")
+
+            with cB:
+                r_weaken = st.number_input("Rank Weaken", min_value=0, max_value=30, value=int(rank),
+                                           key=f"{state_key_prefix}_r_weaken_{mv.name}_{rank}")
+                r_heal = st.number_input("Rank Healing", min_value=0, max_value=30, value=0,
+                                         key=f"{state_key_prefix}_r_heal_{mv.name}_{rank}")
+
+            with cC:
+                r_create = st.number_input("Rank Create", min_value=0, max_value=30, value=0,
+                                           key=f"{state_key_prefix}_r_create_{mv.name}_{rank}")
+                r_env = st.number_input("Rank Environment", min_value=0, max_value=30, value=0,
+                                        key=f"{state_key_prefix}_r_env_{mv.name}_{rank}")
+
+            sub_ranks = {
+                "damage": int(r_damage),
+                "affliction": int(r_aff),
+                "weaken": int(r_weaken),
+                "healing": int(r_heal),
+                "create": int(r_create),
+                "environment": int(r_env),
+            }
+
+            manual_pp = st.number_input(
+                "PP total do golpe (obrigatório quando você customiza ranks)",
+                min_value=0,
+                value=0,
+                step=1,
+                key=f"{state_key_prefix}_manualpp_{mv.name}_{rank}"
+            )
+
+        # ✅ build: normal ou customizado
+        if sub_ranks:
+            build = mv.render_build(rank, sub_ranks=sub_ranks)
+        else:
+            build = mv.render_build(rank)
+
         st.code(build, language="text")
 
-        pp, why = mv.pp_cost(rank)
+        # ✅ PP: se customizou, usa o manual; se não, calcula pelo Excel (PP por Rank × rank)
+        if sub_ranks:
+            pp = int(manual_pp or 0)
+            why = "PP informado manualmente (porque você escolheu ranks por sub-efeito)."
+        else:
+            pp, why = mv.pp_cost(rank)
+
         if pp is not None:
-            st.info(f"PP (estimado ou do Excel): **{pp}** — {why}")
+            st.info(f"PP: **{pp}** — {why}")
         else:
             st.warning(f"PP: não definido — {why}")
-
-        if mv.how_it_works:
-            st.write("**Como funciona:**")
-            st.write(mv.how_it_works)
-
-        # ✅ confirmar golpe
-        col_confirm, col_add = st.columns(2)
-        with col_confirm:
-            if st.button(
-                f"✅ Confirmar {mv.name}",
-                key=f"{state_key_prefix}_confirm_{mv.name}_{rank}",
-            ):
-                _confirm_move(mv, rank, build, pp)
-                st.success(f"Adicionado: {mv.name} (Rank {rank})")
-        if return_to_view:
-            with col_add:
-                if st.button(
-                    "➕ Adicionar golpe à ficha",
-                    key=f"{state_key_prefix}_add_to_sheet_{mv.name}_{rank}",
-                ):
-                    _confirm_move(mv, rank, build, pp)
-                    st.success(f"Adicionado: {mv.name} (Rank {rank})")
-                    st.session_state["cg_view"] = return_to_view
-                    st.rerun()
 
     with tab1:
         name = st.text_input("Nome do golpe", key=f"{state_key_prefix}_name")
