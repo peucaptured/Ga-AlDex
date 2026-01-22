@@ -1254,108 +1254,116 @@ st.set_page_config(
 # 🎨 ESTILO VISUAL GLOBAL (POKÉMON RETRÔ)
 # ==========================================
 st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-    /* ===============================
-    CORREÇÃO DEFINITIVA DO FUNDO BRANCO
-    =============================== */
-    
-    /* Fundo raiz */
-    .stApp {
-        background-color: #0b1220;
-        color: #e2e8f0;
-    }
-    
-    /* Container principal do conteúdo */
-    .block-container {
-        background-color: #0b1220;
-    }
-    
-    /* Área central que envolve tabs, colunas e cards */
-    section.main {
-        background-color: #0b1220;
-    }
-    
-    /* Evita vazamento branco interno */
-    section.main > div {
-        background-color: #0F1E2E
-    }
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-    
-    /* ===============================
-       FUNDO GLOBAL DO APP
-       =============================== */
-    .stApp {
-        background-color: #0b1220;
-    }
-    
-    /* Área principal (evita vazamento branco atrás das abas) */
-    section.main > div {
-        background-color: #0F1E2E;
-    }
+/* =========================================================
+   0) TEMA ESCURO GLOBAL (remove fundo branco e mantém legível)
+   ========================================================= */
+.stApp{
+  background: #0b1220 !important;
+  color: #e2e8f0 !important;
+}
+[data-testid="stAppViewContainer"] > .main{
+  background: transparent !important;
+}
 
-    /* 1. Aplica a fonte retrô apenas a textos de conteúdo */
-    .stApp, .stMarkdown p, .stButton button, .stTab p, h1, h2, h3, .stWidget label, .stTextInput input,
-    .pokedex-info-title, .pokedex-info-value, .section-title, .power-badge, .pokedex-info-card {
-        font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
-        font-size: 15px !important;
-        line-height: 1.7;
-        color: #e2e8f0;
-    }
+/* container principal (evita “painel branco” em páginas específicas) */
+.block-container{
+  background: rgba(15, 30, 46, 0.92) !important;   /* #0F1E2E */
+  padding: 2.5rem 2.5rem 3rem;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  border: 1px solid rgba(148,163,184,0.25);
+}
 
-    h1, h2, h3, .section-title {
-        font-family: 'Press Start 2P', cursive !important;
-        color: #f8fafc;
-        letter-spacing: 0.01em;
-    }
-    
-    /* 🆕 ADICIONE ESTE TRECHO AQUI PARA AS BORDAS FICAREM GROSSAS */
-    div[data-testid="stVerticalBlockBorderWrapper"] {
-        border: 2px solid rgba(148, 163, 184, 0.35) !important;
-        border-radius: 14px !important;
-        background: rgba(15, 23, 42, 0.5);
-        padding: 12px !important;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
-    }
+/* =========================================================
+   1) FONTE RETRÔ (apenas textos de conteúdo)
+   ========================================================= */
+.stApp, .stMarkdown p, .stButton button, .stTab p, h1, h2, h3, .stWidget label, .stTextInput input,
+.pokedex-info-title, .pokedex-info-value, .section-title, .power-badge, .pokedex-info-card {
+  font-family: 'Press Start 2P', cursive !important;
+  font-size: 13px !important;
+  line-height: 1.6;
+}
 
-    /* 🛡️ 2. PROTEÇÃO TOTAL CONTRA O BUG 'keyboard_arrow_right' */
-    /* Remove a fonte pixelada de qualquer elemento que contenha ícones do Material Design */
-    [data-testid="stExpander"] summary, 
-    [data-testid="stExpander"] svg,
-    [data-testid="stHeader"] svg,
-    .stSelectbox svg,
-    .stMultiSelect svg,
-    div[data-baseweb="icon"],
-    span[class*="icon"],
-    i[class*="icon"] {
-        font-family: sans-serif !important;
-    }
+/* =========================================================
+   2) CONTRASTE DE FONTES (pra não ficar apagado)
+   ========================================================= */
+.stMarkdown, .stMarkdown p, label, .stCaption,
+[data-testid="stExpander"] summary, 
+[data-testid="stExpander"] div,
+[data-testid="stExpander"] p{
+  color: #e2e8f0 !important;
+}
 
-    /* Esconde especificamente o texto que vaza dos ícones */
-    .st-emotion-cache-1vt4yqh, .st-emotion-cache-p5msec {
-        font-family: sans-serif !important;
-        color: transparent !important; /* Torna o texto invisível se ele vazar */
-    }
+/* texto secundário */
+small, .stMarkdown small{
+  color: #cbd5e1 !important;
+}
 
-    /* 🏟️ 3. Estilo do Título da Arena */
-    .arena-header {
-        display: flex; 
-        align-items: center; 
-        gap: 15px; 
-        margin-bottom: 25px;
-        font-family: 'Press Start 2P', cursive;
-    }
-    .arena-title { font-size: 20px; color: #f8fafc; }
-    .arena-id { 
-        font-size: 28px; 
-        color: #FFCC00; 
-        background: #1E1E1E; 
-        padding: 8px 15px; 
-        border: 2px solid #FFCC00;
-        border-radius: 5px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+/* =========================================================
+   3) INPUTS / CAMPOS (texto claro + fundo escuro)
+   ========================================================= */
+.stTextInput input, .stNumberInput input, textarea{
+  color: #e2e8f0 !important;
+  background: rgba(2,6,23,0.35) !important;
+  border: 1px solid rgba(148,163,184,0.35) !important;
+}
+
+/* =========================================================
+   4) BORDAS GROSSAS (seu trecho)
+   ========================================================= */
+div[data-testid="stVerticalBlockBorderWrapper"]{
+  border: 4px solid rgba(255, 255, 255, 0.4) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  padding: 10px !important;
+}
+
+/* =========================================================
+   5) PROTEÇÃO TOTAL CONTRA BUG 'keyboard_arrow_right' (seu trecho)
+   ========================================================= */
+[data-testid="stExpander"] summary, 
+[data-testid="stExpander"] svg,
+[data-testid="stHeader"] svg,
+.stSelectbox svg,
+.stMultiSelect svg,
+div[data-baseweb="icon"],
+span[class*="icon"],
+i[class*="icon"]{
+  font-family: sans-serif !important;
+}
+
+/* Esconde texto que vaza dos ícones (classes podem mudar com updates do Streamlit) */
+.st-emotion-cache-1vt4yqh, .st-emotion-cache-p5msec{
+  font-family: sans-serif !important;
+  color: transparent !important;
+}
+
+/* =========================================================
+   6) ESTILO DO TÍTULO DA ARENA (seu trecho)
+   ========================================================= */
+.arena-header{
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 25px;
+  font-family: 'Press Start 2P', cursive !important;
+}
+.arena-title{ font-size: 20px; color: #ffffff !important; }
+.arena-id{
+  font-size: 28px;
+  color: #FFCC00 !important;
+  background: #1E1E1E;
+  padding: 8px 15px;
+  border: 2px solid #FFCC00;
+  border-radius: 5px;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 
 
 # --- CONEXÃO COM GOOGLE SHEETS ---
@@ -4324,48 +4332,7 @@ elif page == "Criação Guiada de Fichas":
     if st.session_state["cg_view"] == "guided":
         st.subheader("🧬 Criação Guiada")
 
-        st.markdown(
-            """
-            <style>
-            .stApp {
-                background: #f1f5f9;
-                color: #0f172a;
-            }
-            [data-testid="stAppViewContainer"] > .main {
-                background: transparent;
-            }
-            .block-container {
-                background: #ffffff;
-                padding: 2.5rem 2.5rem 3rem;
-                border-radius: 20px;
-                box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
-            }
-            .cg-card {
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: 16px;
-                padding: 1.25rem;
-                margin-bottom: 1rem;
-                box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
-            }
-            .cg-title {
-                font-size: 1.1rem;
-                font-weight: 700;
-                margin-bottom: 0.6rem;
-            }
-            .cg-pill {
-                display: inline-block;
-                padding: 0.2rem 0.7rem;
-                border-radius: 999px;
-                background: #e0f2fe;
-                color: #0f172a;
-                font-size: 0.75rem;
-                margin-right: 0.35rem;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
+       
 
         # garante lista de golpes confirmados
         if "cg_moves" not in st.session_state:
