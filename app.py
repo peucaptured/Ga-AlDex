@@ -1698,8 +1698,17 @@ if st.sidebar.button("🔄 Recarregar Excel"):
     st.rerun()
 
 st.sidebar.markdown("---")
-page = st.sidebar.radio("Ir para:", ["Pokédex (Busca)", "Trainer Hub (Meus Pokémons)", "Criação Guiada de Fichas", "PvP – Arena Tática", "Mochila"])
-
+page = st.sidebar.radio(
+    "Ir para:",
+    [
+        "Pokédex (Busca)",
+        "Trainer Hub (Meus Pokémons)",
+        "Criação Guiada de Fichas",
+        "Minhas Fichas",
+        "PvP – Arena Tática",
+        "Mochila",
+    ],
+)
 
 # ==============================================================================
 # PÁGINA 1: POKEDEX (VISÃO DE FOCO + CARROSSEL INFERIOR)
@@ -2560,7 +2569,7 @@ elif page == "Criação Guiada de Fichas":
     # menu interno
     if st.session_state["cg_view"] == "menu":
         choice = st.radio(
-            "Escolha o que você quer fazer:",
+            "Escolha o que você quer fazer ao abrir a criação de ficha:",
             ["Criação Guiada", "Criação de Golpes"],
             horizontal=True
         )
@@ -2578,11 +2587,14 @@ elif page == "Criação Guiada de Fichas":
         st.subheader("⚔️ Criação de Golpes")
 
         # ✅ CHAMA O COMPONENTE QUE VOCÊ JÁ CRIOU (move_creator_ui.py)
+        return_to_view = st.session_state.get("cg_return_to")
+        if return_to_view != "guided":
+            return_to_view = None
         render_move_creator(
             excel_path="golpes_pokemon_MM_reescritos.xlsx",
-            state_key_prefix="cg_moves_ui"
+            state_key_prefix="cg_moves_ui",
+            return_to_view=return_to_view,
         )
-
         # botão voltar
         if st.button("⬅️ Voltar para a ficha", key="btn_back_to_sheet"):
             st.session_state["cg_view"] = st.session_state.get("cg_return_to", "menu")
@@ -2984,7 +2996,53 @@ elif page == "Criação Guiada de Fichas":
 
 
 
+# =================
+# MINHAS FICHAS
+# =================
+elif page == "Minhas Fichas":
+    st.title("📚 Minhas Fichas")
+    st.caption("Veja e gerencie as fichas salvas na nuvem.")
 
+    db, bucket = init_firebase()
+    sheets = list_sheets(db, trainer_name)
+
+    if not sheets:
+        st.info("Você ainda não tem fichas salvas.")
+    else:
+        for sheet in sheets:
+            pokemon = sheet.get("pokemon", {})
+            pname = pokemon.get("name", "Pokémon")
+            pid = pokemon.get("id", "—")
+            np_ = sheet.get("np", "—")
+            updated_at = sheet.get("updated_at", "—")
+            created_at = sheet.get("created_at", "—")
+
+            with st.expander(f"🧾 {pname} (ID {pid}) — NP {np_}"):
+                st.write(f"**Atualizada em:** {updated_at}")
+                st.write(f"**Criada em:** {created_at}")
+                st.write(f"**PP Total:** {sheet.get('pp_budget_total', '—')}")
+
+                moves = sheet.get("moves") or []
+                if moves:
+                    st.markdown("**Golpes:**")
+                    for i, m in enumerate(moves, start=1):
+                        st.write(f"{i}. {m.get('name', 'Golpe')} (Rank {m.get('rank', '—')})")
+                else:
+                    st.caption("Sem golpes registrados.")
+
+                pdf_meta = sheet.get("pdf") or {}
+                storage_path = pdf_meta.get("storage_path")
+                if storage_path:
+                    if st.button("📄 Baixar PDF", key=f"download_pdf_{sheet.get('_sheet_id')}"):
+                        blob = bucket.blob(storage_path)
+                        pdf_bytes = blob.download_as_bytes()
+                        st.download_button(
+                            "Clique para baixar o PDF",
+                            data=pdf_bytes,
+                            file_name=f"ficha_{pname}_{pid}.pdf",
+                            mime="application/pdf",
+                            key=f"download_pdf_btn_{sheet.get('_sheet_id')}",
+                        )
 
 
 # PVP ARENA
@@ -3901,6 +3959,7 @@ elif page == "Mochila":
     
     
     
+
 
 
 
