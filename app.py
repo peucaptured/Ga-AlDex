@@ -1255,114 +1255,178 @@ st.set_page_config(
 # ==========================================
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+/* GBA HUB CSS */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap');
 
-/* =========================================================
-   0) TEMA ESCURO GLOBAL (remove fundo branco e mantém legível)
-   ========================================================= */
+:root{
+  --gba-bg: #0f172a;
+  --gba-panel: #f8fafc;
+  --gba-border: #334155;
+  --gba-ink: #0f172a;
+  --gba-ink2: #475569;
+  --gba-accent: #38bdf8;
+  --gba-accent-border: #0ea5e9;
+}
+
+/* Fundo geral (só visual) */
 .stApp{
-  background: #0b1220 !important;
-  color: #e2e8f0 !important;
-}
-[data-testid="stAppViewContainer"] > .main{
-  background: transparent !important;
+  background: radial-gradient(circle at 20% 10%, rgba(255,255,255,0.06), transparent 35%),
+              radial-gradient(circle at 90% 30%, rgba(255,255,255,0.04), transparent 40%),
+              var(--gba-bg) !important;
 }
 
-/* container principal (evita “painel branco” em páginas específicas) */
-.block-container{
-  background: rgba(15, 30, 46, 0.92) !important;   /* #0F1E2E */
-  padding: 2.5rem 2.5rem 3rem;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
-  border: 1px solid rgba(148,163,184,0.25);
+/* Sprites pixelados */
+img{ image-rendering: pixelated !important; image-rendering: crisp-edges !important; }
+
+/* Janelas */
+.gba-window{
+  background: var(--gba-panel);
+  border: 3px solid var(--gba-border);
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 10px 0 rgba(0,0,0,0.20);
+  margin-bottom: 14px;
+}
+.gba-window.party{ background:#eef2ff; }
+.gba-window.box{ background:#f1f5f9; }
+.gba-window.summary{ background:#f8fafc; }
+
+/* Cabeçalho */
+.gba-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom: 10px;
+}
+.gba-chips{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  margin: 6px 0 10px 0;
+}
+.gba-chip{
+  display:inline-flex;        /* <- ESSENCIAL */
+  align-items:center;
+  gap:6px;
+  white-space:nowrap;
+
+  background: var(--gba-border);
+  color: #eaf2ff;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.gba-title{
+  font-family: "Press Start 2P", ui-monospace, monospace;
+  color: var(--gba-ink);
+  font-size: 12px;
+  line-height: 1.2;
+}
+.gba-divider{
+  height: 2px;
+  background: rgba(42,60,90,0.15);
+  border-top: 2px solid rgba(0,0,0,0.10);
+  margin: 10px 0;
+  border-radius: 2px;
 }
 
-/* =========================================================
-   1) FONTE RETRÔ (apenas textos de conteúdo)
-   ========================================================= */
-.stApp, .stMarkdown p, .stButton button, .stTab p, h1, h2, h3, .stWidget label, .stTextInput input,
-.pokedex-info-title, .pokedex-info-value, .section-title, .power-badge, .pokedex-info-card {
-  font-family: 'Press Start 2P', cursive !important;
-  font-size: 13px !important;
-  line-height: 1.6;
+/* Cards / slots */
+.gba-card{
+  background: #ffffff;
+  border: 2px solid var(--gba-border);
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.18);
+  margin-bottom: 10px;
+}
+.gba-card .name{ font-weight: 900; color: var(--gba-ink); margin-top: 6px; font-size: 13px; }
+.gba-card .meta{ color: var(--gba-ink2); font-weight: 800; font-size: 12px; }
+
+.gba-slot{
+  background: #ffffff;
+  border: 2px solid var(--gba-border);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.18);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.gba-header .right.gba-hub-right{
+  color: rgba(255,255,255,0.92) !important;
+  font-weight: 900;
+  font-size: 11px;
+  opacity: 0.95;
 }
 
-/* =========================================================
-   2) CONTRASTE DE FONTES (pra não ficar apagado)
-   ========================================================= */
-.stMarkdown, .stMarkdown p, label, .stCaption,
-[data-testid="stExpander"] summary, 
-[data-testid="stExpander"] div,
-[data-testid="stExpander"] p{
-  color: #e2e8f0 !important;
-}
-
-/* texto secundário */
-small, .stMarkdown small{
-  color: #cbd5e1 !important;
-}
-
-/* =========================================================
-   3) INPUTS / CAMPOS (texto claro + fundo escuro)
-   ========================================================= */
-.stTextInput input, .stNumberInput input, textarea{
-  color: #e2e8f0 !important;
-  background: rgba(2,6,23,0.35) !important;
-  border: 1px solid rgba(148,163,184,0.35) !important;
-}
-
-/* =========================================================
-   4) BORDAS GROSSAS (seu trecho)
-   ========================================================= */
-div[data-testid="stVerticalBlockBorderWrapper"]{
-  border: 4px solid rgba(255, 255, 255, 0.4) !important;
+/* Botões: garante contraste */
+div.stButton > button, div.stDownloadButton > button{
+  background: var(--gba-accent) !important;
+  color: #0b1220 !important;
+  border: 2px solid var(--gba-accent-border) !important;
   border-radius: 12px !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  padding: 10px !important;
+  padding: 10px 12px !important;
+  font-weight: 800 !important;
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.18) !important;
+}
+div.stButton > button:hover{ filter: brightness(1.05); transform: translateY(-1px); }
+div.stButton > button:active{ transform: translateY(0px); box-shadow: 0 3px 8px rgba(15, 23, 42, 0.15) !important; }
+
+.hub-box-sprite img{ max-width: 72px; margin: 0 auto; display: block; }
+.hub-sprite img{ max-width: 96px; margin: 0 auto; display: block; }
+
+.hub-summary-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+.hub-summary-block{
+  background: #ffffff;
+  border: 1px solid rgba(51, 65, 85, 0.18);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.hub-muted{
+  color: var(--gba-ink2);
+  font-size: 12px;
 }
 
-/* =========================================================
-   5) PROTEÇÃO TOTAL CONTRA BUG 'keyboard_arrow_right' (seu trecho)
-   ========================================================= */
-[data-testid="stExpander"] summary, 
-[data-testid="stExpander"] svg,
-[data-testid="stHeader"] svg,
-.stSelectbox svg,
-.stMultiSelect svg,
-div[data-baseweb="icon"],
-span[class*="icon"],
-i[class*="icon"]{
-  font-family: sans-serif !important;
+/* Tabs: mais “cartucho” */
+.stTabs [data-baseweb="tab-list"]{
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.75), rgba(37, 99, 235, 0.4)) !important;
+  border: 2px solid rgba(148, 163, 184, 0.4) !important;
+  border-radius: 12px !important;
+  padding: 6px !important;
+  gap: 6px !important;
+
+  /* ✅ remove a “linha branca”/underline padrão */
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+}
+.stTabs [data-baseweb="tab"]{
+  background: rgba(30, 64, 175, 0.28) !important;
+  color: #e2e8f0 !important;
+  border: 2px solid rgba(59, 130, 246, 0.45) !important;
+  border-radius: 10px !important;
+  font-weight: 900 !important;
+}
+.stTabs [aria-selected="true"]{
+  background: var(--gba-accent) !important;
+  color: var(--gba-ink) !important;
+  border-color: var(--gba-accent-border) !important;
 }
 
-/* Esconde texto que vaza dos ícones (classes podem mudar com updates do Streamlit) */
-.st-emotion-cache-1vt4yqh, .st-emotion-cache-p5msec{
-  font-family: sans-serif !important;
-  color: transparent !important;
-}
-
-/* =========================================================
-   6) ESTILO DO TÍTULO DA ARENA (seu trecho)
-   ========================================================= */
-.arena-header{
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 25px;
-  font-family: 'Press Start 2P', cursive !important;
-}
-.arena-title{ font-size: 20px; color: #ffffff !important; }
-.arena-id{
-  font-size: 28px;
-  color: #FFCC00 !important;
-  background: #1E1E1E;
-  padding: 8px 15px;
-  border: 2px solid #FFCC00;
-  border-radius: 5px;
-}
+/* (algumas versões do streamlit usam esse elemento pra borda) */
+div[data-baseweb="tab-border"]{ display:none !important; }
 
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
@@ -4058,17 +4122,18 @@ if page == "Trainer Hub (Meus Pokémons)":
                         user_data["favorite_moves"][pid] = fav
                         save_data_cloud(trainer_name, user_data)
 
-            st.markdown('</div>', unsafe_allow_html=True)
-
+        
 
         
-        left, right = st.columns([1.35, 0.95], gap="large")
+        st.markdown('<div class="hub-split">', unsafe_allow_html=True)
+        
+        col_left, col_right = st.columns([1, 1])
 
         # ---------
         # BOX (capturados)
         # ---------
-        with left:
-            st.markdown('<div class="gba-window box">', unsafe_allow_html=True)
+        with col_left:
+            st.markdown('<div class="grass-box">', unsafe_allow_html=True)
         
             st.markdown("""
             <div class="gba-header">
