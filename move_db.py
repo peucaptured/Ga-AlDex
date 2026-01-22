@@ -79,6 +79,45 @@ class Move:
             if key not in seen:
                 seen.add(key)
                 uniq.append(p)
+        # ==============================
+        # ==========================================
+        # DEFINIÇÃO DE RESISTÊNCIA DO DANO (FINAL)
+        # ==========================================
+        name_desc = f"{self.name} {self.descricao or ''}".lower()
+        categoria = (self.categoria or "").lower()
+        tipo = (self.tipo or "").lower()
+        
+        damage_resist = "Thg"  # padrão absoluto
+        
+        # 1) DODGE — prioridade máxima
+        if any(k in name_desc for k in [
+            "ohko", "one-hit", "hit kill",
+            "guillotine", "horn drill", "sheer cold", "fissure",
+            "diferença de velocidade", "speed difference",
+            "diferença de peso", "weight difference"
+        ]):
+            damage_resist = "Dodge"
+        
+        # 2) WILL — psíquico / fantasma / redução de will/spdef/spatk
+        elif tipo in {"psychic", "psíquico", "ghost", "fantasma"}:
+            damage_resist = "Will"
+        
+        elif any(k in name_desc for k in [
+            "reduce will", "reduz will",
+            "special defense down", "spdef down",
+            "special attack down", "spatk down"
+        ]):
+            damage_resist = "Will"
+        
+        # 3) Aplica no primeiro Damage
+        b = re.sub(
+            r"(Damage\s+\d+)(?![^\[]*\])",
+            rf"\1 (Resisted by {damage_resist})",
+            b,
+            count=1,
+            flags=re.IGNORECASE
+        )
+
     
         return "; ".join(uniq)
 
