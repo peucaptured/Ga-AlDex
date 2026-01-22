@@ -4253,6 +4253,8 @@ if page == "Trainer Hub (Meus Pokémons)":
         st.markdown("### Progresso da Pokédex")
         st.progress(min(vistos / total, 1.0) if total else 0.0)
         st.write(f"**{vistos}** de **{total}** Pokémons registrados.")
+
+
 elif page == "Criação Guiada de Fichas":
     st.title("🧩 Criação Guiada de Fichas")
     if st.session_state.get("last_page") != "Criação Guiada de Fichas":
@@ -4260,7 +4262,7 @@ elif page == "Criação Guiada de Fichas":
             st.session_state["cg_view"] = "guided"
             st.session_state["cg_force_guided"] = False
         else:
-            st.session_state["cg_view"] = "menu"    st.session_state["last_page"] = "Criação Guiada de Fichas"
+            st.session_state["cg_view"] = "menu"
 
     if "cg_view" not in st.session_state:
         st.session_state["cg_view"] = "menu"
