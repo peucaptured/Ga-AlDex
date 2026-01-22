@@ -3964,7 +3964,7 @@ elif page == "Criação Guiada de Fichas":
         cg_init()
         pname = st.text_input("Digite o nome do Pokémon (ex: Blastoise)", value=st.session_state["cg_draft"]["pname"], placeholder="Ex: Blastoise", key="cg_pname")
         cg_sync_from_widgets()
-        raw_name = (pokemon_name_input or "").strip().lower()
+        raw_name = (pname or "").strip().lower()
 
         is_nidoran_generic = raw_name in [
             "nidoran",
@@ -3983,7 +3983,7 @@ elif page == "Criação Guiada de Fichas":
             )
             poke_query = "nidoran-f" if choice == "Nidoran ♀" else "nidoran-m"
         else:
-            poke_query = to_pokeapi_name(pokemon_name_input)
+            poke_query = to_pokeapi_name(pname)
 
 
         # ajuda opcional: mostra sugestões do seu df conforme digita
