@@ -1262,22 +1262,23 @@ st.markdown("""
     
     /* Fundo raiz */
     .stApp {
-        background-color: #0F1E2E;
+        background-color: #0b1220;
+        color: #e2e8f0;
     }
     
     /* Container principal do conteúdo */
     .block-container {
-        background-color: #0F1E2E;
+        background-color: #0b1220;
     }
     
     /* Área central que envolve tabs, colunas e cards */
     section.main {
-        background-color: #0F1E2E;
+        background-color: #0b1220;
     }
     
     /* Evita vazamento branco interno */
     section.main > div {
-        background-color: #0F1E2E;
+        background-color: #0F1E2E
     }
 
     
@@ -1285,7 +1286,7 @@ st.markdown("""
        FUNDO GLOBAL DO APP
        =============================== */
     .stApp {
-        background-color: #0F1E2E;
+        background-color: #0b1220;
     }
     
     /* Área principal (evita vazamento branco atrás das abas) */
@@ -1296,17 +1297,25 @@ st.markdown("""
     /* 1. Aplica a fonte retrô apenas a textos de conteúdo */
     .stApp, .stMarkdown p, .stButton button, .stTab p, h1, h2, h3, .stWidget label, .stTextInput input,
     .pokedex-info-title, .pokedex-info-value, .section-title, .power-badge, .pokedex-info-card {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+        font-size: 15px !important;
+        line-height: 1.7;
+        color: #e2e8f0;
+    }
+
+    h1, h2, h3, .section-title {
         font-family: 'Press Start 2P', cursive !important;
-        font-size: 13px !important;
-        line-height: 1.6;
+        color: #f8fafc;
+        letter-spacing: 0.01em;
     }
     
     /* 🆕 ADICIONE ESTE TRECHO AQUI PARA AS BORDAS FICAREM GROSSAS */
     div[data-testid="stVerticalBlockBorderWrapper"] {
-        border: 4px solid rgba(255, 255, 255, 0.4) !important;
-        border-radius: 12px !important;
-        background: rgba(255, 255, 255, 0.05);
-        padding: 10px !important;
+        border: 2px solid rgba(148, 163, 184, 0.35) !important;
+        border-radius: 14px !important;
+        background: rgba(15, 23, 42, 0.5);
+        padding: 12px !important;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
     }
 
     /* 🛡️ 2. PROTEÇÃO TOTAL CONTRA O BUG 'keyboard_arrow_right' */
@@ -1336,7 +1345,7 @@ st.markdown("""
         margin-bottom: 25px;
         font-family: 'Press Start 2P', cursive;
     }
-    .arena-title { font-size: 20px; color: white; }
+    .arena-title { font-size: 20px; color: #f8fafc; }
     .arena-id { 
         font-size: 28px; 
         color: #FFCC00; 
@@ -2730,6 +2739,10 @@ if st.sidebar.button("🔄 Recarregar Excel"):
     st.session_state['df_data'], st.session_state['cols_map'] = load_excel_data()
     st.rerun()
 
+# --- navegação programática (antes do radio key="page") ---
+if "nav_to" in st.session_state:
+    st.session_state.update({"page": st.session_state.pop("nav_to")})
+
 st.sidebar.markdown("---")
 page = st.sidebar.radio(
     "Ir para:",
@@ -2744,12 +2757,13 @@ page = st.sidebar.radio(
     key="page",
 )
 
+
 def apply_non_pokedex_theme() -> None:
     st.markdown(
         """
         <style>
         [data-testid="stAppViewContainer"] {
-            background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 45%, #e2e8f0 100%);
+            background: linear-gradient(180deg, #f8fafc 0%, #edf2f7 45%, #e2e8f0 100%);
             color: #0f172a;
             animation: pageFade 0.35s ease-in;
         }
@@ -2760,34 +2774,37 @@ def apply_non_pokedex_theme() -> None:
             color: #0f172a;
             letter-spacing: -0.02em;
         }
+        .stMarkdown, .stMarkdown p, .stTextInput input, .stSelectbox, .stMultiSelect, .stRadio, .stCheckbox {
+            color: #1e293b;
+        }
         [data-testid="stHeader"] {
             background: rgba(248, 250, 252, 0.8);
             backdrop-filter: blur(6px);
         }
         .stTabs [data-baseweb="tab-list"] {
-            gap: 0.35rem;
-            background: linear-gradient(135deg, #c7d2fe 0%, #a5b4fc 45%, #7dd3fc 100%);
-            padding: 0.35rem;
+            gap: 0.4rem;
+            background: linear-gradient(135deg, #dbeafe 0%, #c7d2fe 45%, #bae6fd 100%);
+            padding: 0.4rem;
             border-radius: 999px;
             box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.4);
         }
         .stTabs [data-baseweb="tab"] {
             border-radius: 999px;
-            padding: 0.35rem 0.9rem;
+            padding: 0.4rem 1rem;
             font-weight: 600;
             color: #1e293b;
             border: 1px solid transparent;
             transition: all 0.2s ease;
-            background: rgba(30, 64, 175, 0.12);
+            background: rgba(59, 130, 246, 0.12);
         }
         .stTabs [data-baseweb="tab"]:hover {
             color: #0f172a;
-            background: rgba(30, 64, 175, 0.22);
+            background: rgba(59, 130, 246, 0.2);
         }
         .stTabs [aria-selected="true"] {
-            background: #0f172a;
+            background: #1e293b;
             color: #f8fafc;
-            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.15);
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.15);
         }
         [data-testid="stTabs"] [role="tabpanel"] {
             animation: tabFade 0.3s ease-in;
@@ -2795,9 +2812,9 @@ def apply_non_pokedex_theme() -> None:
         div[data-testid="stMetric"] {
             background: #ffffff;
             border-radius: 14px;
-            padding: 0.85rem;
+            padding: 0.9rem;
             border: 1px solid rgba(148, 163, 184, 0.35);
-            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
         }
         [data-testid="stContainer"] > div {
             border-radius: 16px;
@@ -2827,42 +2844,42 @@ if page == "Pokédex (Busca)":
     st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] {
-        background: linear-gradient(180deg, #1f4e79 0%, #3b7ca6 45%, #5fb2cf 100%);
+        background: linear-gradient(180deg, #0f2740 0%, #1f4d73 45%, #2f6a8c 100%);
         animation: pageFade 0.35s ease-in;
     }
     [data-testid="stMainBlockContainer"] {
         animation: contentSlide 0.35s ease-in;
     }
     h1, h2, h3 {
-        color: #0b1f2a;
-        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+        color: #f8fafc;
+        text-shadow: 0 1px 2px rgba(15, 23, 42, 0.6);
     }
 .pokedex-shell {
     border-radius: 18px;
     padding: 18px 18px 8px 18px;
-    border: 3px solid rgba(255,255,255,0.65);
-    box-shadow: inset 0 0 15px rgba(255,255,255,0.35);
-    background: rgba(10, 36, 58, 0.45);
+    border: 2px solid rgba(148, 163, 184, 0.55);
+    box-shadow: inset 0 0 18px rgba(15, 23, 42, 0.55);
+    background: rgba(15, 23, 42, 0.65);
 }
 .pokedex-header {
     display: flex;
     justify-content: space-between;
     gap: 12px;
-    background: rgba(255,255,255,0.65);
+    background: rgba(226, 232, 240, 0.9);
     padding: 6px 16px;
     border-radius: 16px;
     font-size: 12px;
-    color: #0b1f2a;
+    color: #0f172a;
 }
 .pokedex-grid-note {
-    font-size: 11px;
-    color: #e7f5ff;
+    font-size: 12px;
+    color: #e2e8f0;
     text-align: center;
     margin: 6px 0 10px 0;
 }
 .pokedex-card {
-    background: rgba(10, 25, 40, 0.65);
-    color: #f5f5f5;
+    background: rgba(15, 23, 42, 0.82);
+    color: #f8fafc;
     padding: 18px;
     border-radius: 16px;
     border: 2px solid rgba(255,255,255,0.35);
@@ -2875,23 +2892,23 @@ if page == "Pokédex (Busca)":
 .pokedex-info-card {
     padding: 10px 12px;
     border-radius: 8px;
-    background: #f7e7b5;
-    color: #2a1b0f;
-    border: 2px solid #5b3f23;
-    box-shadow: inset 0 0 0 2px #d1b36a, 0 4px 0 #2a1b0f;
+    background: #f8fafc;
+    color: #0f172a;
+    border: 1px solid rgba(148, 163, 184, 0.6);
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.4), 0 10px 20px rgba(15, 23, 42, 0.2);
 }
 .pokedex-info-card--dark {
-    background: #ffe7a3;
+    background: #e2e8f0;
 }
 .pokedex-info-title {
-    font-size: 11px;
-    color: #5b3f23;
+    font-size: 12px;
+    color: #475569;
     margin-bottom: 4px;
 }
 .pokedex-info-value {
-    font-size: 12px;
-    color: #2a1b0f;
-    line-height: 1.4;
+    font-size: 14px;
+    color: #0f172a;
+    line-height: 1.6;
 }
 .pokedex-info-card--wide {
     padding: 12px 14px;
@@ -3481,7 +3498,7 @@ if page == "Trainer Hub (Meus Pokémons)":
     st.markdown("""
     <style>
     /* GBA HUB CSS */
-    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap');
 
     :root{
   --gba-bg: #0f172a;
@@ -4921,7 +4938,7 @@ elif page == "Minhas Fichas":
                     if st.button("✏️ Editar ficha", key=f"edit_sheet_{sheet_id}"):
                         apply_sheet_to_session(sheet, sheet_id=sheet_id)
                         st.session_state["cg_force_guided"] = True
-                        st.session_state["page"] = "Criação Guiada de Fichas"
+                        st.session_state["nav_to"] = "Criação Guiada de Fichas"
                         st.rerun()
                 with action_col2:
                     if st.button("🗑️ Excluir ficha", key=f"delete_sheet_{sheet_id}"):
