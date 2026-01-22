@@ -3862,15 +3862,15 @@ if page == "Trainer Hub (Meus Pokémons)":
 
                     shown = 0
                     for m in moves:
-                        name = m.get("name", "Golpe")
-                        if name in fav and shown < 4:
-                            base = int(m.get("rank", 0) or 0)
-                                fr, bstat = _final_rank(m)
-        
-                                if bstat == "—":  # Status
-                                    st.write(f"**{name}** — Rank base {base} → **{fr}** (Status)")
-                                else:             # Physical/Special
-                                    st.write(f"**{name}** — Rank base {base} + {bstat} → **{fr}**")
+                    name = m.get("name", "Golpe")
+                    if name in fav and shown < 4:
+                        base = int(m.get("rank", 0) or 0)
+                            fr, bstat = _final_rank(m)
+    
+                            if bstat == "—":  # Status
+                                st.write(f"**{name}** — Rank base {base} → **{fr}** (Status)")
+                            else:             # Physical/Special
+                                st.write(f"**{name}** — Rank base {base} + {bstat} → **{fr}**")
                             build_txt = (m.get("build") or "").strip()
                             if build_txt:
                                 st.code(build_txt, language="text")
