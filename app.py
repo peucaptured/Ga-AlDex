@@ -3472,42 +3472,59 @@ elif page == "Criação Guiada de Fichas":
             dodge_sum = int(dodge) + int(thg)
             parry_sum = int(parry) + int(thg)
             wf_sum = int(will) + int(fortitude)
-                        st.divider()
-            st.markdown("### 💰 PP automático (com brinde)")
+            
+            
+            st.divider()
+            st.markdown("### 💰 PP automático")
 
-            # Custos M&M (sua regra):
+            # Custos do sistema (regra FINAL):
             # - STGR e INT: 2 PP por rank
-            # - Dodge, Parry, Thg, Will, Fort: 1 PP por rank
+            # - Dodge, Parry, Thg, Will e Fortitude: 1 PP por rank
             #
-            # "Brinde": *_base é o valor grátis. Só cobra o que passar do base.
-
-            # Abilities (2 PP por rank acima do base)
-            pp_stgr = max(0, int(stgr) - int(stgr_base)) * 2
-            pp_int  = max(0, int(intellect) - int(int_base)) * 2
-
-            # Defesas (1 PP por rank acima do base)
-            # Parry no seu app espelha Dodge, mas ainda assim calculamos “acima do base”
-            parry_base = int(dodge_base)
-
-            pp_dodge = max(0, int(dodge) - int(dodge_base)) * 1
-            pp_parry = max(0, int(parry) - int(parry_base)) * 1
-            pp_thg   = max(0, int(thg) - int(thg_base)) * 1
-            pp_will  = max(0, int(will) - int(will_base)) * 1
-            pp_fort  = max(0, int(fortitude) - int(fort_base)) * 1
-
+            # ⚠️ NÃO existe brinde:
+            # todo rank investido é pago, desde o primeiro ponto.
+            
+            # ======================
+            # Abilities (2 PP / rank)
+            # ======================
+            pp_stgr = int(stgr) * 2
+            pp_int  = int(intellect) * 2
+            
+            # ======================
+            # Defesas (1 PP / rank)
+            # ======================
+            pp_dodge = int(dodge) * 1
+            pp_parry = int(parry) * 1
+            pp_thg   = int(thg) * 1
+            pp_will  = int(will) * 1
+            pp_fort  = int(fortitude) * 1
+            
+            # ======================
+            # Totais
+            # ======================
             pp_abilities_auto = pp_stgr + pp_int
             pp_defenses_auto  = pp_dodge + pp_parry + pp_thg + pp_will + pp_fort
-
-            st.write(f"**Abilities:** {pp_abilities_auto} PP  (Stgr {pp_stgr} + Int {pp_int})")
+            
+            # ======================
+            # Exibição
+            # ======================
+            st.write(
+                f"**Abilities:** {pp_abilities_auto} PP  "
+                f"(STGR {pp_stgr} + INT {pp_int})"
+            )
+            
             st.write(
                 f"**Defesas:** {pp_defenses_auto} PP  "
-                f"(Dodge {pp_dodge} + Parry {pp_parry} + Thg {pp_thg} + Will {pp_will} + Fort {pp_fort})"
+                f"(Dodge {pp_dodge} + Parry {pp_parry} + Thg {pp_thg} + "
+                f"Will {pp_will} + Fort {pp_fort})"
             )
-
-            # ✅ IMPORTANTÍSSIMO:
-            # sobrescreve as variáveis que são usadas no total final
+            
+            # ======================
+            # Valores usados no total final da ficha
+            # ======================
             pp_abilities = pp_abilities_auto
             pp_defenses  = pp_defenses_auto
+
 
 
         with tabs[2]:
