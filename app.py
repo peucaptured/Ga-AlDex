@@ -2647,22 +2647,23 @@ def apply_non_pokedex_theme() -> None:
         }
         .stTabs [data-baseweb="tab-list"] {
             gap: 0.35rem;
-            background: #e2e8f0;
+            background: linear-gradient(135deg, #c7d2fe 0%, #a5b4fc 45%, #7dd3fc 100%);
             padding: 0.35rem;
             border-radius: 999px;
-            box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.5);
+            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.4);
         }
         .stTabs [data-baseweb="tab"] {
             border-radius: 999px;
             padding: 0.35rem 0.9rem;
             font-weight: 600;
-            color: #475569;
+            color: #1e293b;
             border: 1px solid transparent;
             transition: all 0.2s ease;
+            background: rgba(30, 64, 175, 0.12);
         }
         .stTabs [data-baseweb="tab"]:hover {
             color: #0f172a;
-            background: rgba(15, 23, 42, 0.08);
+            background: rgba(30, 64, 175, 0.22);
         }
         .stTabs [aria-selected="true"] {
             background: #0f172a;
@@ -3485,16 +3486,16 @@ if page == "Trainer Hub (Meus Pokémons)":
 
     /* Tabs: mais “cartucho” */
     .stTabs [data-baseweb="tab-list"]{
-  background: rgba(255,255,255,0.10) !important;
-  border: 2px solid rgba(255,255,255,0.18) !important;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.75), rgba(37, 99, 235, 0.4)) !important;
+  border: 2px solid rgba(148, 163, 184, 0.4) !important;
   border-radius: 12px !important;
   padding: 6px !important;
   gap: 6px !important;
     }
     .stTabs [data-baseweb="tab"]{
-  background: rgba(255,255,255,0.12) !important;
-  color: #eaf2ff !important;
-  border: 2px solid rgba(255,255,255,0.18) !important;
+  background: rgba(30, 64, 175, 0.28) !important;
+  color: #e2e8f0 !important;
+  border: 2px solid rgba(59, 130, 246, 0.45) !important;
   border-radius: 10px !important;
   font-weight: 900 !important;
     }
