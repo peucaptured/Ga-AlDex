@@ -377,6 +377,48 @@ def render_move_creator(
             }
         })
 
+    
+    def _cg_cap():
+    np_ = int(st.session_state.get("cg_np", 0) or 0)
+    return 2 * np_
+
+def _cg_sync_from_dodge():
+    cap = _cg_cap()
+    dodge = int(st.session_state.get("cg_dodge", 0) or 0)
+
+    # Parry espelha Dodge (como no seu código original)
+    st.session_state["cg_parry"] = dodge
+
+    # Thg fecha o cap automaticamente
+    st.session_state["cg_thg"] = max(0, min(99, cap - dodge))
+
+def _cg_sync_from_fortitude():
+    cap = _cg_cap()
+    fort = int(st.session_state.get("cg_fortitude", 0) or 0)
+
+    st.session_state["cg_will"] = max(0, min(99, cap - fort))
+
+def _cg_sync_from_np():
+    # Quando NP muda, recalcula Thg e Will para manter cap
+    _cg_sync_from_dodge()
+    _cg_sync_from_fortitude()
+
+def _cg_init_defenses_if_missing(dodge_base, fort_base):
+    cap = _cg_cap()
+
+    if "cg_dodge" not in st.session_state:
+        st.session_state["cg_dodge"] = int(dodge_base)
+    if "cg_parry" not in st.session_state:
+        st.session_state["cg_parry"] = int(st.session_state["cg_dodge"])
+    if "cg_fortitude" not in st.session_state:
+        st.session_state["cg_fortitude"] = int(fort_base)
+    if "cg_will" not in st.session_state:
+        st.session_state["cg_will"] = max(0, min(99, cap - int(st.session_state["cg_fortitude"])))
+    if "cg_thg" not in st.session_state:
+        st.session_state["cg_thg"] = max(0, min(99, cap - int(st.session_state["cg_dodge"])))
+
+    
+    
     def _render_move_card(mv, rank: int):
         st.markdown(f"### 🌀 {mv.name}  ({getattr(mv,'tipo','—')} / {getattr(mv,'categoria','—')})")
         c1, c2, c3 = st.columns(3)
@@ -3260,7 +3302,7 @@ elif page == "Criação Guiada de Fichas":
 
         # 3) NP / PP
         np_sugerido = get_np_for_pokemon(df, pid, fallback_np=6)
-        np_ = st.number_input("NP do seu Pokémon (o jogador informa)", min_value=1, max_value=20, value=int(np_sugerido))
+        np_ = st.number_input("NP do seu Pokémon (o jogador informa)", min_value=0, value=0, step=1, key="cg_np", on_change=_cg_sync_from_np)
         pp_total = calc_pp_budget(np_)
 
         # ✅ soma PP a partir dos golpes confirmados
@@ -3335,6 +3377,8 @@ elif page == "Criação Guiada de Fichas":
 
         with tabs[1]:
             st.markdown("### 📊 Atributos (auto + editável)")
+            cap = 2 * int(st.session_state.get("cg_np", 0) or 0)
+            _cg_init_defenses_if_missing(dodge_base, fort_base)
             col1, col2, col3 = st.columns(3)
             
             with col1:
@@ -3342,52 +3386,52 @@ elif page == "Criação Guiada de Fichas":
                 intellect = st.number_input("Int (Intelecto)", value=int(int_base), min_value=0, max_value=99)
             
             with col2:
-                # variação ±2 no Dodge
-                dodge = st.number_input(
-                    "Dodge",
-                    value=int(dodge_base),
-                    key="cg_dodge",
-                    min_value=max(0, int(dodge_base) - 2),
-                    max_value=min(99, int(dodge_base) + 2),
-                )
-            
-                # parry: por enquanto igual ao dodge (pra não quebrar seus caps)
-                parry = st.number_input(
-                    "Parry",
-                    value=int(dodge),
-                    key="cg_parry",
-                    min_value=0,
-                    max_value=99,
-                )
+            dodge = st.number_input(
+                "Dodge",
+                key="cg_dodge",
+                min_value=max(0, int(dodge_base) - 2),
+                max_value=min(99, int(dodge_base) + 2),
+                on_change=_cg_sync_from_dodge,
+            )
+        
+            # Parry espelha Dodge (como seu original) -> deixa travado
+            parry = st.number_input(
+                "Parry",
+                key="cg_parry",
+                min_value=0,
+                max_value=99,
+                disabled=True,
+            )
+        
+        with col3:
+            # Thg fecha cap automaticamente -> deixa travado
+            thg = st.number_input(
+                "Thg (Toughness)",
+                key="cg_thg",
+                min_value=0,
+                max_value=99,
+                disabled=True,
+            )
+        
+            fortitude = st.number_input(
+                "Fortitude",
+                key="cg_fortitude",
+                min_value=max(0, int(fort_base) - 2),
+                max_value=min(99, int(fort_base) + 2),
+                on_change=_cg_sync_from_fortitude,
+            )
+        
+            # Will fecha cap automaticamente -> deixa travado
+            will = st.number_input(
+                "Will",
+                key="cg_will",
+                min_value=0,
+                max_value=99,
+                disabled=True,
+            )
 
-            
-            cap = 2 * int(np_)   # ✅ define cap ANTES de usar
-            with col3:
-                # Thg varia ±2, mas você mantém o cap com Dodge/Parry depois
-                thg = st.number_input(
-                    "Thg (Toughness)",
-                    value=int(cap - int(dodge)),
-                    min_value=0,
-                    max_value=99,
-                    key="cg_thg",
-                )
-            
-                fortitude = st.number_input(
-                    "Fortitude",
-                    value=int(fort_base),
-                    min_value=max(0, int(fort_base) - 2),
-                    max_value=min(99, int(fort_base) + 2),
-                    key="cg_fortitude",
-                )
-            
-                will = st.number_input(
-                    "Will",
-                    value=int(cap - int(fortitude)),
-                    min_value=0,
-                    max_value=99,
-                    key="cg_will",
-                )
-            
+         
+                       
             st.markdown("### ✅ Validação de Limites (M&M)")
             
             dodge_sum = int(dodge) + int(thg)
