@@ -1163,6 +1163,17 @@ st.set_page_config(
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    /* ===============================
+       FUNDO GLOBAL DO APP
+       =============================== */
+    .stApp {
+        background-color: #0F1E2E;
+    }
+    
+    /* Área principal (evita vazamento branco atrás das abas) */
+    section.main > div {
+        background-color: #0F1E2E;
+    }
 
     /* 1. Aplica a fonte retrô apenas a textos de conteúdo */
     .stApp, .stMarkdown p, .stButton button, .stTab p, h1, h2, h3, .stWidget label, .stTextInput input,
