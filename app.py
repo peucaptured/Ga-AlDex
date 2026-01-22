@@ -4714,7 +4714,8 @@ elif page == "Criação Guiada de Fichas":
                     "Selecione advantages:",
                     options=labels,
                     default=[lab for lab in saved_adv if lab in labels],
-                )                chosen_adv = chosen_labels  # (salva o label com rank)
+                )
+                chosen_adv = chosen_labels  # (salva o label com rank)
             
                 # mostra notas do que foi escolhido
                 for lab in chosen_labels:
