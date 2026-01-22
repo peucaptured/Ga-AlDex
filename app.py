@@ -3361,43 +3361,38 @@ elif page == "Criação Guiada de Fichas":
                 )
 
             
+            cap = 2 * int(np_)   # ✅ define cap ANTES de usar
             with col3:
                 # Thg varia ±2, mas você mantém o cap com Dodge/Parry depois
-                thg = st.number_input("Thg (Toughness)", value=int(cap - dodge), min_value=0, max_value=99)
-                fortitude = st.number_input("Fortitude", value=int(fort_base, key="cg_fortitude"), min_value=max(0, fort_base-2), max_value=min(99, fort_base+2))
-                will = st.number_input("Will", value=int(cap - fortitude, key="cg_will"), min_value=0, max_value=99)
-
+                thg = st.number_input(
+                    "Thg (Toughness)",
+                    value=int(cap - int(dodge)),
+                    min_value=0,
+                    max_value=99,
+                    key="cg_thg",
+                )
+            
+                fortitude = st.number_input(
+                    "Fortitude",
+                    value=int(fort_base),
+                    min_value=max(0, int(fort_base) - 2),
+                    max_value=min(99, int(fort_base) + 2),
+                    key="cg_fortitude",
+                )
+            
+                will = st.number_input(
+                    "Will",
+                    value=int(cap - int(fortitude)),
+                    min_value=0,
+                    max_value=99,
+                    key="cg_will",
+                )
+            
             st.markdown("### ✅ Validação de Limites (M&M)")
-
-            cap = 2 * int(np_)
             
             dodge_sum = int(dodge) + int(thg)
             parry_sum = int(parry) + int(thg)
             wf_sum = int(will) + int(fortitude)
-            
-            if dodge_sum != cap:
-                st.error(f"Dodge + Thg deve ser {cap}. Atual: {dodge_sum}")
-            else:
-                st.success(f"Dodge + Thg = {cap} ✅")
-            
-            if parry_sum != cap:
-                st.error(f"Parry + Thg deve ser {cap}. Atual: {parry_sum}")
-            else:
-                st.success(f"Parry + Thg = {cap} ✅")
-            
-            if wf_sum != cap:
-                st.error(f"Will + Fortitude deve ser {cap}. Atual: {wf_sum}")
-            else:
-                st.success(f"Will + Fortitude = {cap} ✅")
-
-            st.markdown("### 💠 PP em Defesas")
-            pp_defenses = st.number_input(
-                "PP gastos em Defesas",
-                min_value=0,
-                value=0,
-                step=1,
-                key="cg_pp_defenses",
-            )
 
         with tabs[2]:
             st.markdown("### 🧠 Skills")
