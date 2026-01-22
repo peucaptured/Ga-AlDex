@@ -53,23 +53,35 @@ class Move:
     raw: Dict[str, Any]
 
     def render_build(self, rank: int) -> str:
-        """
-        Substitui placeholders comuns de rank no seu texto:
-        - (Rank = PL) -> (Rank = <rank>)
-        - [Rank = PL] -> [Rank = <rank>]
-        - 'Rank = PL' -> 'Rank = <rank>'
-        """
-        b = self.build or ""
-
-        # padrões comuns do seu Excel
+        b = (self.build or "").strip()
+        if not b:
+            return ""
+    
+        # 1) Trocar Rank = PL por Rank = <rank>
         b = re.sub(r"Rank\s*=\s*PL", f"Rank = {rank}", b, flags=re.IGNORECASE)
-        b = re.sub(r"\(Rank\s*=\s*\)", f"(Rank = {rank})", b, flags=re.IGNORECASE)
-        b = re.sub(r"Rank\s*=\s*\?", f"Rank = {rank}", b, flags=re.IGNORECASE)
-
-        # se você usar "Rank = X" como placeholder em alguns casos:
         b = re.sub(r"Rank\s*=\s*X", f"Rank = {rank}", b, flags=re.IGNORECASE)
+    
+        # 2) Escalar efeitos numéricos: Damage/Weaken/Affliction/etc. para o mesmo rank
+        # Ex.: "Weaken ... 1" -> "Weaken ... 10"
+        def _scale(m):
+            effect = m.group(1)
+            return f"{effect} {rank}"
+    
+        b = re.sub(r"\b(Damage|Weaken|Affliction|Healing|Nullify|Create)\s+\d+\b", _scale, b, flags=re.IGNORECASE)
+    
+        # 3) Deduplicar segmentos "Linked ..." idênticos (exatos)
+        # separa por ';' (seu excel costuma usar isso)
+        parts = [p.strip() for p in b.split(";") if p.strip()]
+        seen = set()
+        uniq = []
+        for p in parts:
+            key = re.sub(r"\s+", " ", p.lower()).strip()
+            if key not in seen:
+                seen.add(key)
+                uniq.append(p)
+    
+        return "; ".join(uniq)
 
-        return b.strip()
 
     def pp_cost(self, rank: int) -> Tuple[Optional[float], str]:
         """
