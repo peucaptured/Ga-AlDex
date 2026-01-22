@@ -477,6 +477,43 @@ def render_move_creator(
         effects["weaken_dodge"] = st.checkbox("Weaken Dodge", key=f"{state_key_prefix}_z_w_dodge")
         effects["weaken_will"] = st.checkbox("Weaken Will", key=f"{state_key_prefix}_z_w_will")
 
+        st.markdown("### Ranks por sub-efeito (opcional)")
+        st.caption("Se você mudar algum rank aqui, você terá que informar o PP total do golpe.")
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            r_damage = st.number_input("Rank Damage", 0, 30, int(rank3), key=f"{state_key_prefix}_z_r_damage")
+            r_aff = st.number_input("Rank Affliction", 0, 30, 0, key=f"{state_key_prefix}_z_r_aff")
+        with c2:
+            r_weaken = st.number_input("Rank Weaken", 0, 30, 0, key=f"{state_key_prefix}_z_r_weaken")
+            r_heal = st.number_input("Rank Healing", 0, 30, 0, key=f"{state_key_prefix}_z_r_heal")
+        with c3:
+            r_create = st.number_input("Rank Create", 0, 30, 0, key=f"{state_key_prefix}_z_r_create")
+            r_env = st.number_input("Rank Environment", 0, 30, 0, key=f"{state_key_prefix}_z_r_env")
+
+        sub_ranks = {
+            "damage": int(r_damage),
+            "affliction": int(r_aff),
+            "weaken": int(r_weaken),
+            "healing": int(r_heal),
+            "create": int(r_create),
+            "environment": int(r_env),
+        }
+
+        # considera "custom" se qualquer coisa ficar diferente do rank3 (ou se algum efeito ganhar rank >0 diferente)
+        custom_sub = any(
+            (k == "damage" and sub_ranks[k] != int(rank3)) or (k != "damage" and sub_ranks[k] > 0)
+            for k in sub_ranks
+        )
+
+        manual_pp = None
+        if custom_sub:
+            manual_pp = st.number_input(
+                "PP total do golpe (obrigatório quando customiza sub-ranks)",
+                min_value=0, value=0, step=1,
+                key=f"{state_key_prefix}_z_manual_pp"
+            )
+
         st.markdown("### Modificadores")
         area = st.selectbox("Área", ["Nenhuma", "Burst", "Cone", "Line"], key=f"{state_key_prefix}_z_area")
         perception = st.checkbox("Perception Area", key=f"{state_key_prefix}_z_perception")
@@ -487,6 +524,7 @@ def render_move_creator(
                 rank=rank3,
                 is_special=is_special,
                 effects=effects,
+                sub_ranks=sub_ranks,
                 area=None if area == "Nenhuma" else area,
                 perception=perception,
                 ranged=ranged,
@@ -504,8 +542,8 @@ def render_move_creator(
                     "name": "Golpe Customizado",
                     "rank": int(rank3),
                     "build": build,
-                    "pp_cost": None,
-                    "meta": {"custom": True}
+                    "pp_cost": int(manual_pp or 0) if custom_sub else None,
+                    "meta": {"custom": True, "sub_ranks": sub_ranks, "pp_manual": bool(custom_sub)}
                 })
                 st.success("Golpe customizado adicionado à ficha.")
 
@@ -516,8 +554,8 @@ def render_move_creator(
                         "name": "Golpe Customizado",
                         "rank": int(rank3),
                         "build": build,
-                        "pp_cost": None,
-                        "meta": {"custom": True}
+                        "pp_cost": int(manual_pp or 0) if custom_sub else None,
+                        "meta": {"custom": True, "sub_ranks": sub_ranks, "pp_manual": bool(custom_sub)}
                     })
                     st.success("Golpe customizado adicionado à ficha.")
                     st.session_state["cg_view"] = return_to_view
@@ -3365,13 +3403,7 @@ elif page == "Criação Guiada de Fichas":
                 "Use as abas para preencher cada etapa. O total de PP gastos é "
                 "somado automaticamente no final."
             )
-            pp_abilities = st.number_input(
-                "PP gastos em Abilities",
-                min_value=0,
-                value=0,
-                step=1,
-                key="cg_pp_abilities",
-            )
+
 
         with tabs[1]:
             st.markdown("### 📊 Atributos (auto + editável)")
@@ -3435,21 +3467,119 @@ elif page == "Criação Guiada de Fichas":
             dodge_sum = int(dodge) + int(thg)
             parry_sum = int(parry) + int(thg)
             wf_sum = int(will) + int(fortitude)
+                        st.divider()
+            st.markdown("### 💰 PP automático (com brinde)")
+
+            # Custos M&M (sua regra):
+            # - STGR e INT: 2 PP por rank
+            # - Dodge, Parry, Thg, Will, Fort: 1 PP por rank
+            #
+            # "Brinde": *_base é o valor grátis. Só cobra o que passar do base.
+
+            # Abilities (2 PP por rank acima do base)
+            pp_stgr = max(0, int(stgr) - int(stgr_base)) * 2
+            pp_int  = max(0, int(intellect) - int(int_base)) * 2
+
+            # Defesas (1 PP por rank acima do base)
+            # Parry no seu app espelha Dodge, mas ainda assim calculamos “acima do base”
+            parry_base = int(dodge_base)
+
+            pp_dodge = max(0, int(dodge) - int(dodge_base)) * 1
+            pp_parry = max(0, int(parry) - int(parry_base)) * 1
+            pp_thg   = max(0, int(thg) - int(thg_base)) * 1
+            pp_will  = max(0, int(will) - int(will_base)) * 1
+            pp_fort  = max(0, int(fortitude) - int(fort_base)) * 1
+
+            pp_abilities_auto = pp_stgr + pp_int
+            pp_defenses_auto  = pp_dodge + pp_parry + pp_thg + pp_will + pp_fort
+
+            st.write(f"**Abilities:** {pp_abilities_auto} PP  (Stgr {pp_stgr} + Int {pp_int})")
+            st.write(
+                f"**Defesas:** {pp_defenses_auto} PP  "
+                f"(Dodge {pp_dodge} + Parry {pp_parry} + Thg {pp_thg} + Will {pp_will} + Fort {pp_fort})"
+            )
+
+            # ✅ IMPORTANTÍSSIMO:
+            # sobrescreve as variáveis que são usadas no total final
+            pp_abilities = pp_abilities_auto
+            pp_defenses  = pp_defenses_auto
+
 
         with tabs[2]:
-            st.markdown("### 🧠 Skills")
-            st.session_state["cg_skill_notes"] = st.text_area(
-                "Liste as skills principais (livre)",
-                value=st.session_state.get("cg_skill_notes", ""),
-                placeholder="Ex: Acrobatics +4, Perception +6, Stealth +3...",
-            )
-            pp_skills = st.number_input(
-                "PP gastos em Skills",
-                min_value=0,
-                value=0,
-                step=1,
-                key="cg_pp_skills",
-            )
+        with tabs[2]:
+            st.markdown("### 🧠 Skills (M&M 3e)")
+            st.caption("Preencha RANKS (não bônus). O custo é 1 PP a cada 2 ranks.")
+
+            # Lista base de skills (core)
+            SKILLS_MM3 = [
+                "Acrobatics",
+                "Athletics",
+                "Close Combat (especialidade)",
+                "Deception",
+                "Expertise (especialidade)",
+                "Insight",
+                "Intimidation",
+                "Investigation",
+                "Perception",
+                "Persuasion",
+                "Ranged Combat (especialidade)",
+                "Sleight of Hand",
+                "Stealth",
+                "Technology",
+                "Treatment",
+                "Vehicles",
+            ]
+
+            if "cg_skills" not in st.session_state:
+                st.session_state["cg_skills"] = {k: 0 for k in SKILLS_MM3}
+                st.session_state["cg_skill_custom"] = []  # skills extras do usuário
+
+            # grid simples
+            cols = st.columns(3)
+            total_skill_ranks = 0
+            for i, sk in enumerate(SKILLS_MM3):
+                with cols[i % 3]:
+                    v = st.number_input(
+                        sk,
+                        min_value=0, max_value=40,
+                        value=int(st.session_state["cg_skills"].get(sk, 0)),
+                        step=1,
+                        key=f"cg_skill_{sk}"
+                    )
+                    st.session_state["cg_skills"][sk] = int(v)
+                    total_skill_ranks += int(v)
+
+            st.divider()
+            st.markdown("### Skills extras (se quiser)")
+            add_name = st.text_input("Nome da skill extra (ex: Expertise: Pokemon)", key="cg_skill_add_name")
+            if st.button("➕ Adicionar skill extra", key="cg_skill_add_btn"):
+                nm = (add_name or "").strip()
+                if nm:
+                    st.session_state["cg_skill_custom"].append({"name": nm, "ranks": 0})
+
+            # render extras
+            for idx, row in enumerate(list(st.session_state["cg_skill_custom"])):
+                c1, c2, c3 = st.columns([6, 2, 2])
+                with c1:
+                    st.write(row["name"])
+                with c2:
+                    rv = st.number_input(
+                        "Ranks",
+                        min_value=0, max_value=40,
+                        value=int(row.get("ranks", 0)),
+                        key=f"cg_skill_custom_rank_{idx}"
+                    )
+                    row["ranks"] = int(rv)
+                    total_skill_ranks += int(rv)
+                with c3:
+                    if st.button("❌", key=f"cg_skill_custom_del_{idx}"):
+                        st.session_state["cg_skill_custom"].pop(idx)
+                        st.rerun()
+
+            # PP automático: 1 PP por 2 ranks
+            pp_skills = total_skill_ranks / 2
+            st.info(f"Total de ranks: **{total_skill_ranks}** → PP em Skills: **{pp_skills}**")
+
 
             st.markdown("### ⭐ Advantages (sugestões)")
             adv_suggestions = suggest_advantages(
@@ -3474,13 +3604,8 @@ elif page == "Criação Guiada de Fichas":
                     if notes_map.get(lab):
                         st.caption(f"• {lab}: {notes_map[lab]}")
 
-            pp_advantages = st.number_input(
-                "PP gastos em Advantages",
-                min_value=0,
-                value=0,
-                step=1,
-                key="cg_pp_advantages",
-            )
+            pp_advantages = len(chosen_adv)
+            st.info(f"Advantages escolhidas: **{pp_advantages} PP** (1 PP cada).")
 
         with tabs[3]:
             st.markdown("### ⚔️ Golpes")
