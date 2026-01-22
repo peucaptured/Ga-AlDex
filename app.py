@@ -1167,181 +1167,6 @@ def unpack_tiles(packed: str) -> list[list[str]]:
     return json.loads(raw)
 
 
-
-
-
-
-# ================================
-# TRAINER HUB UI (GBA/DS-like)
-# ================================
-from io import BytesIO
-
-@st.cache_data(show_spinner=False)
-def _read_png(path: str) -> Image.Image:
-    img = Image.open(path).convert("RGBA")
-    return img
-
-@st.cache_data(show_spinner=False)
-def _fetch_url_image(url: str) -> Image.Image:
-    # cacheia sprite por URL
-    try:
-        r = requests.get(url, timeout=10)
-        r.raise_for_status()
-        return Image.open(BytesIO(r.content)).convert("RGBA")
-    except Exception:
-        # fallback: ícone padrão
-        return Image.new("RGBA", (64, 64), (0, 0, 0, 0))
-
-def _safe_asset(path: str) -> str:
-    # tenta achar em caminho relativo do app
-    if os.path.exists(path):
-        return path
-    # tenta relativo à pasta do arquivo atual
-    base = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
-    alt = os.path.join(base, path)
-    return alt if os.path.exists(alt) else path
-
-def _alpha_hole_bbox(img: Image.Image, alpha_threshold: int = 10):
-    """
-    Tenta encontrar o 'buraco' transparente do frame/slot (área onde deve entrar conteúdo).
-    Se não achar, retorna uma área interna padrão (inset).
-    """
-    a = img.split()[-1]  # alpha
-    w, h = img.size
-    # varre pixels transparentes
-    px = a.load()
-    minx, miny, maxx, maxy = w, h, 0, 0
-    found = False
-    for y in range(h):
-        for x in range(w):
-            if px[x, y] <= alpha_threshold:
-                found = True
-                minx = min(minx, x)
-                miny = min(miny, y)
-                maxx = max(maxx, x)
-                maxy = max(maxy, y)
-    if found and (maxx > minx) and (maxy > miny):
-        # dá uma "margem" pra não colar na borda
-        pad = max(2, int(min(w, h) * 0.01))
-        return (minx + pad, miny + pad, maxx - pad, maxy - pad)
-
-    # fallback: inset 10%
-    insetx = int(w * 0.08)
-    insety = int(h * 0.12)
-    return (insetx, insety, w - insetx, h - insety)
-
-def _paste_centered(base: Image.Image, content: Image.Image, box):
-    x1, y1, x2, y2 = box
-    bw, bh = (x2 - x1), (y2 - y1)
-    if bw <= 0 or bh <= 0:
-        return base
-    # mantém proporção, encaixa
-    cw, ch = content.size
-    scale = min(bw / max(1, cw), bh / max(1, ch))
-    nw, nh = max(1, int(cw * scale)), max(1, int(ch * scale))
-    cont = content.resize((nw, nh), Image.Resampling.LANCZOS)
-    ox = x1 + (bw - nw) // 2
-    oy = y1 + (bh - nh) // 2
-    base.alpha_composite(cont, (ox, oy))
-    return base
-
-def _compose_in_frame(frame: Image.Image, content: Image.Image) -> Image.Image:
-    out = Image.new("RGBA", frame.size, (0, 0, 0, 0))
-    hole = _alpha_hole_bbox(frame)
-    # cola conteúdo por baixo, depois o frame por cima
-    out = _paste_centered(out, content, hole)
-    out.alpha_composite(frame, (0, 0))
-    return out
-
-def _render_slot(slot_img: Image.Image, sprite: Image.Image, scale_sprite: float = 0.78) -> Image.Image:
-    out = slot_img.copy()
-    hole = _alpha_hole_bbox(slot_img)
-    x1, y1, x2, y2 = hole
-    bw, bh = (x2 - x1), (y2 - y1)
-    # sprite fica um pouco menor que o buraco
-    target_w = max(1, int(bw * scale_sprite))
-    target_h = max(1, int(bh * scale_sprite))
-    s = sprite.copy()
-    # encaixa mantendo proporção
-    sw, sh = s.size
-    sc = min(target_w / max(1, sw), target_h / max(1, sh))
-    nw, nh = max(1, int(sw * sc)), max(1, int(sh * sc))
-    s = s.resize((nw, nh), Image.Resampling.LANCZOS)
-    ox = x1 + (bw - nw) // 2
-    oy = y1 + (bh - nh) // 2
-    out.alpha_composite(s, (ox, oy))
-    return out
-
-def _grid_compose(slots_imgs, cols: int, padding: int = 10, bg=(0,0,0,0)) -> Image.Image:
-    if not slots_imgs:
-        return Image.new("RGBA", (10, 10), bg)
-    sw, sh = slots_imgs[0].size
-    rows = int(math.ceil(len(slots_imgs) / cols))
-    W = cols * sw + (cols + 1) * padding
-    H = rows * sh + (rows + 1) * padding
-    canvas = Image.new("RGBA", (W, H), bg)
-    for i, im in enumerate(slots_imgs):
-        r = i // cols
-        c = i % cols
-        x = padding + c * (sw + padding)
-        y = padding + r * (sh + padding)
-        canvas.alpha_composite(im, (x, y))
-    return canvas
-
-def _party_slot_by_count(n: int) -> str:
-    if n <= 2:
-        return "slot_large"
-    if n <= 4:
-        return "slot_medium"
-    return "slot_small"
-
-def _get_asset_paths():
-    # ajuste aqui se você renomear algo
-    return {
-        "bg": _safe_asset("Assets/ui/backgrounds/trainer_hub.png"),
-
-        "box_frame": _safe_asset("Assets/ui/box/frame_box.png"),
-        "box_slot_empty": _safe_asset("Assets/ui/box/slot_empty.png"),
-        "box_slot_selected": _safe_asset("Assets/ui/box/slot_selected.png"),
-        "box_context": _safe_asset("Assets/ui/box/context_menu.png"),
-        "box_cursor": _safe_asset("Assets/ui/box/cursor_arrow.png"),
-        "box_tab_active": _safe_asset("Assets/ui/box/tab_active.png"),
-        "box_tab_inactive": _safe_asset("Assets/ui/box/tab_inactive.png"),
-
-        "party_frame": _safe_asset("Assets/ui/party/frame_party.png"),
-        "party_slot_large": _safe_asset("Assets/ui/party/slot_large.png"),
-        "party_slot_medium": _safe_asset("Assets/ui/party/slot_medium.png"),
-        "party_slot_small": _safe_asset("Assets/ui/party/slot_small.png"),
-        "party_slot_selected": _safe_asset("Assets/ui/party/slot_selected.png"),
-
-        "summary_frame": _safe_asset("Assets/ui/summary/frame_summary.png"),
-        "summary_moves": _safe_asset("Assets/ui/summary/frame_moves.png"),
-        "summary_stats": _safe_asset("Assets/ui/summary/frame_stats.png"),
-        "summary_tab_active": _safe_asset("Assets/ui/summary/tab_active.png"),
-        "summary_tab_inactive": _safe_asset("Assets/ui/summary/tab_inactive.png"),
-        "summary_move_fav": _safe_asset("Assets/ui/summary/slot_move_favorite.png"),
-        "summary_show_all": _safe_asset("Assets/ui/summary/slot_show_all.png"),
-
-        "fav_on": _safe_asset("Assets/ui/icons/favorite_on.png"),
-        "fav_off": _safe_asset("Assets/ui/icons/favorite_off.png"),
-    }
-
-def _index_sheets_by_pid(fs_db, trainer_name: str):
-    # mapeia pokemon.id -> sheet (última atualizada)
-    try:
-        sheets = list_sheets(fs_db, trainer_name, limit=200)
-    except Exception:
-        return {}
-    idx = {}
-    for s in sheets:
-        p = (s.get("pokemon") or {})
-        pid = str(p.get("id") or "").strip()
-        if pid:
-            idx[pid] = s
-    return idx
-
-
-
 # --- SISTEMA DE LOGIN SEGURO (CORRIGIDO) ---
 
 def find_user_row(sheet, name):
@@ -3442,363 +3267,202 @@ if page == "Pokédex (Busca)":
 # PÁGINA 2: TRAINER HUB
 # ==============================================================================
 if page == "Trainer Hub (Meus Pokémons)":
-    st.title("🏕️ Trainer Hub")
+    st.title("🏕️ Central do Treinador")
+    # --- INICIALIZAÇÃO DE DADOS NOVOS ---
+    if "stats" not in user_data: user_data["stats"] = {}
+    if "wishlist" not in user_data: user_data["wishlist"] = [] # Nova Lista de Desejo
+    if "shinies" not in user_data: user_data["shinies"] = []   # Nova Lista de Shinies
+    
+    # Adicionei a nova aba "Lista de Desejo" aqui
+    tab1, tab2, tab3, tab4 = st.tabs(["🎒 Equipe Ativa", "🔴 Pokémon Capturados", "🌟 Lista de Interesses", "👁️ Pokedex (Vistos)"])
+    # Garante que existe o dicionário de stats no save
+    if "stats" not in user_data:
+        user_data["stats"] = {}
+        
+    with tab1:
+        with st.expander("➕ Adicionar Pokémon à equipe ativa", expanded=False):
+            col_add1, col_add2 = st.columns(2)
+            with col_add1:
+                st.subheader("Da Pokédex (apenas capturados)")                
+                # --- NOVO FILTRO: APENAS CAPTURADOS ---
+                # Filtra o dataframe para pegar apenas IDs que estão em user_data['caught']
+                caught_ids = [str(c) for c in user_data['caught'] if not str(c).startswith("EXT:")]
+                df_caught = df[df['Nº'].astype(str).isin(caught_ids)]
+                
+                options_all = df_caught.apply(lambda x: f"#{x['Nº']} - {x['Nome']}", axis=1).tolist()
+                # --------------------------------------
 
-    # ----------------------------
-    # Estado da UI
-    # ----------------------------
-    st.session_state.setdefault("th_box_page", 1)
-    st.session_state.setdefault("th_selected_pid", None)
-    st.session_state.setdefault("th_selected_source", None)  # "box" | "party"
-    st.session_state.setdefault("th_show_sheet_id", None)
-    st.session_state.setdefault("th_move_favs", {})  # pid -> [move_name,...]
+                current_pc_in_party = [m for m in user_data['party'] if not str(m).startswith("EXT:")]
+                current_ext_in_party = [m for m in user_data['party'] if str(m).startswith("EXT:")]
+                
+                default_names = []
+                for pid in current_pc_in_party:
+                        res = df[df['Nº'].astype(str) == str(pid)]['Nome'].values
+                        if len(res) > 0: default_names.append(f"#{pid} - {res[0]}")
+                
+                selected_names = st.multiselect("Selecione para a equipe", options=options_all, default=default_names)                
+                # ... (Lógica de salvar mantém igual, pode manter o resto do bloco if set(full_new_party)...)
+                new_pc_ids = [n.split(" - ")[0].replace("#", "") for n in selected_names]
+                full_new_party = new_pc_ids + current_ext_in_party
+                
+                if set(full_new_party) != set(user_data['party']) or len(full_new_party) != len(user_data['party']):
+                    # (Lógica de adicionar mantém a mesma)
+                    user_data['party'] = full_new_party
+                    save_data_cloud(trainer_name, user_data)
+                    st.rerun()
 
-    # garante campos do user_data
-    if "party" not in user_data: user_data["party"] = []
-    if "caught" not in user_data: user_data["caught"] = []
-
-    # remove EXT do box grid (visitantes não devem aparecer como capturados padrão)
-    caught_ids = [str(c) for c in user_data["caught"] if not str(c).startswith("EXT:")]
-    party_ids = [str(p) for p in user_data["party"] if p]
-
-    # limites do seu sistema
-    PARTY_MAX = 8
-
-    # firebase sheets (para puxar golpes/stats/advantages/skills)
-    fs_db, _bucket = init_firebase()
-    sheet_index = _index_sheets_by_pid(fs_db, st.session_state.get("username", "trainer"))
-
-    # ----------------------------
-    # Assets
-    # ----------------------------
-    A = _get_asset_paths()
-
-    # ----------------------------
-    # Layout (2 colunas + ficha embaixo)
-    # ----------------------------
-    colL, colR = st.columns([1.05, 0.95], gap="large")
-
-    # ============================
-    # ESQUERDA: BOX (capturados)
-    # ============================
-    with colL:
-        st.subheader("📦 BOX")
-
-        # paginação da box
-        PER_PAGE = 30  # 5x6
-        total_pages = max(1, int(math.ceil(len(caught_ids) / max(1, PER_PAGE))))
-        c1, c2, c3 = st.columns([0.25, 0.5, 0.25])
-        with c1:
-            if st.button("◀", key="th_box_prev", disabled=(st.session_state["th_box_page"] <= 1)):
-                st.session_state["th_box_page"] -= 1
-                st.rerun()
-        with c2:
-            st.markdown(f"<div style='text-align:center; font-weight:700;'>Box {st.session_state['th_box_page']} / {total_pages}</div>", unsafe_allow_html=True)
-        with c3:
-            if st.button("▶", key="th_box_next", disabled=(st.session_state["th_box_page"] >= total_pages)):
-                st.session_state["th_box_page"] += 1
-                st.rerun()
-
-        # slice da página
-        page = st.session_state["th_box_page"]
-        start = (page - 1) * PER_PAGE
-        end = start + PER_PAGE
-        page_ids = caught_ids[start:end]
-
-        # carrega imagens base
-        box_frame = _read_png(A["box_frame"])
-        slot_empty = _read_png(A["box_slot_empty"])
-        slot_selected = _read_png(A["box_slot_selected"])
-
-        # monta 30 slots (preenche vazios)
-        slots = []
-        for i in range(PER_PAGE):
-            pid = page_ids[i] if i < len(page_ids) else None
-            is_sel = (pid is not None and pid == st.session_state.get("th_selected_pid") and st.session_state.get("th_selected_source") == "box")
-
-            base_slot = slot_selected if is_sel else slot_empty
-
-            if pid:
-                spr_url = pokemon_pid_to_image(pid, mode="sprite", shiny=False)
-                spr = _fetch_url_image(spr_url)
-                slot_img = _render_slot(base_slot, spr, scale_sprite=0.86)
-            else:
-                slot_img = base_slot.copy()
-
-            slots.append(slot_img)
-
-        grid = _grid_compose(slots, cols=5, padding=10)
-        box_view = _compose_in_frame(box_frame, grid)
-
-        # clique por coordenadas
-        click = streamlit_image_coordinates(box_view, key="th_box_click")
-        if click:
-            x, y = click["x"], click["y"]
-
-            # descobre qual slot foi clicado: precisamos do bbox do conteúdo no frame e do grid
-            hole = _alpha_hole_bbox(box_frame)
-            x1, y1, x2, y2 = hole
-            # transforma coordenada da tela do frame -> coordenada no grid
-            bw, bh = x2 - x1, y2 - y1
-            gw, gh = grid.size
-
-            # grid foi centralizado, então calcula offset de centralização
-            offx = x1 + (bw - gw) // 2
-            offy = y1 + (bh - gh) // 2
-            gx = x - offx
-            gy = y - offy
-
-            if 0 <= gx < gw and 0 <= gy < gh:
-                sw, sh = slot_empty.size
-                pad = 10
-                # cada célula: pad + slot + pad
-                cellw = sw + pad
-                cellh = sh + pad
-                col = int((gx - pad) // cellw)
-                row = int((gy - pad) // cellh)
-                if 0 <= col < 5 and 0 <= row < 6:
-                    idx = row * 5 + col
-                    if idx < len(page_ids):
-                        pid = page_ids[idx]
-                        st.session_state["th_selected_pid"] = pid
-                        st.session_state["th_selected_source"] = "box"
+            # ... (Código da col_add2 mantém igual) ...
+            with col_add2:
+                st.subheader("Visitante")
+                external_name = st.text_input("Nome do visitante (ex: Sawsbuck)")
+                if st.button("Adicionar visitante"):
+                    if external_name:
+                        ext_id = f"EXT:{external_name}"
+                        user_data['party'].append(ext_id)
+                        save_data_cloud(trainer_name, user_data)
                         st.rerun()
+        
+        st.markdown("---")
+        
+        if user_data['party']:
+            cols = st.columns(3)
+            for i, member in enumerate(user_data['party']):
+                # Checa se é shiny
+                is_shiny = member in user_data.get("shinies", [])
 
-        # menu de contexto (Box)
-        sel_pid = st.session_state.get("th_selected_pid")
-        if sel_pid and st.session_state.get("th_selected_source") == "box":
-            st.markdown("---")
-            p_row = df[df["Nº"].astype(str) == str(sel_pid)]
-            p_name = p_row["Nome"].values[0] if len(p_row) else f"#{sel_pid}"
-            st.markdown(f"**Selecionado (BOX):** {p_name}")
-
-            b1, b2, b3 = st.columns([1, 1, 1])
-            with b1:
-                if st.button("👁️ Ver ficha", key="th_box_view_sheet"):
-                    st.session_state["th_show_sheet_id"] = str(sel_pid)
-                    st.rerun()
-            with b2:
-                disabled = (sel_pid in party_ids) or (len(party_ids) >= PARTY_MAX)
-                if st.button("➡️ Mover p/ equipe", key="th_box_move_party", disabled=disabled):
-                    if sel_pid not in party_ids and len(party_ids) < PARTY_MAX:
-                        user_data["party"].append(sel_pid)
-                        save_data_cloud(st.session_state["username"], user_data)
-                        st.rerun()
-            with b3:
-                if st.button("❌ Desselecionar", key="th_box_clear"):
-                    st.session_state["th_selected_pid"] = None
-                    st.session_state["th_selected_source"] = None
-                    st.rerun()
-
-            if len(party_ids) >= PARTY_MAX:
-                st.info(f"Sua equipe está cheia ({PARTY_MAX}). Remova alguém para mover mais.")
-
-    # ============================
-    # DIREITA: PARTY (equipe ativa)
-    # ============================
-    with colR:
-        st.subheader("🎒 EQUIPE")
-
-        party_frame = _read_png(A["party_frame"])
-        n = len(party_ids)
-        slot_kind = _party_slot_by_count(n if n > 0 else 1)
-        slot_path = A[f"party_{slot_kind}"]
-        slot_img = _read_png(slot_path)
-        slot_sel = _read_png(A["party_slot_selected"])
-
-        # monta slots verticais
-        slots_party = []
-        for pid in party_ids:
-            is_sel = (pid == st.session_state.get("th_selected_pid") and st.session_state.get("th_selected_source") == "party")
-            base = slot_sel if is_sel else slot_img
-            spr_url = pokemon_pid_to_image(pid, mode="sprite", shiny=False)
-            spr = _fetch_url_image(spr_url)
-            slots_party.append(_render_slot(base, spr, scale_sprite=0.85))
-
-        # se vazio, mostra “slots fantasma” (estética)
-        if not slots_party:
-            for _ in range(2):
-                slots_party.append(slot_img.copy())
-
-        # grid 1 coluna
-        party_list = _grid_compose(slots_party, cols=1, padding=12)
-        party_view = _compose_in_frame(party_frame, party_list)
-
-        click2 = streamlit_image_coordinates(party_view, key="th_party_click")
-        if click2 and party_ids:
-            x, y = click2["x"], click2["y"]
-            hole = _alpha_hole_bbox(party_frame)
-            x1, y1, x2, y2 = hole
-            bw, bh = x2 - x1, y2 - y1
-            gw, gh = party_list.size
-            offx = x1 + (bw - gw) // 2
-            offy = y1 + (bh - gh) // 2
-            gx = x - offx
-            gy = y - offy
-            if 0 <= gx < gw and 0 <= gy < gh:
-                sw, sh = slot_img.size
-                pad = 12
-                cellh = sh + pad
-                row = int((gy - pad) // cellh)
-                if 0 <= row < len(party_ids):
-                    pid = party_ids[row]
-                    st.session_state["th_selected_pid"] = pid
-                    st.session_state["th_selected_source"] = "party"
-                    st.rerun()
-
-        # ações da party
-        sel_pid = st.session_state.get("th_selected_pid")
-        if sel_pid and st.session_state.get("th_selected_source") == "party":
-            st.markdown("---")
-            p_row = df[df["Nº"].astype(str) == str(sel_pid)]
-            p_name = p_row["Nome"].values[0] if len(p_row) else f"#{sel_pid}"
-            st.markdown(f"**Selecionado (EQUIPE):** {p_name}")
-
-            a1, a2, a3, a4 = st.columns([1,1,1,1])
-            with a1:
-                if st.button("👁️ Ver ficha", key="th_party_view_sheet"):
-                    st.session_state["th_show_sheet_id"] = str(sel_pid)
-                    st.rerun()
-            with a2:
-                if st.button("⬅️ Mover p/ box", key="th_party_move_box"):
-                    if sel_pid in user_data["party"]:
-                        user_data["party"] = [p for p in user_data["party"] if str(p) != str(sel_pid)]
-                        save_data_cloud(st.session_state["username"], user_data)
-                        st.session_state["th_selected_pid"] = None
-                        st.session_state["th_selected_source"] = None
-                        st.rerun()
-            with a3:
-                # reordenar (subir)
-                i = party_ids.index(sel_pid)
-                if st.button("⬆️", key="th_party_up", disabled=(i <= 0)):
-                    party_ids[i-1], party_ids[i] = party_ids[i], party_ids[i-1]
-                    user_data["party"] = party_ids
-                    save_data_cloud(st.session_state["username"], user_data)
-                    st.rerun()
-            with a4:
-                # reordenar (descer)
-                i = party_ids.index(sel_pid)
-                if st.button("⬇️", key="th_party_down", disabled=(i >= len(party_ids)-1)):
-                    party_ids[i+1], party_ids[i] = party_ids[i], party_ids[i+1]
-                    user_data["party"] = party_ids
-                    save_data_cloud(st.session_state["username"], user_data)
-                    st.rerun()
-
-    # ============================
-    # EMBAIXO: SUMMARY / FICHA
-    # ============================
-    st.markdown("---")
-    st.subheader("📄 Ficha")
-
-    # qual pid estamos mostrando?
-    show_pid = st.session_state.get("th_show_sheet_id") or st.session_state.get("th_selected_pid")
-    if not show_pid:
-        st.info("Selecione um Pokémon na BOX ou na EQUIPE para ver a ficha.")
-    else:
-        # tenta puxar sheet do firebase (se existir)
-        trainer_name = st.session_state.get("username", "trainer")
-        sheet = sheet_index.get(str(show_pid))
-
-        # dados básicos do pokemon (df)
-        p_row = df[df["Nº"].astype(str) == str(show_pid)]
-        p_name = p_row["Nome"].values[0] if len(p_row) else f"#{show_pid}"
-        p_type = p_row["Tipo"].values[0] if len(p_row) else "-"
-        spr_url = pokemon_pid_to_image(str(show_pid), mode="artwork", shiny=False)
-
-        # layout de summary com tabs
-        t1, t2, t3, t4 = st.tabs(["⚔️ Golpes", "📊 Stats", "⭐ Advantages", "🧠 Skills"])
-
-        with t1:
-            st.markdown(f"**{p_name}** — {p_type}")
-            st.image(spr_url, width=220)
-
-            if sheet:
-                moves = sheet.get("moves") or sheet.get("pokemon", {}).get("moves") or []
-            else:
-                moves = []
-
-            if not moves:
-                st.info("Sem golpes cadastrados na ficha desse Pokémon (em Minhas Fichas).")
-            else:
-                # favoritos (até 4)
-                favs = st.session_state["th_move_favs"].get(str(show_pid), [])
-                cA, cB = st.columns([0.7, 0.3])
-                with cB:
-                    if st.button("📜 Lista completa", key=f"th_moves_all_{show_pid}"):
-                        st.session_state["th_moves_show_all"] = True
-                show_all = st.session_state.get("th_moves_show_all", False)
-
-                # mostra 4 favoritos ou primeiros 4
-                display = moves if show_all else (favs[:4] if favs else moves[:4])
-
-                st.caption("Clique em um golpe para favoritar/desfavoritar (aparece na tela inicial).")
-                for mv in display:
-                    # aceita mv como dict ou str
-                    if isinstance(mv, dict):
-                        mv_name = mv.get("name") or mv.get("Nome") or str(mv)
-                        mv_desc = mv.get("desc") or mv.get("Descrição") or mv.get("effect") or ""
-                    else:
-                        mv_name = str(mv)
-                        mv_desc = ""
-
-                    is_fav = mv_name in favs
-                    star = "⭐" if is_fav else "☆"
-                    if st.button(f"{star} {mv_name}", key=f"th_mv_{show_pid}_{mv_name}"):
-                        if is_fav:
-                            favs = [x for x in favs if x != mv_name]
-                        else:
-                            # limita 4 favoritos
-                            if len(favs) < 4:
-                                favs = favs + [mv_name]
-                            else:
-                                st.warning("Você só pode favoritar 4 golpes.")
-                        st.session_state["th_move_favs"][str(show_pid)] = favs
-                        st.rerun()
-                    if mv_desc:
-                        st.caption(mv_desc)
-
-        with t2:
-            st.markdown(f"**{p_name}** — {p_type}")
-            if sheet and (sheet.get("stats") or sheet.get("pokemon", {}).get("stats")):
-                stats = sheet.get("stats") or sheet.get("pokemon", {}).get("stats") or {}
-                st.json(stats)
-            else:
-                # fallback: base stats do df, se existirem no seu dataframe
-                cols_try = ["HP", "Atk", "Def", "SpA", "SpD", "Spe", "Attack", "Defense", "Speed"]
-                present = [c for c in cols_try if c in df.columns]
-                if present and len(p_row):
-                    st.dataframe(p_row[present])
+                is_ext = str(member).startswith("EXT:")
+                if is_ext:
+                    p_name = member.replace("EXT:", "")
+                    p_img = get_image_from_name(p_name, api_name_map) # Visitantes sem shiny por enquanto
+                    p_subtitle = "Visitante"
                 else:
-                    st.info("Sem stats na ficha (Firebase) e sem colunas base no dataframe.")
+                    p_search = df[df['Nº'].astype(str) == str(member)]
+                    if not p_search.empty:
+                        r = p_search.iloc[0]
+                        p_name = r['Nome']
+                        # --- USA A NOVA FUNÇÃO COM SHINY ---
+                        p_img = pokemon_pid_to_image(member, mode="artwork", shiny=is_shiny)
+                        p_subtitle = f"⚡ NP: {r['Nivel_Poder']} | {r['Tipo']}"
+                    else:
+                        p_name, p_subtitle = f"ID: {member}", "?"
+                        p_img = ""
+                
+                with cols[i % 3]:
+                    with st.container(border=True):
+                        c_p1, c_p2 = st.columns([3, 1])
+                        with c_p1: st.markdown(f"**{p_name}**")
+                        with c_p2:
+                            if st.button("❌", key=f"rem_{i}"):
+                                user_data['party'].pop(i)
+                                save_data_cloud(trainer_name, user_data)
+                                st.rerun()
+                        
+                        st.image(p_img, width=120)
+                        
+                        # --- CHECKBOX SHINY ---
+                        if not is_ext:
+                            # Se marcar, adiciona na lista de shinies. Se desmarcar, remove.
+                            shiny_check = st.checkbox("✨ Shiny", value=is_shiny, key=f"shiny_{member}_{i}")
+                            if shiny_check != is_shiny:
+                                if shiny_check:
+                                    if member not in user_data["shinies"]: user_data["shinies"].append(member)
+                                else:
+                                    if member in user_data["shinies"]: user_data["shinies"].remove(member)
+                                save_data_cloud(trainer_name, user_data)
+                                st.rerun()
+                        # ----------------------
 
-        with t3:
-            st.markdown(f"**{p_name}**")
-            adv = []
-            if sheet:
-                adv = sheet.get("advantages") or sheet.get("pokemon", {}).get("advantages") or []
-            if not adv:
-                st.info("Sem advantages cadastradas na ficha.")
-            else:
-                for a in adv:
-                    st.write(f"- {a}")
+                        st.caption(p_subtitle)
+                        
+                        # ... (O resto do código de Stats e Notas mantém igual) ...
+                        my_stats = user_data["stats"].get(member, {})
+                        with st.expander("📊 Ficha de Combate"):
+                             # (Código dos inputs Dodge, Parry etc mantém igual)
+                             s1, s2 = st.columns(2)
+                             d = s1.number_input("Dodge", value=int(my_stats.get("dodge", 0)), key=f"hub_dod_{member}")
+                             p = s2.number_input("Parry", value=int(my_stats.get("parry", 0)), key=f"hub_par_{member}")
+                             w = s1.number_input("Will", value=int(my_stats.get("will", 0)), key=f"hub_wil_{member}")
+                             f = s2.number_input("Fort", value=int(my_stats.get("fort", 0)), key=f"hub_for_{member}")
+                             t = st.number_input("THG", value=int(my_stats.get("thg", 0)), key=f"hub_thg_{member}")
+                             
+                             current_vals = {"dodge": d, "parry": p, "will": w, "fort": f, "thg": t}
+                             if current_vals != my_stats:
+                                 user_data["stats"][member] = current_vals
+                                 
+                        nk = f"note_party_{i}_{member}"
+                        curr = user_data["notes"].get(nk, "")
+                        new = st.text_area("Notas", value=curr, height=60, key=nk)
+                        if new != curr:
+                            user_data["notes"][nk] = new
 
-        with t4:
-            st.markdown(f"**{p_name}**")
-            sk = []
-            if sheet:
-                sk = sheet.get("skills") or sheet.get("pokemon", {}).get("skills") or []
-            if not sk:
-                st.info("Sem skills cadastradas na ficha.")
-            else:
-                for s in sk:
-                    st.write(f"- {s}")
+    
+        else: 
+            st.info("Sua equipe ainda está vazia.")
+    with tab2:
+        st.markdown(f"### Total de capturados: {len(user_data['caught'])}")
+        if not user_data['caught']: st.info("Sua caixa está vazia no momento.")
+        else:
+            for p_id in user_data['caught']:
+                is_in_party = p_id in user_data['party']
+                status_text = "Na Equipe" if is_in_party else "No PC"
+                if str(p_id).startswith("EXT:"):
+                    p_name = p_id.replace("EXT:", "")
+                    icon = "🌐"
+                    with st.expander(f"{icon} {p_name} ({status_text})"):
+                            st.image(get_image_from_name(p_name, api_name_map), width=100)
+                            st.write("**Origem:** visitante externo a Ga'al.")
+                else:
+                    p_search = df[df['Nº'] == p_id]
+                    if p_search.empty: continue
+                    p_row = p_search.iloc[0]
+                    icon = "🎒" if is_in_party else "🖥️"
+                    header = f"{icon} #{p_id} - {p_row['Nome']} (NP: {p_row['Nivel_Poder']})"
+                    with st.expander(header):
+                        c1, c2 = st.columns([1, 4])
+                        with c1: st.image(get_image_from_name(p_row['Nome'], api_name_map), width=100)
+                        with c2:
+                            st.write(f"**Status:** {status_text}")
+                            st.write(f"**Estratégia sugerida:** {p_row['Viabilidade'][:150]}...")
+                            nk = f"pc_note_{p_id}"
+                            curr = user_data["notes"].get(p_id, "")
+                            note = st.text_area("Notas", value=curr, key=nk)
+                            if note != curr:
+                                user_data["notes"][p_id] = note
+                                save_data_cloud(trainer_name, user_data)
 
-        # botão para limpar
-        if st.button("Fechar ficha", key="th_close_sheet"):
-            st.session_state["th_show_sheet_id"] = None
-            st.session_state["th_moves_show_all"] = False
-            st.rerun()
+    with tab3:
+        st.header("🌟 Lista de Interesses")
+        wishlist = user_data.get("wishlist", [])
+        if not wishlist:
+            st.info("Sua lista de desejos está vazia. Marque pokémons na aba Pokédex.")
+        else:
+            # Mostra os pokémons desejados
+            for p_id in wishlist:
+                # Busca dados no Excel
+                p_search = df[df['Nº'].astype(str) == str(p_id)]
+                if p_search.empty: continue
+                p_row = p_search.iloc[0]
+                
+                with st.expander(f"🌟 #{p_id} - {p_row['Nome']}"):
+                    c1, c2 = st.columns([1, 4])
+                    with c1: 
+                        # CORREÇÃO: Usa a função inteligente que converte ID Regional -> Imagem Real
+                        img_url = pokemon_pid_to_image(p_id, mode="artwork", shiny=False)
+                        st.image(img_url, width=100)
+                    with c2:
+                        st.write(f"**Tipo:** {p_row['Tipo']}")
+                        st.write(f"**Região:** {p_row['Região']}")
+                        if st.button("Remover da Lista", key=f"rm_wish_{p_id}"):
+                            user_data["wishlist"].remove(p_id)
+                            save_data_cloud(trainer_name, user_data)
+                            st.rerun()
 
+    with tab4:
+        total = len(df)
+        vistos = len(user_data['seen'])
+        st.markdown(f"### Progresso da Pokédex")
+        st.progress(min(vistos / total, 1.0))
+        st.write(f"**{vistos}** de **{total}** Pokémons registrados.")
         
 
 #==================
@@ -5326,53 +4990,3 @@ elif page == "Mochila":
     
     
     
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
