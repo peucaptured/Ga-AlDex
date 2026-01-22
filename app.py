@@ -748,8 +748,8 @@ def load_sheet(db, trainer_name: str, sheet_id: str):
 
 
 def _cg_cap():
-np_ = int(st.session_state.get("cg_np", 0) or 0)
-return 2 * np_
+    np_ = int(st.session_state.get("cg_np", 0) or 0)
+    return 2 * np_
 
 def _cg_sync_from_dodge():
     cap = _cg_cap()
