@@ -26,7 +26,7 @@ def render_move_creator(
 
     st.subheader("⚔️ Criação de Golpes (M&M)")
     tab1, tab2, tab3 = st.tabs(["🔎 Buscar por nome", "🧩 Criar por descrição", "🛠️ Criar do zero"])
-        def _confirm_move(mv, rank: int, build: str, pp):
+    def _confirm_move(mv, rank: int, build: str, pp):
         st.session_state["cg_moves"].append({
             "name": mv.name,
             "rank": int(rank),
