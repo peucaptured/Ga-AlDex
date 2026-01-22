@@ -80,30 +80,33 @@ class Move:
     tags: List[str]
     raw: Dict[str, Any]
 
-    def render_build(self, rank: int) -> str:
+    def render_build(self, rank: int, sub_ranks: dict | None = None) -> str:
         b = (self.build or "").strip()
         if not b:
             return ""
     
         # 1) Trocar Rank = PL por Rank = <rank>
         b = re.sub(r"Rank\s*=\s*PL", f"Rank = {rank}", b, flags=re.IGNORECASE)
-        b = re.sub(r"Rank\s*=\s*X", f"Rank = {rank}", b, flags=re.IGNORECASE)
+        b = re.sub(r"Rank\s*=\s*X",  f"Rank = {rank}", b, flags=re.IGNORECASE)
     
-        # 2) Escalar efeitos numéricos: Damage/Weaken/Affliction/etc. para o mesmo rank
-        # Ex.: "Weaken ... 1" -> "Weaken ... 10"
+        # 2) Escalar efeitos numéricos: cada efeito pode ter rank próprio via sub_ranks
         def _scale(m):
-            effect = m.group(1)
-            eff_key = effect.strip().lower()
+            effect = m.group(1)               # "Damage", "Weaken"...
+            eff_key = effect.strip().lower()  # "damage", "weaken"...
             if sub_ranks and eff_key in sub_ranks and int(sub_ranks[eff_key]) > 0:
                 r = int(sub_ranks[eff_key])
             else:
                 r = int(rank)
             return f"{effect} {r}"
     
-        b = re.sub(r"\b(Damage|Weaken|Affliction|Healing|Nullify|Create)\s+\d+\b", _scale, b, flags=re.IGNORECASE)
+        b = re.sub(
+            r"\b(Damage|Weaken|Affliction|Healing|Nullify|Create|Environment)\s+\d+\b",
+            _scale,
+            b,
+            flags=re.IGNORECASE
+        )
     
         # 3) Deduplicar segmentos "Linked ..." idênticos (exatos)
-        # separa por ';' (seu excel costuma usar isso)
         parts = [p.strip() for p in b.split(";") if p.strip()]
         seen = set()
         uniq = []
@@ -112,16 +115,15 @@ class Move:
             if key not in seen:
                 seen.add(key)
                 uniq.append(p)
-        # ==============================
+    
         # ==========================================
         # DEFINIÇÃO DE RESISTÊNCIA DO DANO (FINAL)
         # ==========================================
         name_desc = f"{self.name} {self.descricao or ''}".lower()
-        categoria = (self.categoria or "").lower()
         tipo = (self.tipo or "").lower()
-        
+    
         damage_resist = "Thg"  # padrão absoluto
-        
+    
         # 1) DODGE — prioridade máxima
         if any(k in name_desc for k in [
             "ohko", "one-hit", "hit kill",
@@ -130,29 +132,30 @@ class Move:
             "diferença de peso", "weight difference"
         ]):
             damage_resist = "Dodge"
-        
+    
         # 2) WILL — psíquico / fantasma / redução de will/spdef/spatk
         elif tipo in {"psychic", "psíquico", "ghost", "fantasma"}:
             damage_resist = "Will"
-        
+    
         elif any(k in name_desc for k in [
             "reduce will", "reduz will",
             "special defense down", "spdef down",
             "special attack down", "spatk down"
         ]):
             damage_resist = "Will"
-        
-        # 3) Aplica no primeiro Damage
-        b = re.sub(
+    
+        # 3) Aplica no primeiro Damage (no resultado final)
+        out = "; ".join(uniq)
+        out = re.sub(
             r"(Damage\s+\d+)(?![^\[]*\])",
             rf"\1 (Resisted by {damage_resist})",
-            b,
+            out,
             count=1,
             flags=re.IGNORECASE
         )
-
     
-        return "; ".join(uniq)
+        return out
+
 
 
     def pp_cost(self, rank: int) -> Tuple[Optional[float], str]:
@@ -395,10 +398,87 @@ def render_move_creator(
         st.write(getattr(mv, "descricao", None) or "—")
 
         st.write("**Build M&M (rank escolhido):**")
-        build = mv.render_build(rank)
+        
+        # ✅ opção de escolher ranks por sub-efeito
+        custom_sub = st.checkbox(
+            "Quero escolher rank por sub-efeito (Damage/Affliction/Weaken etc.)",
+            key=f"{state_key_prefix}_customsub_{mv.name}_{rank}"
+        )
+        
+        sub_ranks = None
+        manual_pp = None
+        
+        if custom_sub:
+            st.caption("Defina o rank de cada sub-efeito. Se deixar 0, ele não entra / não altera.")
+            cA, cB, cC = st.columns(3)
+        
+            with cA:
+                r_damage = st.number_input(
+                    "Rank Damage", min_value=0, max_value=30, value=int(rank),
+                    key=f"{state_key_prefix}_r_damage_{mv.name}_{rank}"
+                )
+                r_aff = st.number_input(
+                    "Rank Affliction", min_value=0, max_value=30, value=int(rank),
+                    key=f"{state_key_prefix}_r_aff_{mv.name}_{rank}"
+                )
+        
+            with cB:
+                r_weaken = st.number_input(
+                    "Rank Weaken", min_value=0, max_value=30, value=int(rank),
+                    key=f"{state_key_prefix}_r_weaken_{mv.name}_{rank}"
+                )
+                r_heal = st.number_input(
+                    "Rank Healing", min_value=0, max_value=30, value=0,
+                    key=f"{state_key_prefix}_r_heal_{mv.name}_{rank}"
+                )
+        
+            with cC:
+                r_create = st.number_input(
+                    "Rank Create", min_value=0, max_value=30, value=0,
+                    key=f"{state_key_prefix}_r_create_{mv.name}_{rank}"
+                )
+                r_env = st.number_input(
+                    "Rank Environment", min_value=0, max_value=30, value=0,
+                    key=f"{state_key_prefix}_r_env_{mv.name}_{rank}"
+                )
+        
+            sub_ranks = {
+                "damage": int(r_damage),
+                "affliction": int(r_aff),
+                "weaken": int(r_weaken),
+                "healing": int(r_heal),
+                "create": int(r_create),
+                "environment": int(r_env),
+            }
+        
+            manual_pp = st.number_input(
+                "PP total do golpe (obrigatório quando você customiza ranks)",
+                min_value=0,
+                value=0,
+                step=1,
+                key=f"{state_key_prefix}_manualpp_{mv.name}_{rank}"
+            )
+        
+        # ✅ build: normal ou customizado
+        if sub_ranks:
+            build = mv.render_build(rank, sub_ranks=sub_ranks)
+        else:
+            build = mv.render_build(rank)
+        
         st.code(build, language="text")
+        
+        # ✅ PP: se customizou, usa o manual; se não, usa o Excel
+        if sub_ranks:
+            pp = int(manual_pp or 0)
+            why = "PP informado manualmente (porque você escolheu ranks por sub-efeito)."
+        else:
+            pp, why = mv.pp_cost(rank)
+        
+        if pp is not None:
+            st.info(f"PP: **{pp}** — {why}")
+        else:
+            st.warning(f"PP: não definido — {why}")
 
-        pp, why = mv.pp_cost(rank)
         if pp is not None:
             st.info(f"PP (estimado ou do Excel): **{pp}** — {why}")
         else:
