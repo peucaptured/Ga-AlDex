@@ -15,11 +15,23 @@ POKEAPI = "https://pokeapi.co/api/v2"
 
 @st.cache_data(show_spinner=False)
 def _pokeapi_move(name: str) -> dict:
-    """Cache por move (evita spam de requests)."""
     url = f"{POKEAPI}/move/{name.strip().lower()}"
-    r = requests.get(url, timeout=20)
-    r.raise_for_status()
-    return r.json()
+    try:
+        r = requests.get(url, timeout=20)
+
+        # se não for sucesso HTTP
+        if r.status_code != 200:
+            return {}
+
+        # tenta converter pra JSON
+        try:
+            return r.json()
+        except Exception:
+            return {}
+
+    except Exception:
+        return {}
+
 
 
 def pokemon_moveset_from_pjson(pjson: dict) -> Set[str]:
