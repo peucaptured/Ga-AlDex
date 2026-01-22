@@ -647,11 +647,64 @@ def render_move_creator(
 
         st.markdown("### Build Gerada")
         st.code(build, language="text")
+                # =========================
+        # PP do golpe criado do zero
+        # =========================
+        def _estimate_pp_from_build(build_txt: str, rank: int) -> int | None:
+            b = (build_txt or "").lower()
+            base = 0.0
+
+            if "damage" in b: base += 1.0
+            if "affliction" in b: base += 1.0
+            if "weaken" in b: base += 1.0
+            if "healing" in b: base += 2.0
+            if "create" in b: base += 1.0
+            if "environment" in b: base += 1.0
+            if "nullify" in b: base += 1.0
+
+            # extras comuns
+            if "linked" in b: base += 0.5
+            if "area" in b: base += 0.5
+            if "perception" in b: base += 0.5
+            if "ranged" in b: base += 0.25
+
+            if base <= 0:
+                return None
+
+            return int(round(base * int(rank)))
+
+        pp_auto = _estimate_pp_from_build(build, rank3)
+
+        # Se customizou ranks, PP manual é obrigatório.
+        # Se não der pra estimar, também obriga manual.
+        if custom_sub or pp_auto is None:
+            default_pp = 1
+            if custom_sub and manual_pp:
+                default_pp = max(1, int(manual_pp))
+            pp_final = int(st.number_input(
+                "PP total do golpe (obrigatório)",
+                min_value=1,
+                value=int(default_pp),
+                step=1,
+                key=f"{state_key_prefix}_z_pp_required"
+            ))
+            st.info("PP manual obrigatório." if custom_sub else "PP manual obrigatório (não foi possível estimar).")
+        else:
+            # Mesmo estimando, deixo você ajustar
+            pp_final = int(st.number_input(
+                "PP total do golpe",
+                min_value=1,
+                value=int(pp_auto),
+                step=1,
+                key=f"{state_key_prefix}_z_pp"
+            ))
+            st.info(f"PP sugerido: **{pp_auto}** (você pode ajustar).")
+
 
         col_confirm_zero, col_add_zero = st.columns(2)
         with col_confirm_zero:
             can_confirm = (pp_final is not None) and (int(pp_final) > 0)
-            if st.button("✅ Confirmar golpe criado do zero", key=f"{state_key_prefix}_z_confirm"):
+            if st.button("✅ Confirmar golpe criado do zero", key=f"{state_key_prefix}_z_confirm", disabled=not can_confirm):
                 st.session_state["cg_moves"].append({
                     "name": "Golpe Customizado",
                     "rank": int(rank3),
