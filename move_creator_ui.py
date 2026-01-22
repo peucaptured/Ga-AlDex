@@ -7,7 +7,11 @@ from move_interpreter import interpret_effects_to_build
 def load_move_db(excel_path: str) -> MoveDB:
     return MoveDB.from_excel(excel_path, sheet_name="Golpes_MM")
 
-def render_move_creator(excel_path: str, state_key_prefix: str = "mc"):
+def render_move_creator(
+    excel_path: str,
+    state_key_prefix: str = "mc",
+    return_to_view: str | None = None,
+):
     """
     Tela do criador de golpes:
     - busca por nome
@@ -22,6 +26,18 @@ def render_move_creator(excel_path: str, state_key_prefix: str = "mc"):
 
     st.subheader("⚔️ Criação de Golpes (M&M)")
     tab1, tab2, tab3 = st.tabs(["🔎 Buscar por nome", "🧩 Criar por descrição", "🛠️ Criar do zero"])
+        def _confirm_move(mv, rank: int, build: str, pp):
+        st.session_state["cg_moves"].append({
+            "name": mv.name,
+            "rank": int(rank),
+            "build": build,
+            "pp_cost": pp,
+            "meta": {
+                "ranged": bool(mv.ranged),
+                "perception_area": bool(mv.perception_area),
+            }
+        })
+
 
     def _render_move_card(mv, rank: int):
         st.markdown(f"### 🌀 {mv.name}  ({mv.tipo} / {mv.categoria})")
@@ -48,18 +64,24 @@ def render_move_creator(excel_path: str, state_key_prefix: str = "mc"):
             st.write(mv.how_it_works)
 
         # ✅ confirmar golpe
-        if st.button(f"✅ Confirmar {mv.name}", key=f"{state_key_prefix}_confirm_{mv.name}_{rank}"):
-            st.session_state["cg_moves"].append({
-                "name": mv.name,
-                "rank": int(rank),
-                "build": build,
-                "pp_cost": pp,
-                "meta": {
-                    "ranged": bool(mv.ranged),
-                    "perception_area": bool(mv.perception_area),
-                }
-            })
-            st.success(f"Adicionado: {mv.name} (Rank {rank})")
+        col_confirm, col_add = st.columns(2)
+        with col_confirm:
+            if st.button(
+                f"✅ Confirmar {mv.name}",
+                key=f"{state_key_prefix}_confirm_{mv.name}_{rank}",
+            ):
+                _confirm_move(mv, rank, build, pp)
+                st.success(f"Adicionado: {mv.name} (Rank {rank})")
+        if return_to_view:
+            with col_add:
+                if st.button(
+                    "➕ Adicionar golpe à ficha",
+                    key=f"{state_key_prefix}_add_to_sheet_{mv.name}_{rank}",
+                ):
+                    _confirm_move(mv, rank, build, pp)
+                    st.success(f"Adicionado: {mv.name} (Rank {rank})")
+                    st.session_state["cg_view"] = return_to_view
+                    st.rerun()
 
     with tab1:
         name = st.text_input("Nome do golpe", key=f"{state_key_prefix}_name")
@@ -84,6 +106,70 @@ def render_move_creator(excel_path: str, state_key_prefix: str = "mc"):
                     with st.expander(f"{i}) {mv.name} — similaridade {score:.3f}", expanded=(i == 1)):
                         _render_move_card(mv, rank2)
 
+    with tab3:
+        st.subheader("🛠️ Criar Golpe do Zero")
+
+        rank = st.slider("Rank do golpe", 1, 20, 10)
+        is_special = st.checkbox("Golpe Especial (Intelect Based)", value=True)
+
+        st.markdown("### Efeitos")
+        effects = {
+            "damage": st.checkbox("Causar Dano"),
+            "affliction": st.checkbox("Causar Affliction"),
+            "weaken": st.checkbox("Causar Weaken"),
+            "healing": st.checkbox("Cura"),
+            "create": st.checkbox("Create"),
+            "environment": st.checkbox("Environment"),
+        }
+
+        st.markdown("### Detalhes do Weaken")
+        effects["weaken_stgr"] = st.checkbox("Weaken Strength")
+        effects["weaken_int"] = st.checkbox("Weaken Intellect")
+        effects["weaken_dodge"] = st.checkbox("Weaken Dodge")
+        effects["weaken_will"] = st.checkbox("Weaken Will")
+
+        st.markdown("### Modificadores")
+        area = st.selectbox("Área", ["Nenhuma", "Burst", "Cone", "Line"])
+        perception = st.checkbox("Perception Area")
+        ranged = st.checkbox("Ranged")
+
+        build = interpret_effects_to_build(
+            rank=rank,
+            is_special=is_special,
+            effects=effects,
+            area=None if area == "Nenhuma" else area,
+            perception=perception,
+            ranged=ranged,
+        )
+
+        st.markdown("### Build Gerada")
+        st.code(build, language="text")
+
+        col_confirm_zero, col_add_zero = st.columns(2)
+        with col_confirm_zero:
+            if st.button("✅ Confirmar golpe criado do zero"):
+                st.session_state["cg_moves"].append({
+                    "name": "Golpe Customizado",
+                    "rank": rank,
+                    "build": build,
+                    "pp_cost": None,
+                    "meta": {"custom": True}
+                })
+                st.success("Golpe customizado adicionado à ficha.")
+        if return_to_view:
+            with col_add_zero:
+                if st.button("➕ Adicionar golpe à ficha"):
+                    st.session_state["cg_moves"].append({
+                        "name": "Golpe Customizado",
+                        "rank": rank,
+                        "build": build,
+                        "pp_cost": None,
+                        "meta": {"custom": True}
+                    })
+                    st.success("Golpe customizado adicionado à ficha.")
+                    st.session_state["cg_view"] = return_to_view
+                    st.rerun()
+
     st.divider()
     st.subheader("📦 Golpes confirmados nesta ficha")
 
@@ -103,53 +189,4 @@ def render_move_creator(excel_path: str, state_key_prefix: str = "mc"):
                 if st.button("❌ Remover", key=f"{state_key_prefix}_remove_{i}"):
                     st.session_state["cg_moves"].pop(i)
                     st.rerun()
-                    
-        with tab3:
-            st.subheader("🛠️ Criar Golpe do Zero")
-        
-            rank = st.slider("Rank do golpe", 1, 20, 10)
-            is_special = st.checkbox("Golpe Especial (Intelect Based)", value=True)
-        
-            st.markdown("### Efeitos")
-            effects = {
-                "damage": st.checkbox("Causar Dano"),
-                "affliction": st.checkbox("Causar Affliction"),
-                "weaken": st.checkbox("Causar Weaken"),
-                "healing": st.checkbox("Cura"),
-                "create": st.checkbox("Create"),
-                "environment": st.checkbox("Environment"),
-            }
-        
-            st.markdown("### Detalhes do Weaken")
-            effects["weaken_stgr"] = st.checkbox("Weaken Strength")
-            effects["weaken_int"] = st.checkbox("Weaken Intellect")
-            effects["weaken_dodge"] = st.checkbox("Weaken Dodge")
-            effects["weaken_will"] = st.checkbox("Weaken Will")
-        
-            st.markdown("### Modificadores")
-            area = st.selectbox("Área", ["Nenhuma", "Burst", "Cone", "Line"])
-            perception = st.checkbox("Perception Area")
-            ranged = st.checkbox("Ranged")
-        
-            build = interpret_effects_to_build(
-                rank=rank,
-                is_special=is_special,
-                effects=effects,
-                area=None if area == "Nenhuma" else area,
-                perception=perception,
-                ranged=ranged,
-            )
-        
-            st.markdown("### Build Gerada")
-            st.code(build, language="text")
-        
-            if st.button("✅ Confirmar golpe criado do zero"):
-                st.session_state["cg_moves"].append({
-                    "name": "Golpe Customizado",
-                    "rank": rank,
-                    "build": build,
-                    "pp_cost": None,
-                    "meta": {"custom": True}
-                })
-                st.success("Golpe customizado adicionado à ficha.")
-
+ 
