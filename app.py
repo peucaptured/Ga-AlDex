@@ -93,7 +93,12 @@ class Move:
         # Ex.: "Weaken ... 1" -> "Weaken ... 10"
         def _scale(m):
             effect = m.group(1)
-            return f"{effect} {rank}"
+            eff_key = effect.strip().lower()
+            if sub_ranks and eff_key in sub_ranks and int(sub_ranks[eff_key]) > 0:
+                r = int(sub_ranks[eff_key])
+            else:
+                r = int(rank)
+            return f"{effect} {r}"
     
         b = re.sub(r"\b(Damage|Weaken|Affliction|Healing|Nullify|Create)\s+\d+\b", _scale, b, flags=re.IGNORECASE)
     
