@@ -3343,9 +3343,23 @@ elif page == "Criação Guiada de Fichas":
             
             with col2:
                 # variação ±2 no Dodge
-                dodge = st.number_input("Dodge", value=int(dodge_base, key="cg_dodge"), min_value=max(0, dodge_base-2), max_value=min(99, dodge_base+2))
+                dodge = st.number_input(
+                    "Dodge",
+                    value=int(dodge_base),
+                    key="cg_dodge",
+                    min_value=max(0, int(dodge_base) - 2),
+                    max_value=min(99, int(dodge_base) + 2),
+                )
+            
                 # parry: por enquanto igual ao dodge (pra não quebrar seus caps)
-                parry = st.number_input("Parry", value=int(dodge, key="cg_parry"), min_value=0, max_value=99)
+                parry = st.number_input(
+                    "Parry",
+                    value=int(dodge),
+                    key="cg_parry",
+                    min_value=0,
+                    max_value=99,
+                )
+
             
             with col3:
                 # Thg varia ±2, mas você mantém o cap com Dodge/Parry depois
