@@ -10,3 +10,5 @@ firebase-admin
 streamlit-autorefresh
 Pillow
 streamlit-image-coordinates
+scikit-learn
+reportlab
