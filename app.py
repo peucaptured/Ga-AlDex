@@ -1011,15 +1011,71 @@ def _cg_init_defenses_if_missing(dodge_base, fort_base):
 import math
 from io import BytesIO
 
+import re
+
+REGION_ALIASES = {
+    "alola": "alola", "alolan": "alola", "a": "alola",
+    "galar": "galar", "galarian": "galar", "g": "galar",
+    "hisui": "hisui", "hisuian": "hisui", "h": "hisui",
+    "paldea": "paldea", "paldean": "paldea", "p": "paldea",
+}
+
+def to_pokeapi_name(user_text: str) -> str:
+    s = (user_text or "").strip().lower()
+
+    # símbolos comuns
+    s = s.replace("♀", " f").replace("♂", " m")
+
+    # troca espaços/underscore por hífen
+    s = re.sub(r"[\s_]+", "-", s)
+
+    # remove duplo hífen
+    s = re.sub(r"-{2,}", "-", s).strip("-")
+
+    # nidoran: vira nidoran-f / nidoran-m
+    if s in ("nidoran", "nidoran-"):
+        return "nidoran"  # deixa ambíguo e você força escolha na UI
+    if s in ("nidoran-f", "nidoranf", "nidoran-female", "nidoran-fem", "nidoran-f."):
+        return "nidoran-f"
+    if s in ("nidoran-m", "nidoranm", "nidoran-male", "nidoran-masc", "nidoran-m."):
+        return "nidoran-m"
+
+    # formatos tipo "sandslash-a" / "weezing-g" / "g-weezing"
+    if re.match(r"^[aghp]-", s):  # g-weezing
+        tag, base = s.split("-", 1)
+        region = REGION_ALIASES.get(tag)
+        if region and base:
+            return f"{base}-{region}"
+
+    m = re.match(r"^(.+)-([aghp])$", s)  # sandslash-a
+    if m:
+        base, tag = m.group(1), m.group(2)
+        region = REGION_ALIASES.get(tag)
+        if region:
+            return f"{base}-{region}"
+
+    # formatos tipo "sandslash-alolan" / "weezing-galarian"
+    parts = s.split("-")
+    if len(parts) >= 2:
+        last = parts[-1]
+        region = REGION_ALIASES.get(last)
+        if region:
+            base = "-".join(parts[:-1])
+            return f"{base}-{region}"
+
+    return s
+
+
 POKEAPI_BASE = "https://pokeapi.co/api/v2"
 
 @st.cache_data(ttl=60*60)
 def pokeapi_get_pokemon(name_or_id: str) -> dict:
-    q = str(name_or_id).strip().lower()
+    q = to_pokeapi_name(name_or_id)
     url = f"{POKEAPI_BASE}/pokemon/{q}"
     r = requests.get(url, timeout=15)
     r.raise_for_status()
     return r.json()
+
 
 def pokeapi_parse_stats(p: dict) -> dict:
     # base stats: hp, attack, defense, special-attack, special-defense, speed
@@ -3384,32 +3440,28 @@ if page == "Trainer Hub (Meus Pokémons)":
     # TAB PRINCIPAL: BOX + PARTY
     # ==========================
     with t_main:
-        # CSS (caminho A: só layout)
-        st.markdown(
-            """
-            <style>
-            .hub-shell { display: grid; grid-template-columns: 1.35fr 0.95fr; gap: 16px; align-items: start; }
-            .hub-panel { background: rgba(255,255,255,0.90); border: 1px solid rgba(148,163,184,0.35);
-                         border-radius: 16px; box-shadow: 0 10px 30px rgba(15,23,42,0.06); padding: 12px; }
-            .hub-title { font-weight: 800; font-size: 18px; margin: 0 0 10px 0; }
-            .hub-sub { color: rgba(15,23,42,0.70); font-size: 12px; margin-top: -6px; margin-bottom: 10px; }
-            .hub-sprite img { image-rendering: pixelated; }
-            .hub-chip { display:inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px;
-                        background: rgba(15,23,42,0.06); border: 1px solid rgba(15,23,42,0.10); margin-right: 6px; }
-            .hub-divider { height: 1px; background: rgba(148,163,184,0.35); margin: 10px 0; }
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
-
+        
         left, right = st.columns([1.35, 0.95], gap="large")
 
         # ---------
         # BOX (capturados)
         # ---------
         with left:
-            st.markdown("### 📦 BOX (Capturados)")
+            st.markdown('<div class="gba-window box">', unsafe_allow_html=True)
+        
+            st.markdown("""
+            <div class="gba-header">
+              <div class="left">
+                <span class="gba-chip">BOX</span>
+                <span class="gba-title" style="font-size:0.75rem;">Capturados</span>
+              </div>
+              <div class="right">Pokémons</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
             caught_all = [str(c) for c in user_data.get("caught", []) if not str(c).startswith("EXT:")]
+            caught_all = list(dict.fromkeys(caught_all))
+
             caught_all = list(dict.fromkeys(caught_all))  # remove duplicados mantendo ordem
 
             # paginação
@@ -3471,24 +3523,46 @@ if page == "Trainer Hub (Meus Pokémons)":
                         st.session_state["hub_context_pid"] = None
                         st.rerun()
 
+
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+        # ---------
+        # PARTY (equipe ativa)
+        # ---------
         # ---------
         # PARTY (equipe ativa)
         # ---------
         with right:
-            st.markdown("### 🎒 Equipe Ativa (até 8)")
+            st.markdown('<div class="gba-window party">', unsafe_allow_html=True)
+        
+            st.markdown("""
+            <div class="gba-header">
+              <div class="left">
+                <span class="gba-chip">PARTY</span>
+                <span class="gba-title" style="font-size:0.75rem;">Equipe Ativa</span>
+              </div>
+              <div class="right">até 8</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
             party = [str(p) for p in (user_data.get("party") or [])]
             if not party:
                 st.info("Sua equipe está vazia. Use a BOX para mover um Pokémon.")
             else:
                 n = len(party)
-                # layout adaptativo
+        
+                # layout adaptativo (mantém sua lógica)
                 if n <= 2:
                     cols_n = 1
                 elif n <= 4:
                     cols_n = 2
                 else:
                     cols_n = 2  # 2x4 compacto
-
+        
+                # wrapper grid GBA
+                st.markdown(f'<div class="gba-party" style="grid-template-columns: repeat({cols_n}, 1fr);">', unsafe_allow_html=True)
+        
                 for r in range(0, n, cols_n):
                     cols = st.columns(cols_n)
                     for col, pid in zip(cols, party[r:r+cols_n]):
@@ -3497,21 +3571,33 @@ if page == "Trainer Hub (Meus Pokémons)":
                             name = _get_pokemon_name(pid)
                             typ = _get_pokemon_type(pid)
                             npv = _get_pokemon_np(pid)
-
-                            with st.container(border=True):
-                                st.image(sprite, use_container_width=True)
-                                st.markdown(f"**{name}**")
-                                st.caption(f"{typ} • NP {npv}")
-                                b1, b2 = st.columns(2)
-                                with b1:
-                                    if st.button("Abrir", key=f"hub_party_open_{pid}", use_container_width=True):
-                                        _select_pid(pid)
-                                        st.rerun()
-                                with b2:
-                                    if st.button("Remover", key=f"hub_party_rm_{pid}", use_container_width=True):
-                                        _remove_from_party(pid)
-
-        st.markdown("---")
+        
+                            # card GBA (substitui o container border=True)
+                            st.markdown('<div class="gba-card">', unsafe_allow_html=True)
+                            st.markdown(f'<div class="hub-sprite">', unsafe_allow_html=True)  # mantém pixelated (ou remova se já usa global)
+                            st.image(sprite, use_container_width=True)
+                            st.markdown('</div>', unsafe_allow_html=True)
+        
+                            st.markdown(f'<div style="width:100%;">'
+                                        f'<div class="name">{name}</div>'
+                                        f'<div class="meta">{typ} • NP {npv}</div>'
+                                        f'</div>', unsafe_allow_html=True)
+        
+                            b1, b2 = st.columns(2)
+                            with b1:
+                                if st.button("Abrir", key=f"hub_party_open_{pid}", use_container_width=True):
+                                    _select_pid(pid)
+                                    st.rerun()
+                            with b2:
+                                if st.button("Remover", key=f"hub_party_rm_{pid}", use_container_width=True):
+                                    _remove_from_party(pid)
+        
+                            st.markdown('</div>', unsafe_allow_html=True)  # fecha gba-card
+        
+                st.markdown('</div>', unsafe_allow_html=True)  # fecha gba-party
+        
+            st.markdown('</div>', unsafe_allow_html=True)  # fecha gba-window party
+        
 
         # ==========================
         # FICHA (painel inferior)
@@ -3521,38 +3607,57 @@ if page == "Trainer Hub (Meus Pokémons)":
             pid = str(sel)
             is_ext = pid.startswith("EXT:")
             pname = _get_pokemon_name(pid)
-            st.markdown(f"## 📄 {pname}")
-
+        
+            # ✅ janela GBA da ficha (tudo dentro)
+            st.markdown('<div class="gba-window summary">', unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class="gba-header">
+              <div class="left">
+                <span class="gba-chip">SUMMARY</span>
+                <span class="gba-title" style="font-size:0.75rem;">{pname}</span>
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
             cA, cB = st.columns([1, 1.6], gap="large")
-
+        
             # painel esquerdo: imagem + notas + ações rápidas
             with cA:
                 st.image(_get_artwork(pid), use_container_width=True)
                 stats_slot = _ensure_stats_slot(pid)
-
+        
+                st.markdown('<div class="gba-divider"></div>', unsafe_allow_html=True)
+                st.markdown('<div class="gba-notes"><div class="gba-caption">NOTAS</div></div>', unsafe_allow_html=True)
+        
                 # Notas (sempre)
-                notes = st.text_area("📝 Notas", value=str(stats_slot.get("notes", "")), height=140, key=f"hub_notes_{pid}")
+                notes = st.text_area(
+                    "Notas",
+                    value=str(stats_slot.get("notes", "")),
+                    height=140,
+                    key=f"hub_notes_{pid}",
+                    label_visibility="collapsed",
+                )
                 if notes != stats_slot.get("notes", ""):
                     stats_slot["notes"] = notes
                     user_data["stats"][pid] = stats_slot
                     save_data_cloud(trainer_name, user_data)
-
-                if st.button("Fechar ficha", key="hub_close_sheet"):
+        
+                if st.button("Fechar ficha", key="hub_close_sheet", use_container_width=True):
                     st.session_state["hub_selected_pid"] = None
                     st.rerun()
-
+        
             # painel direito: stats + golpes + abas
             with cB:
                 sheet = sheets_map.get(pid) if (not is_ext) else None
-
-                # Abas internas
+        
+                # Abas internas (mantém sua lógica)
                 tab_moves, tab_adv, tab_skills = st.tabs(["⚔️ Golpes", "⭐ Advantages", "🎯 Skills"])
-
+        
                 # ---------- Caso sem ficha ----------
                 if sheet is None:
                     st.warning("Este Pokémon não tem ficha salva. Preencha os atributos mínimos para usar no Hub.")
                     stats_slot = _ensure_stats_slot(pid)
-
+        
                     c1, c2, c3 = st.columns(3)
                     with c1:
                         dodge = st.number_input("Dodge", min_value=0, max_value=99, value=int(stats_slot.get("dodge", 0)), key=f"hub_dodge_{pid}")
@@ -3564,7 +3669,7 @@ if page == "Trainer Hub (Meus Pokémons)":
                         will = st.number_input("Will", min_value=0, max_value=99, value=int(stats_slot.get("will", 0)), key=f"hub_will_{pid}")
                     with c3:
                         fort = st.number_input("Fortitude", min_value=0, max_value=99, value=int(stats_slot.get("fortitude", 0)), key=f"hub_fort_{pid}")
-
+        
                     # salva automaticamente se mudou
                     new_stats = {
                         "dodge": int(dodge),
@@ -3579,16 +3684,14 @@ if page == "Trainer Hub (Meus Pokémons)":
                     if new_stats != {k: stats_slot.get(k) for k in new_stats.keys()}:
                         user_data["stats"][pid] = new_stats
                         save_data_cloud(trainer_name, user_data)
-
+        
                     with tab_moves:
                         st.info("Sem ficha salva: golpes não disponíveis aqui ainda.")
-
                     with tab_adv:
                         st.info("Sem ficha salva: advantages não disponíveis aqui ainda.")
-
                     with tab_skills:
                         st.info("Sem ficha salva: skills não disponíveis aqui ainda.")
-
+        
                 # ---------- Caso com ficha ----------
                 else:
                     pokemon = sheet.get("pokemon") or {}
@@ -3596,63 +3699,58 @@ if page == "Trainer Hub (Meus Pokémons)":
                     moves = sheet.get("moves") or []
                     advantages = sheet.get("advantages") or []
                     skills_text = sheet.get("skills") or ""
-
+        
                     # reforça stats_slot para uso no cálculo/notes
                     stats_slot = _ensure_stats_slot(pid)
-
-                    # Stats principais (mostra)
+        
+                    # ✅ “chips” GBA (usa a classe que já existe no CSS global)
                     st.markdown(
                         f"""
-                        <div class="hub-chip">Dodge <b>{int(stats.get("dodge", 0))}</b></div>
-                        <div class="hub-chip">Parry <b>{int(stats.get("parry", 0))}</b></div>
-                        <div class="hub-chip">Thg <b>{int(stats.get("thg", 0))}</b></div>
-                        <div class="hub-chip">Fort <b>{int(stats.get("fortitude", 0))}</b></div>
-                        <div class="hub-chip">Will <b>{int(stats.get("will", 0))}</b></div>
-                        <div class="hub-chip">Stgr <b>{int(stats.get("stgr", 0))}</b></div>
-                        <div class="hub-chip">Int <b>{int(stats.get("int", 0))}</b></div>
+                        <div class="gba-chip">Dodge {int(stats.get("dodge", 0))}</div>
+                        <div class="gba-chip">Parry {int(stats.get("parry", 0))}</div>
+                        <div class="gba-chip">Thg {int(stats.get("thg", 0))}</div>
+                        <div class="gba-chip">Fort {int(stats.get("fortitude", 0))}</div>
+                        <div class="gba-chip">Will {int(stats.get("will", 0))}</div>
+                        <div class="gba-chip">Stgr {int(stats.get("stgr", 0))}</div>
+                        <div class="gba-chip">Int {int(stats.get("int", 0))}</div>
                         """,
                         unsafe_allow_html=True,
                     )
-
+        
                     # DB de golpes (para inferir Físico/Especial)
                     try:
                         mvdb = load_move_db(file_name)
                     except Exception:
                         mvdb = None
-
+        
                     def _based_stat(move_name: str) -> str:
-                        # default: Stgr
                         if mvdb is None:
                             return "Stgr"
                         mv = mvdb.get_by_name(move_name)
                         if mv is None:
                             return "Stgr"
                         cat = (mv.categoria or "").strip().lower()
-                        if "especial" in cat:
-                            return "Int"
-                        if "special" in cat:
+                        if "especial" in cat or "special" in cat:
                             return "Int"
                         return "Stgr"
-
+        
                     def _final_rank(m: dict) -> tuple[int, str]:
                         base = int(m.get("rank", 0) or 0)
                         bstat = _based_stat(m.get("name", ""))
                         bonus = int(stats.get("stgr", 0) if bstat == "Stgr" else stats.get("int", 0))
                         return base + bonus, bstat
-
+        
                     # favoritos
                     fav = user_data.get("favorite_moves", {}).get(pid, [])
                     if not isinstance(fav, list):
                         fav = []
-
+        
                     with tab_moves:
                         st.markdown("### ⭐ Golpes Favoritos (até 4)")
-                        # selecionar favoritos a partir de todos os golpes
+        
                         all_names = [m.get("name", "Golpe") for m in moves]
-                        # limpa fav inválidos
                         fav = [n for n in fav if n in all_names]
-
-                        # mostra os 4 favoritos (ou menos)
+        
                         shown = 0
                         for m in moves:
                             name = m.get("name", "Golpe")
@@ -3662,8 +3760,9 @@ if page == "Trainer Hub (Meus Pokémons)":
                                 shown += 1
                         if shown == 0:
                             st.caption("Nenhum favorito definido.")
-
-                        st.markdown("---")
+        
+                        st.markdown('<div class="gba-divider"></div>', unsafe_allow_html=True)
+        
                         st.markdown("### 📜 Lista completa de golpes")
                         for idx, m in enumerate(moves):
                             name = m.get("name", "Golpe")
@@ -3674,23 +3773,20 @@ if page == "Trainer Hub (Meus Pokémons)":
                                 star = st.checkbox("⭐", value=checked, key=f"hub_star_{pid}_{idx}")
                             with c2:
                                 st.write(f"**{name}** — base {int(m.get('rank',0))} + {bstat} → **{fr}**")
-                            # atualiza fav em tempo real
                             if star and name not in fav:
                                 fav.append(name)
                             if (not star) and name in fav:
                                 fav.remove(name)
-
-                        # aplica limite 4
+        
                         if len(fav) > 4:
                             fav = fav[:4]
                             st.warning("Favoritos limitados a 4. Mantive os 4 primeiros que você marcou.")
-
-                        # salva fav se mudou
+        
                         if user_data.get("favorite_moves", {}).get(pid, []) != fav:
                             user_data.setdefault("favorite_moves", {})
                             user_data["favorite_moves"][pid] = fav
                             save_data_cloud(trainer_name, user_data)
-
+        
                     with tab_adv:
                         st.markdown("### ⭐ Advantages")
                         if not advantages:
@@ -3698,13 +3794,16 @@ if page == "Trainer Hub (Meus Pokémons)":
                         else:
                             for a in advantages:
                                 st.write(f"- {a}")
-
+        
                     with tab_skills:
                         st.markdown("### 🎯 Skills")
                         if skills_text:
                             st.write(skills_text)
                         else:
                             st.caption("Sem skills registradas na ficha.")
+        
+            # ✅ fecha janela GBA da ficha
+            st.markdown('</div>', unsafe_allow_html=True)
 
     # ==========================
     # TAB: Lista de interesses
@@ -3867,6 +3966,27 @@ elif page == "Criação Guiada de Fichas":
         cg_init()
         pname = st.text_input("Digite o nome do Pokémon (ex: Blastoise)", value=st.session_state["cg_draft"]["pname"], placeholder="Ex: Blastoise", key="cg_pname")
         cg_sync_from_widgets()
+        raw_name = (pokemon_name_input or "").strip().lower()
+
+        is_nidoran_generic = raw_name in [
+            "nidoran",
+            "nidoran♀",
+            "nidoran♂",
+            "nidoran-f",
+            "nidoran-m"
+        ]
+        
+        if is_nidoran_generic:
+            choice = st.radio(
+                "Qual Nidoran?",
+                ["Nidoran ♀", "Nidoran ♂"],
+                horizontal=True,
+                key="nidoran_choice"
+            )
+            poke_query = "nidoran-f" if choice == "Nidoran ♀" else "nidoran-m"
+        else:
+            poke_query = to_pokeapi_name(pokemon_name_input)
+
 
         # ajuda opcional: mostra sugestões do seu df conforme digita
         if pname:
@@ -3884,7 +4004,7 @@ elif page == "Criação Guiada de Fichas":
 
 
         with st.spinner("Buscando dados do Pokémon online (stats + ability + tipos)..."):
-            pjson = pokeapi_get_pokemon(pname)
+            pjson = pokeapi_get_pokemon(poke_query)
             base_stats = pokeapi_parse_stats(pjson)
             types = pokeapi_parse_types(pjson)
             abilities = pokeapi_parse_abilities(pjson)
