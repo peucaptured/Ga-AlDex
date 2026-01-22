@@ -2587,7 +2587,10 @@ if page == "Trainer Hub (Meus Pokémons)":
 #==================
 
 
-if page == "Criação Guiada de Fichas":
+#==================
+#CRIAÇÃO DE FICHAS
+#==================
+elif page == "Criação Guiada de Fichas":
     st.title("🧩 Criação Guiada de Fichas")
 
     if "cg_view" not in st.session_state:
@@ -2608,30 +2611,33 @@ if page == "Criação Guiada de Fichas":
             st.rerun()
 
     # ==========================
-    # 3A) CRIAÇÃO DE GOLPES
+    # A) CRIAÇÃO DE GOLPES (REAL)
     # ==========================
     if st.session_state["cg_view"] == "moves":
         st.subheader("⚔️ Criação de Golpes")
-        st.caption("Aqui entra a tela que você e eu estávamos montando (busca por golpe, rank, PP, template, etc).")
 
-        # ✅ CHAME AQUI A FUNÇÃO DO SEU CRIADOR DE GOLPES
-        # Exemplo:
-        # render_move_creator(df_moves, trainer_name, user_data, db, bucket)
-        st.info("TODO: integrar aqui o render_move_creator(...) quando você me mandar o código do criador de golpes.")
+        # ✅ CHAMA O COMPONENTE QUE VOCÊ JÁ CRIOU (move_creator_ui.py)
+        render_move_creator(
+            excel_path="golpes_pokemon_MM_reescritos.xlsx",
+            state_key_prefix="cg_moves_ui"
+        )
 
+        # botão voltar
         if st.button("⬅️ Voltar"):
             st.session_state["cg_view"] = "menu"
             st.rerun()
 
     # ==========================
-    # 3B) CRIAÇÃO GUIADA (FICHA)
+    # B) CRIAÇÃO GUIADA (FICHA)
     # ==========================
     if st.session_state["cg_view"] == "guided":
         st.subheader("🧬 Criação Guiada")
 
-        # 1) escolher pokemon (usa seu df da pokedex já carregado)
-        # você já tem df (pokedex) no app; ajuste o nome se for diferente
-        # (no seu código tem df e filtered_df na pokedex; aqui usamos df “completo”)
+        # garante lista de golpes confirmados
+        if "cg_moves" not in st.session_state:
+            st.session_state["cg_moves"] = []
+
+        # 1) escolher pokemon
         options = df.apply(lambda x: f"#{x['Nº']} - {x['Nome']}", axis=1).tolist()
         pick = st.selectbox("Escolha o Pokémon:", options)
 
@@ -2648,30 +2654,33 @@ if page == "Criação Guiada de Fichas":
         # 3) NP / PP
         np_ = get_np_for_pokemon(df, pid, fallback_np=6)
         pp_total = calc_pp_budget(np_)
-        if "cg_spent_attacks" not in st.session_state:
-            st.session_state["cg_spent_attacks"] = 0
 
-        st.markdown(f"**Pokémon:** {pname}  \n**Tipos:** {', '.join(types)}  \n**Abilities:** {', '.join(abilities)}")
-        st.markdown(f"**NP:** {np_}  \n**PP Total (NP×2):** {pp_total}  \n**Pontos gastos em golpes:** {st.session_state['cg_spent_attacks']} / {np_ + 20}")
+        # ✅ soma PP a partir dos golpes confirmados
+        pp_spent_total = sum((m.get("pp_cost") or 0) for m in st.session_state.get("cg_moves", []))
 
-        # 4) distribuir stats no seu formato (placeholders editáveis)
+        st.markdown(
+            f"**Pokémon:** {pname}  \n"
+            f"**Tipos:** {', '.join(types)}  \n"
+            f"**Abilities:** {', '.join(abilities)}  \n"
+            f"**NP:** {np_}  \n"
+            f"**PP Total (NP×2):** {pp_total}  \n"
+            f"**PP Gastos (golpes confirmados):** {pp_spent_total}"
+        )
+
+        # 4) atributos (placeholder)
         st.markdown("### 📊 Atributos (auto + editável)")
         col1, col2, col3 = st.columns(3)
 
-        # exemplos (você vai ajustar pras fórmulas exatas do seu PDF)
         atk = base_stats.get("attack", 10)
         spatk = base_stats.get("special-attack", 10)
         spe = base_stats.get("speed", 10)
         defense = base_stats.get("defense", 10)
         spdef = base_stats.get("special-defense", 10)
 
-        # valores iniciais “propostos”
         stgr_init = max(0, math.floor((atk - 10) / 10))
         int_init  = max(0, math.floor((spatk - 10) / 10))
-
-        # dodge/parry como sugestão baseada em speed
         dodge_init = max(0, math.floor((spe - 10) / 10))
-        parry_init = dodge_init  # você pode variar depois
+        parry_init = dodge_init
 
         will_init = max(0, math.floor(spdef / max(1, (spdef + defense)) * (2*np_)))
         fort_init = max(0, math.floor(defense / max(1, (spdef + defense)) * (2*np_)))
@@ -2686,44 +2695,41 @@ if page == "Criação Guiada de Fichas":
             fortitude = st.number_input("Fortitude", value=int(fort_init), min_value=0, max_value=99)
             will = st.number_input("Will", value=int(will_init), min_value=0, max_value=99)
 
-        st.caption("⚠️ Aqui eu deixei as fórmulas como *placeholder*. Quando eu ler as regras de limite (variação Thg/Fortitude etc) no seu PDF e você confirmar as colunas do seu DF, eu amarro 100% igual seu sistema.")
-
-        # 5) advantages “recomendadas”
+        # 5) advantages (placeholder por enquanto)
         st.markdown("### ⭐ Advantages (sugestões)")
-        st.caption("A lista final vai ser filtrada pelas suas regras restritivas do PDF + biologia/tipo/ability do Pokémon.")
         suggested_adv = []
         if "chlorophyll" in abilities or "swift-swim" in abilities:
-            suggested_adv.append("Seize Initiative / Iniciativa Aprimorada (se aplicável)")
+            suggested_adv.append("Seize Initiative / Iniciativa Aprimorada")
         if "flying" in types:
-            suggested_adv.append("Move-by Action (se seu sistema permitir)")
+            suggested_adv.append("Move-by Action")
         if not suggested_adv:
-            suggested_adv = ["(placeholder) — quando integrarmos a lista completa de advantages"]
+            suggested_adv = ["(placeholder) — depois ligamos com a lista completa do PDF"]
 
         chosen_adv = st.multiselect("Selecione advantages:", options=suggested_adv, default=[])
 
-        # 6) ataques (chama o criador de golpes como sub-etapa)
+        # 6) golpes escolhidos + botão para abrir criador de golpes
         st.markdown("### ⚔️ Golpes")
-        st.caption("Você escolhe/gera golpes aqui. O app soma pontos e bloqueia quando passar de NP + 20.")
+        if st.session_state["cg_moves"]:
+            for i, m in enumerate(st.session_state["cg_moves"], start=1):
+                st.write(f"{i}. **{m['name']}** (Rank {m['rank']}) — PP: {m.get('pp_cost')}")
 
-        disabled_add = not can_add_more_attack_points(np_, st.session_state["cg_spent_attacks"])
-        if disabled_add:
-            st.error("Limite de pontos em golpes atingido (NP + 20). Você não pode adicionar mais golpes.")
+        # trava simples por PP total (NP×2) + 20 de folga (como você pediu)
+        if pp_spent_total >= (pp_total + 20):
+            st.error("Limite atingido: você já gastou PP demais (PP_total + 20).")
+            disabled_add = True
+        else:
+            disabled_add = False
 
-        # Exemplo de botão que “abre” o criador de golpes dentro do fluxo:
-        if st.button("➕ Adicionar golpe", disabled=disabled_add):
+        if st.button("➕ Adicionar/Editar golpes", disabled=disabled_add):
             st.session_state["cg_view"] = "moves"
             st.rerun()
 
-        # 7) skills (etapa seguinte)
-        st.markdown("### 🧠 Skills")
-        st.caption("Depois que confirmar golpes, você vai pra tela de skills com explicação + soma de pontos (TODO).")
+        # 7) exportar PDF + salvar no Firestore/Storage
+        st.markdown("### 📄 Exportar e salvar")
+        if st.button("💾 Salvar ficha + PDF no Firebase"):
+            db, bucket = init_firebase()
 
-        # 8) exportar PDF + salvar na nuvem
-        st.markdown("### 📄 Exportar ficha")
-        db, bucket = init_firebase()
-
-        if st.button("📄 Gerar PDF e salvar na nuvem"):
-            # TODO: aqui você vai montar um PDF bonito (eu deixei um exemplo simples)
+            # gerar pdf simples
             from reportlab.pdfgen import canvas
             buffer = BytesIO()
             c = canvas.Canvas(buffer)
@@ -2732,14 +2738,54 @@ if page == "Criação Guiada de Fichas":
             c.drawString(40, 780, f"Tipos: {', '.join(types)}")
             c.drawString(40, 760, f"Abilities: {', '.join(abilities)}")
             c.drawString(40, 730, f"Stgr {stgr} | Int {intellect} | Dodge {dodge} | Parry {parry} | Fort {fortitude} | Will {will}")
-            c.drawString(40, 700, f"Advantages: {', '.join(chosen_adv) if chosen_adv else '(nenhuma)'}")
+            c.drawString(40, 710, f"Advantages: {', '.join(chosen_adv) if chosen_adv else '(nenhuma)'}")
+
+            y = 680
+            c.drawString(40, y, "Golpes:")
+            y -= 18
+            for m in st.session_state.get("cg_moves", []):
+                c.drawString(50, y, f"- {m['name']} (Rank {m['rank']}) | PP {m.get('pp_cost')}")
+                y -= 16
+                if y < 80:
+                    c.showPage()
+                    c.setFont("Helvetica", 12)
+                    y = 800
+
             c.showPage()
             c.save()
             pdf_bytes = buffer.getvalue()
 
-            dest = f"fichas/{trainer_name}/{pname}_{pid}_{uuid.uuid4().hex[:8]}.pdf"
-            upload_pdf_to_bucket(bucket, pdf_bytes, dest)
-            st.success(f"Salvo na nuvem em: {dest}")
+            # montar payload
+            payload = {
+                "pokemon": {"id": int(pid), "name": pname, "types": types, "abilities": abilities},
+                "np": int(np_),
+                "pp_budget_total": int(pp_total),
+                "pp_spent_total": float(pp_spent_total),
+                "limits": {"pp_overcap": 20},
+                "stats": {
+                    "stgr": int(stgr),
+                    "int": int(intellect),
+                    "dodge": int(dodge),
+                    "parry": int(parry),
+                    "fortitude": int(fortitude),
+                    "will": int(will),
+                },
+                "advantages": chosen_adv,
+                "skills": [],
+                "moves": st.session_state.get("cg_moves", []),
+            }
+
+            sheet_id, storage_path = save_sheet_with_pdf(
+                db=db,
+                bucket=bucket,
+                trainer_name=trainer_name,
+                sheet_payload=payload,
+                pdf_bytes=pdf_bytes,
+            )
+
+            st.success(f"✅ Ficha salva! ID: {sheet_id}")
+            if storage_path:
+                st.info(f"📦 PDF salvo em: {storage_path}")
 
         if st.button("⬅️ Voltar"):
             st.session_state["cg_view"] = "menu"
@@ -3665,6 +3711,7 @@ elif page == "Mochila":
     
     
     
+
 
 
 
