@@ -206,11 +206,9 @@ class Move:
             base_per_rank += 0.25
 
         if base_per_rank <= 0:
-            return None, "Sem PP_Custo no Excel e não foi possível estimar por falta de palavras-chave na build."
+            return None, "Sem Custo no Excel e não foi possível estimar por falta de palavras-chave na build."
 
-        # custo aproximado = (custo_por_rank * rank)
-        est = round(base_per_rank * rank, 2)
-        return est, "Estimativa simples (troque pela sua tabela oficial quando quiser)."
+
 
 
 class MoveDB:
