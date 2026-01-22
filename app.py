@@ -783,6 +783,26 @@ from io import BytesIO
 from PIL import ImageFont
 if "carousel_click" not in st.session_state:
     st.session_state["carousel_click"] = None
+
+
+SKILLS_MM3 = [
+    "Acrobatics",
+    "Athletics",
+    "Close Combat (especialidade)",
+    "Deception",
+    "Expertise (especialidade)",
+    "Insight",
+    "Intimidation",
+    "Investigation",
+    "Perception",
+    "Persuasion",
+    "Ranged Combat (especialidade)",
+    "Sleight of Hand",
+    "Stealth",
+    "Technology",
+    "Treatment",
+    "Vehicles",
+]
 # ================================
 # CRIAÇÃO GUIADA - DRAFT ÚNICO
 # ================================
@@ -987,6 +1007,79 @@ def load_sheet(db, trainer_name: str, sheet_id: str):
     )
     snap = ref.get()
     return snap.to_dict() if snap.exists else None
+def delete_sheet(db, bucket, trainer_name: str, sheet_id: str, storage_path: str | None = None):
+    trainer_id = safe_doc_id(trainer_name)
+    ref = (
+        db.collection("trainers")
+        .document(trainer_id)
+        .collection("sheets")
+        .document(sheet_id)
+    )
+    ref.delete()
+
+    if storage_path:
+        try:
+            bucket.blob(storage_path).delete()
+        except Exception:
+            pass
+
+def apply_sheet_to_session(sheet: dict, sheet_id: str | None = None):
+    pokemon = sheet.get("pokemon", {}) if isinstance(sheet, dict) else {}
+    pname = str(pokemon.get("name", "") or "")
+    stats = sheet.get("stats") or {}
+    moves = sheet.get("moves") or []
+    advantages = sheet.get("advantages") or []
+    skills = sheet.get("skills") or []
+    np_ = int(sheet.get("np", 0) or 0)
+    cap = 2 * np_
+    abilities = pokemon.get("abilities") or []
+
+    st.session_state["cg_edit_sheet_id"] = sheet_id
+    st.session_state["cg_draft"] = {
+        "pname": pname,
+        "stats": {
+            "stgr": int(stats.get("stgr", 0) or 0),
+            "int": int(stats.get("int", 0) or 0),
+            "dodge": int(stats.get("dodge", 0) or 0),
+            "parry": int(stats.get("parry", stats.get("dodge", 0)) or 0),
+            "thg": int(stats.get("thg", max(0, cap - int(stats.get("dodge", 0) or 0))) or 0),
+            "fortitude": int(stats.get("fortitude", 0) or 0),
+            "will": int(stats.get("will", 0) or 0),
+        },
+        "moves": list(moves),
+    }
+    st.session_state["cg_moves"] = st.session_state["cg_draft"]["moves"]
+    st.session_state["cg_pname"] = pname
+    st.session_state["cg_np"] = np_
+    st.session_state["cg_stgr"] = st.session_state["cg_draft"]["stats"]["stgr"]
+    st.session_state["cg_int"] = st.session_state["cg_draft"]["stats"]["int"]
+    st.session_state["cg_dodge"] = st.session_state["cg_draft"]["stats"]["dodge"]
+    st.session_state["cg_parry"] = st.session_state["cg_draft"]["stats"]["parry"]
+    st.session_state["cg_thg"] = st.session_state["cg_draft"]["stats"]["thg"]
+    st.session_state["cg_fortitude"] = st.session_state["cg_draft"]["stats"]["fortitude"]
+    st.session_state["cg_will"] = st.session_state["cg_draft"]["stats"]["will"]
+    st.session_state["cg_advantages"] = list(advantages)
+    st.session_state["cg_abilities"] = list(abilities)
+
+    base_skills = {k: 0 for k in SKILLS_MM3}
+    custom_skills = []
+    for row in skills:
+        if not isinstance(row, dict):
+            continue
+        name = str(row.get("name", "")).strip()
+        try:
+            ranks = int(row.get("ranks", 0))
+        except Exception:
+            ranks = 0
+        if not name:
+            continue
+        if name in base_skills:
+            base_skills[name] = ranks
+        else:
+            custom_skills.append({"name": name, "ranks": ranks})
+
+    st.session_state["cg_skills"] = base_skills
+    st.session_state["cg_skill_custom"] = custom_skills
 
 
 
@@ -2648,6 +2741,7 @@ page = st.sidebar.radio(
         "PvP – Arena Tática",
         "Mochila",
     ],
+    key="page",
 )
 
 def apply_non_pokedex_theme() -> None:
@@ -4162,8 +4256,11 @@ if page == "Trainer Hub (Meus Pokémons)":
 elif page == "Criação Guiada de Fichas":
     st.title("🧩 Criação Guiada de Fichas")
     if st.session_state.get("last_page") != "Criação Guiada de Fichas":
-        st.session_state["cg_view"] = "menu"
-    st.session_state["last_page"] = "Criação Guiada de Fichas"
+        if st.session_state.get("cg_force_guided"):
+            st.session_state["cg_view"] = "guided"
+            st.session_state["cg_force_guided"] = False
+        else:
+            st.session_state["cg_view"] = "menu"    st.session_state["last_page"] = "Criação Guiada de Fichas"
 
     if "cg_view" not in st.session_state:
         st.session_state["cg_view"] = "menu"
@@ -4305,15 +4402,23 @@ elif page == "Criação Guiada de Fichas":
             types = pokeapi_parse_types(pjson)
             abilities = pokeapi_parse_abilities(pjson)
             # ✅ jogador pode escolher mais de uma habilidade (inclui hidden)
+            saved_abilities = st.session_state.get("cg_abilities")
+            if not isinstance(saved_abilities, list):
+                saved_abilities = None
             chosen_abilities = st.multiselect(
                 "Escolha a(s) habilidade(s) (pode mais de uma):",
                 options=abilities,
-                default=abilities[:1] if abilities else [],
+                default=[
+                    a for a in (saved_abilities or (abilities[:1] if abilities else []))
+                    if a in abilities
+                ],
             )
             
             # se nada for escolhido, usa todas como fallback (pra não quebrar)
             if not chosen_abilities:
                 chosen_abilities = abilities
+            st.session_state["cg_abilities"] = chosen_abilities
+        
 
 
         # 3) NP / PP
@@ -4392,15 +4497,31 @@ elif page == "Criação Guiada de Fichas":
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                stgr = st.number_input("Stgr (Força)", value=int(stgr_base), min_value=0, max_value=99)
-                intellect = st.number_input("Int (Intelecto)", value=int(int_base), min_value=0, max_value=99)
+                stgr = st.number_input(
+                    "Stgr (Força)",
+                    value=int(st.session_state.get("cg_stgr", stgr_base)),
+                    min_value=0,
+                    max_value=99,
+                    key="cg_stgr",
+                )
+                intellect = st.number_input(
+                    "Int (Intelecto)",
+                    value=int(st.session_state.get("cg_int", int_base)),
+                    min_value=0,
+                    max_value=99,
+                    key="cg_int",
+                )
             
             with col2:
+                dodge_value = int(st.session_state.get("cg_dodge", dodge_base))
+                dodge_min = min(dodge_value, max(0, int(dodge_base) - 2))
+                dodge_max = max(dodge_value, min(99, int(dodge_base) + 2))
                 dodge = st.number_input(
                     "Dodge",
                     key="cg_dodge",
-                    min_value=max(0, int(dodge_base) - 2),
-                    max_value=min(99, int(dodge_base) + 2),
+                    value=dodge_value,
+                    min_value=dodge_min,
+                    max_value=dodge_max,
                     on_change=_cg_sync_from_dodge,
                 )
             
@@ -4408,6 +4529,7 @@ elif page == "Criação Guiada de Fichas":
                 parry = st.number_input(
                     "Parry",
                     key="cg_parry",
+                    value=int(st.session_state.get("cg_parry", st.session_state.get("cg_dodge", dodge_base))),
                     min_value=0,
                     max_value=99,
                     disabled=True,
@@ -4418,6 +4540,7 @@ elif page == "Criação Guiada de Fichas":
             thg = st.number_input(
                 "Thg (Toughness)",
                 key="cg_thg",
+                value=int(st.session_state.get("cg_thg", max(0, cap - int(st.session_state.get("cg_dodge", dodge_base))))),
                 min_value=0,
                 max_value=99,
                 disabled=True,
@@ -4426,8 +4549,15 @@ elif page == "Criação Guiada de Fichas":
             fortitude = st.number_input(
                 "Fortitude",
                 key="cg_fortitude",
-                min_value=max(0, int(fort_base) - 2),
-                max_value=min(99, int(fort_base) + 2),
+                value=int(st.session_state.get("cg_fortitude", fort_base)),
+                min_value=min(
+                    int(st.session_state.get("cg_fortitude", fort_base)),
+                    max(0, int(fort_base) - 2),
+                ),
+                max_value=max(
+                    int(st.session_state.get("cg_fortitude", fort_base)),
+                    min(99, int(fort_base) + 2),
+                ),
                 on_change=_cg_sync_from_fortitude,
             )
         
@@ -4435,6 +4565,7 @@ elif page == "Criação Guiada de Fichas":
             will = st.number_input(
                 "Will",
                 key="cg_will",
+                value=int(st.session_state.get("cg_will", max(0, cap - int(st.session_state.get("cg_fortitude", fort_base))))),
                 min_value=0,
                 max_value=99,
                 disabled=True,
@@ -4507,24 +4638,6 @@ elif page == "Criação Guiada de Fichas":
             st.caption("Preencha RANKS (não bônus). O custo é 1 PP a cada 2 ranks.")
 
             # Lista base de skills (core)
-            SKILLS_MM3 = [
-                "Acrobatics",
-                "Athletics",
-                "Close Combat (especialidade)",
-                "Deception",
-                "Expertise (especialidade)",
-                "Insight",
-                "Intimidation",
-                "Investigation",
-                "Perception",
-                "Persuasion",
-                "Ranged Combat (especialidade)",
-                "Sleight of Hand",
-                "Stealth",
-                "Technology",
-                "Treatment",
-                "Vehicles",
-            ]
 
             if "cg_skills" not in st.session_state:
                 st.session_state["cg_skills"] = {k: 0 for k in SKILLS_MM3}
@@ -4592,13 +4705,20 @@ elif page == "Criação Guiada de Fichas":
                 labels = [a.label() for a in adv_suggestions]
                 notes_map = {a.label(): (a.note or "") for a in adv_suggestions}
             
-                chosen_labels = st.multiselect("Selecione advantages:", options=labels, default=[])
-                chosen_adv = chosen_labels  # (salva o label com rank)
+                saved_adv = st.session_state.get("cg_advantages")
+                if not isinstance(saved_adv, list):
+                    saved_adv = []
+                chosen_labels = st.multiselect(
+                    "Selecione advantages:",
+                    options=labels,
+                    default=[lab for lab in saved_adv if lab in labels],
+                )                chosen_adv = chosen_labels  # (salva o label com rank)
             
                 # mostra notas do que foi escolhido
                 for lab in chosen_labels:
                     if notes_map.get(lab):
                         st.caption(f"• {lab}: {notes_map[lab]}")
+                st.session_state["cg_advantages"] = chosen_adv
 
             pp_advantages = len(chosen_adv)
             st.info(f"Advantages escolhidas: **{pp_advantages} PP** (1 PP cada).")
@@ -4753,11 +4873,13 @@ elif page == "Criação Guiada de Fichas":
                     trainer_name=trainer_name,
                     sheet_payload=payload,
                     pdf_bytes=pdf_bytes,
+                    sheet_id=st.session_state.get("cg_edit_sheet_id"),
                 )
 
                 st.success(f"✅ Ficha salva! ID: {sheet_id}")
                 if storage_path:
                     st.info(f"📦 PDF salvo em: {storage_path}")
+                st.session_state["cg_edit_sheet_id"] = None
 
         if st.button("⬅️ Voltar"):
             st.session_state["cg_view"] = "menu"
@@ -4786,8 +4908,23 @@ elif page == "Minhas Fichas":
             np_ = sheet.get("np", "—")
             updated_at = sheet.get("updated_at", "—")
             created_at = sheet.get("created_at", "—")
+            sheet_id = sheet.get("_sheet_id")
+            pdf_meta = sheet.get("pdf") or {}
+            storage_path = pdf_meta.get("storage_path")
 
             with st.expander(f"🧾 {pname} (ID {pid}) — NP {np_}"):
+                action_col1, action_col2 = st.columns(2)
+                with action_col1:
+                    if st.button("✏️ Editar ficha", key=f"edit_sheet_{sheet_id}"):
+                        apply_sheet_to_session(sheet, sheet_id=sheet_id)
+                        st.session_state["cg_force_guided"] = True
+                        st.session_state["page"] = "Criação Guiada de Fichas"
+                        st.rerun()
+                with action_col2:
+                    if st.button("🗑️ Excluir ficha", key=f"delete_sheet_{sheet_id}"):
+                        delete_sheet(db, bucket, trainer_name, sheet_id, storage_path=storage_path)
+                        st.success("Ficha excluída com sucesso.")
+                        st.rerun()
                 st.write(f"**Atualizada em:** {updated_at}")
                 st.write(f"**Criada em:** {created_at}")
                 st.write(f"**PP Total:** {sheet.get('pp_budget_total', '—')}")
@@ -4800,8 +4937,7 @@ elif page == "Minhas Fichas":
                 else:
                     st.caption("Sem golpes registrados.")
 
-                pdf_meta = sheet.get("pdf") or {}
-                storage_path = pdf_meta.get("storage_path")
+
                 if storage_path:
                     if st.button("📄 Baixar PDF", key=f"download_pdf_{sheet.get('_sheet_id')}"):
                         blob = bucket.blob(storage_path)
