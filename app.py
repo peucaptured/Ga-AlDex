@@ -207,7 +207,8 @@ class Move:
 
         if base_per_rank <= 0:
             return None, "Sem Custo no Excel e não foi possível estimar por falta de palavras-chave na build."
-
+        pp_est = base_per_rank * int(rank)
+        return float(pp_est), f"PP estimado ({base_per_rank:.2f} por rank)"
 
 
 
@@ -474,8 +475,13 @@ def render_move_creator(
             # PP (auto ou obrigatório manual)
             # =========================
             
-            pp_auto, why_auto = mv.pp_cost(rank)  # pode ser None
-            
+            tmp = mv.pp_cost(rank)
+            if tmp is None:
+                pp_auto, why_auto = None, "pp_cost() retornou None (erro interno)."
+            else:
+                pp_auto, why_auto = tmp
+             # pode ser None
+                        
             need_manual_pp = False
             
             # 1) Se customizou sub-ranks → PP obrigatório
