@@ -2541,54 +2541,57 @@ def apply_non_pokedex_theme() -> None:
         """
         <style>
         [data-testid="stAppViewContainer"] {
-            background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 45%, #e2e8f0 100%);
-            color: #0f172a;
+            background: linear-gradient(180deg, #0f172a 0%, #1f2937 45%, #334155 100%);
+            color: #e2e8f0;
             animation: pageFade 0.35s ease-in;
         }
         [data-testid="stMainBlockContainer"] {
             animation: contentSlide 0.35s ease-in;
         }
         h1, h2, h3 {
-            color: #0f172a;
+            color: #f8fafc;
             letter-spacing: -0.02em;
         }
+        .stMarkdown, .stTextInput input, .stTextArea textarea, .stSelectbox, .stMultiSelect, .stRadio, .stCheckbox {
+            color: #e2e8f0;
+        }
         [data-testid="stHeader"] {
-            background: rgba(248, 250, 252, 0.8);
+            background: rgba(15, 23, 42, 0.85);
             backdrop-filter: blur(6px);
         }
         .stTabs [data-baseweb="tab-list"] {
             gap: 0.35rem;
-            background: #e2e8f0;
+            background: #1e293b;
             padding: 0.35rem;
             border-radius: 999px;
-            box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.5);
+            box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.3);
         }
         .stTabs [data-baseweb="tab"] {
             border-radius: 999px;
             padding: 0.35rem 0.9rem;
             font-weight: 600;
-            color: #475569;
+            color: #cbd5f5;
             border: 1px solid transparent;
             transition: all 0.2s ease;
         }
         .stTabs [data-baseweb="tab"]:hover {
-            color: #0f172a;
-            background: rgba(15, 23, 42, 0.08);
+            color: #f8fafc;
+            background: rgba(56, 189, 248, 0.12);
         }
         .stTabs [aria-selected="true"] {
-            background: #0f172a;
-            color: #f8fafc;
-            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.15);
+            background: #38bdf8;
+            color: #0f172a;
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.35);
         }
         [data-testid="stTabs"] [role="tabpanel"] {
             animation: tabFade 0.3s ease-in;
         }
         div[data-testid="stMetric"] {
-            background: #ffffff;
+            background: rgba(15, 23, 42, 0.7);
             border-radius: 14px;
             padding: 0.85rem;
-            border: 1px solid rgba(148, 163, 184, 0.35);
-            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            box-shadow: 0 10px 24px rgba(8, 15, 30, 0.45);
         }
         [data-testid="stContainer"] > div {
             border-radius: 16px;
