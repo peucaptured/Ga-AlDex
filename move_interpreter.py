@@ -7,6 +7,7 @@ def interpret_effects_to_build(
     rank: int,
     is_special: bool,
     effects: Dict[str, bool],
+    sub_ranks: Dict[str, int] | None = None,
     area: str | None = None,
     perception: bool = False,
     ranged: bool = False,
@@ -17,12 +18,18 @@ def interpret_effects_to_build(
     """
 
     parts: List[str] = []
+    # helper: rank por efeito (se não tiver, usa rank geral)
+    def R(name: str) -> int:
+        if sub_ranks and name in sub_ranks and int(sub_ranks[name]) > 0:
+            return int(sub_ranks[name])
+        return int(rank)
+
 
     # ------------------
     # DAMAGE
     # ------------------
     if effects.get("damage"):
-        dmg = f"Damage {rank}"
+        dmg = f"Damage {R('damage')}"
         if is_special:
             dmg += " [Custom 0/r: Intelect Based]"
         if area:
@@ -38,7 +45,7 @@ def interpret_effects_to_build(
     # ------------------
     if effects.get("affliction"):
         parts.append(
-            f"Linked Affliction {rank} "
+            f"Linked Affliction {R('affliction')} "
             "(Fatigued, Dazed, Stunned; Resisted by Fortitude)"
         )
 
@@ -61,23 +68,21 @@ def interpret_effects_to_build(
 
         tgt = " & ".join(targets)
         parts.append(
-            f"Linked Weaken {tgt} {rank} (Resisted by Fortitude)"
+            f"Linked Weaken {tgt} {R('weaken')} (Resisted by Fortitude)"
         )
 
     # ------------------
     # HEALING
     # ------------------
     if effects.get("healing"):
-        parts.append(f"Healing {rank}")
+        parts.append(f"Healing {R('healing')}")
 
-    # ------------------
-    # CREATE / ENVIRONMENT
-    # ------------------
     if effects.get("create"):
-        parts.append(f"Create {rank}")
+        parts.append(f"Create {R('create')}")
 
     if effects.get("environment"):
-        parts.append(f"Environment {rank}")
+        parts.append(f"Environment {R('environment')}")
+
 
     # ------------------
     # JOIN
