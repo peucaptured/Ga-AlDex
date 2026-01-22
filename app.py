@@ -3320,6 +3320,145 @@ if page == "Pokédex (Busca)":
 # PÁGINA 2: TRAINER HUB
 # ==============================================================================
 if page == "Trainer Hub (Meus Pokémons)":
+    # ---- TEMA GBA (só pro Trainer Hub) ----
+    st.markdown(
+        """
+        <style>
+        /* Fonte "pixel" (se não carregar, cai no monospace) */
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    
+        /* Área do app nessa página */
+        [data-testid="stAppViewContainer"]{
+          background: #0f1b2e !important;
+          color: #0b1020 !important;
+        }
+    
+        /* Tabs do Hub (parecido GBA) */
+        .stTabs [data-baseweb="tab-list"]{
+          background: rgba(255,255,255,0.08) !important;
+          border: 2px solid rgba(255,255,255,0.18) !important;
+          border-radius: 12px !important;
+          padding: 6px !important;
+          gap: 6px !important;
+        }
+        .stTabs [data-baseweb="tab"]{
+          background: rgba(255,255,255,0.10) !important;
+          color: #eaf2ff !important;
+          border: 2px solid rgba(255,255,255,0.18) !important;
+          border-radius: 10px !important;
+          font-weight: 800 !important;
+        }
+        .stTabs [aria-selected="true"]{
+          background: #f6e7b5 !important;
+          color: #1a1a1a !important;
+          border-color: #d9c27a !important;
+          box-shadow: 0 2px 0 rgba(0,0,0,0.25) !important;
+        }
+    
+        /* BOTÕES: é aqui que resolve “não dá pra ver” */
+        div.stButton > button, div.stDownloadButton > button{
+          width: 100%;
+          background: #f6e7b5 !important;
+          color: #1a1a1a !important;
+          border: 2px solid #2a3c5a !important;
+          border-radius: 10px !important;
+          padding: 8px 10px !important;
+          font-weight: 900 !important;
+          box-shadow: 0 2px 0 rgba(0,0,0,0.25) !important;
+        }
+        div.stButton > button:hover{
+          filter: brightness(1.03);
+          transform: translateY(-1px);
+        }
+        div.stButton > button:active{
+          transform: translateY(0px);
+          box-shadow: 0 1px 0 rgba(0,0,0,0.25) !important;
+        }
+        div.stButton > button:disabled{
+          opacity: 0.55 !important;
+          cursor: not-allowed !important;
+        }
+    
+        /* Inputs (number_input / text_area) mais "cartucho" */
+        [data-testid="stNumberInput"] input,
+        [data-testid="stTextArea"] textarea,
+        [data-testid="stTextInput"] input{
+          background: #eaf2ff !important;
+          border: 2px solid #2a3c5a !important;
+          border-radius: 10px !important;
+          color: #1a1a1a !important;
+          font-weight: 700 !important;
+        }
+    
+        /* Containers padrão do Streamlit não “lavarem” o layout */
+        [data-testid="stContainer"], [data-testid="stVerticalBlock"]{
+          color: inherit;
+        }
+    
+        /* Janelas GBA (as suas classes) */
+        .gba-window{
+          background: #eaf2ff;
+          border: 3px solid #2a3c5a;
+          border-radius: 14px;
+          box-shadow: 0 10px 0 rgba(0,0,0,0.20);
+          padding: 12px;
+          margin-bottom: 12px;
+        }
+        .gba-header{
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:10px;
+          margin-bottom: 10px;
+        }
+        .gba-chip{
+          background: #2a3c5a;
+          color: #eaf2ff;
+          padding: 6px 10px;
+          border-radius: 999px;
+          font-weight: 900;
+          font-size: 11px;
+          letter-spacing: 0.02em;
+        }
+        .gba-title{
+          font-family: "Press Start 2P", ui-monospace, monospace;
+          color:#1a1a1a;
+          font-size: 12px;
+        }
+    
+        .gba-card{
+          background: #ffffff;
+          border: 2px solid #2a3c5a;
+          border-radius: 12px;
+          padding: 8px;
+          box-shadow: 0 2px 0 rgba(0,0,0,0.18);
+          margin-bottom: 10px;
+        }
+        .gba-card .name{
+          font-weight: 900;
+          color:#1a1a1a;
+          margin-top: 6px;
+          font-size: 13px;
+        }
+        .gba-card .meta{
+          color:#3b4a66;
+          font-weight: 800;
+          font-size: 12px;
+        }
+    
+        /* Sprites pixelados */
+        img { image-rendering: pixelated; }
+    
+        /* Alertas (info/warn) mais legíveis no fundo escuro */
+        [data-testid="stAlert"]{
+          border-radius: 12px !important;
+          border: 2px solid rgba(255,255,255,0.20) !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     st.title("🏕️ Central do Treinador")
 
     # ----------------------------
