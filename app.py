@@ -3528,7 +3528,6 @@ elif page == "Criação Guiada de Fichas":
 
 
         with tabs[2]:
-        with tabs[2]:
             st.markdown("### 🧠 Skills (M&M 3e)")
             st.caption("Preencha RANKS (não bônus). O custo é 1 PP a cada 2 ranks.")
 
