@@ -2508,6 +2508,9 @@ if page == "Trainer Hub (Meus Pokémons)":
 #==================
 elif page == "Criação Guiada de Fichas":
     st.title("🧩 Criação Guiada de Fichas")
+    if st.session_state.get("last_page") != "Criação Guiada de Fichas":
+        st.session_state["cg_view"] = "menu"
+    st.session_state["last_page"] = "Criação Guiada de Fichas"
 
     if "cg_view" not in st.session_state:
         st.session_state["cg_view"] = "menu"
@@ -2554,11 +2557,22 @@ elif page == "Criação Guiada de Fichas":
             st.session_state["cg_moves"] = []
 
         # 1) escolher pokemon
-        options = df.apply(lambda x: f"#{x['Nº']} - {x['Nome']}", axis=1).tolist()
-        pick = st.selectbox("Escolha o Pokémon:", options)
+        pname = st.text_input("Digite o nome do Pokémon (ex: Blastoise)", value="", placeholder="Ex: Blastoise")
 
-        pid = pick.split(" - ")[0].replace("#", "").strip()
-        pname = pick.split(" - ", 1)[1].strip()
+        # ajuda opcional: mostra sugestões do seu df conforme digita
+        if pname:
+            matches = df[df["Nome"].str.lower().str.contains(pname.lower(), na=False)].head(10)
+            if not matches.empty:
+                st.caption("Sugestões encontradas na sua Pokédex:")
+                st.write(matches[["Nº", "Nome"]])
+        else:
+            st.info("Digite o nome do Pokémon para buscar na PokeAPI.")
+            st.stop()
+        
+        # tenta achar o id no seu df (se não achar, usa 0)
+        row = df[df["Nome"].str.lower() == pname.lower()]
+        pid = str(int(row.iloc[0]["Nº"])) if not row.empty else "0"
+
 
         # 2) puxar dados online
         with st.spinner("Buscando dados do Pokémon online (stats + ability + tipos)..."):
@@ -2568,8 +2582,10 @@ elif page == "Criação Guiada de Fichas":
             abilities = pokeapi_parse_abilities(pjson)
 
         # 3) NP / PP
-        np_ = get_np_for_pokemon(df, pid, fallback_np=6)
+        np_sugerido = get_np_for_pokemon(df, pid, fallback_np=6)
+        np_ = st.number_input("NP do seu Pokémon (o jogador informa)", min_value=1, max_value=20, value=int(np_sugerido))
         pp_total = calc_pp_budget(np_)
+
 
         # ✅ soma PP a partir dos golpes confirmados
         pp_spent_total = sum((m.get("pp_cost") or 0) for m in st.session_state.get("cg_moves", []))
@@ -2608,20 +2624,56 @@ elif page == "Criação Guiada de Fichas":
             dodge = st.number_input("Dodge", value=int(dodge_init), min_value=0, max_value=99)
             parry = st.number_input("Parry", value=int(parry_init), min_value=0, max_value=99)
         with col3:
+            thg = st.number_input("Thg (Toughness)", value=max(0, 2*int(np_) - int(dodge)), min_value=0, max_value=99)
             fortitude = st.number_input("Fortitude", value=int(fort_init), min_value=0, max_value=99)
             will = st.number_input("Will", value=int(will_init), min_value=0, max_value=99)
 
+        
+        # ==========================
+        # VALIDAÇÃO DE LIMITES – M&M
+        # ==========================
+        st.markdown("### ✅ Validação de Limites (M&M)")
+        
+        cap = 2 * int(np_)
+        
+        # Dodge + Toughness
+        dodge_sum = int(dodge) + int(thg)
+        if dodge_sum != cap:
+            st.error(f"Dodge + Thg deve ser {cap}. Atual: {dodge_sum}")
+        else:
+            st.success(f"Dodge + Thg = {cap} ✅")
+        
+        # Parry + Toughness
+        parry_sum = int(parry) + int(thg)
+        if parry_sum != cap:
+            st.error(f"Parry + Thg deve ser {cap}. Atual: {parry_sum}")
+        else:
+            st.success(f"Parry + Thg = {cap} ✅")
+        
+        # Will + Fortitude
+        will_fort_sum = int(will) + int(fortitude)
+        if will_fort_sum != cap:
+            st.error(f"Will + Fortitude deve ser {cap}. Atual: {will_fort_sum}")
+        else:
+            st.success(f"Will + Fortitude = {cap} ✅")
+
+
+
         # 5) advantages (placeholder por enquanto)
         st.markdown("### ⭐ Advantages (sugestões)")
+        
         suggested_adv = []
         if "chlorophyll" in abilities or "swift-swim" in abilities:
             suggested_adv.append("Seize Initiative / Iniciativa Aprimorada")
         if "flying" in types:
             suggested_adv.append("Move-by Action")
+        
         if not suggested_adv:
-            suggested_adv = ["(placeholder) — depois ligamos com a lista completa do PDF"]
+            st.info("Ainda não ligamos a lista completa de Advantages do PDF. (Em breve)")
+            chosen_adv = []
+        else:
+            chosen_adv = st.multiselect("Selecione advantages:", options=suggested_adv, default=[])
 
-        chosen_adv = st.multiselect("Selecione advantages:", options=suggested_adv, default=[])
 
         # 6) golpes escolhidos + botão para abrir criador de golpes
         st.markdown("### ⚔️ Golpes")
@@ -3627,6 +3679,7 @@ elif page == "Mochila":
     
     
     
+
 
 
 
