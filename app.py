@@ -17,6 +17,8 @@ import gzip
 import base64
 import streamlit.components.v1 as components
 from move_creator_ui import render_move_creator
+from advantages_engine import suggest_advantages
+
 
 
 from io import BytesIO
@@ -188,7 +190,7 @@ def get_np_for_pokemon(df_pokedex: pd.DataFrame, pid: str, fallback_np: int = 6)
 
 def calc_pp_budget(np_: int) -> int:
     # sua regra: NP x 2 = PP
-    return int(np_) * 2
+    return int(np_) * 15
 
 def can_add_more_attack_points(np_: int, spent_attack_points: int) -> bool:
     # trava: quando atingir limite de 20 pontos a mais do NP (você descreveu assim)
@@ -2542,8 +2544,8 @@ elif page == "Criação Guiada de Fichas":
         )
 
         # botão voltar
-        if st.button("⬅️ Voltar"):
-            st.session_state["cg_view"] = "menu"
+        if st.button("⬅️ Voltar para a ficha", key="btn_back_to_sheet"):
+            st.session_state["cg_view"] = st.session_state.get("cg_return_to", "menu")
             st.rerun()
 
     # ==========================
@@ -2580,6 +2582,17 @@ elif page == "Criação Guiada de Fichas":
             base_stats = pokeapi_parse_stats(pjson)
             types = pokeapi_parse_types(pjson)
             abilities = pokeapi_parse_abilities(pjson)
+            # ✅ jogador pode escolher mais de uma habilidade (inclui hidden)
+            chosen_abilities = st.multiselect(
+                "Escolha a(s) habilidade(s) (pode mais de uma):",
+                options=abilities,
+                default=abilities[:1] if abilities else [],
+            )
+            
+            # se nada for escolhido, usa todas como fallback (pra não quebrar)
+            if not chosen_abilities:
+                chosen_abilities = abilities
+
 
         # 3) NP / PP
         np_sugerido = get_np_for_pokemon(df, pid, fallback_np=6)
@@ -2601,78 +2614,104 @@ elif page == "Criação Guiada de Fichas":
 
         # 4) atributos (placeholder)
         st.markdown("### 📊 Atributos (auto + editável)")
+        
+        PL = int(np_)
+        cap = 2 * PL
+        
+        atk = int(base_stats.get("attack", 10))
+        spatk = int(base_stats.get("special-attack", 10))
+        spe = int(base_stats.get("speed", 10))
+        def_ = int(base_stats.get("defense", 10))
+        spdef = int(base_stats.get("special-defense", 10))
+        
+        # Int máximo do seu PDF: Int = (SpAtk - 10) / 10
+        int_base = max(0, (spatk - 10) // 10)
+        stgr_base = max(0, (atk - 10) // 10)
+        
+        # Thg/Dodge base do seu PDF (mantendo cap 2PL)
+        den_td = max(1, def_ + spe)
+        thg_base = round((def_ / den_td) * cap)
+        dodge_base = cap - thg_base
+        
+        # Will/Fort base do seu PDF (mantendo cap 2PL)
+        den_wf = max(1, spdef + def_)
+        will_base = round((spdef / den_wf) * cap)
+        fort_base = cap - will_base
+        
         col1, col2, col3 = st.columns(3)
-
-        atk = base_stats.get("attack", 10)
-        spatk = base_stats.get("special-attack", 10)
-        spe = base_stats.get("speed", 10)
-        defense = base_stats.get("defense", 10)
-        spdef = base_stats.get("special-defense", 10)
-
-        stgr_init = max(0, math.floor((atk - 10) / 10))
-        int_init  = max(0, math.floor((spatk - 10) / 10))
-        dodge_init = max(0, math.floor((spe - 10) / 10))
-        parry_init = dodge_init
-
-        will_init = max(0, math.floor(spdef / max(1, (spdef + defense)) * (2*np_)))
-        fort_init = max(0, math.floor(defense / max(1, (spdef + defense)) * (2*np_)))
-
+        
         with col1:
-            stgr = st.number_input("Stgr (Força)", value=int(stgr_init), min_value=0, max_value=99)
-            intellect = st.number_input("Int (Intelecto)", value=int(int_init), min_value=0, max_value=99)
+            stgr = st.number_input("Stgr (Força)", value=int(stgr_base), min_value=0, max_value=99)
+            intellect = st.number_input("Int (Intelecto)", value=int(int_base), min_value=0, max_value=99)
+        
         with col2:
-            dodge = st.number_input("Dodge", value=int(dodge_init), min_value=0, max_value=99)
-            parry = st.number_input("Parry", value=int(parry_init), min_value=0, max_value=99)
+            # variação ±2 no Dodge
+            dodge = st.number_input("Dodge", value=int(dodge_base), min_value=max(0, dodge_base-2), max_value=min(99, dodge_base+2))
+            # parry: por enquanto igual ao dodge (pra não quebrar seus caps)
+            parry = st.number_input("Parry", value=int(dodge), min_value=0, max_value=99)
+        
         with col3:
-            thg = st.number_input("Thg (Toughness)", value=max(0, 2*int(np_) - int(dodge)), min_value=0, max_value=99)
-            fortitude = st.number_input("Fortitude", value=int(fort_init), min_value=0, max_value=99)
-            will = st.number_input("Will", value=int(will_init), min_value=0, max_value=99)
+            # Thg varia ±2, mas você mantém o cap com Dodge/Parry depois
+            thg = st.number_input("Thg (Toughness)", value=int(cap - dodge), min_value=0, max_value=99)
+            fortitude = st.number_input("Fortitude", value=int(fort_base), min_value=max(0, fort_base-2), max_value=min(99, fort_base+2))
+            will = st.number_input("Will", value=int(cap - fortitude), min_value=0, max_value=99)
+
 
         
         # ==========================
         # VALIDAÇÃO DE LIMITES – M&M
         # ==========================
         st.markdown("### ✅ Validação de Limites (M&M)")
-        
+
         cap = 2 * int(np_)
         
-        # Dodge + Toughness
         dodge_sum = int(dodge) + int(thg)
+        parry_sum = int(parry) + int(thg)
+        wf_sum = int(will) + int(fortitude)
+        
         if dodge_sum != cap:
             st.error(f"Dodge + Thg deve ser {cap}. Atual: {dodge_sum}")
         else:
             st.success(f"Dodge + Thg = {cap} ✅")
         
-        # Parry + Toughness
-        parry_sum = int(parry) + int(thg)
         if parry_sum != cap:
             st.error(f"Parry + Thg deve ser {cap}. Atual: {parry_sum}")
         else:
             st.success(f"Parry + Thg = {cap} ✅")
         
-        # Will + Fortitude
-        will_fort_sum = int(will) + int(fortitude)
-        if will_fort_sum != cap:
-            st.error(f"Will + Fortitude deve ser {cap}. Atual: {will_fort_sum}")
+        if wf_sum != cap:
+            st.error(f"Will + Fortitude deve ser {cap}. Atual: {wf_sum}")
         else:
             st.success(f"Will + Fortitude = {cap} ✅")
 
 
 
+
         # 5) advantages (placeholder por enquanto)
         st.markdown("### ⭐ Advantages (sugestões)")
+
+        adv_suggestions = suggest_advantages(
+            pjson=pjson,
+            base_stats=base_stats,
+            types=types,
+            abilities=abilities,
+        )
         
-        suggested_adv = []
-        if "chlorophyll" in abilities or "swift-swim" in abilities:
-            suggested_adv.append("Seize Initiative / Iniciativa Aprimorada")
-        if "flying" in types:
-            suggested_adv.append("Move-by Action")
-        
-        if not suggested_adv:
-            st.info("Ainda não ligamos a lista completa de Advantages do PDF. (Em breve)")
+        if not adv_suggestions:
+            st.info("Nenhuma vantagem sugerida automaticamente para este Pokémon (pelas regras atuais).")
             chosen_adv = []
         else:
-            chosen_adv = st.multiselect("Selecione advantages:", options=suggested_adv, default=[])
+            labels = [a.label() for a in adv_suggestions]
+            notes_map = {a.label(): (a.note or "") for a in adv_suggestions}
+        
+            chosen_labels = st.multiselect("Selecione advantages:", options=labels, default=[])
+            chosen_adv = chosen_labels  # (salva o label com rank)
+        
+            # mostra notas do que foi escolhido
+            for lab in chosen_labels:
+                if notes_map.get(lab):
+                    st.caption(f"• {lab}: {notes_map[lab]}")
+        
 
 
         # 6) golpes escolhidos + botão para abrir criador de golpes
@@ -2688,10 +2727,10 @@ elif page == "Criação Guiada de Fichas":
         else:
             disabled_add = False
 
-        if st.button("➕ Adicionar/Editar golpes", disabled=disabled_add):
+        if st.button("➕ Adicionar/Editar golpes", key="btn_add_edit_moves"):
+            st.session_state["cg_return_to"] = "guided"
             st.session_state["cg_view"] = "moves"
             st.rerun()
-
         # 7) exportar PDF + salvar no Firestore/Storage
         st.markdown("### 📄 Exportar e salvar")
         if st.button("💾 Salvar ficha + PDF no Firebase"):
@@ -3679,6 +3718,7 @@ elif page == "Mochila":
     
     
     
+
 
 
 
