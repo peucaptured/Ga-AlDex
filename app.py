@@ -1298,32 +1298,32 @@ def _party_slot_by_count(n: int) -> str:
 def _get_asset_paths():
     # ajuste aqui se você renomear algo
     return {
-        "bg": _safe_asset("assets/ui/backgrounds/trainer_hub.png"),
+        "bg": _safe_asset("Assets/ui/backgrounds/trainer_hub.png"),
 
-        "box_frame": _safe_asset("assets/ui/box/frame_box.png"),
-        "box_slot_empty": _safe_asset("assets/ui/box/slot_empty.png"),
-        "box_slot_selected": _safe_asset("assets/ui/box/slot_selected.png"),
-        "box_context": _safe_asset("assets/ui/box/context_menu.png"),
-        "box_cursor": _safe_asset("assets/ui/box/cursor_arrow.png"),
-        "box_tab_active": _safe_asset("assets/ui/box/tab_active.png"),
-        "box_tab_inactive": _safe_asset("assets/ui/box/tab_inactive.png"),
+        "box_frame": _safe_asset("Assets/ui/box/frame_box.png"),
+        "box_slot_empty": _safe_asset("Assets/ui/box/slot_empty.png"),
+        "box_slot_selected": _safe_asset("Assets/ui/box/slot_selected.png"),
+        "box_context": _safe_asset("Assets/ui/box/context_menu.png"),
+        "box_cursor": _safe_asset("Assets/ui/box/cursor_arrow.png"),
+        "box_tab_active": _safe_asset("Assets/ui/box/tab_active.png"),
+        "box_tab_inactive": _safe_asset("Assets/ui/box/tab_inactive.png"),
 
-        "party_frame": _safe_asset("assets/ui/party/frame_party.png"),
-        "party_slot_large": _safe_asset("assets/ui/party/slot_large.png"),
-        "party_slot_medium": _safe_asset("assets/ui/party/slot_medium.png"),
-        "party_slot_small": _safe_asset("assets/ui/party/slot_small.png"),
-        "party_slot_selected": _safe_asset("assets/ui/party/slot_selected.png"),
+        "party_frame": _safe_asset("Assets/ui/party/frame_party.png"),
+        "party_slot_large": _safe_asset("Assets/ui/party/slot_large.png"),
+        "party_slot_medium": _safe_asset("Assets/ui/party/slot_medium.png"),
+        "party_slot_small": _safe_asset("Assets/ui/party/slot_small.png"),
+        "party_slot_selected": _safe_asset("Assets/ui/party/slot_selected.png"),
 
-        "summary_frame": _safe_asset("assets/ui/summary/frame_summary.png"),
-        "summary_moves": _safe_asset("assets/ui/summary/frame_moves.png"),
-        "summary_stats": _safe_asset("assets/ui/summary/frame_stats.png"),
-        "summary_tab_active": _safe_asset("assets/ui/summary/tab_active.png"),
-        "summary_tab_inactive": _safe_asset("assets/ui/summary/tab_inactive.png"),
-        "summary_move_fav": _safe_asset("assets/ui/summary/slot_move_favorite.png"),
-        "summary_show_all": _safe_asset("assets/ui/summary/slot_show_all.png"),
+        "summary_frame": _safe_asset("Assets/ui/summary/frame_summary.png"),
+        "summary_moves": _safe_asset("Assets/ui/summary/frame_moves.png"),
+        "summary_stats": _safe_asset("Assets/ui/summary/frame_stats.png"),
+        "summary_tab_active": _safe_asset("Assets/ui/summary/tab_active.png"),
+        "summary_tab_inactive": _safe_asset("Assets/ui/summary/tab_inactive.png"),
+        "summary_move_fav": _safe_asset("Assets/ui/summary/slot_move_favorite.png"),
+        "summary_show_all": _safe_asset("Assets/ui/summary/slot_show_all.png"),
 
-        "fav_on": _safe_asset("assets/ui/icons/favorite_on.png"),
-        "fav_off": _safe_asset("assets/ui/icons/favorite_off.png"),
+        "fav_on": _safe_asset("Assets/ui/icons/favorite_on.png"),
+        "fav_off": _safe_asset("Assets/ui/icons/favorite_off.png"),
     }
 
 def _index_sheets_by_pid(fs_db, trainer_name: str):
