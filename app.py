@@ -3405,14 +3405,26 @@ if page == "Trainer Hub (Meus Pokémons)":
   gap:10px;
   margin-bottom: 10px;
     }
+    .gba-chips{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  margin: 6px 0 10px 0;
+    }
     .gba-chip{
-  background: var(--gba-border);
-  color: #eaf2ff;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-weight: 900;
-  font-size: 11px;
-  letter-spacing: 0.02em;
+      display:inline-flex;        /* <- ESSENCIAL */
+      align-items:center;
+      gap:6px;
+      white-space:nowrap;
+    
+      background: var(--gba-border);
+      color: #eaf2ff;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 900;
+      font-size: 11px;
+      letter-spacing: 0.02em;
     }
     .gba-title{
   font-family: "Press Start 2P", ui-monospace, monospace;
@@ -3719,16 +3731,19 @@ if page == "Trainer Hub (Meus Pokémons)":
 
                     st.markdown(
                         f"""
-                        <div class="gba-chip">Dodge {int(stats.get("dodge", 0))}</div>
-                        <div class="gba-chip">Parry {int(stats.get("parry", 0))}</div>
-                        <div class="gba-chip">Thg {int(stats.get("thg", 0))}</div>
-                        <div class="gba-chip">Fort {int(stats.get("fortitude", 0))}</div>
-                        <div class="gba-chip">Will {int(stats.get("will", 0))}</div>
-                        <div class="gba-chip">Stgr {int(stats.get("stgr", 0))}</div>
-                        <div class="gba-chip">Int {int(stats.get("int", 0))}</div>
+                        <div class="gba-chips">
+                            <span class="gba-chip">Dodge {int(stats.get("dodge", 0))}</span>
+                            <span class="gba-chip">Parry {int(stats.get("parry", 0))}</span>
+                            <span class="gba-chip">Thg {int(stats.get("thg", 0))}</span>
+                            <span class="gba-chip">Fort {int(stats.get("fortitude", 0))}</span>
+                            <span class="gba-chip">Will {int(stats.get("will", 0))}</span>
+                            <span class="gba-chip">Stgr {int(stats.get("stgr", 0))}</span>
+                            <span class="gba-chip">Int {int(stats.get("int", 0))}</span>
+                        </div>
                         """,
                         unsafe_allow_html=True,
                     )
+
 
                     def _skills_list(raw) -> list[str]:
                         items = []
@@ -3790,31 +3805,52 @@ if page == "Trainer Hub (Meus Pokémons)":
                     def _based_stat(move_name: str, move_meta: dict | None = None) -> str:
                         move_meta = move_meta or {}
                         cat_meta = str(move_meta.get("category", "") or "").strip().lower()
+                    
+                        # 1) Se veio do golpe “criado do zero” (meta)
                         if move_meta.get("is_special") is True:
                             return "Int"
                         if move_meta.get("is_special") is False:
                             return "Stgr"
+                    
+                        # 2) Pela categoria salva no meta
+                        if "status" in cat_meta:
+                            return "—"
                         if "especial" in cat_meta or "special" in cat_meta:
                             return "Int"
                         if "físico" in cat_meta or "fisico" in cat_meta or "physical" in cat_meta:
                             return "Stgr"
+                    
+                        # 3) Fallback: buscar no banco (Excel) se disponível
                         if mvdb is None:
                             return "Stgr"
                         mv = mvdb.get_by_name(move_name)
                         if mv is None:
                             return "Stgr"
+                    
                         cat = (mv.categoria or "").strip().lower()
+                        if "status" in cat:
+                            return "—"
                         if "especial" in cat or "special" in cat:
                             return "Int"
                         if "físico" in cat or "fisico" in cat or "physical" in cat:
                             return "Stgr"
+                    
                         return "Stgr"
-
+                    
+                    
                     def _final_rank(m: dict) -> tuple[int, str]:
                         base = int(m.get("rank", 0) or 0)
                         bstat = _based_stat(m.get("name", ""), m.get("meta") or {})
-                        bonus = int(stats.get("stgr", 0) if bstat == "Stgr" else stats.get("int", 0))
+                    
+                        if bstat == "Stgr":
+                            bonus = int(stats.get("stgr", 0) or 0)
+                        elif bstat == "Int":
+                            bonus = int(stats.get("int", 0) or 0)
+                        else:  # "—" (Status)
+                            bonus = 0
+                    
                         return base + bonus, bstat
+
 
                     fav = user_data.get("favorite_moves", {}).get(pid, [])
                     if not isinstance(fav, list):
@@ -3828,8 +3864,13 @@ if page == "Trainer Hub (Meus Pokémons)":
                     for m in moves:
                         name = m.get("name", "Golpe")
                         if name in fav and shown < 4:
-                            fr, bstat = _final_rank(m)
-                            st.write(f"**{name}** — Rank base {int(m.get('rank',0))} + {bstat} → **{fr}**")
+                            base = int(m.get("rank", 0) or 0)
+                                fr, bstat = _final_rank(m)
+        
+                                if bstat == "—":  # Status
+                                    st.write(f"**{name}** — Rank base {base} → **{fr}** (Status)")
+                                else:             # Physical/Special
+                                    st.write(f"**{name}** — Rank base {base} + {bstat} → **{fr}**")
                             build_txt = (m.get("build") or "").strip()
                             if build_txt:
                                 st.code(build_txt, language="text")
@@ -3848,7 +3889,13 @@ if page == "Trainer Hub (Meus Pokémons)":
                         with c1:
                             star = st.checkbox("⭐", value=checked, key=f"hub_star_{pid}_{idx}")
                         with c2:
-                            st.write(f"**{name}** — base {int(m.get('rank',0))} + {bstat} → **{fr}**")
+                            base = int(m.get("rank", 0) or 0)
+
+                            if bstat == "—":  # Golpe de Status
+                                st.write(f"**{name}** — base {base} → **{fr}** (Status)")
+                            else:             # Physical / Special
+                                st.write(f"**{name}** — base {base} + {bstat} → **{fr}**")
+
                             build_txt = (m.get("build") or "").strip()
                             if build_txt:
                                 with st.expander("Ingredientes do golpe"):
