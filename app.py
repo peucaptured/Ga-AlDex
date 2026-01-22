@@ -1164,6 +1164,31 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
     /* ===============================
+    CORREÇÃO DEFINITIVA DO FUNDO BRANCO
+    =============================== */
+    
+    /* Fundo raiz */
+    .stApp {
+        background-color: #0F1E2E;
+    }
+    
+    /* Container principal do conteúdo */
+    .block-container {
+        background-color: #0F1E2E;
+    }
+    
+    /* Área central que envolve tabs, colunas e cards */
+    section.main {
+        background-color: #0F1E2E;
+    }
+    
+    /* Evita vazamento branco interno */
+    section.main > div {
+        background-color: #0F1E2E;
+    }
+
+    
+    /* ===============================
        FUNDO GLOBAL DO APP
        =============================== */
     .stApp {
