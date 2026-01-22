@@ -377,47 +377,7 @@ def render_move_creator(
             }
         })
 
-    
-def _cg_cap():
-np_ = int(st.session_state.get("cg_np", 0) or 0)
-return 2 * np_
-
-def _cg_sync_from_dodge():
-    cap = _cg_cap()
-    dodge = int(st.session_state.get("cg_dodge", 0) or 0)
-
-    # Parry espelha Dodge (como no seu código original)
-    st.session_state["cg_parry"] = dodge
-
-    # Thg fecha o cap automaticamente
-    st.session_state["cg_thg"] = max(0, min(99, cap - dodge))
-
-def _cg_sync_from_fortitude():
-    cap = _cg_cap()
-    fort = int(st.session_state.get("cg_fortitude", 0) or 0)
-
-    st.session_state["cg_will"] = max(0, min(99, cap - fort))
-
-def _cg_sync_from_np():
-    # Quando NP muda, recalcula Thg e Will para manter cap
-    _cg_sync_from_dodge()
-    _cg_sync_from_fortitude()
-
-def _cg_init_defenses_if_missing(dodge_base, fort_base):
-    cap = _cg_cap()
-
-    if "cg_dodge" not in st.session_state:
-        st.session_state["cg_dodge"] = int(dodge_base)
-    if "cg_parry" not in st.session_state:
-        st.session_state["cg_parry"] = int(st.session_state["cg_dodge"])
-    if "cg_fortitude" not in st.session_state:
-        st.session_state["cg_fortitude"] = int(fort_base)
-    if "cg_will" not in st.session_state:
-        st.session_state["cg_will"] = max(0, min(99, cap - int(st.session_state["cg_fortitude"])))
-    if "cg_thg" not in st.session_state:
-        st.session_state["cg_thg"] = max(0, min(99, cap - int(st.session_state["cg_dodge"])))
-
-    
+      
     
     def _render_move_card(mv, rank: int):
         st.markdown(f"### 🌀 {mv.name}  ({getattr(mv,'tipo','—')} / {getattr(mv,'categoria','—')})")
@@ -582,6 +542,44 @@ def _cg_init_defenses_if_missing(dodge_base, fort_base):
 
 
 
+def _cg_cap():
+np_ = int(st.session_state.get("cg_np", 0) or 0)
+return 2 * np_
+
+def _cg_sync_from_dodge():
+    cap = _cg_cap()
+    dodge = int(st.session_state.get("cg_dodge", 0) or 0)
+
+    # Parry espelha Dodge (como no seu código original)
+    st.session_state["cg_parry"] = dodge
+
+    # Thg fecha o cap automaticamente
+    st.session_state["cg_thg"] = max(0, min(99, cap - dodge))
+
+def _cg_sync_from_fortitude():
+    cap = _cg_cap()
+    fort = int(st.session_state.get("cg_fortitude", 0) or 0)
+
+    st.session_state["cg_will"] = max(0, min(99, cap - fort))
+
+def _cg_sync_from_np():
+    # Quando NP muda, recalcula Thg e Will para manter cap
+    _cg_sync_from_dodge()
+    _cg_sync_from_fortitude()
+
+def _cg_init_defenses_if_missing(dodge_base, fort_base):
+    cap = _cg_cap()
+
+    if "cg_dodge" not in st.session_state:
+        st.session_state["cg_dodge"] = int(dodge_base)
+    if "cg_parry" not in st.session_state:
+        st.session_state["cg_parry"] = int(st.session_state["cg_dodge"])
+    if "cg_fortitude" not in st.session_state:
+        st.session_state["cg_fortitude"] = int(fort_base)
+    if "cg_will" not in st.session_state:
+        st.session_state["cg_will"] = max(0, min(99, cap - int(st.session_state["cg_fortitude"])))
+    if "cg_thg" not in st.session_state:
+        st.session_state["cg_thg"] = max(0, min(99, cap - int(st.session_state["cg_dodge"])))
 
 
 
