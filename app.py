@@ -3384,22 +3384,22 @@ elif page == "Criação Guiada de Fichas":
                 intellect = st.number_input("Int (Intelecto)", value=int(int_base), min_value=0, max_value=99)
             
             with col2:
-            dodge = st.number_input(
-                "Dodge",
-                key="cg_dodge",
-                min_value=max(0, int(dodge_base) - 2),
-                max_value=min(99, int(dodge_base) + 2),
-                on_change=_cg_sync_from_dodge,
-            )
-        
-            # Parry espelha Dodge (como seu original) -> deixa travado
-            parry = st.number_input(
-                "Parry",
-                key="cg_parry",
-                min_value=0,
-                max_value=99,
-                disabled=True,
-            )
+                dodge = st.number_input(
+                    "Dodge",
+                    key="cg_dodge",
+                    min_value=max(0, int(dodge_base) - 2),
+                    max_value=min(99, int(dodge_base) + 2),
+                    on_change=_cg_sync_from_dodge,
+                )
+            
+                # Parry espelha Dodge (como seu original) -> deixa travado
+                parry = st.number_input(
+                    "Parry",
+                    key="cg_parry",
+                    min_value=0,
+                    max_value=99,
+                    disabled=True,
+                )
         
         with col3:
             # Thg fecha cap automaticamente -> deixa travado
