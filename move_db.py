@@ -52,7 +52,7 @@ class Move:
     tags: List[str]
     raw: Dict[str, Any]
 
-    def render_build(self, rank: int) -> str:
+    def render_build(self, rank: int, sub_ranks: dict | None = None) -> str:
         b = (self.build or "").strip()
         if not b:
             return ""
@@ -61,13 +61,25 @@ class Move:
         b = re.sub(r"Rank\s*=\s*PL", f"Rank = {rank}", b, flags=re.IGNORECASE)
         b = re.sub(r"Rank\s*=\s*X", f"Rank = {rank}", b, flags=re.IGNORECASE)
     
-        # 2) Escalar efeitos numéricos: Damage/Weaken/Affliction/etc. para o mesmo rank
-        # Ex.: "Weaken ... 1" -> "Weaken ... 10"
+        # 2) Escalar efeitos numéricos: Damage/Weaken/Affliction/etc.
+        #    - se sub_ranks for None, tudo vira o rank geral
+        #    - se sub_ranks existir, cada efeito usa seu próprio rank
         def _scale(m):
-            effect = m.group(1)
-            return f"{effect} {rank}"
-    
-        b = re.sub(r"\b(Damage|Weaken|Affliction|Healing|Nullify|Create)\s+\d+\b", _scale, b, flags=re.IGNORECASE)
+            effect = m.group(1)  # Damage / Weaken / Affliction / etc.
+            eff_key = effect.strip().lower()
+            if sub_ranks and eff_key in sub_ranks and int(sub_ranks[eff_key]) > 0:
+                r = int(sub_ranks[eff_key])
+            else:
+                r = int(rank)
+            return f"{effect} {r}"
+
+        b = re.sub(
+            r"\b(Damage|Weaken|Affliction|Healing|Nullify|Create|Environment)\s+\d+\b",
+            _scale,
+            b,
+            flags=re.IGNORECASE
+        )
+
     
         # 3) Deduplicar segmentos "Linked ..." idênticos (exatos)
         # separa por ';' (seu excel costuma usar isso)
