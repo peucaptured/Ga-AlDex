@@ -512,6 +512,16 @@ def render_move_creator(
             
             st.info(f"PP: **{pp_final}** — {why}")
 
+        # define o PP final a ser exibido
+        if pp_final is not None:
+            pp = pp_final
+            why = "PP definido manualmente"
+        elif pp_auto is not None:
+            pp = pp_auto
+            why = why_auto
+        else:
+            pp = None
+            why = "PP não definido"
 
         if pp is not None:
             st.info(f"PP (estimado ou do Excel): **{pp}** — {why}")
