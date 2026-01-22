@@ -3525,11 +3525,9 @@ if page == "Trainer Hub (Meus Pokémons)":
 
 
 
-    st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        # ---------
-        # PARTY (equipe ativa)
-        # ---------
+
         # ---------
         # PARTY (equipe ativa)
         # ---------
