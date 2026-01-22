@@ -16,6 +16,8 @@ import random
 import gzip
 import base64
 import streamlit.components.v1 as components
+from move_creator_ui import render_move_creator
+
 
 from io import BytesIO
 from PIL import ImageFont
@@ -51,18 +53,10 @@ def init_firebase():
 # ==========================
 # FIREBASE SAVE/LOAD (Fichas)
 # ==========================
-import uuid
-from datetime import datetime, timezone
+from datetime import timezone
 
 def _utc_now_iso():
     return datetime.now(timezone.utc).isoformat()
-
-def _safe_doc_id(s: str):
-    import re
-    s = (s or "").strip().lower()
-    s = re.sub(r"[^a-z0-9_\-]+", "_", s)
-    s = re.sub(r"_+", "_", s).strip("_")
-    return s or uuid.uuid4().hex
 
 def upload_pdf_to_storage(bucket, pdf_bytes: bytes, storage_path: str):
     blob = bucket.blob(storage_path)
@@ -70,12 +64,12 @@ def upload_pdf_to_storage(bucket, pdf_bytes: bytes, storage_path: str):
     return storage_path
 
 def save_sheet_to_firestore(db, trainer_name: str, sheet_payload: dict, sheet_id=None):
-    trainer_id = _safe_doc_id(trainer_name)
+    trainer_id = safe_doc_id(trainer_name)
 
     if not sheet_id:
         pname = sheet_payload.get("pokemon", {}).get("name", "pokemon")
         pid = sheet_payload.get("pokemon", {}).get("id", "0")
-        sheet_id = _safe_doc_id(f"{pname}_{pid}_{uuid.uuid4().hex[:8]}")
+        sheet_id = safe_doc_id(f"{pname}_{pid}_{uuid.uuid4().hex[:8]}")
 
     ref = (
         db.collection("trainers")
@@ -92,22 +86,15 @@ def save_sheet_to_firestore(db, trainer_name: str, sheet_payload: dict, sheet_id
     ref.set(sheet_payload, merge=True)
     return sheet_id
 
-def save_sheet_with_pdf(
-    db,
-    bucket,
-    trainer_name: str,
-    sheet_payload: dict,
-    pdf_bytes: bytes | None = None,
-    sheet_id: str | None = None,
-):
+def save_sheet_with_pdf(db, bucket, trainer_name: str, sheet_payload: dict, pdf_bytes=None, sheet_id=None):
     storage_path = None
 
     if pdf_bytes:
         pname = sheet_payload.get("pokemon", {}).get("name", "pokemon")
         pid = sheet_payload.get("pokemon", {}).get("id", "0")
         storage_path = (
-            f"fichas/{_safe_doc_id(trainer_name)}/"
-            f"{_safe_doc_id(pname)}_{pid}_{uuid.uuid4().hex[:8]}.pdf"
+            f"fichas/{safe_doc_id(trainer_name)}/"
+            f"{safe_doc_id(pname)}_{pid}_{uuid.uuid4().hex[:8]}.pdf"
         )
         upload_pdf_to_storage(bucket, pdf_bytes, storage_path)
 
@@ -118,17 +105,11 @@ def save_sheet_with_pdf(
             "version": int(sheet_payload.get("pdf", {}).get("version", 0)) + 1,
         })
 
-    sheet_id = save_sheet_to_firestore(
-        db=db,
-        trainer_name=trainer_name,
-        sheet_payload=sheet_payload,
-        sheet_id=sheet_id,
-    )
-
+    sheet_id = save_sheet_to_firestore(db, trainer_name, sheet_payload, sheet_id=sheet_id)
     return sheet_id, storage_path
 
 def list_sheets(db, trainer_name: str, limit: int = 50):
-    trainer_id = _safe_doc_id(trainer_name)
+    trainer_id = safe_doc_id(trainer_name)
     docs = (
         db.collection("trainers")
         .document(trainer_id)
@@ -137,7 +118,6 @@ def list_sheets(db, trainer_name: str, limit: int = 50):
         .limit(limit)
         .stream()
     )
-
     out = []
     for d in docs:
         item = d.to_dict() or {}
@@ -146,7 +126,7 @@ def list_sheets(db, trainer_name: str, limit: int = 50):
     return out
 
 def load_sheet(db, trainer_name: str, sheet_id: str):
-    trainer_id = _safe_doc_id(trainer_name)
+    trainer_id = safe_doc_id(trainer_name)
     ref = (
         db.collection("trainers")
         .document(trainer_id)
@@ -155,6 +135,7 @@ def load_sheet(db, trainer_name: str, sheet_id: str):
     )
     snap = ref.get()
     return snap.to_dict() if snap.exists else None
+
 
 
 
@@ -3684,6 +3665,7 @@ elif page == "Mochila":
     
     
     
+
 
 
 
