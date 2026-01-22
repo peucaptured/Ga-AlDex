@@ -130,6 +130,14 @@ class Move:
         - Caso contrário, usa um estimador simples (você pode trocar depois pela sua tabela oficial).
         Regra base do M&M: custo final por graduação = custo básico + extras - falhas. :contentReference[oaicite:3]{index=3}
         """
+        # (A0) Novo: "PP por Rank" vindo do Excel -> PP total = (pp_por_rank * rank)
+        if "PP por Rank" in self.raw and _safe_str(self.raw.get("PP por Rank")):
+            try:
+                ppr = float(str(self.raw["PP por Rank"]).replace(",", "."))
+                return ppr * float(rank), 'PP total = ("PP por Rank" do Excel) × rank.'
+            except Exception:
+                pass
+
         # (A) override do Excel
         for key in ("PP_Custo", "PP", "Custo_PP"):
             if key in self.raw and _safe_str(self.raw.get(key)):
