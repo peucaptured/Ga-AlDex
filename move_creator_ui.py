@@ -21,7 +21,7 @@ def render_move_creator(excel_path: str, state_key_prefix: str = "mc"):
         st.session_state["cg_moves"] = []
 
     st.subheader("⚔️ Criação de Golpes (M&M)")
-    tab1, tab2 = st.tabs(["🔎 Buscar por nome", "🧩 Criar por descrição", "🛠️ Criar do zero"])
+    tab1, tab2, tab3 = st.tabs(["🔎 Buscar por nome", "🧩 Criar por descrição", "🛠️ Criar do zero"])
 
     def _render_move_card(mv, rank: int):
         st.markdown(f"### 🌀 {mv.name}  ({mv.tipo} / {mv.categoria})")
