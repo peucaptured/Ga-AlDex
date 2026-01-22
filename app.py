@@ -381,6 +381,7 @@ def render_move_creator(
             "meta": {
                 "ranged": bool(getattr(mv, "ranged", False)),
                 "perception_area": bool(getattr(mv, "perception_area", False)),
+                "category": str(getattr(mv, "categoria", "") or ""),
             }
         })
 
@@ -726,8 +727,12 @@ def render_move_creator(
                     "rank": int(rank3),
                     "build": build,
                     "pp_cost": int(pp_final),
-                    "meta": {"custom": True, "sub_ranks": sub_ranks, "pp_manual": bool(custom_sub)}
-                })
+                    "meta": {
+                        "custom": True,
+                        "sub_ranks": sub_ranks,
+                        "pp_manual": bool(custom_sub),
+                        "is_special": bool(is_special),
+                    }                })
                 st.success("Golpe customizado adicionado à ficha.")
 
         if return_to_view:
@@ -738,8 +743,12 @@ def render_move_creator(
                         "rank": int(rank3),
                         "build": build,
                         "pp_cost": int(pp_final),
-                        "meta": {"custom": True, "sub_ranks": sub_ranks, "pp_manual": bool(custom_sub)}
-                    })
+                        "meta": {
+                            "custom": True,
+                            "sub_ranks": sub_ranks,
+                            "pp_manual": bool(custom_sub),
+                            "is_special": bool(is_special),
+                        }                    })
                     st.success("Golpe customizado adicionado à ficha.")
                     st.session_state["cg_view"] = return_to_view
                     st.rerun()
@@ -754,6 +763,10 @@ def render_move_creator(
             c1, c2, c3 = st.columns([6, 2, 2])
             with c1:
                 st.write(f"**{m['name']}** (Rank {m['rank']}) — PP: {m.get('pp_cost')}")
+                build_txt = (m.get("build") or "").strip()
+                if build_txt:
+                    with st.expander("Ingredientes do golpe"):
+                        st.code(build_txt, language="text")
             with c2:
                 st.caption(" ")
             with c3:
@@ -926,13 +939,22 @@ def build_sheet_pdf(
     y = 680
     c.drawString(40, y, "Golpes:")
     y -= 18
-    for m in moves:
-        c.drawString(50, y, f"- {m['name']} (Rank {m['rank']}) | PP {m.get('pp_cost')}")
-        y -= 16
+    def _draw_line(text: str, indent: int = 0):
+        nonlocal y
+        c.drawString(50 + indent, y, text)
+        y -= 14
         if y < 80:
             c.showPage()
             c.setFont("Helvetica", 12)
             y = 800
+    for m in moves:
+        _draw_line(f"- {m['name']} (Rank {m['rank']}) | PP {m.get('pp_cost')}")
+        build_txt = (m.get("build") or "").strip()
+        if build_txt:
+            _draw_line("Ingredientes:", indent=10)
+            for line in build_txt.splitlines():
+                _draw_line(line, indent=20)
+
 
     c.showPage()
     c.save()
@@ -3331,13 +3353,13 @@ if page == "Trainer Hub (Meus Pokémons)":
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
     :root{
-  --gba-bg: #0f1b2e;
-  --gba-panel: #eaf2ff;
-  --gba-border: #2a3c5a;
-  --gba-ink: #1a1a1a;
-  --gba-ink2: #3b4a66;
-  --gba-accent: #f6e7b5;
-  --gba-accent-border: #d9c27a;
+  --gba-bg: #0f172a;
+  --gba-panel: #f8fafc;
+  --gba-border: #334155;
+  --gba-ink: #0f172a;
+  --gba-ink2: #475569;
+  --gba-accent: #38bdf8;
+  --gba-accent-border: #0ea5e9;
     }
 
     /* Fundo geral (só visual) */
@@ -3359,9 +3381,9 @@ if page == "Trainer Hub (Meus Pokémons)":
   box-shadow: 0 10px 0 rgba(0,0,0,0.20);
   margin-bottom: 14px;
     }
-    .gba-window.party{ background:#dfefff; }
-    .gba-window.box{ background:#eef7ff; }
-    .gba-window.summary{ background:#f3f7ff; }
+    .gba-window.party{ background:#eef2ff; }
+    .gba-window.box{ background:#f1f5f9; }
+    .gba-window.summary{ background:#f8fafc; }
 
     /* Cabeçalho */
     .gba-header{
@@ -3420,15 +3442,35 @@ if page == "Trainer Hub (Meus Pokémons)":
     /* Botões: garante contraste */
     div.stButton > button, div.stDownloadButton > button{
   background: var(--gba-accent) !important;
-  color: var(--gba-ink) !important;
-  border: 2px solid var(--gba-border) !important;
-  border-radius: 10px !important;
-  padding: 8px 10px !important;
-  font-weight: 900 !important;
-  box-shadow: 0 2px 0 rgba(0,0,0,0.25) !important;
+  color: #0b1220 !important;
+  border: 2px solid var(--gba-accent-border) !important;
+  border-radius: 12px !important;
+  padding: 10px 12px !important;
+  font-weight: 800 !important;
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.18) !important;
     }
-    div.stButton > button:hover{ filter: brightness(1.03); transform: translateY(-1px); }
-    div.stButton > button:active{ transform: translateY(0px); box-shadow: 0 1px 0 rgba(0,0,0,0.25) !important; }
+    div.stButton > button:hover{ filter: brightness(1.05); transform: translateY(-1px); }
+    div.stButton > button:active{ transform: translateY(0px); box-shadow: 0 3px 8px rgba(15, 23, 42, 0.15) !important; }
+
+    .hub-box-sprite img{ max-width: 72px; margin: 0 auto; display: block; }
+    .hub-sprite img{ max-width: 96px; margin: 0 auto; display: block; }
+    .hub-summary-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin: 10px 0 14px;
+    }
+    .hub-summary-block{
+  background: #ffffff;
+  border: 1px solid rgba(51, 65, 85, 0.18);
+  border-radius: 12px;
+  padding: 10px 12px;
+    }
+    .hub-muted{
+  color: var(--gba-ink2);
+  font-size: 12px;
+    }
+
 
     /* Tabs: mais “cartucho” */
     .stTabs [data-baseweb="tab-list"]{
@@ -3572,6 +3614,250 @@ if page == "Trainer Hub (Meus Pokémons)":
     # TAB PRINCIPAL: BOX + PARTY
     # ==========================
     with t_main:
+
+        # ==========================
+        # FICHA (painel superior)
+        # ==========================
+        sel = st.session_state.get("hub_selected_pid")
+        if sel:
+            pid = str(sel)
+            is_ext = pid.startswith("EXT:")
+            pname = _get_pokemon_name(pid)
+
+            st.markdown('<div class="gba-window summary">', unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class="gba-header">
+              <div class="left">
+                <span class="gba-chip">SUMMARY</span>
+                <span class="gba-title" style="font-size:0.75rem;">{pname}</span>
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            cA, cB = st.columns([1, 1.6], gap="large")
+
+            # painel esquerdo: imagem + notas + ações rápidas
+            with cA:
+                st.image(_get_artwork(pid), use_container_width=True)
+                stats_slot = _ensure_stats_slot(pid)
+
+                st.markdown('<div class="gba-divider"></div>', unsafe_allow_html=True)
+                st.markdown("#### Ações rápidas")
+                if st.button("Fechar ficha", key="hub_close_sheet", use_container_width=True):
+                    st.session_state["hub_selected_pid"] = None
+                    st.rerun()
+
+                st.markdown('<div class="gba-divider"></div>', unsafe_allow_html=True)
+                st.markdown('<div class="gba-notes"><div class="gba-caption">NOTAS</div></div>', unsafe_allow_html=True)
+
+                notes = st.text_area(
+                    "Notas",
+                    value=str(stats_slot.get("notes", "")),
+                    height=140,
+                    key=f"hub_notes_{pid}",
+                    label_visibility="collapsed",
+                )
+                if notes != stats_slot.get("notes", ""):
+                    stats_slot["notes"] = notes
+                    user_data["stats"][pid] = stats_slot
+                    save_data_cloud(trainer_name, user_data)
+
+            # painel direito: stats + resumo + golpes
+            with cB:
+                sheet = sheets_map.get(pid) if (not is_ext) else None
+
+                if sheet is None:
+                    st.warning("Este Pokémon não tem ficha salva. Preencha os atributos mínimos para usar no Hub.")
+                    stats_slot = _ensure_stats_slot(pid)
+
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        dodge = st.number_input("Dodge", min_value=0, max_value=99, value=int(stats_slot.get("dodge", 0)), key=f"hub_dodge_{pid}")
+                        parry = st.number_input("Parry", min_value=0, max_value=99, value=int(stats_slot.get("parry", 0)), key=f"hub_parry_{pid}")
+                        thg = st.number_input("Thg", min_value=0, max_value=99, value=int(stats_slot.get("thg", 0)), key=f"hub_thg_{pid}")
+                    with c2:
+                        stgr = st.number_input("Stgr", min_value=0, max_value=99, value=int(stats_slot.get("stgr", 0)), key=f"hub_stgr_{pid}")
+                        intel = st.number_input("Int", min_value=0, max_value=99, value=int(stats_slot.get("int", 0)), key=f"hub_int_{pid}")
+                        will = st.number_input("Will", min_value=0, max_value=99, value=int(stats_slot.get("will", 0)), key=f"hub_will_{pid}")
+                    with c3:
+                        fort = st.number_input("Fortitude", min_value=0, max_value=99, value=int(stats_slot.get("fortitude", 0)), key=f"hub_fort_{pid}")
+
+                    new_stats = {
+                        "dodge": int(dodge),
+                        "parry": int(parry),
+                        "thg": int(thg),
+                        "stgr": int(stgr),
+                        "int": int(intel),
+                        "will": int(will),
+                        "fortitude": int(fort),
+                        "notes": str(stats_slot.get("notes", "")),
+                    }
+                    if new_stats != {k: stats_slot.get(k) for k in new_stats.keys()}:
+                        user_data["stats"][pid] = new_stats
+                        save_data_cloud(trainer_name, user_data)
+
+                    st.info("Sem ficha salva: golpes, advantages e skills não disponíveis aqui ainda.")
+                else:
+                    stats = sheet.get("stats") or {}
+                    moves = sheet.get("moves") or []
+                    advantages = sheet.get("advantages") or []
+                    skills_raw = sheet.get("skills") or []
+
+                    stats_slot = _ensure_stats_slot(pid)
+
+                    st.markdown(
+                        f"""
+                        <div class="gba-chip">Dodge {int(stats.get("dodge", 0))}</div>
+                        <div class="gba-chip">Parry {int(stats.get("parry", 0))}</div>
+                        <div class="gba-chip">Thg {int(stats.get("thg", 0))}</div>
+                        <div class="gba-chip">Fort {int(stats.get("fortitude", 0))}</div>
+                        <div class="gba-chip">Will {int(stats.get("will", 0))}</div>
+                        <div class="gba-chip">Stgr {int(stats.get("stgr", 0))}</div>
+                        <div class="gba-chip">Int {int(stats.get("int", 0))}</div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                    def _skills_list(raw) -> list[str]:
+                        items = []
+                        if isinstance(raw, list):
+                            for row in raw:
+                                if isinstance(row, dict):
+                                    name = str(row.get("name", "")).strip()
+                                    ranks = int(row.get("ranks", 0) or 0)
+                                    if name and ranks > 0:
+                                        items.append(f"{name} ({ranks})")
+                                elif isinstance(row, str):
+                                    name = row.strip()
+                                    if name:
+                                        items.append(name)
+                        elif isinstance(raw, dict):
+                            for name, ranks in raw.items():
+                                try:
+                                    ranks = int(ranks)
+                                except Exception:
+                                    ranks = 0
+                                if name and ranks > 0:
+                                    items.append(f"{name} ({ranks})")
+                        elif isinstance(raw, str):
+                            for line in raw.splitlines():
+                                line = line.strip().lstrip("-•").strip()
+                                if line:
+                                    items.append(line)
+                        return items
+
+                    skills_list = _skills_list(skills_raw)
+
+                    adv_html = "<div class='hub-summary-block'><strong>⭐ Advantages</strong>"
+                    if advantages:
+                        adv_html += "<ul>" + "".join(f"<li>{a}</li>" for a in advantages) + "</ul>"
+                    else:
+                        adv_html += "<div class='hub-muted'>Sem advantages registradas.</div>"
+                    adv_html += "</div>"
+
+                    skills_html = "<div class='hub-summary-block'><strong>🎯 Skills</strong>"
+                    if skills_list:
+                        skills_html += "<ul>" + "".join(f"<li>{s}</li>" for s in skills_list) + "</ul>"
+                    else:
+                        skills_html += "<div class='hub-muted'>Sem skills registradas.</div>"
+                    skills_html += "</div>"
+
+                    summary_html = f"""
+                    <div class="hub-summary-grid">
+                        {adv_html}
+                        {skills_html}
+                    </div>
+                    """
+                    st.markdown(summary_html, unsafe_allow_html=True)
+
+                    try:
+                        mvdb = load_move_db(file_name)
+                    except Exception:
+                        mvdb = None
+
+                    def _based_stat(move_name: str, move_meta: dict | None = None) -> str:
+                        move_meta = move_meta or {}
+                        cat_meta = str(move_meta.get("category", "") or "").strip().lower()
+                        if move_meta.get("is_special") is True:
+                            return "Int"
+                        if move_meta.get("is_special") is False:
+                            return "Stgr"
+                        if "especial" in cat_meta or "special" in cat_meta:
+                            return "Int"
+                        if "físico" in cat_meta or "fisico" in cat_meta or "physical" in cat_meta:
+                            return "Stgr"
+                        if mvdb is None:
+                            return "Stgr"
+                        mv = mvdb.get_by_name(move_name)
+                        if mv is None:
+                            return "Stgr"
+                        cat = (mv.categoria or "").strip().lower()
+                        if "especial" in cat or "special" in cat:
+                            return "Int"
+                        if "físico" in cat or "fisico" in cat or "physical" in cat:
+                            return "Stgr"
+                        return "Stgr"
+
+                    def _final_rank(m: dict) -> tuple[int, str]:
+                        base = int(m.get("rank", 0) or 0)
+                        bstat = _based_stat(m.get("name", ""), m.get("meta") or {})
+                        bonus = int(stats.get("stgr", 0) if bstat == "Stgr" else stats.get("int", 0))
+                        return base + bonus, bstat
+
+                    fav = user_data.get("favorite_moves", {}).get(pid, [])
+                    if not isinstance(fav, list):
+                        fav = []
+
+                    st.markdown("### ⭐ Golpes Favoritos (até 4)")
+                    all_names = [m.get("name", "Golpe") for m in moves]
+                    fav = [n for n in fav if n in all_names]
+
+                    shown = 0
+                    for m in moves:
+                        name = m.get("name", "Golpe")
+                        if name in fav and shown < 4:
+                            fr, bstat = _final_rank(m)
+                            st.write(f"**{name}** — Rank base {int(m.get('rank',0))} + {bstat} → **{fr}**")
+                            build_txt = (m.get("build") or "").strip()
+                            if build_txt:
+                                st.code(build_txt, language="text")
+                            shown += 1
+                    if shown == 0:
+                        st.caption("Nenhum favorito definido.")
+
+                    st.markdown('<div class="gba-divider"></div>', unsafe_allow_html=True)
+
+                    st.markdown("### 📜 Lista completa de golpes")
+                    for idx, m in enumerate(moves):
+                        name = m.get("name", "Golpe")
+                        fr, bstat = _final_rank(m)
+                        checked = name in fav
+                        c1, c2 = st.columns([0.15, 0.85])
+                        with c1:
+                            star = st.checkbox("⭐", value=checked, key=f"hub_star_{pid}_{idx}")
+                        with c2:
+                            st.write(f"**{name}** — base {int(m.get('rank',0))} + {bstat} → **{fr}**")
+                            build_txt = (m.get("build") or "").strip()
+                            if build_txt:
+                                with st.expander("Ingredientes do golpe"):
+                                    st.code(build_txt, language="text")
+                        if star and name not in fav:
+                            fav.append(name)
+                        if (not star) and name in fav:
+                            fav.remove(name)
+
+                    if len(fav) > 4:
+                        fav = fav[:4]
+                        st.warning("Favoritos limitados a 4. Mantive os 4 primeiros que você marcou.")
+
+                    if user_data.get("favorite_moves", {}).get(pid, []) != fav:
+                        user_data.setdefault("favorite_moves", {})
+                        user_data["favorite_moves"][pid] = fav
+                        save_data_cloud(trainer_name, user_data)
+
+            st.markdown('</div>', unsafe_allow_html=True)
+
+
         
         left, right = st.columns([1.35, 0.95], gap="large")
 
@@ -3631,7 +3917,9 @@ if page == "Trainer Hub (Meus Pokémons)":
                             # botão invisível com imagem + nome curto
                             sprite = _get_sprite(pid)
                             name = _get_pokemon_name(pid)
+                            st.markdown('<div class="hub-box-sprite">', unsafe_allow_html=True) 
                             st.image(sprite, use_container_width=True)
+                            st.markdown('</div>', unsafe_allow_html=True)
                             if st.button(name, key=f"hub_box_{pid}_{r}", use_container_width=True):
                                 _open_box_context(pid)
                                 st.rerun()
@@ -3728,212 +4016,6 @@ if page == "Trainer Hub (Meus Pokémons)":
         
             st.markdown('</div>', unsafe_allow_html=True)  # fecha gba-window party
         
-
-        # ==========================
-        # FICHA (painel inferior)
-        # ==========================
-        sel = st.session_state.get("hub_selected_pid")
-        if sel:
-            pid = str(sel)
-            is_ext = pid.startswith("EXT:")
-            pname = _get_pokemon_name(pid)
-        
-            # ✅ janela GBA da ficha (tudo dentro)
-            st.markdown('<div class="gba-window summary">', unsafe_allow_html=True)
-            st.markdown(f"""
-            <div class="gba-header">
-              <div class="left">
-                <span class="gba-chip">SUMMARY</span>
-                <span class="gba-title" style="font-size:0.75rem;">{pname}</span>
-              </div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-            cA, cB = st.columns([1, 1.6], gap="large")
-        
-            # painel esquerdo: imagem + notas + ações rápidas
-            with cA:
-                st.image(_get_artwork(pid), use_container_width=True)
-                stats_slot = _ensure_stats_slot(pid)
-        
-                st.markdown('<div class="gba-divider"></div>', unsafe_allow_html=True)
-                st.markdown('<div class="gba-notes"><div class="gba-caption">NOTAS</div></div>', unsafe_allow_html=True)
-        
-                # Notas (sempre)
-                notes = st.text_area(
-                    "Notas",
-                    value=str(stats_slot.get("notes", "")),
-                    height=140,
-                    key=f"hub_notes_{pid}",
-                    label_visibility="collapsed",
-                )
-                if notes != stats_slot.get("notes", ""):
-                    stats_slot["notes"] = notes
-                    user_data["stats"][pid] = stats_slot
-                    save_data_cloud(trainer_name, user_data)
-        
-                if st.button("Fechar ficha", key="hub_close_sheet", use_container_width=True):
-                    st.session_state["hub_selected_pid"] = None
-                    st.rerun()
-        
-            # painel direito: stats + golpes + abas
-            with cB:
-                sheet = sheets_map.get(pid) if (not is_ext) else None
-        
-                # Abas internas (mantém sua lógica)
-                tab_moves, tab_adv, tab_skills = st.tabs(["⚔️ Golpes", "⭐ Advantages", "🎯 Skills"])
-        
-                # ---------- Caso sem ficha ----------
-                if sheet is None:
-                    st.warning("Este Pokémon não tem ficha salva. Preencha os atributos mínimos para usar no Hub.")
-                    stats_slot = _ensure_stats_slot(pid)
-        
-                    c1, c2, c3 = st.columns(3)
-                    with c1:
-                        dodge = st.number_input("Dodge", min_value=0, max_value=99, value=int(stats_slot.get("dodge", 0)), key=f"hub_dodge_{pid}")
-                        parry = st.number_input("Parry", min_value=0, max_value=99, value=int(stats_slot.get("parry", 0)), key=f"hub_parry_{pid}")
-                        thg = st.number_input("Thg", min_value=0, max_value=99, value=int(stats_slot.get("thg", 0)), key=f"hub_thg_{pid}")
-                    with c2:
-                        stgr = st.number_input("Stgr", min_value=0, max_value=99, value=int(stats_slot.get("stgr", 0)), key=f"hub_stgr_{pid}")
-                        intel = st.number_input("Int", min_value=0, max_value=99, value=int(stats_slot.get("int", 0)), key=f"hub_int_{pid}")
-                        will = st.number_input("Will", min_value=0, max_value=99, value=int(stats_slot.get("will", 0)), key=f"hub_will_{pid}")
-                    with c3:
-                        fort = st.number_input("Fortitude", min_value=0, max_value=99, value=int(stats_slot.get("fortitude", 0)), key=f"hub_fort_{pid}")
-        
-                    # salva automaticamente se mudou
-                    new_stats = {
-                        "dodge": int(dodge),
-                        "parry": int(parry),
-                        "thg": int(thg),
-                        "stgr": int(stgr),
-                        "int": int(intel),
-                        "will": int(will),
-                        "fortitude": int(fort),
-                        "notes": str(stats_slot.get("notes", "")),
-                    }
-                    if new_stats != {k: stats_slot.get(k) for k in new_stats.keys()}:
-                        user_data["stats"][pid] = new_stats
-                        save_data_cloud(trainer_name, user_data)
-        
-                    with tab_moves:
-                        st.info("Sem ficha salva: golpes não disponíveis aqui ainda.")
-                    with tab_adv:
-                        st.info("Sem ficha salva: advantages não disponíveis aqui ainda.")
-                    with tab_skills:
-                        st.info("Sem ficha salva: skills não disponíveis aqui ainda.")
-        
-                # ---------- Caso com ficha ----------
-                else:
-                    pokemon = sheet.get("pokemon") or {}
-                    stats = sheet.get("stats") or {}
-                    moves = sheet.get("moves") or []
-                    advantages = sheet.get("advantages") or []
-                    skills_text = sheet.get("skills") or ""
-        
-                    # reforça stats_slot para uso no cálculo/notes
-                    stats_slot = _ensure_stats_slot(pid)
-        
-                    # ✅ “chips” GBA (usa a classe que já existe no CSS global)
-                    st.markdown(
-                        f"""
-                        <div class="gba-chip">Dodge {int(stats.get("dodge", 0))}</div>
-                        <div class="gba-chip">Parry {int(stats.get("parry", 0))}</div>
-                        <div class="gba-chip">Thg {int(stats.get("thg", 0))}</div>
-                        <div class="gba-chip">Fort {int(stats.get("fortitude", 0))}</div>
-                        <div class="gba-chip">Will {int(stats.get("will", 0))}</div>
-                        <div class="gba-chip">Stgr {int(stats.get("stgr", 0))}</div>
-                        <div class="gba-chip">Int {int(stats.get("int", 0))}</div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-        
-                    # DB de golpes (para inferir Físico/Especial)
-                    try:
-                        mvdb = load_move_db(file_name)
-                    except Exception:
-                        mvdb = None
-        
-                    def _based_stat(move_name: str) -> str:
-                        if mvdb is None:
-                            return "Stgr"
-                        mv = mvdb.get_by_name(move_name)
-                        if mv is None:
-                            return "Stgr"
-                        cat = (mv.categoria or "").strip().lower()
-                        if "especial" in cat or "special" in cat:
-                            return "Int"
-                        return "Stgr"
-        
-                    def _final_rank(m: dict) -> tuple[int, str]:
-                        base = int(m.get("rank", 0) or 0)
-                        bstat = _based_stat(m.get("name", ""))
-                        bonus = int(stats.get("stgr", 0) if bstat == "Stgr" else stats.get("int", 0))
-                        return base + bonus, bstat
-        
-                    # favoritos
-                    fav = user_data.get("favorite_moves", {}).get(pid, [])
-                    if not isinstance(fav, list):
-                        fav = []
-        
-                    with tab_moves:
-                        st.markdown("### ⭐ Golpes Favoritos (até 4)")
-        
-                        all_names = [m.get("name", "Golpe") for m in moves]
-                        fav = [n for n in fav if n in all_names]
-        
-                        shown = 0
-                        for m in moves:
-                            name = m.get("name", "Golpe")
-                            if name in fav and shown < 4:
-                                fr, bstat = _final_rank(m)
-                                st.write(f"**{name}** — Rank base {int(m.get('rank',0))} + {bstat} → **{fr}**")
-                                shown += 1
-                        if shown == 0:
-                            st.caption("Nenhum favorito definido.")
-        
-                        st.markdown('<div class="gba-divider"></div>', unsafe_allow_html=True)
-        
-                        st.markdown("### 📜 Lista completa de golpes")
-                        for idx, m in enumerate(moves):
-                            name = m.get("name", "Golpe")
-                            fr, bstat = _final_rank(m)
-                            checked = name in fav
-                            c1, c2 = st.columns([0.15, 0.85])
-                            with c1:
-                                star = st.checkbox("⭐", value=checked, key=f"hub_star_{pid}_{idx}")
-                            with c2:
-                                st.write(f"**{name}** — base {int(m.get('rank',0))} + {bstat} → **{fr}**")
-                            if star and name not in fav:
-                                fav.append(name)
-                            if (not star) and name in fav:
-                                fav.remove(name)
-        
-                        if len(fav) > 4:
-                            fav = fav[:4]
-                            st.warning("Favoritos limitados a 4. Mantive os 4 primeiros que você marcou.")
-        
-                        if user_data.get("favorite_moves", {}).get(pid, []) != fav:
-                            user_data.setdefault("favorite_moves", {})
-                            user_data["favorite_moves"][pid] = fav
-                            save_data_cloud(trainer_name, user_data)
-        
-                    with tab_adv:
-                        st.markdown("### ⭐ Advantages")
-                        if not advantages:
-                            st.caption("Sem advantages registradas na ficha.")
-                        else:
-                            for a in advantages:
-                                st.write(f"- {a}")
-        
-                    with tab_skills:
-                        st.markdown("### 🎯 Skills")
-                        if skills_text:
-                            st.write(skills_text)
-                        else:
-                            st.caption("Sem skills registradas na ficha.")
-        
-            # ✅ fecha janela GBA da ficha
-            st.markdown('</div>', unsafe_allow_html=True)
 
     # ==========================
     # TAB: Lista de interesses
@@ -4046,25 +4128,25 @@ elif page == "Criação Guiada de Fichas":
             """
             <style>
             .stApp {
-                background: linear-gradient(135deg, #0f172a 0%, #172554 55%, #1e293b 100%);
-                color: #e2e8f0;
+                background: #f1f5f9;
+                color: #0f172a;
             }
             [data-testid="stAppViewContainer"] > .main {
                 background: transparent;
             }
             .block-container {
-                background: rgba(15, 23, 42, 0.75);
+                background: #ffffff;
                 padding: 2.5rem 2.5rem 3rem;
                 border-radius: 20px;
-                box-shadow: 0 20px 60px rgba(2, 6, 23, 0.35);
+                box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
             }
             .cg-card {
-                background: rgba(15, 23, 42, 0.6);
-                border: 1px solid rgba(148, 163, 184, 0.2);
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
                 border-radius: 16px;
                 padding: 1.25rem;
                 margin-bottom: 1rem;
-                box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
+                box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
             }
             .cg-title {
                 font-size: 1.1rem;
@@ -4075,8 +4157,8 @@ elif page == "Criação Guiada de Fichas":
                 display: inline-block;
                 padding: 0.2rem 0.7rem;
                 border-radius: 999px;
-                background: rgba(59, 130, 246, 0.2);
-                color: #bfdbfe;
+                background: #e0f2fe;
+                color: #0f172a;
                 font-size: 0.75rem;
                 margin-right: 0.35rem;
             }
@@ -4440,8 +4522,20 @@ elif page == "Criação Guiada de Fichas":
         with tabs[3]:
             st.markdown("### ⚔️ Golpes")
             if st.session_state["cg_moves"]:
-                for i, m in enumerate(st.session_state["cg_moves"], start=1):
-                    st.write(f"{i}. **{m['name']}** (Rank {m['rank']}) — PP: {m.get('pp_cost')}")
+                for i, m in enumerate(list(st.session_state["cg_moves"]), start=1):
+                    c1, c2 = st.columns([6, 1])
+                    with c1:
+                        st.write(f"{i}. **{m['name']}** (Rank {m['rank']}) — PP: {m.get('pp_cost')}")
+                        build_txt = (m.get("build") or "").strip()
+                        if build_txt:
+                            with st.expander("Ingredientes do golpe"):
+                                st.code(build_txt, language="text")
+                    with c2:
+                        if st.button("❌ Remover", key=f"cg_guided_move_rm_{i}"):
+                            st.session_state["cg_moves"].pop(i - 1)
+                            st.rerun()
+            else:
+                st.info("Nenhum golpe confirmado ainda.")
 
             # trava simples por PP total (NP×2) + 20 de folga (como você pediu)
             if pp_spent_moves >= (pp_total + 20):
@@ -4518,6 +4612,25 @@ elif page == "Criação Guiada de Fichas":
             if st.button("☁️ Salvar ficha na Nuvem", key="btn_save_sheet_cloud"):
                 db, bucket = init_firebase()
 
+                skills_payload = []
+                for name, ranks in (st.session_state.get("cg_skills", {}) or {}).items():
+                    try:
+                        ranks = int(ranks)
+                    except Exception:
+                        ranks = 0
+                    if ranks > 0:
+                        skills_payload.append({"name": name, "ranks": ranks})
+                for row in st.session_state.get("cg_skill_custom", []) or []:
+                    if not isinstance(row, dict):
+                        continue
+                    name = str(row.get("name", "")).strip()
+                    try:
+                        ranks = int(row.get("ranks", 0))
+                    except Exception:
+                        ranks = 0
+                    if name and ranks > 0:
+                        skills_payload.append({"name": name, "ranks": ranks})
+
                 # montar payload
                 payload = {
                     "pokemon": {
@@ -4546,7 +4659,7 @@ elif page == "Criação Guiada de Fichas":
                         "will": int(will),
                     },
                     "advantages": chosen_adv,
-                    "skills": st.session_state.get("cg_skill_notes", ""),
+                    "skills": skills_payload,
                     "moves": st.session_state.get("cg_moves", []),
                 }
 
