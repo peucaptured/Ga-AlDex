@@ -47,8 +47,181 @@ def init_firebase():
     db = firestore.client()
     bucket = storage.bucket()
     return db, bucket
+    
+# ==========================
+# FIREBASE SAVE/LOAD (Fichas)
+# ==========================
+import uuid
+from datetime import datetime, timezone
+
+def _utc_now_iso():
+    return datetime.now(timezone.utc).isoformat()
+
+def _safe_doc_id(s: str):
+    import re
+    s = (s or "").strip().lower()
+    s = re.sub(r"[^a-z0-9_\-]+", "_", s)
+    s = re.sub(r"_+", "_", s).strip("_")
+    return s or uuid.uuid4().hex
+
+def upload_pdf_to_storage(bucket, pdf_bytes: bytes, storage_path: str):
+    blob = bucket.blob(storage_path)
+    blob.upload_from_string(pdf_bytes, content_type="application/pdf")
+    return storage_path
+
+def save_sheet_to_firestore(db, trainer_name: str, sheet_payload: dict, sheet_id=None):
+    trainer_id = _safe_doc_id(trainer_name)
+
+    if not sheet_id:
+        pname = sheet_payload.get("pokemon", {}).get("name", "pokemon")
+        pid = sheet_payload.get("pokemon", {}).get("id", "0")
+        sheet_id = _safe_doc_id(f"{pname}_{pid}_{uuid.uuid4().hex[:8]}")
+
+    ref = (
+        db.collection("trainers")
+        .document(trainer_id)
+        .collection("sheets")
+        .document(sheet_id)
+    )
+
+    now = _utc_now_iso()
+    sheet_payload.setdefault("created_at", now)
+    sheet_payload["updated_at"] = now
+    sheet_payload["trainer_name"] = trainer_name
+
+    ref.set(sheet_payload, merge=True)
+    return sheet_id
+
+def save_sheet_with_pdf(
+    db,
+    bucket,
+    trainer_name: str,
+    sheet_payload: dict,
+    pdf_bytes: bytes | None = None,
+    sheet_id: str | None = None,
+):
+    storage_path = None
+
+    if pdf_bytes:
+        pname = sheet_payload.get("pokemon", {}).get("name", "pokemon")
+        pid = sheet_payload.get("pokemon", {}).get("id", "0")
+        storage_path = (
+            f"fichas/{_safe_doc_id(trainer_name)}/"
+            f"{_safe_doc_id(pname)}_{pid}_{uuid.uuid4().hex[:8]}.pdf"
+        )
+        upload_pdf_to_storage(bucket, pdf_bytes, storage_path)
+
+        sheet_payload.setdefault("pdf", {})
+        sheet_payload["pdf"].update({
+            "storage_path": storage_path,
+            "updated_at": _utc_now_iso(),
+            "version": int(sheet_payload.get("pdf", {}).get("version", 0)) + 1,
+        })
+
+    sheet_id = save_sheet_to_firestore(
+        db=db,
+        trainer_name=trainer_name,
+        sheet_payload=sheet_payload,
+        sheet_id=sheet_id,
+    )
+
+    return sheet_id, storage_path
+
+def list_sheets(db, trainer_name: str, limit: int = 50):
+    trainer_id = _safe_doc_id(trainer_name)
+    docs = (
+        db.collection("trainers")
+        .document(trainer_id)
+        .collection("sheets")
+        .order_by("updated_at", direction="DESCENDING")
+        .limit(limit)
+        .stream()
+    )
+
+    out = []
+    for d in docs:
+        item = d.to_dict() or {}
+        item["_sheet_id"] = d.id
+        out.append(item)
+    return out
+
+def load_sheet(db, trainer_name: str, sheet_id: str):
+    trainer_id = _safe_doc_id(trainer_name)
+    ref = (
+        db.collection("trainers")
+        .document(trainer_id)
+        .collection("sheets")
+        .document(sheet_id)
+    )
+    snap = ref.get()
+    return snap.to_dict() if snap.exists else None
 
 
+
+
+import math
+from io import BytesIO
+
+POKEAPI_BASE = "https://pokeapi.co/api/v2"
+
+@st.cache_data(ttl=60*60)
+def pokeapi_get_pokemon(name_or_id: str) -> dict:
+    q = str(name_or_id).strip().lower()
+    url = f"{POKEAPI_BASE}/pokemon/{q}"
+    r = requests.get(url, timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+def pokeapi_parse_stats(p: dict) -> dict:
+    # base stats: hp, attack, defense, special-attack, special-defense, speed
+    out = {}
+    for s in p.get("stats", []):
+        out[s["stat"]["name"]] = int(s["base_stat"])
+    return out
+
+def pokeapi_parse_types(p: dict) -> list[str]:
+    return [t["type"]["name"] for t in p.get("types", [])]
+
+def pokeapi_parse_abilities(p: dict) -> list[str]:
+    # retorna nomes das abilities
+    return [a["ability"]["name"] for a in p.get("abilities", [])]
+
+def get_np_for_pokemon(df_pokedex: pd.DataFrame, pid: str, fallback_np: int = 6) -> int:
+    """
+    Tenta achar NP/PL no seu DF da pokedex.
+    Se não achar coluna, retorna fallback.
+    """
+    pid = str(pid)
+    row = df_pokedex[df_pokedex["Nº"].astype(str) == pid]
+    if row.empty:
+        return fallback_np
+
+    # tenta colunas comuns
+    for col in ["NP", "PL", "Nivel de Poder", "Nível de Poder", "Power Level"]:
+        if col in row.columns:
+            try:
+                return int(row.iloc[0][col])
+            except:
+                pass
+    return fallback_np
+
+def calc_pp_budget(np_: int) -> int:
+    # sua regra: NP x 2 = PP
+    return int(np_) * 2
+
+def can_add_more_attack_points(np_: int, spent_attack_points: int) -> bool:
+    # trava: quando atingir limite de 20 pontos a mais do NP (você descreveu assim)
+    # ✅ limite = NP + 20
+    return spent_attack_points < (int(np_) + 20)
+
+def upload_pdf_to_bucket(bucket, pdf_bytes: bytes, dest_path: str) -> str:
+    """
+    Faz upload no Firebase Storage (bucket do init_firebase).
+    Retorna o caminho salvo.
+    """
+    blob = bucket.blob(dest_path)
+    blob.upload_from_string(pdf_bytes, content_type="application/pdf")
+    return dest_path
 
 
 # Configuração da Página
@@ -1502,7 +1675,7 @@ if st.sidebar.button("🔄 Recarregar Excel"):
     st.rerun()
 
 st.sidebar.markdown("---")
-page = st.sidebar.radio("Ir para:", ["Pokédex (Busca)", "Trainer Hub (Meus Pokémons)", "PvP – Arena Tática", "Mochila"])
+page = st.sidebar.radio("Ir para:", ["Pokédex (Busca)", "Trainer Hub (Meus Pokémons)", "Criação Guiada de Fichas", "PvP – Arena Tática", "Mochila"])
 
 
 # ==============================================================================
@@ -2427,6 +2600,176 @@ if page == "Trainer Hub (Meus Pokémons)":
         st.progress(min(vistos / total, 1.0))
         st.write(f"**{vistos}** de **{total}** Pokémons registrados.")
         
+
+#==================
+#CRIAÇÃO DE FICHAS
+#==================
+
+
+if page == "Criação Guiada de Fichas":
+    st.title("🧩 Criação Guiada de Fichas")
+
+    if "cg_view" not in st.session_state:
+        st.session_state["cg_view"] = "menu"
+
+    # menu interno
+    if st.session_state["cg_view"] == "menu":
+        choice = st.radio(
+            "Escolha o que você quer fazer:",
+            ["Criação Guiada", "Criação de Golpes"],
+            horizontal=True
+        )
+        if choice == "Criação Guiada":
+            st.session_state["cg_view"] = "guided"
+            st.rerun()
+        else:
+            st.session_state["cg_view"] = "moves"
+            st.rerun()
+
+    # ==========================
+    # 3A) CRIAÇÃO DE GOLPES
+    # ==========================
+    if st.session_state["cg_view"] == "moves":
+        st.subheader("⚔️ Criação de Golpes")
+        st.caption("Aqui entra a tela que você e eu estávamos montando (busca por golpe, rank, PP, template, etc).")
+
+        # ✅ CHAME AQUI A FUNÇÃO DO SEU CRIADOR DE GOLPES
+        # Exemplo:
+        # render_move_creator(df_moves, trainer_name, user_data, db, bucket)
+        st.info("TODO: integrar aqui o render_move_creator(...) quando você me mandar o código do criador de golpes.")
+
+        if st.button("⬅️ Voltar"):
+            st.session_state["cg_view"] = "menu"
+            st.rerun()
+
+    # ==========================
+    # 3B) CRIAÇÃO GUIADA (FICHA)
+    # ==========================
+    if st.session_state["cg_view"] == "guided":
+        st.subheader("🧬 Criação Guiada")
+
+        # 1) escolher pokemon (usa seu df da pokedex já carregado)
+        # você já tem df (pokedex) no app; ajuste o nome se for diferente
+        # (no seu código tem df e filtered_df na pokedex; aqui usamos df “completo”)
+        options = df.apply(lambda x: f"#{x['Nº']} - {x['Nome']}", axis=1).tolist()
+        pick = st.selectbox("Escolha o Pokémon:", options)
+
+        pid = pick.split(" - ")[0].replace("#", "").strip()
+        pname = pick.split(" - ", 1)[1].strip()
+
+        # 2) puxar dados online
+        with st.spinner("Buscando dados do Pokémon online (stats + ability + tipos)..."):
+            pjson = pokeapi_get_pokemon(pname)
+            base_stats = pokeapi_parse_stats(pjson)
+            types = pokeapi_parse_types(pjson)
+            abilities = pokeapi_parse_abilities(pjson)
+
+        # 3) NP / PP
+        np_ = get_np_for_pokemon(df, pid, fallback_np=6)
+        pp_total = calc_pp_budget(np_)
+        if "cg_spent_attacks" not in st.session_state:
+            st.session_state["cg_spent_attacks"] = 0
+
+        st.markdown(f"**Pokémon:** {pname}  \n**Tipos:** {', '.join(types)}  \n**Abilities:** {', '.join(abilities)}")
+        st.markdown(f"**NP:** {np_}  \n**PP Total (NP×2):** {pp_total}  \n**Pontos gastos em golpes:** {st.session_state['cg_spent_attacks']} / {np_ + 20}")
+
+        # 4) distribuir stats no seu formato (placeholders editáveis)
+        st.markdown("### 📊 Atributos (auto + editável)")
+        col1, col2, col3 = st.columns(3)
+
+        # exemplos (você vai ajustar pras fórmulas exatas do seu PDF)
+        atk = base_stats.get("attack", 10)
+        spatk = base_stats.get("special-attack", 10)
+        spe = base_stats.get("speed", 10)
+        defense = base_stats.get("defense", 10)
+        spdef = base_stats.get("special-defense", 10)
+
+        # valores iniciais “propostos”
+        stgr_init = max(0, math.floor((atk - 10) / 10))
+        int_init  = max(0, math.floor((spatk - 10) / 10))
+
+        # dodge/parry como sugestão baseada em speed
+        dodge_init = max(0, math.floor((spe - 10) / 10))
+        parry_init = dodge_init  # você pode variar depois
+
+        will_init = max(0, math.floor(spdef / max(1, (spdef + defense)) * (2*np_)))
+        fort_init = max(0, math.floor(defense / max(1, (spdef + defense)) * (2*np_)))
+
+        with col1:
+            stgr = st.number_input("Stgr (Força)", value=int(stgr_init), min_value=0, max_value=99)
+            intellect = st.number_input("Int (Intelecto)", value=int(int_init), min_value=0, max_value=99)
+        with col2:
+            dodge = st.number_input("Dodge", value=int(dodge_init), min_value=0, max_value=99)
+            parry = st.number_input("Parry", value=int(parry_init), min_value=0, max_value=99)
+        with col3:
+            fortitude = st.number_input("Fortitude", value=int(fort_init), min_value=0, max_value=99)
+            will = st.number_input("Will", value=int(will_init), min_value=0, max_value=99)
+
+        st.caption("⚠️ Aqui eu deixei as fórmulas como *placeholder*. Quando eu ler as regras de limite (variação Thg/Fortitude etc) no seu PDF e você confirmar as colunas do seu DF, eu amarro 100% igual seu sistema.")
+
+        # 5) advantages “recomendadas”
+        st.markdown("### ⭐ Advantages (sugestões)")
+        st.caption("A lista final vai ser filtrada pelas suas regras restritivas do PDF + biologia/tipo/ability do Pokémon.")
+        suggested_adv = []
+        if "chlorophyll" in abilities or "swift-swim" in abilities:
+            suggested_adv.append("Seize Initiative / Iniciativa Aprimorada (se aplicável)")
+        if "flying" in types:
+            suggested_adv.append("Move-by Action (se seu sistema permitir)")
+        if not suggested_adv:
+            suggested_adv = ["(placeholder) — quando integrarmos a lista completa de advantages"]
+
+        chosen_adv = st.multiselect("Selecione advantages:", options=suggested_adv, default=[])
+
+        # 6) ataques (chama o criador de golpes como sub-etapa)
+        st.markdown("### ⚔️ Golpes")
+        st.caption("Você escolhe/gera golpes aqui. O app soma pontos e bloqueia quando passar de NP + 20.")
+
+        disabled_add = not can_add_more_attack_points(np_, st.session_state["cg_spent_attacks"])
+        if disabled_add:
+            st.error("Limite de pontos em golpes atingido (NP + 20). Você não pode adicionar mais golpes.")
+
+        # Exemplo de botão que “abre” o criador de golpes dentro do fluxo:
+        if st.button("➕ Adicionar golpe", disabled=disabled_add):
+            st.session_state["cg_view"] = "moves"
+            st.rerun()
+
+        # 7) skills (etapa seguinte)
+        st.markdown("### 🧠 Skills")
+        st.caption("Depois que confirmar golpes, você vai pra tela de skills com explicação + soma de pontos (TODO).")
+
+        # 8) exportar PDF + salvar na nuvem
+        st.markdown("### 📄 Exportar ficha")
+        db, bucket = init_firebase()
+
+        if st.button("📄 Gerar PDF e salvar na nuvem"):
+            # TODO: aqui você vai montar um PDF bonito (eu deixei um exemplo simples)
+            from reportlab.pdfgen import canvas
+            buffer = BytesIO()
+            c = canvas.Canvas(buffer)
+            c.setFont("Helvetica", 12)
+            c.drawString(40, 800, f"Ficha Pokémon - {pname} (NP {np_})")
+            c.drawString(40, 780, f"Tipos: {', '.join(types)}")
+            c.drawString(40, 760, f"Abilities: {', '.join(abilities)}")
+            c.drawString(40, 730, f"Stgr {stgr} | Int {intellect} | Dodge {dodge} | Parry {parry} | Fort {fortitude} | Will {will}")
+            c.drawString(40, 700, f"Advantages: {', '.join(chosen_adv) if chosen_adv else '(nenhuma)'}")
+            c.showPage()
+            c.save()
+            pdf_bytes = buffer.getvalue()
+
+            dest = f"fichas/{trainer_name}/{pname}_{pid}_{uuid.uuid4().hex[:8]}.pdf"
+            upload_pdf_to_bucket(bucket, pdf_bytes, dest)
+            st.success(f"Salvo na nuvem em: {dest}")
+
+        if st.button("⬅️ Voltar"):
+            st.session_state["cg_view"] = "menu"
+            st.rerun()
+
+
+
+
+
+
+
 # PVP ARENA
 
 elif page == "PvP – Arena Tática":
@@ -3341,6 +3684,7 @@ elif page == "Mochila":
     
     
     
+
 
 
 
