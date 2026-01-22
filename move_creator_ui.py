@@ -85,8 +85,20 @@ def render_move_creator(excel_path: str, state_key_prefix: str = "mc"):
 
     st.divider()
     st.subheader("📦 Golpes confirmados nesta ficha")
+
     if not st.session_state["cg_moves"]:
         st.info("Nenhum golpe confirmado ainda.")
     else:
-        for i, m in enumerate(st.session_state["cg_moves"], start=1):
-            st.write(f"{i}. **{m['name']}** (Rank {m['rank']}) — PP: {m.get('pp_cost')}")
+        for i, m in enumerate(st.session_state["cg_moves"]):
+            c1, c2, c3 = st.columns([6, 2, 2])
+    
+            with c1:
+                st.write(f"**{m['name']}** (Rank {m['rank']}) — PP: {m.get('pp_cost')}")
+    
+            with c2:
+                st.caption(" ")
+    
+            with c3:
+                if st.button("❌ Remover", key=f"{state_key_prefix}_remove_{i}"):
+                    st.session_state["cg_moves"].pop(i)
+                    st.rerun()
