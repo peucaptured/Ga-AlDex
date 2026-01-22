@@ -470,12 +470,42 @@ def render_move_creator(
             pp = int(manual_pp or 0)
             why = "PP informado manualmente (porque você escolheu ranks por sub-efeito)."
         else:
-            pp, why = mv.pp_cost(rank)
-        
-        if pp is not None:
-            st.info(f"PP: **{pp}** — {why}")
-        else:
-            st.warning(f"PP: não definido — {why}")
+            # =========================
+            # PP (auto ou obrigatório manual)
+            # =========================
+            
+            pp_auto, why_auto = mv.pp_cost(rank)  # pode ser None
+            
+            need_manual_pp = False
+            
+            # 1) Se customizou sub-ranks → PP obrigatório
+            if sub_ranks:
+                need_manual_pp = True
+                pp_auto = None
+                why = "PP manual obrigatório (ranks por sub-efeito)."
+            
+            # 2) Se o banco não tem PP → PP obrigatório
+            elif pp_auto is None:
+                need_manual_pp = True
+                why = "PP manual obrigatório (não definido no banco)."
+            
+            else:
+                why = why_auto
+            
+            pp_final = pp_auto
+            
+            if need_manual_pp:
+                pp_manual = st.number_input(
+                    "PP total do golpe (obrigatório)",
+                    min_value=1,
+                    value=1,
+                    step=1,
+                    key=f"{state_key_prefix}_pp_required_{mv.name}_{rank}"
+                )
+                pp_final = int(pp_manual)
+            
+            st.info(f"PP: **{pp_final}** — {why}")
+
 
         if pp is not None:
             st.info(f"PP (estimado ou do Excel): **{pp}** — {why}")
@@ -620,12 +650,13 @@ def render_move_creator(
 
         col_confirm_zero, col_add_zero = st.columns(2)
         with col_confirm_zero:
+            can_confirm = (pp_final is not None) and (int(pp_final) > 0)
             if st.button("✅ Confirmar golpe criado do zero", key=f"{state_key_prefix}_z_confirm"):
                 st.session_state["cg_moves"].append({
                     "name": "Golpe Customizado",
                     "rank": int(rank3),
                     "build": build,
-                    "pp_cost": int(manual_pp or 0) if custom_sub else None,
+                    "pp_cost": int(pp_final),
                     "meta": {"custom": True, "sub_ranks": sub_ranks, "pp_manual": bool(custom_sub)}
                 })
                 st.success("Golpe customizado adicionado à ficha.")
@@ -637,7 +668,7 @@ def render_move_creator(
                         "name": "Golpe Customizado",
                         "rank": int(rank3),
                         "build": build,
-                        "pp_cost": int(manual_pp or 0) if custom_sub else None,
+                        "pp_cost": int(pp_final),
                         "meta": {"custom": True, "sub_ranks": sub_ranks, "pp_manual": bool(custom_sub)}
                     })
                     st.success("Golpe customizado adicionado à ficha.")
