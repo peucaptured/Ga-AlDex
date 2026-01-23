@@ -4409,10 +4409,6 @@ elif page == "Criação Guiada de Fichas":
         # 3. Processamento do nome (apenas se houver texto)
         if pname:
             raw_name = pname.strip().lower()
-            
-            # Sincroniza o draft internamente apenas se necessário
-            st.session_state["cg_draft"]["pname"] = pname
-    
             # Lógica para Nidoran
             is_nidoran_generic = raw_name in ["nidoran", "nidoran♀", "nidoran♂", "nidoran-f", "nidoran-m"]
             if is_nidoran_generic:
