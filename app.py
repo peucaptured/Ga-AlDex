@@ -3128,12 +3128,11 @@ if page == "Pokédex (Busca)":
     gap: 12px;
 }
 .pokedex-info-card {
-    padding: 10px 12px;
-    border-radius: 8px;
-    background: rgba(15, 23, 42, 0.9);
+    background: rgba(15, 23, 42, 0.9) !important; /* Fundo azul bem escuro */
+    border: 1px solid rgba(56, 189, 248, 0.4) !important; /* Borda azul neon suave */
     color: #f8fafc !important;
-    border: 1px solid rgba(148, 163, 184, 0.6);
-    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.4), 0 10px 20px rgba(15, 23, 42, 0.2);
+    padding: 10px;
+    border-radius: 8px;
 }
 .pokedex-info-card--dark {
     background: #e2e8f0;
