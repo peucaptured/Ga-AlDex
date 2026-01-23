@@ -4219,7 +4219,7 @@ if page == "Trainer Hub (Meus Pokémons)":
         # ---------
         # PARTY (equipe ativa)
         # ---------
-        with right:
+        with col_right:
             st.markdown('<div class="gba-window party">', unsafe_allow_html=True)
         
             st.markdown("""
