@@ -4892,14 +4892,15 @@ elif page == "PvP – Arena Tática":
             stats = p_data.get("stats", {})
             shiny_status = p_data.get("shiny", False)
             
-            # VERIFICAÇÃO DE SEGURANÇA:
-            # Se for o MEU pokemon e o banco estiver zerado, puxa do meu Hub local
             if t_name == trainer_name:
-                # Checa se stats é None, vazio ou só tem zeros
-                stats_is_bad = not stats or all(int(v) == 0 for v in stats.values())
+                # CORREÇÃO: Converte para string, remove espaços e trata vazio como '0'
+                # Além disso, ignora a chave 'notes' que é texto puro.
+                stats_is_bad = not stats or all(
+                    int(str(v).strip() or 0) == 0 
+                    for k, v in stats.items() if k != "notes"
+                )
                 
                 if stats_is_bad:
-                    # Tenta achar no user_data local (Hub)
                     if "stats" in user_data:
                         local_s = user_data["stats"].get(str(p_id)) or user_data["stats"].get(p_id)
                         if local_s:
