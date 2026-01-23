@@ -4326,15 +4326,27 @@ if page == "Trainer Hub (Meus Pokémons)":
         st.progress(min(vistos / total, 1.0) if total else 0.0)
         st.write(f"**{vistos}** de **{total}** Pokémons registrados.")
 
+    # ==========================
+    # CRIAÇÃO DE 
+    # ==========================
 
 elif page == "Criação Guiada de Fichas":
     st.title("🧩 Criação Guiada de Fichas")
-    if st.session_state.get("last_page") != "Criação Guiada de Fichas":
+    
+    # CORREÇÃO: Inicializa o last_page se não existir
+    if "last_page" not in st.session_state:
+        st.session_state["last_page"] = ""
+
+    # Só reseta o menu se estivermos REALMENTE vindo de outra página
+    if st.session_state["last_page"] != "Criação Guiada de Fichas":
         if st.session_state.get("cg_force_guided"):
             st.session_state["cg_view"] = "guided"
             st.session_state["cg_force_guided"] = False
         else:
             st.session_state["cg_view"] = "menu"
+        
+        # IMPORTANTE: Atualiza o last_page para evitar o loop no próximo rerun
+        st.session_state["last_page"] = "Criação Guiada de Fichas"
 
     if "cg_view" not in st.session_state:
         st.session_state["cg_view"] = "menu"
@@ -4422,8 +4434,12 @@ elif page == "Criação Guiada de Fichas":
                     st.caption("Sugestões encontradas na sua Pokédex:")
                     st.write(matches[["Nº", "Nome"]])
         else:
-            st.info("Digite o nome do Pokémon para buscar na PokeAPI.")
-            st.stop()
+            # CORREÇÃO: Remova o st.stop() e use um aviso amigável
+            st.info("💡 Digite o nome do Pokémon acima para começar a gerar a ficha.")
+            # Botão para voltar ao menu caso o usuário tenha desistido
+            if st.button("⬅️ Voltar ao Menu"):
+                st.session_state["cg_view"] = "menu"
+                st.rerun()
         
         # tenta achar o id no seu df (se não achar, usa 0)
         row = df[df["Nome"].str.lower() == pname.lower()]
