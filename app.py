@@ -1471,6 +1471,62 @@ div[data-baseweb="tab-border"]{ display:none !important; }
   image-rendering: pixelated;
   filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25));
 }
+.box-slot-grass {
+  background: #55a64b; /* Cor base da grama */
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+  background-size: 8px 8px; /* Efeito de pixels/quadriculado */
+  border: 2px solid #2d5a27;
+  border-radius: 8px;
+  padding: 5px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 5px;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+}
+/* Fundo de grama individual para cada Pokémon na BOX */
+.box-slot-grass {
+  background: #55a64b;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+  background-size: 8px 8px;
+  border: 2px solid #2d5a27;
+  border-radius: 8px;
+  padding: 5px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+  margin-bottom: 5px;
+}
+
+
+/* Card estilo GBA para a Equipe Ativa */
+.gba-party-slot {
+  background: linear-gradient(180deg, #4d88ff 0%, #2e5cb8 100%);
+  border: 3px solid #f8fafc;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 15px;
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Detalhe de luz no card da equipe */
+.gba-party-slot::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 50%;
+  background: rgba(255,255,255,0.1);
+  pointer-events: none;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -4020,6 +4076,7 @@ if page == "Trainer Hub (Meus Pokémons)":
         # BOX (capturados)
         # ---------
         with col_left:
+            # Container principal da BOX
             st.markdown('<div class="grass-box">', unsafe_allow_html=True)
         
             st.markdown("""
@@ -4032,18 +4089,18 @@ if page == "Trainer Hub (Meus Pokémons)":
             </div>
             """, unsafe_allow_html=True)
         
+            # Filtro e limpeza da lista de capturados
             caught_all = [str(c) for c in user_data.get("caught", []) if not str(c).startswith("EXT:")]
-            caught_all = list(dict.fromkeys(caught_all))
+            caught_all = list(dict.fromkeys(caught_all)) # Remove duplicados mantendo a ordem
 
-            caught_all = list(dict.fromkeys(caught_all))  # remove duplicados mantendo ordem
-
-            # paginação
-            PAGE_SIZE = 36  # 6x6
+            # Lógica de Paginação
+            PAGE_SIZE = 36  # Grid 6x6
             total_pages = max(1, ((len(caught_all) + PAGE_SIZE - 1) // PAGE_SIZE)) if caught_all else 1
             page_now = int(st.session_state.get("hub_box_page", 1))
             page_now = max(1, min(total_pages, page_now))
             st.session_state["hub_box_page"] = page_now
 
+            # Controles de Navegação da BOX
             cpg1, cpg2, cpg3 = st.columns([1, 2, 1])
             with cpg1:
                 if st.button("⬅️", key="hub_box_prev", disabled=(page_now <= 1)):
@@ -4059,32 +4116,39 @@ if page == "Trainer Hub (Meus Pokémons)":
             if not caught_all:
                 st.info("Você ainda não marcou nenhum Pokémon como capturado.")
             else:
+                # Delimitação dos Pokémons da página atual
                 start = (page_now - 1) * PAGE_SIZE
                 end = start + PAGE_SIZE
                 page_ids = caught_all[start:end]
 
-                # grid 6 colunas
+                # Renderização do Grid 6 colunas
                 grid_cols = 6
                 for r in range(0, len(page_ids), grid_cols):
                     cols = st.columns(grid_cols)
-                    for col, pid in zip(cols, page_ids[r:r+grid_cols]):
+                    for col, pid in zip(cols, page_ids[r : r + grid_cols]):
                         with col:
-                            # botão invisível com imagem + nome curto
                             sprite = _get_sprite(pid)
                             name = _get_pokemon_name(pid)
-                            st.markdown('<div class="hub-box-sprite">', unsafe_allow_html=True) 
-                            st.image(sprite, use_container_width=True)
-                            st.markdown('</div>', unsafe_allow_html=True)
+                            
+                            # --- SLOT DE GRAMA (Efeito visual de fundo) ---
+                            st.markdown(f'''
+                                <div class="box-slot-grass">
+                                    <img src="{sprite}" style="width: 50px; image-rendering: pixelated;">
+                                </div>
+                            ''', unsafe_allow_html=True)
+                            
+                            # Botão de interação abaixo do slot
                             if st.button(name, key=f"hub_box_{pid}_{r}", use_container_width=True):
                                 _open_box_context(pid)
                                 st.rerun()
 
-            # menu de contexto (BOX)
+            # 
+            # Menu de contexto (Aparece ao clicar em um Pokémon da BOX)
             ctx_pid = st.session_state.get("hub_context_pid")
             if ctx_pid:
                 st.markdown("<div class='hub-divider'></div>", unsafe_allow_html=True)
-                pname = _get_pokemon_name(ctx_pid)
-                st.markdown(f"**Menu:** {pname}")
+                pname_ctx = _get_pokemon_name(ctx_pid)
+                st.markdown(f"**Menu:** {pname_ctx}")
                 c1, c2, c3 = st.columns([1, 1, 1])
                 with c1:
                     if st.button("➡️ Mover p/ equipe", key="hub_ctx_move"):
@@ -4098,26 +4162,29 @@ if page == "Trainer Hub (Meus Pokémons)":
                         st.session_state["hub_context_pid"] = None
                         st.rerun()
 
-
-
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True) # Fecha grass-box
 
 
 
         # ---------
         # PARTY (equipe ativa)
         # ---------
+        # ---------
+        # PARTY (equipe ativa)
+        # ---------
         with col_right:
+            # Container principal da Equipe
             st.markdown('<div class="team-box">', unsafe_allow_html=True)
 
-                           
+            # Busca a lista de IDs na party
             party = [str(p) for p in (user_data.get("party") or [])]
+            
             if not party:
                 st.info("Sua equipe está vazia. Use a BOX para mover um Pokémon.")
             else:
                 n = len(party)
         
-                # layout adaptativo (mantém sua lógica)
+                # Layout adaptativo conforme a quantidade de Pokémon
                 if n <= 2:
                     cols_n = 1
                 elif n <= 4:
@@ -4125,9 +4192,7 @@ if page == "Trainer Hub (Meus Pokémons)":
                 else:
                     cols_n = 2  # 2x4 compacto
         
-                # wrapper grid GBA
-                st.markdown(f'<div class="gba-party" style="grid-template-columns: repeat({cols_n}, 1fr);">', unsafe_allow_html=True)
-        
+                # Renderização da grade da equipe
                 for r in range(0, n, cols_n):
                     cols = st.columns(cols_n)
                     for col, pid in zip(cols, party[r:r+cols_n]):
@@ -4137,17 +4202,18 @@ if page == "Trainer Hub (Meus Pokémons)":
                             typ = _get_pokemon_type(pid)
                             npv = _get_pokemon_np(pid)
         
-                            # card GBA (substitui o container border=True)
-                            st.markdown('<div class="gba-card">', unsafe_allow_html=True)
-                            st.markdown(f'<div class="hub-sprite">', unsafe_allow_html=True)  # mantém pixelated (ou remova se já usa global)
-                            st.image(sprite, use_container_width=True)
-                            st.markdown('</div>', unsafe_allow_html=True)
+                            # --- SLOT GBA (Fundo azul gradiente e borda branca) ---
+                            st.markdown(f'''
+                                <div class="gba-party-slot">
+                                    <img src="{sprite}" style="width: 80px; image-rendering: pixelated; margin-bottom: 5px;">
+                                    <div style="text-align: center; width: 100%;">
+                                        <div style="color: white; font-size: 11px; margin-bottom: 4px; text-shadow: 2px 2px 0px rgba(0,0,0,0.5);">{name}</div>
+                                        <div style="color: #ffd166; font-size: 9px; opacity: 0.9;">{typ} • NP {npv}</div>
+                                    </div>
+                                </div>
+                            ''', unsafe_allow_html=True)
         
-                            st.markdown(f'<div style="width:100%;">'
-                                        f'<div class="name">{name}</div>'
-                                        f'<div class="meta">{typ} • NP {npv}</div>'
-                                        f'</div>', unsafe_allow_html=True)
-        
+                            # Botões de ação abaixo do card
                             b1, b2 = st.columns(2)
                             with b1:
                                 if st.button("Abrir", key=f"hub_party_open_{pid}", use_container_width=True):
@@ -4157,10 +4223,7 @@ if page == "Trainer Hub (Meus Pokémons)":
                                 if st.button("Remover", key=f"hub_party_rm_{pid}", use_container_width=True):
                                     _remove_from_party(pid)
         
-                            st.markdown('</div>', unsafe_allow_html=True)  # fecha gba-card
-        
-            
-            st.markdown('</div>', unsafe_allow_html=True)  # fecha team-box
+            st.markdown('</div>', unsafe_allow_html=True)  # Fecha team-box
         
 
     # ==========================
@@ -4272,50 +4335,51 @@ elif page == "Criação Guiada de Fichas":
     # ==========================
     # B) CRIAÇÃO GUIADA (FICHA)
     # ==========================
+    # ==========================
+    # B) CRIAÇÃO GUIADA (FICHA) - OTIMIZADA
+    # ==========================
     if st.session_state["cg_view"] == "guided":
         st.subheader("🧬 Criação Guiada")
-
-       
-
-        # garante lista de golpes confirmados
-        if "cg_moves" not in st.session_state:
-            st.session_state["cg_moves"] = []
-
-        if "cg_skill_notes" not in st.session_state:
-            st.session_state["cg_skill_notes"] = ""
-
-        # 1) escolher pokemon
-        cg_init()
-        pname = st.text_input("Digite o nome do Pokémon (ex: Blastoise)", value=st.session_state["cg_draft"]["pname"], placeholder="Ex: Blastoise", key="cg_pname")
-        cg_sync_from_widgets()
-        raw_name = (pname or "").strip().lower()
-
-        is_nidoran_generic = raw_name in [
-            "nidoran",
-            "nidoran♀",
-            "nidoran♂",
-            "nidoran-f",
-            "nidoran-m"
-        ]
-        
-        if is_nidoran_generic:
-            choice = st.radio(
-                "Qual Nidoran?",
-                ["Nidoran ♀", "Nidoran ♂"],
-                horizontal=True,
-                key="nidoran_choice"
-            )
-            poke_query = "nidoran-f" if choice == "Nidoran ♀" else "nidoran-m"
-        else:
-            poke_query = to_pokeapi_name(pname)
-
-
-        # ajuda opcional: mostra sugestões do seu df conforme digita
+    
+        # 1. Inicialização segura: Só executa se o draft não existir
+        if "cg_draft" not in st.session_state:
+            cg_init()
+    
+        # 2. Input de Nome: REMOVIDO o parâmetro 'value' e a sincronização imediata
+        # Deixamos o 'key' controlar o estado sozinho para evitar loops
+        pname = st.text_input(
+            "Digite o nome do Pokémon (ex: Blastoise)", 
+            placeholder="Ex: Blastoise", 
+            key="cg_pname"
+        )
+    
+        # 3. Processamento do nome (apenas se houver texto)
         if pname:
-            matches = df[df["Nome"].str.lower().str.contains(pname.lower(), na=False)].head(10)
-            if not matches.empty:
-                st.caption("Sugestões encontradas na sua Pokédex:")
-                st.write(matches[["Nº", "Nome"]])
+            raw_name = pname.strip().lower()
+            
+            # Sincroniza o draft internamente apenas se necessário
+            st.session_state["cg_draft"]["pname"] = pname
+    
+            # Lógica para Nidoran
+            is_nidoran_generic = raw_name in ["nidoran", "nidoran♀", "nidoran♂", "nidoran-f", "nidoran-m"]
+            
+            if is_nidoran_generic:
+                choice = st.radio(
+                    "Qual Nidoran?",
+                    ["Nidoran ♀", "Nidoran ♂"],
+                    horizontal=True,
+                    key="nidoran_choice"
+                )
+                poke_query = "nidoran-f" if "♀" in choice else "nidoran-m"
+            else:
+                poke_query = to_pokeapi_name(pname)
+    
+            # Sugestões da Pokédex (Filtro otimizado)
+            if len(pname) >= 2: # Só busca com 2 ou mais letras para poupar CPU
+                matches = df[df["Nome"].str.lower().str.contains(pname.lower(), na=False)].head(10)
+                if not matches.empty:
+                    st.caption("Sugestões encontradas na sua Pokédex:")
+                    st.write(matches[["Nº", "Nome"]])
         else:
             st.info("Digite o nome do Pokémon para buscar na PokeAPI.")
             st.stop()
