@@ -4396,22 +4396,13 @@ elif page == "Criação Guiada de Fichas":
         if "cg_draft" not in st.session_state:
             cg_init()
     
-        # 2. Input de Nome: REMOVIDO o parâmetro 'value' e a sincronização imediata
-        # Deixamos o 'key' controlar o estado sozinho para evitar loops
+        # 2. Input de Nome ÚNICO (Evita DuplicateElementKey)
         pname = st.text_input(
             "Digite o nome do Pokémon (ex: Blastoise)", 
             placeholder="Ex: Blastoise", 
             key="cg_pname"
         )
     
-        # 3. Processamento do nome (apenas se houver texto)
-        # 2. Input de Nome
-        pname = st.text_input(
-            "Digite o nome do Pokémon (ex: Blastoise)", 
-            placeholder="Ex: Blastoise", 
-            key="cg_pname"
-        )
-
         # 3. Processamento e Criação da Ficha (TUDO deve estar dentro deste IF)
         if pname:
             raw_name = pname.strip().lower()
@@ -4429,11 +4420,11 @@ elif page == "Criação Guiada de Fichas":
                 poke_query = "nidoran-f" if "♀" in choice else "nidoran-m"
             else:
                 poke_query = to_pokeapi_name(pname)
-
+    
             # Busca ID no Excel
             row = df[df["Nome"].str.lower() == pname.lower()]
             pid = str(int(row.iloc[0]["Nº"])) if not row.empty else "0"
-
+    
             # Busca dados na API
             with st.spinner("Buscando dados do Pokémon online (stats + ability + tipos)..."):
                 pjson = pokeapi_get_pokemon(poke_query)
@@ -4457,14 +4448,14 @@ elif page == "Criação Guiada de Fichas":
                 if not chosen_abilities:
                     chosen_abilities = abilities
                 st.session_state["cg_abilities"] = chosen_abilities
-
+    
             # 3) NP / PP
             np_sugerido = get_np_for_pokemon(df, pid, fallback_np=6)
             np_ = st.number_input("NP do seu Pokémon (o jogador informa)", min_value=0, value=0, step=1, key="cg_np", on_change=_cg_sync_from_np)
             pp_total = calc_pp_budget(np_)
-
+    
             pp_spent_moves = sum((m.get("pp_cost") or 0) for m in st.session_state.get("cg_moves", []))
-
+    
             tabs = st.tabs(
                 [
                     "1️⃣ Visão Geral",
@@ -4480,7 +4471,7 @@ elif page == "Criação Guiada de Fichas":
             pp_skills = 0
             pp_advantages = 0
             pp_moves = pp_spent_moves
-
+    
             # 4) Atributos base
             PL = int(np_)
             cap = 2 * PL
@@ -4501,7 +4492,7 @@ elif page == "Criação Guiada de Fichas":
             den_wf = max(1, spdef + def_)
             will_base = round((spdef / den_wf) * cap)
             fort_base = cap - will_base
-
+    
             with tabs[0]:
                 st.markdown(
                     f"""
@@ -4519,7 +4510,7 @@ elif page == "Criação Guiada de Fichas":
                     f"**Abilities escolhidas:** {', '.join(chosen_abilities)}"
                 )
                 st.info("Use as abas para preencher cada etapa. O total de PP gastos é somado automaticamente no final.")
-
+    
             with tabs[1]:
                 st.markdown("### 📊 Atributos (auto + editável)")
                 cap = 2 * int(st.session_state.get("cg_np", 0) or 0)
@@ -4571,7 +4562,7 @@ elif page == "Criação Guiada de Fichas":
                         value=int(st.session_state.get("cg_will", max(0, cap - int(st.session_state.get("cg_fortitude", fort_base))))),
                         min_value=0, max_value=99, disabled=True,
                     )
-
+    
                 st.markdown("### 💰 PP automático")
                 pp_stgr = int(stgr) * 2
                 pp_int  = int(intellect) * 2
@@ -4589,13 +4580,13 @@ elif page == "Criação Guiada de Fichas":
                 
                 pp_abilities = pp_abilities_auto
                 pp_defenses  = pp_defenses_auto
-
+    
             with tabs[2]:
                 st.markdown("### 🧠 Skills (M&M 3e)")
                 if "cg_skills" not in st.session_state:
                     st.session_state["cg_skills"] = {k: 0 for k in SKILLS_MM3}
                     st.session_state["cg_skill_custom"] = []
-
+    
                 cols_sk = st.columns(3)
                 total_skill_ranks = 0
                 for i, sk in enumerate(SKILLS_MM3):
@@ -4603,14 +4594,14 @@ elif page == "Criação Guiada de Fichas":
                         v_sk = st.number_input(sk, min_value=0, max_value=40, value=int(st.session_state["cg_skills"].get(sk, 0)), step=1, key=f"cg_skill_{sk}")
                         st.session_state["cg_skills"][sk] = int(v_sk)
                         total_skill_ranks += int(v_sk)
-
+    
                 st.divider()
                 st.markdown("### Skills extras")
                 add_name = st.text_input("Nome da skill extra", key="cg_skill_add_name")
                 if st.button("➕ Adicionar skill extra", key="cg_skill_add_btn"):
                     if add_name.strip():
                         st.session_state["cg_skill_custom"].append({"name": add_name.strip(), "ranks": 0})
-
+    
                 for idx, row_sk in enumerate(list(st.session_state["cg_skill_custom"])):
                     c1, c2, c3 = st.columns([6, 2, 2])
                     with c1: st.write(row_sk["name"])
@@ -4622,10 +4613,10 @@ elif page == "Criação Guiada de Fichas":
                         if st.button("❌", key=f"cg_skill_custom_del_{idx}"):
                             st.session_state["cg_skill_custom"].pop(idx)
                             st.rerun()
-
+    
                 pp_skills = total_skill_ranks / 2
                 st.info(f"Total de ranks: **{total_skill_ranks}** → PP em Skills: **{pp_skills}**")
-
+    
                 st.markdown("### ⭐ Advantages (sugestões)")
                 adv_suggestions = suggest_advantages(pjson=pjson, base_stats=base_stats, types=types, abilities=abilities)
                 if not adv_suggestions:
@@ -4640,10 +4631,10 @@ elif page == "Criação Guiada de Fichas":
                     for lab in chosen_labels:
                         if notes_map.get(lab): st.caption(f"• {lab}: {notes_map[lab]}")
                     st.session_state["cg_advantages"] = chosen_adv
-
+    
                 pp_advantages = len(chosen_adv)
                 st.info(f"Advantages escolhidas: **{pp_advantages} PP**")
-
+    
             with tabs[3]:
                 st.markdown("### ⚔️ Golpes")
                 if st.session_state["cg_moves"]:
@@ -4659,7 +4650,7 @@ elif page == "Criação Guiada de Fichas":
                                 st.rerun()
                 else:
                     st.info("Nenhum golpe confirmado ainda.")
-
+    
                 disabled_add = pp_spent_moves >= (pp_total + 20)
                 if disabled_add: st.error("Limite atingido (PP_total + 20).")
                 
@@ -4667,10 +4658,10 @@ elif page == "Criação Guiada de Fichas":
                     st.session_state["cg_return_to"] = "guided"
                     st.session_state["cg_view"] = "moves"
                     st.rerun()
-
+    
                 st.info(f"PP gastos em Golpes: {pp_spent_moves}")
                 pp_moves = pp_spent_moves
-
+    
             with tabs[4]:
                 st.markdown("### 🧾 Revisão de PP")
                 pp_spent_total = int(pp_abilities) + int(pp_defenses) + int(pp_skills) + int(pp_advantages) + int(pp_moves)
@@ -4681,18 +4672,18 @@ elif page == "Criação Guiada de Fichas":
                         <hr/><strong>Total gasto:</strong> {pp_spent_total} / {pp_total}
                     </div>
                 """, unsafe_allow_html=True)
-
+    
                 if pp_spent_total > pp_total: st.warning("PP total ultrapassado.")
                 else: st.success("PP total dentro do limite. ✅")
-
+    
                 pdf_bytes = build_sheet_pdf(
                     pname=pname, np_=np_, types=types, abilities=chosen_abilities,
                     stats={"stgr": int(stgr), "intellect": int(intellect), "dodge": int(dodge), "parry": int(parry), "fortitude": int(fortitude), "will": int(will)},
                     chosen_adv=chosen_adv, moves=st.session_state.get("cg_moves", [])
                 )
-
+    
                 st.download_button("⬇️ Exportar PDF", data=pdf_bytes, file_name=f"ficha_{pname}_{np_}.pdf", mime="application/pdf")
-
+    
                 if st.button("☁️ Salvar ficha na Nuvem", key="btn_save_sheet_cloud"):
                     db_fs, bkt_fs = init_firebase()
                     skills_payload = []
@@ -4701,7 +4692,7 @@ elif page == "Criação Guiada de Fichas":
                     for row_sk in st.session_state.get("cg_skill_custom", []):
                         if row_sk.get("name") and int(row_sk.get("ranks", 0)) > 0:
                             skills_payload.append({"name": row_sk["name"], "ranks": int(row_sk["ranks"])})
-
+    
                     payload_fs = {
                         "pokemon": {"id": int(pid), "name": pname, "types": types, "abilities": chosen_abilities},
                         "np": int(np_), "pp_budget_total": int(pp_total), "pp_spent_total": float(pp_spent_total),
@@ -4711,25 +4702,24 @@ elif page == "Criação Guiada de Fichas":
                     sid_fs, _ = save_sheet_with_pdf(db=db_fs, bucket=bkt_fs, trainer_name=trainer_name, sheet_payload=payload_fs, pdf_bytes=pdf_bytes, sheet_id=st.session_state.get("cg_edit_sheet_id"))
                     st.success(f"✅ Salva! ID: {sid_fs}")
                     st.session_state["cg_edit_sheet_id"] = None
-
+    
             # Sugestões da Pokédex (Sempre visível no fim do processo se houver nome)
             if len(pname) >= 2:
                 matches = df[df["Nome"].str.lower().str.contains(pname.lower(), na=False)].head(10)
                 if not matches.empty:
                     st.caption("Sugestões encontradas na sua Pokédex:")
                     st.write(matches[["Nº", "Nome"]])
-
+    
             if st.button("⬅️ Voltar"):
                 st.session_state["cg_view"] = "menu"
                 st.rerun()
-
+    
         else:
             # Caso não tenha nome digitado
             st.info("💡 Digite o nome do Pokémon acima para começar a gerar a ficha.")
             if st.button("⬅️ Voltar ao Menu", key="btn_back_empty"):
                 st.session_state["cg_view"] = "menu"
                 st.rerun()
-
 
 
 # =================
