@@ -4415,7 +4415,6 @@ elif page == "Criação Guiada de Fichas":
     
             # Lógica para Nidoran
             is_nidoran_generic = raw_name in ["nidoran", "nidoran♀", "nidoran♂", "nidoran-f", "nidoran-m"]
-            
             if is_nidoran_generic:
                 choice = st.radio(
                     "Qual Nidoran?",
@@ -4426,7 +4425,14 @@ elif page == "Criação Guiada de Fichas":
                 poke_query = "nidoran-f" if "♀" in choice else "nidoran-m"
             else:
                 poke_query = to_pokeapi_name(pname)
-    
+            row = df[df["Nome"].str.lower() == pname.lower()]
+            pid = str(int(row.iloc[0]["Nº"])) if not row.empty else "0"
+            with st.spinner("Buscando dados do Pokémon online..."):
+                pjson = pokeapi_get_pokemon(poke_query)
+                base_stats = pokeapi_parse_stats(pjson)
+                types = pokeapi_parse_types(pjson)
+                abilities = pokeapi_parse_abilities(pjson)
+        
             # Sugestões da Pokédex (Filtro otimizado)
             if len(pname) >= 2: # Só busca com 2 ou mais letras para poupar CPU
                 matches = df[df["Nome"].str.lower().str.contains(pname.lower(), na=False)].head(10)
