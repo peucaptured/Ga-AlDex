@@ -4476,13 +4476,21 @@ elif page == "Criação Guiada de Fichas":
         # 1. Inicialização segura: Só executa se o draft não existir
         if "cg_draft" not in st.session_state:
             cg_init()
+            
+        nome_salvo = st.session_state.get("cg_draft", {}).get("pname", "")
     
         # 2. Input de Nome ÚNICO (Evita DuplicateElementKey)
         pname = st.text_input(
             "Digite o nome do Pokémon (ex: Blastoise)", 
+            value=nome_salvo,  # <--- Aqui está a mágica. Se for a 1ª vez, entra ""
             placeholder="Ex: Blastoise", 
             key="cg_pname"
         )
+        # Tenta pegar o NP salvo. Se não existir, assume 0.
+        np_salvo = st.session_state.get("cg_np", 0)
+        # Garante que é um inteiro (caso tenha vindo None ou string por algum erro estranho)
+        if np_salvo is None: 
+            np_salvo = 0
     
         # 3. Processamento e Criação da Ficha (TUDO deve estar dentro deste IF)
         if pname:
@@ -4539,7 +4547,14 @@ elif page == "Criação Guiada de Fichas":
     
             # 3) NP / PP
             np_sugerido = get_np_for_pokemon(df, pid, fallback_np=6)
-            np_ = st.number_input("NP do seu Pokémon (o jogador informa)", min_value=0, value=0, step=1, key="cg_np", on_change=_cg_sync_from_np)
+            np_ = st.number_input(
+                "NP do seu Pokémon (o jogador informa)", 
+                min_value=0, 
+                value=int(np_salvo), # <--- Carrega o valor salvo ou 0
+                step=1, 
+                key="cg_np", 
+                on_change=_cg_sync_from_np
+            )
             pp_total = calc_pp_budget(np_)
     
             pp_spent_moves = sum((m.get("pp_cost") or 0) for m in st.session_state.get("cg_moves", []))
