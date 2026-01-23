@@ -62,6 +62,42 @@ def _boolish(v: Any) -> bool:
     x = _norm(_safe_str(v))
     return x in {"sim", "true", "1", "yes", "y"}
 
+def _move_based_stat_from_meta(move_meta: dict | None) -> str:
+    move_meta = move_meta or {}
+    cat_meta = str(move_meta.get("category", "") or "").strip().lower()
+
+    if move_meta.get("is_special") is True:
+        return "Int"
+    if move_meta.get("is_special") is False:
+        return "Stgr"
+
+    if "status" in cat_meta:
+        return "—"
+    if "especial" in cat_meta or "special" in cat_meta:
+        return "Int"
+    if "físico" in cat_meta or "fisico" in cat_meta or "physical" in cat_meta:
+        return "Stgr"
+
+    return "Stgr"
+
+
+def _move_stat_value(move_meta: dict | None, stats: dict) -> tuple[str, int]:
+    based = _move_based_stat_from_meta(move_meta)
+    if based == "Int":
+        return based, int(stats.get("int", 0) or 0)
+    if based == "Stgr":
+        return based, int(stats.get("stgr", 0) or 0)
+    return based, 0
+
+
+def _move_accuracy_limit(move: dict, np_value: int, stats: dict) -> int:
+    rank = int(move.get("rank", 0) or 0)
+    _, stat_val = _move_stat_value(move.get("meta") or {}, stats)
+    return max(0, (2 * int(np_value)) - rank - stat_val)
+
+
+def _move_accuracy_pp(move: dict) -> float:
+    return float(int(move.get("accuracy", 0) or 0)) / 2
 
 # COLOQUE NO TOPO DO ARQUIVO
 st.markdown("""
@@ -422,6 +458,7 @@ def render_move_creator(
             "rank": int(rank),
             "build": build,
             "pp_cost": pp,
+            "accuracy": 0,
             "meta": {
                 "ranged": bool(getattr(mv, "ranged", False)),
                 "perception_area": bool(getattr(mv, "perception_area", False)),
@@ -771,6 +808,7 @@ def render_move_creator(
                     "rank": int(rank3),
                     "build": build,
                     "pp_cost": int(pp_final),
+                    "accuracy": 0,
                     "meta": {
                         "custom": True,
                         "sub_ranks": sub_ranks,
@@ -787,6 +825,7 @@ def render_move_creator(
                         "rank": int(rank3),
                         "build": build,
                         "pp_cost": int(pp_final),
+                        "accuracy": 0,
                         "meta": {
                             "custom": True,
                             "sub_ranks": sub_ranks,
@@ -806,13 +845,28 @@ def render_move_creator(
         for i, m in enumerate(list(st.session_state["cg_moves"])):
             c1, c2, c3 = st.columns([6, 2, 2])
             with c1:
-                st.write(f"**{m['name']}** (Rank {m['rank']}) — PP: {m.get('pp_cost')}")
+                accuracy = int(m.get("accuracy", 0) or 0)
+                st.write(f"**{m['name']}** (Rank {m['rank']}) — PP: {m.get('pp_cost')} | Acerto {accuracy}")
                 build_txt = (m.get("build") or "").strip()
                 if build_txt:
                     with st.expander("Ingredientes do golpe"):
                         st.code(build_txt, language="text")
             with c2:
-                st.caption(" ")
+                stats = st.session_state.get("cg_draft", {}).get("stats", {})
+                np_value = int(st.session_state.get("cg_np", 0) or 0)
+                acc_limit = _move_accuracy_limit(m, np_value, stats)
+                new_acc = st.number_input(
+                    "Acerto",
+                    min_value=0,
+                    max_value=acc_limit,
+                    value=int(m.get("accuracy", 0) or 0),
+                    step=1,
+                    key=f"{state_key_prefix}_acc_{i}",
+                )
+                st.caption(f"Limite: {acc_limit}")
+                if st.button("Definir acerto", key=f"{state_key_prefix}_set_acc_{i}"):
+                    m["accuracy"] = int(new_acc)
+                    st.rerun()
             with c3:
                 if st.button("❌ Remover", key=f"{state_key_prefix}_remove_{i}"):
                     st.session_state["cg_moves"].pop(i)
@@ -1012,7 +1066,8 @@ def build_sheet_pdf(
             c.setFont("Helvetica", 12)
             y = 800
     for m in moves:
-        _draw_line(f"- {m['name']} (Rank {m['rank']}) | PP {m.get('pp_cost')}")
+        accuracy = int(m.get("accuracy", 0) or 0)
+        _draw_line(f"- {m['name']} (Rank {m['rank']}) | PP {m.get('pp_cost')} | Acerto {accuracy}")
         build_txt = (m.get("build") or "").strip()
         if build_txt:
             _draw_line("Ingredientes:", indent=10)
@@ -1079,6 +1134,9 @@ def apply_sheet_to_session(sheet: dict, sheet_id: str | None = None):
     abilities = pokemon.get("abilities") or []
 
     st.session_state["cg_edit_sheet_id"] = sheet_id
+    for m in moves:
+        if isinstance(m, dict) and "accuracy" not in m:
+            m["accuracy"] = 0
     st.session_state["cg_draft"] = {
         "pname": pname,
         "stats": {
@@ -4485,6 +4543,7 @@ elif page == "Criação Guiada de Fichas":
             pp_total = calc_pp_budget(np_)
     
             pp_spent_moves = sum((m.get("pp_cost") or 0) for m in st.session_state.get("cg_moves", []))
+            pp_spent_moves += sum(_move_accuracy_pp(m) for m in st.session_state.get("cg_moves", []))
     
             tabs = st.tabs(
                 [
@@ -4669,12 +4728,31 @@ elif page == "Criação Guiada de Fichas":
                 st.markdown("### ⚔️ Golpes")
                 if st.session_state["cg_moves"]:
                     for i, m_gv in enumerate(list(st.session_state["cg_moves"]), start=1):
-                        c1, c2 = st.columns([6, 1])
+                        c1, c2, c3 = st.columns([6, 2, 1])
                         with c1:
-                            st.write(f"{i}. **{m_gv['name']}** (Rank {m_gv['rank']}) — PP: {m_gv.get('pp_cost')}")
+                            accuracy = int(m_gv.get("accuracy", 0) or 0)
+                            st.write(
+                                f"{i}. **{m_gv['name']}** (Rank {m_gv['rank']}) — PP: {m_gv.get('pp_cost')} | Acerto {accuracy}"
+                            )
                             if m_gv.get("build"):
                                 with st.expander("Ingredientes do golpe"): st.code(m_gv["build"], language="text")
                         with c2:
+                            stats = st.session_state.get("cg_draft", {}).get("stats", {})
+                            np_value = int(st.session_state.get("cg_np", 0) or 0)
+                            acc_limit = _move_accuracy_limit(m_gv, np_value, stats)
+                            new_acc = st.number_input(
+                                "Acerto",
+                                min_value=0,
+                                max_value=acc_limit,
+                                value=int(m_gv.get("accuracy", 0) or 0),
+                                step=1,
+                                key=f"cg_guided_move_acc_{i}",
+                            )
+                            st.caption(f"Limite: {acc_limit}")
+                            if st.button("Definir acerto", key=f"cg_guided_move_set_{i}"):
+                                m_gv["accuracy"] = int(new_acc)
+                                st.rerun()
+                        with c3:
                             if st.button("❌", key=f"cg_guided_move_rm_{i}"):
                                 st.session_state["cg_moves"].pop(i - 1)
                                 st.rerun()
@@ -4689,12 +4767,13 @@ elif page == "Criação Guiada de Fichas":
                     st.session_state["cg_view"] = "moves"
                     st.rerun()
     
-                st.info(f"PP gastos em Golpes: {pp_spent_moves}")
+                acerto_pp_total = sum(_move_accuracy_pp(m) for m in st.session_state.get("cg_moves", []))
+                st.info(f"PP gastos em Golpes: {pp_spent_moves} (Acerto: {acerto_pp_total})")
                 pp_moves = pp_spent_moves
     
             with tabs[4]:
                 st.markdown("### 🧾 Revisão de PP")
-                pp_spent_total = int(pp_abilities) + int(pp_defenses) + int(pp_skills) + int(pp_advantages) + int(pp_moves)
+                pp_spent_total = float(pp_abilities) + float(pp_defenses) + float(pp_skills) + float(pp_advantages) + float(pp_moves)
                 st.markdown(f"""
                     <div class="cg-card">
                         <div class="cg-title">Resumo de PP</div>
@@ -4823,6 +4902,18 @@ elif page == "PvP – Arena Tática":
     room = get_room(db, rid) if rid else None     # ✅ evita NameError
     role = get_role(room, trainer_name) if room else "spectator"
     is_player = role in ["owner", "challenger"]
+    battle_sheets_map = {}
+    if is_player:
+        try:
+            for sh in list_sheets(db, trainer_name) or []:
+                p = (sh.get("pokemon") or {})
+                pid = p.get("id")
+                if pid is None:
+                    continue
+                battle_sheets_map[str(pid)] = sh
+        except Exception:
+            battle_sheets_map = {}
+
 
 
 # =========================
@@ -5114,7 +5205,7 @@ elif page == "PvP – Arena Tática":
             if b_data["status"] == "idle":
                 if is_player:
                     if st.button("Nova Batalha (Atacar)"):
-                        battle_ref.set({"status": "setup", "attacker": trainer_name, "logs": []})
+                        battle_ref.set({"status": "setup", "attacker": trainer_name, "attack_move": None, "logs": []})
                         st.rerun()
                 else:
                     st.caption("Aguardando combate...")
@@ -5125,6 +5216,23 @@ elif page == "PvP – Arena Tática":
                 st.caption(f"**Atacante:** {b_data.get('attacker')}")
                 
                 if b_data.get("attacker") == trainer_name:
+                    attacker_pid = None
+                    attacker_sheet = None
+                    attacker_stats = {}
+                    if current_party:
+                        attacker_pid = st.selectbox(
+                            "Seu Pokémon (Atacante)",
+                            options=current_party,
+                            format_func=get_poke_display_name,
+                            key=f"atk_self_{rid}",
+                        )
+                        attacker_sheet = battle_sheets_map.get(str(attacker_pid))
+                        if attacker_sheet:
+                            attacker_stats = attacker_sheet.get("stats") or {}
+                        else:
+                            _, _, attacker_stats, _ = get_poke_data(trainer_name, attacker_pid)
+                    else:
+                        st.info("Sua party está vazia para selecionar o atacante.")
                     # Busca peças de TODOS os outros jogadores que não são você
                     target_options = {}
                     for p_name, p_pieces in player_pieces_map.items():
@@ -5170,7 +5278,58 @@ elif page == "PvP – Arena Tática":
                         with c_atk3:
                             atk_type = st.selectbox("Alcance", ["Distância (Dodge)", "Corpo-a-corpo (Parry)"])
                         
-                        atk_mod = st.number_input("Acerto (Modificador)", value=0, step=1)
+
+                        move_payload = None
+                        selected_accuracy = None
+                        selected_damage = None
+                        if attacker_sheet:
+                            moves = attacker_sheet.get("moves") or []
+                        else:
+                            moves = []
+
+                        if moves:
+                            def _move_label(idx: int) -> str:
+                                mv = moves[idx]
+                                name = mv.get("name", "Golpe")
+                                rank = int(mv.get("rank", 0) or 0)
+                                based, stat_val = _move_stat_value(mv.get("meta") or {}, attacker_stats)
+                                damage = rank + stat_val
+                                acc = int(mv.get("accuracy", 0) or 0)
+                                return f"{name}. Acerto: {acc}. Dano {damage}"
+
+                            move_options = ["manual"] + list(range(len(moves)))
+                            move_choice = st.selectbox(
+                                "Golpe (opcional)",
+                                options=move_options,
+                                format_func=lambda x: "Manual (sem golpe)" if x == "manual" else _move_label(x),
+                                key=f"atk_move_{rid}",
+                            )
+
+                            if move_choice != "manual":
+                                selected_move = moves[int(move_choice)]
+                                selected_accuracy = int(selected_move.get("accuracy", 0) or 0)
+                                rank = int(selected_move.get("rank", 0) or 0)
+                                based, stat_val = _move_stat_value(selected_move.get("meta") or {}, attacker_stats)
+                                selected_damage = rank + stat_val
+                                move_payload = {
+                                    "name": selected_move.get("name", "Golpe"),
+                                    "accuracy": selected_accuracy,
+                                    "damage": selected_damage,
+                                    "rank": rank,
+                                    "based_stat": based,
+                                    "stat_value": stat_val,
+                                }
+                        else:
+                            st.caption("Sem golpes disponíveis para este Pokémon.")
+
+                        ac1, ac2 = st.columns([2, 1])
+                        with ac1:
+                            atk_mod = st.number_input("Acerto (Modificador)", value=0, step=1)
+                        with ac2:
+                            if selected_accuracy is not None:
+                                st.markdown(f"**Acerto sugerido:** {selected_accuracy}")
+                            else:
+                                st.caption("Sem acerto sugerido.")
                         
                         if st.button("⚔️ Rolar Ataque"):
                             if target_id:
@@ -5194,6 +5353,7 @@ elif page == "PvP – Arena Tática":
                                     "target_id": target_id,
                                     "target_owner": t_p['owner'],
                                     "target_pid": t_p['pid'],
+                                    "attack_move": move_payload,
                                     "logs": [f"{trainer_name} rolou {d20}+{atk_mod}=**{total_atk}** (vs Def {needed} [{defense_val}+10])... {result_msg}"]
                                 })
                                 st.rerun()
@@ -5235,10 +5395,18 @@ elif page == "PvP – Arena Tática":
                 st.success(b_data["logs"][-1])
                 
                 if b_data.get("attacker") == trainer_name:
-                    c1, c2 = st.columns([2, 1])
+                    move_payload = b_data.get("attack_move") or {}
+                    suggested_damage = move_payload.get("damage")
+
+                    c1, c2, c3 = st.columns([2, 1, 1])
                     with c1:
                         dmg_input = st.number_input("Dano Base / Rank", min_value=0, value=0)
                     with c2:
+                        if suggested_damage is not None:
+                            st.markdown(f"**Dano sugerido:** {suggested_damage}")
+                        else:
+                            st.caption("Sem dano sugerido.")
+                    with c3:
                         is_eff_check = st.checkbox("É Efeito?", value=False, key=f"norm_eff_{rid}", help="Se marcado, CD base será 10. Se não, 15.")
                     
                     if st.button("Enviar Dano/Efeito"):
