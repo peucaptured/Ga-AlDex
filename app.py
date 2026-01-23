@@ -2267,7 +2267,7 @@ def list_public_events(db, rid: str, limit: int = 30):
 # MAPA TÁTICO (3.1 / 3.2 / 3.3)
 # =========================
 
-TILE_SIZE = 64
+TILE_SIZE = 96
 
 THEMES = {
     "cave_water": {"base": "rock", "border": "wall"},
@@ -5325,62 +5325,54 @@ elif page == "PvP – Arena Tática":
 
 
         # =========================
-        # 7. LAYOUT DAS COLUNAS (ME VS OPONENTES)
+        # 7. LAYOUT DAS COLUNAS (EQUILIBRADO PARA 4 JOGADORES)
         # =========================
         if not tiles:
             st.warning("Sem mapa.")
             st.stop()
 
-        # Criamos 3 áreas: Sua Equipe, Mapa, e Oponentes
-        c_me, c_map, c_opps = st.columns([1.3, 3, 1.5])
+        # Proporção [1.8, 5, 1.8] ou [2, 6, 2] é o "ponto doce"
+        # Mantém o mapa grande (~60-65% da tela) mas dá fôlego para as laterais
+        c_me, c_map, c_opps = st.columns([1.8, 5, 1.8])
 
         with c_me:
-            # Sua coluna é sempre azul
-            render_player_column(trainer_name, "🎒 Sua Equipe (Você)", is_me=True)
+            render_player_column(trainer_name, "🎒 Sua Equipe", is_me=True)
 
         with c_map:
-            st.markdown("### 🗺️ Arena")
-            can_edit = (trainer_name == "Ezenek" or is_player)
-            with st.expander("🛠️ Itens", expanded=False):
-                if can_edit:
-                    effects_map = {"Fogo":"🔥", "Gelo":"🧊", "Água":"💧", "Rocha":"🪨", "Nuvem":"☁️", "Sol":"☀️", "Terreno Grama":"🍃", "Terreno Eletrico":"⚡"}
+            st.markdown(f"### 🗺️ Arena (Sala {rid})")
+            
+            # Ferramentas de Campo
+            with st.expander("🛠️ Itens e Terrenos", expanded=False):
+                if is_player:
+                    effects_map = {"Fogo":"🔥", "Gelo":"🧊", "Água":"💧", "Rocha":"🪨", "Nuvem":"☁️", "Sol":"☀️", "Grama":"🍃", "Raio":"⚡"}
                     curr = st.session_state.get("placing_effect")
-                    if curr: st.info(f"Item: {curr}")
-                    cols = st.columns(6)
+                    cols = st.columns(8)
                     for i, (k, v) in enumerate(effects_map.items()):
-                        if cols[i%6].button(v, key=f"ef_{k}"):
+                        if cols[i].button(v, key=f"ef_{k}"):
                             st.session_state["placing_effect"] = v if curr != v else None
-                            st.session_state["placing_pid"] = None
                             st.rerun()
-                    if st.button("Limpar"):
+                    if st.button("Limpar Tudo"):
                         db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": []})
                         st.rerun()
 
-            show_grid = st.checkbox("Mostrar grade tática", value=False, key=f"show_grid_battle_{rid}")
-
-            if "selected_piece_id" not in st.session_state: st.session_state["selected_piece_id"] = None
-            img = render_map_with_pieces(
-                tiles, theme_key, seed, pieces_to_draw, trainer_name, room, effects=field_effects, show_grid=show_grid
-            )
+            show_grid = st.checkbox("Grade Tática", value=True, key=f"grid_{rid}")
+            img = render_map_with_pieces(tiles, theme_key, seed, pieces_to_draw, trainer_name, room, effects=field_effects, show_grid=show_grid)
             click = streamlit_image_coordinates(img, key=f"map_{rid}")
-
-            # Lembre-se que na renderização do mapa, a função 'get_perspective_color' 
-            # deve ser usada para desenhar a borda da peça.
 
         with c_opps:
             st.markdown("### 🆚 Oponentes")
-            # Lista todos os jogadores que não são VOCÊ
             opponents = sorted(list(set([p for p in all_players if p != trainer_name])))
             
             if not opponents:
-                st.caption("Aguardando desafiantes...")
+                st.caption("Aguardando...")
             else:
                 for idx, opp_name in enumerate(opponents):
-                    # Define o prefixo de cor visual para o rótulo
                     icons = ["🔴", "🟡", "🌸"]
                     icon = icons[idx] if idx < len(icons) else "⚪"
                     
-                    render_player_column(opp_name, f"{icon} {opp_name}", is_me=False)
+                    # ✅ MELHORIA: Para 3 oponentes, usamos Expanders para não esticar a tela infinitamente
+                    with st.expander(f"{icon} {opp_name}", expanded=(idx == 0)):
+                        render_player_column(opp_name, "", is_me=False)
 
         # =========================
         # 8. LÓGICA DE CLIQUE
