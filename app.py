@@ -1255,7 +1255,6 @@ st.set_page_config(
 # ==========================================
 st.markdown("""
 <style>
-/* GBA HUB CSS */
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap');
 
 :root{
@@ -1268,28 +1267,78 @@ st.markdown("""
   --gba-accent-border: #0ea5e9;
 }
 
-/* Fundo geral (só visual) */
+/* =========================================================
+   1) FUNDO (pega o “miolo” do Streamlit também)
+   ========================================================= */
+html, body{
+  background: var(--gba-bg) !important;
+}
 .stApp{
-  background: radial-gradient(circle at 20% 10%, rgba(255,255,255,0.06), transparent 35%),
-              radial-gradient(circle at 90% 30%, rgba(255,255,255,0.04), transparent 40%),
-              var(--gba-bg) !important;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255,255,255,0.06), transparent 35%),
+    radial-gradient(circle at 90% 30%, rgba(255,255,255,0.04), transparent 40%),
+    var(--gba-bg) !important;
+}
+div[data-testid="stAppViewContainer"],
+div[data-testid="stAppViewContainer"] > .main,
+div[data-testid="stHeader"],
+div[data-testid="stSidebar"]{
+  background: transparent !important;
 }
 
-/* Sprites pixelados */
+/* =========================================================
+   2) FONTE RETRÔ (aplica no app inteiro)
+   ========================================================= */
+.stApp, .stMarkdown, .stMarkdown p, .stMarkdown span,
+h1, h2, h3, h4,
+label, .stWidgetLabel,
+div.stButton > button, div.stDownloadButton > button,
+.stTextInput input, .stNumberInput input, .stTextArea textarea,
+.stSelectbox div, .stMultiSelect div, .stRadio div, .stCheckbox div,
+[data-baseweb="tab"], [data-baseweb="tab-list"]{
+  font-family: "Press Start 2P", cursive !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+}
+
+/* Texto padrão mais legível em fundo escuro */
+.stApp, .stMarkdown, label, .stWidgetLabel{
+  color: rgba(255,255,255,0.90) !important;
+}
+
+/* =========================================================
+   3) PROTEÇÃO CONTRA BUG DE ÍCONE (keyboard_arrow_right etc.)
+   ========================================================= */
+[data-testid="stExpander"] summary,
+[data-testid="stExpander"] svg,
+[data-testid="stHeader"] svg,
+.stSelectbox svg,
+.stMultiSelect svg,
+div[data-baseweb="icon"],
+span[class*="icon"],
+i[class*="icon"]{
+  font-family: sans-serif !important;
+}
+
+/* =========================================================
+   4) Sprites pixelados
+   ========================================================= */
 img{ image-rendering: pixelated !important; image-rendering: crisp-edges !important; }
 
-/* Janelas */
+/* =========================================================
+   5) “Janelas” GBA
+   ========================================================= */
 .gba-window{
-  background: var(--gba-panel);
-  border: 3px solid var(--gba-border);
-  border-radius: 14px;
+  background: rgba(255,255,255,0.08);
+  border: 2px solid rgba(148,163,184,0.35);
+  border-radius: 16px;
   padding: 12px;
-  box-shadow: 0 10px 0 rgba(0,0,0,0.20);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.25);
   margin-bottom: 14px;
 }
-.gba-window.party{ background:#eef2ff; }
-.gba-window.box{ background:#f1f5f9; }
-.gba-window.summary{ background:#f8fafc; }
+.gba-window.party{ background: rgba(59,130,246,0.10); }
+.gba-window.box{ background: rgba(34,197,94,0.08); }
+.gba-window.summary{ background: rgba(255,255,255,0.08); }
 
 /* Cabeçalho */
 .gba-header{
@@ -1299,71 +1348,28 @@ img{ image-rendering: pixelated !important; image-rendering: crisp-edges !import
   gap:10px;
   margin-bottom: 10px;
 }
-.gba-chips{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  align-items:center;
-  margin: 6px 0 10px 0;
-}
 .gba-chip{
-  display:inline-flex;        /* <- ESSENCIAL */
+  display:inline-flex;
   align-items:center;
   gap:6px;
   white-space:nowrap;
-
-  background: var(--gba-border);
-  color: #eaf2ff;
+  background: rgba(15,23,42,0.70);
+  color: rgba(255,255,255,0.95);
   padding: 6px 10px;
   border-radius: 999px;
   font-weight: 900;
   font-size: 11px;
-  letter-spacing: 0.02em;
 }
 .gba-title{
-  font-family: "Press Start 2P", ui-monospace, monospace;
-  color: var(--gba-ink);
-  font-size: 12px;
-  line-height: 1.2;
-}
-.gba-divider{
-  height: 2px;
-  background: rgba(42,60,90,0.15);
-  border-top: 2px solid rgba(0,0,0,0.10);
-  margin: 10px 0;
-  border-radius: 2px;
-}
-
-/* Cards / slots */
-.gba-card{
-  background: #ffffff;
-  border: 2px solid var(--gba-border);
-  border-radius: 12px;
-  padding: 8px;
-  box-shadow: 0 2px 0 rgba(0,0,0,0.18);
-  margin-bottom: 10px;
-}
-.gba-card .name{ font-weight: 900; color: var(--gba-ink); margin-top: 6px; font-size: 13px; }
-.gba-card .meta{ color: var(--gba-ink2); font-weight: 800; font-size: 12px; }
-
-.gba-slot{
-  background: #ffffff;
-  border: 2px solid var(--gba-border);
-  border-radius: 12px;
-  padding: 6px;
-  box-shadow: 0 2px 0 rgba(0,0,0,0.18);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-.gba-header .right.gba-hub-right{
+  font-family: "Press Start 2P", cursive !important;
   color: rgba(255,255,255,0.92) !important;
-  font-weight: 900;
-  font-size: 11px;
-  opacity: 0.95;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
 }
 
-/* Botões: garante contraste */
+/* =========================================================
+   6) Botões (contraste garantido)
+   ========================================================= */
 div.stButton > button, div.stDownloadButton > button{
   background: var(--gba-accent) !important;
   color: #0b1220 !important;
@@ -1371,59 +1377,100 @@ div.stButton > button, div.stDownloadButton > button{
   border-radius: 12px !important;
   padding: 10px 12px !important;
   font-weight: 800 !important;
-  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.18) !important;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.18) !important;
 }
 div.stButton > button:hover{ filter: brightness(1.05); transform: translateY(-1px); }
-div.stButton > button:active{ transform: translateY(0px); box-shadow: 0 3px 8px rgba(15, 23, 42, 0.15) !important; }
+div.stButton > button:active{ transform: translateY(0px); }
 
-.hub-box-sprite img{ max-width: 72px; margin: 0 auto; display: block; }
-.hub-sprite img{ max-width: 96px; margin: 0 auto; display: block; }
-
-.hub-summary-grid{
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
-  margin: 10px 0 14px;
-}
-.hub-summary-block{
-  background: #ffffff;
-  border: 1px solid rgba(51, 65, 85, 0.18);
-  border-radius: 12px;
-  padding: 10px 12px;
-}
-.hub-muted{
-  color: var(--gba-ink2);
-  font-size: 12px;
-}
-
-/* Tabs: mais “cartucho” */
+/* =========================================================
+   7) Tabs (cartucho) + remove underline
+   ========================================================= */
 .stTabs [data-baseweb="tab-list"]{
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.75), rgba(37, 99, 235, 0.4)) !important;
-  border: 2px solid rgba(148, 163, 184, 0.4) !important;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.75), rgba(37, 99, 235, 0.35)) !important;
+  border: 2px solid rgba(148, 163, 184, 0.35) !important;
   border-radius: 12px !important;
   padding: 6px !important;
   gap: 6px !important;
-
-  /* ✅ remove a “linha branca”/underline padrão */
   border-bottom: 0 !important;
   box-shadow: none !important;
 }
+div[data-baseweb="tab-border"]{ display:none !important; }
 .stTabs [data-baseweb="tab"]{
-  background: rgba(30, 64, 175, 0.28) !important;
-  color: #e2e8f0 !important;
-  border: 2px solid rgba(59, 130, 246, 0.45) !important;
+  background: rgba(30, 64, 175, 0.22) !important;
+  color: rgba(255,255,255,0.92) !important;
+  border: 2px solid rgba(59, 130, 246, 0.40) !important;
   border-radius: 10px !important;
   font-weight: 900 !important;
 }
 .stTabs [aria-selected="true"]{
   background: var(--gba-accent) !important;
-  color: var(--gba-ink) !important;
+  color: #0b1220 !important;
   border-color: var(--gba-accent-border) !important;
 }
 
-/* (algumas versões do streamlit usam esse elemento pra borda) */
-div[data-baseweb="tab-border"]{ display:none !important; }
+/* =========================================================
+   8) BOX com “grama” (AGORA SIM)
+   ========================================================= */
+.grass-box{
+  border: 2px solid rgba(34,197,94,0.75);
+  border-radius: 16px;
+  padding: 12px;
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(16,185,129,0.20), rgba(34,197,94,0.10)),
+    repeating-linear-gradient(
+      135deg,
+      rgba(34,197,94,0.16) 0px,
+      rgba(34,197,94,0.16) 6px,
+      rgba(22,163,74,0.12) 6px,
+      rgba(22,163,74,0.12) 12px
+    );
+  box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+}
+.grass-box::after{
+  content:"";
+  position:absolute; inset:0;
+  background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 10px 10px;
+  opacity: .55;
+  pointer-events:none;
+}
 
+/* =========================================================
+   9) PARTY com slots quadrados
+   ========================================================= */
+.team-box{
+  border: 2px solid rgba(59,130,246,0.55);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(15,23,42,0.35);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+}
+.team-slots{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(54px, 72px));
+  gap: 10px;
+  align-items:center;
+}
+.team-slot{
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  border: 2px solid rgba(255,255,255,0.18);
+  background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.03));
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,0.12);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.team-slot img{
+  width: 85%;
+  height: 85%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25));
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -3567,166 +3614,6 @@ if page == "Trainer Hub (Meus Pokémons)":
     # ----------------------------
     # GBA HUB CSS (visual)
     # ----------------------------
-    st.markdown("""
-    <style>
-    /* GBA HUB CSS */
-    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap');
-
-    :root{
-  --gba-bg: #0f172a;
-  --gba-panel: #f8fafc;
-  --gba-border: #334155;
-  --gba-ink: #0f172a;
-  --gba-ink2: #475569;
-  --gba-accent: #38bdf8;
-  --gba-accent-border: #0ea5e9;
-    }
-
-    /* Fundo geral (só visual) */
-    .stApp{
-  background: radial-gradient(circle at 20% 10%, rgba(255,255,255,0.06), transparent 35%),
-              radial-gradient(circle at 90% 30%, rgba(255,255,255,0.04), transparent 40%),
-              var(--gba-bg) !important;
-    }
-
-    /* Sprites pixelados */
-    img{ image-rendering: pixelated !important; image-rendering: crisp-edges !important; }
-
-    /* Janelas */
-    .gba-window{
-  background: var(--gba-panel);
-  border: 3px solid var(--gba-border);
-  border-radius: 14px;
-  padding: 12px;
-  box-shadow: 0 10px 0 rgba(0,0,0,0.20);
-  margin-bottom: 14px;
-    }
-    .gba-window.party{ background:#eef2ff; }
-    .gba-window.box{ background:#f1f5f9; }
-    .gba-window.summary{ background:#f8fafc; }
-
-    /* Cabeçalho */
-    .gba-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:10px;
-  margin-bottom: 10px;
-    }
-    .gba-chips{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  align-items:center;
-  margin: 6px 0 10px 0;
-    }
-    .gba-chip{
-      display:inline-flex;        /* <- ESSENCIAL */
-      align-items:center;
-      gap:6px;
-      white-space:nowrap;
-    
-      background: var(--gba-border);
-      color: #eaf2ff;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-weight: 900;
-      font-size: 11px;
-      letter-spacing: 0.02em;
-    }
-    .gba-title{
-  font-family: "Press Start 2P", ui-monospace, monospace;
-  color: var(--gba-ink);
-  font-size: 12px;
-  line-height: 1.2;
-    }
-    .gba-divider{
-  height: 2px;
-  background: rgba(42,60,90,0.15);
-  border-top: 2px solid rgba(0,0,0,0.10);
-  margin: 10px 0;
-  border-radius: 2px;
-    }
-
-    /* Cards / slots */
-    .gba-card{
-  background: #ffffff;
-  border: 2px solid var(--gba-border);
-  border-radius: 12px;
-  padding: 8px;
-  box-shadow: 0 2px 0 rgba(0,0,0,0.18);
-  margin-bottom: 10px;
-    }
-    .gba-card .name{ font-weight: 900; color: var(--gba-ink); margin-top: 6px; font-size: 13px; }
-    .gba-card .meta{ color: var(--gba-ink2); font-weight: 800; font-size: 12px; }
-
-    .gba-slot{
-  background: #ffffff;
-  border: 2px solid var(--gba-border);
-  border-radius: 12px;
-  padding: 6px;
-  box-shadow: 0 2px 0 rgba(0,0,0,0.18);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-    }
-
-    /* Botões: garante contraste */
-    div.stButton > button, div.stDownloadButton > button{
-  background: var(--gba-accent) !important;
-  color: #0b1220 !important;
-  border: 2px solid var(--gba-accent-border) !important;
-  border-radius: 12px !important;
-  padding: 10px 12px !important;
-  font-weight: 800 !important;
-  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.18) !important;
-    }
-    div.stButton > button:hover{ filter: brightness(1.05); transform: translateY(-1px); }
-    div.stButton > button:active{ transform: translateY(0px); box-shadow: 0 3px 8px rgba(15, 23, 42, 0.15) !important; }
-
-    .hub-box-sprite img{ max-width: 72px; margin: 0 auto; display: block; }
-    .hub-sprite img{ max-width: 96px; margin: 0 auto; display: block; }
-    .hub-summary-grid{
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
-  margin: 10px 0 14px;
-    }
-    .hub-summary-block{
-  background: #ffffff;
-  border: 1px solid rgba(51, 65, 85, 0.18);
-  border-radius: 12px;
-  padding: 10px 12px;
-    }
-    .hub-muted{
-  color: var(--gba-ink2);
-  font-size: 12px;
-    }
-
-
-    /* Tabs: mais “cartucho” */
-    .stTabs [data-baseweb="tab-list"]{
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.75), rgba(37, 99, 235, 0.4)) !important;
-  border: 2px solid rgba(148, 163, 184, 0.4) !important;
-  border-radius: 12px !important;
-  padding: 6px !important;
-  gap: 6px !important;
-    }
-    .stTabs [data-baseweb="tab"]{
-  background: rgba(30, 64, 175, 0.28) !important;
-  color: #e2e8f0 !important;
-  border: 2px solid rgba(59, 130, 246, 0.45) !important;
-  border-radius: 10px !important;
-  font-weight: 900 !important;
-    }
-    .stTabs [aria-selected="true"]{
-  background: var(--gba-accent) !important;
-  color: var(--gba-ink) !important;
-  border-color: var(--gba-accent-border) !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
 
     # ----------------------------
     # Init de dados persistidos
@@ -4216,22 +4103,14 @@ if page == "Trainer Hub (Meus Pokémons)":
             st.markdown('</div>', unsafe_allow_html=True)
 
 
+
         # ---------
         # PARTY (equipe ativa)
         # ---------
         with col_right:
-            st.markdown('<div class="gba-window party">', unsafe_allow_html=True)
-        
-            st.markdown("""
-            <div class="gba-header">
-              <div class="left">
-                <span class="gba-chip">PARTY</span>
-                <span class="gba-title" style="font-size:0.75rem;">Equipe Ativa</span>
-              </div>
-              <div class="right">até 8</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
+            st.markdown('<div class="team-box">', unsafe_allow_html=True)
+
+                           
             party = [str(p) for p in (user_data.get("party") or [])]
             if not party:
                 st.info("Sua equipe está vazia. Use a BOX para mover um Pokémon.")
@@ -4280,9 +4159,8 @@ if page == "Trainer Hub (Meus Pokémons)":
         
                             st.markdown('</div>', unsafe_allow_html=True)  # fecha gba-card
         
-                st.markdown('</div>', unsafe_allow_html=True)  # fecha gba-party
-        
-            st.markdown('</div>', unsafe_allow_html=True)  # fecha gba-window party
+            
+            st.markdown('</div>', unsafe_allow_html=True)  # fecha team-box
         
 
     # ==========================
