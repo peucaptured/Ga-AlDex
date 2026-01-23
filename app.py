@@ -63,6 +63,50 @@ def _boolish(v: Any) -> bool:
     return x in {"sim", "true", "1", "yes", "y"}
 
 
+# COLOQUE NO TOPO DO ARQUIVO
+st.markdown("""
+<style>
+/* Estilo para os slots da BOX (Grama) */
+.box-slot-grass {
+    background: #55a64b !important;
+    background-image: 
+        linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px) !important;
+    background-size: 8px 8px !important;
+    border: 3px solid #2d5a27 !important;
+    border-radius: 12px !important;
+    padding: 10px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.4) !important;
+    margin-bottom: 8px !important;
+}
+
+/* Estilo para os cards da Equipe (Menu Azul) */
+.gba-party-slot {
+    background: linear-gradient(180deg, #4d88ff 0%, #2e5cb8 100%) !important;
+    border: 4px solid #f8fafc !important;
+    border-radius: 15px !important;
+    padding: 15px !important;
+    margin-bottom: 20px !important;
+    box-shadow: 6px 6px 0px rgba(0,0,0,0.3) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+}
+
+.gba-party-slot img {
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)) !important;
+}
+
+/* Fix para remover margens extras do Streamlit dentro dos slots */
+[data-testid="stVerticalBlock"] > div:has(.box-slot-grass) {
+    padding: 0px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ----------------------------
 # Data model
 # ----------------------------
@@ -4130,14 +4174,13 @@ if page == "Trainer Hub (Meus Pokémons)":
                             sprite = _get_sprite(pid)
                             name = _get_pokemon_name(pid)
                             
-                            # --- SLOT DE GRAMA (Efeito visual de fundo) ---
+                            # Usamos HTML puro para o Slot para evitar que o Streamlit quebre o layout
                             st.markdown(f'''
                                 <div class="box-slot-grass">
-                                    <img src="{sprite}" style="width: 50px; image-rendering: pixelated;">
+                                    <img src="{sprite}" style="width: 55px; image-rendering: pixelated;">
                                 </div>
                             ''', unsafe_allow_html=True)
                             
-                            # Botão de interação abaixo do slot
                             if st.button(name, key=f"hub_box_{pid}_{r}", use_container_width=True):
                                 _open_box_context(pid)
                                 st.rerun()
@@ -4201,19 +4244,17 @@ if page == "Trainer Hub (Meus Pokémons)":
                             name = _get_pokemon_name(pid)
                             typ = _get_pokemon_type(pid)
                             npv = _get_pokemon_np(pid)
-        
-                            # --- SLOT GBA (Fundo azul gradiente e borda branca) ---
+                
                             st.markdown(f'''
                                 <div class="gba-party-slot">
-                                    <img src="{sprite}" style="width: 80px; image-rendering: pixelated; margin-bottom: 5px;">
+                                    <img src="{sprite}" style="width: 85px; image-rendering: pixelated; margin-bottom: 8px;">
                                     <div style="text-align: center; width: 100%;">
-                                        <div style="color: white; font-size: 11px; margin-bottom: 4px; text-shadow: 2px 2px 0px rgba(0,0,0,0.5);">{name}</div>
-                                        <div style="color: #ffd166; font-size: 9px; opacity: 0.9;">{typ} • NP {npv}</div>
+                                        <div style="color: white; font-family: 'Press Start 2P'; font-size: 10px; margin-bottom: 5px; text-shadow: 2px 2px 0px #000;">{name}</div>
+                                        <div style="color: #ffd166; font-size: 9px; font-weight: bold;">{typ} • NP {npv}</div>
                                     </div>
                                 </div>
                             ''', unsafe_allow_html=True)
-        
-                            # Botões de ação abaixo do card
+                
                             b1, b2 = st.columns(2)
                             with b1:
                                 if st.button("Abrir", key=f"hub_party_open_{pid}", use_container_width=True):
