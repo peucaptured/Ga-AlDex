@@ -4150,11 +4150,17 @@ if page == "Trainer Hub (Meus Pokémons)":
             </div>
             """, unsafe_allow_html=True)
         
-            # Filtro e limpeza da lista de capturados
-            caught_all = [str(c) for c in user_data.get("caught", []) if not str(c).startswith("EXT:")]
+            # ✅ NOVO FILTRO: Identifica quem está na party ativa
+            party_ids = [str(p) for p in (user_data.get("party") or [])]
+
+            # ✅ FILTRO ATUALIZADO: Pega capturados, remove quem está na party e ignora EXT
+            caught_all = [
+                str(c) for c in user_data.get("caught", []) 
+                if str(c) not in party_ids and not str(c).startswith("EXT:")
+            ]
             caught_all = list(dict.fromkeys(caught_all)) # Remove duplicados mantendo a ordem
 
-            # Lógica de Paginação
+            # Lógica de Paginação (Mantém igual)
             PAGE_SIZE = 36  # Grid 6x6
             total_pages = max(1, ((len(caught_all) + PAGE_SIZE - 1) // PAGE_SIZE)) if caught_all else 1
             page_now = int(st.session_state.get("hub_box_page", 1))
