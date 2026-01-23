@@ -1331,23 +1331,33 @@ div[data-testid="stSidebar"]{
 }
 
 /* =========================================================
-   2) FONTE RETRÔ (aplica no app inteiro)
+   2) FONTE RETRÔ E CONTRASTE GLOBAL (FORÇADO)
    ========================================================= */
-.stApp, .stMarkdown, .stMarkdown p, .stMarkdown span,
-h1, h2, h3, h4,
-label, .stWidgetLabel,
-div.stButton > button, div.stDownloadButton > button,
+/* Aplica a fonte e a cor clara em TODOS os elementos possíveis */
+.stApp, .stMarkdown, .stMarkdown p, .stMarkdown span, li,
+h1, h2, h3, h4, label, .stWidgetLabel,
 .stTextInput input, .stNumberInput input, .stTextArea textarea,
-.stSelectbox div, .stMultiSelect div, .stRadio div, .stCheckbox div,
-[data-baseweb="tab"], [data-baseweb="tab-list"]{
+[data-baseweb="tab"], [data-baseweb="tab-list"],
+.pokedex-info-value, .pokedex-info-title, .section-title {
   font-family: "Press Start 2P", cursive !important;
   font-size: 13px !important;
   line-height: 1.6 !important;
+  color: #f8fafc !important; /* Branco fosco para máximo contraste */
+  text-shadow: 1px 1px 0px #000; /* Sombra leve para destacar no fundo escuro */
 }
 
-/* Texto padrão mais legível em fundo escuro */
-.stApp, .stMarkdown, label, .stWidgetLabel{
-  color: rgba(255,255,255,0.90) !important;
+/* Força o texto claro especificamente dentro das abas e containers verticais */
+div[data-testid="stVerticalBlock"] div, 
+div[role="tabpanel"] p, 
+div[role="tabpanel"] span,
+div[data-testid="stExpander"] p {
+    color: #f8fafc !important;
+}
+
+/* Ajuste para que o texto digitado nos campos de busca também seja visível */
+.stTextInput input {
+    color: #ffffff !important;
+    background-color: rgba(0, 0, 0, 0.5) !important;
 }
 
 /* =========================================================
@@ -3080,6 +3090,15 @@ if page == "Pokédex (Busca)":
     box-shadow: inset 0 0 18px rgba(15, 23, 42, 0.55);
     background: rgba(15, 23, 42, 0.65);
 }
+/* Aplica a fonte P2 especificamente nos elementos da Pokedex */
+    .pokedex-shell, .pokedex-card, .pokedex-info-value, .pokedex-info-title, .pokedex-header {
+        font-family: "Press Start 2P", cursive !important;
+    }
+    
+    [data-testid="stAppViewContainer"] {
+        background: linear-gradient(180deg, #0f2740 0%, #1f4d73 45%, #2f6a8c 100%);
+        animation: pageFade 0.35s ease-in;
+    }
 .pokedex-header {
     display: flex;
     justify-content: space-between;
@@ -3111,8 +3130,8 @@ if page == "Pokédex (Busca)":
 .pokedex-info-card {
     padding: 10px 12px;
     border-radius: 8px;
-    background: #f8fafc;
-    color: #0f172a;
+    background: rgba(15, 23, 42, 0.9);
+    color: #f8fafc !important;
     border: 1px solid rgba(148, 163, 184, 0.6);
     box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.4), 0 10px 20px rgba(15, 23, 42, 0.2);
 }
@@ -3121,8 +3140,7 @@ if page == "Pokédex (Busca)":
 }
 .pokedex-info-title {
     font-size: 12px;
-    color: #475569;
-    margin-bottom: 4px;
+    color: #38bdf8 !important; /* Azul claro para os títulos das labels */    margin-bottom: 4px;
 }
 .pokedex-info-value {
     font-size: 14px;
