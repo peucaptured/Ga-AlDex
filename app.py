@@ -4422,6 +4422,13 @@ elif page == "Criação Guiada de Fichas":
     
         # 3. Processamento e Criação da Ficha (TUDO deve estar dentro deste IF)
         if pname:
+            # ✅ LAYOUT: Sugestões da Pokédex logo abaixo da busca
+            if len(pname) >= 2:
+                matches = df[df["Nome"].str.lower().str.contains(pname.lower(), na=False)].head(10)
+                if not matches.empty:
+                    st.caption("Sugestões encontradas na sua Pokédex:")
+                    st.write(matches[["Nº", "Nome"]])
+                    
             raw_name = pname.strip().lower()
             st.session_state["cg_draft"]["pname"] = pname
             
@@ -4720,12 +4727,6 @@ elif page == "Criação Guiada de Fichas":
                     st.success(f"✅ Salva! ID: {sid_fs}")
                     st.session_state["cg_edit_sheet_id"] = None
     
-            # Sugestões da Pokédex (Sempre visível no fim do processo se houver nome)
-            if len(pname) >= 2:
-                matches = df[df["Nome"].str.lower().str.contains(pname.lower(), na=False)].head(10)
-                if not matches.empty:
-                    st.caption("Sugestões encontradas na sua Pokédex:")
-                    st.write(matches[["Nº", "Nome"]])
     
             if st.button("⬅️ Voltar"):
                 st.session_state["cg_view"] = "menu"
