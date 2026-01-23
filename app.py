@@ -4385,9 +4385,7 @@ elif page == "Criação Guiada de Fichas":
             st.session_state["cg_view"] = st.session_state.get("cg_return_to", "menu")
             st.rerun()
 
-    # ==========================
-    # B) CRIAÇÃO GUIADA (FICHA)
-    # ==========================
+
     # ==========================
     # B) CRIAÇÃO GUIADA (FICHA) - OTIMIZADA
     # ==========================
@@ -4407,9 +4405,19 @@ elif page == "Criação Guiada de Fichas":
         )
     
         # 3. Processamento do nome (apenas se houver texto)
+        # 2. Input de Nome
+        pname = st.text_input(
+            "Digite o nome do Pokémon (ex: Blastoise)", 
+            placeholder="Ex: Blastoise", 
+            key="cg_pname"
+        )
+
+        # 3. Processamento e Criação da Ficha (TUDO deve estar dentro deste IF)
         if pname:
             raw_name = pname.strip().lower()
-            # Lógica para Nidoran
+            st.session_state["cg_draft"]["pname"] = pname
+            
+            # Lógica para Nidoran e definição do poke_query
             is_nidoran_generic = raw_name in ["nidoran", "nidoran♀", "nidoran♂", "nidoran-f", "nidoran-m"]
             if is_nidoran_generic:
                 choice = st.radio(
@@ -4421,523 +4429,306 @@ elif page == "Criação Guiada de Fichas":
                 poke_query = "nidoran-f" if "♀" in choice else "nidoran-m"
             else:
                 poke_query = to_pokeapi_name(pname)
+
+            # Busca ID no Excel
             row = df[df["Nome"].str.lower() == pname.lower()]
             pid = str(int(row.iloc[0]["Nº"])) if not row.empty else "0"
-            with st.spinner("Buscando dados do Pokémon online..."):
+
+            # Busca dados na API
+            with st.spinner("Buscando dados do Pokémon online (stats + ability + tipos)..."):
                 pjson = pokeapi_get_pokemon(poke_query)
                 base_stats = pokeapi_parse_stats(pjson)
                 types = pokeapi_parse_types(pjson)
                 abilities = pokeapi_parse_abilities(pjson)
-        
-            # Sugestões da Pokédex (Filtro otimizado)
-            if len(pname) >= 2: # Só busca com 2 ou mais letras para poupar CPU
+                
+                # Escolha de Habilidades
+                saved_abilities = st.session_state.get("cg_abilities")
+                if not isinstance(saved_abilities, list):
+                    saved_abilities = None
+                chosen_abilities = st.multiselect(
+                    "Escolha a(s) habilidade(s) (pode mais de uma):",
+                    options=abilities,
+                    default=[
+                        a for a in (saved_abilities or (abilities[:1] if abilities else []))
+                        if a in abilities
+                    ],
+                )
+                
+                if not chosen_abilities:
+                    chosen_abilities = abilities
+                st.session_state["cg_abilities"] = chosen_abilities
+
+            # 3) NP / PP
+            np_sugerido = get_np_for_pokemon(df, pid, fallback_np=6)
+            np_ = st.number_input("NP do seu Pokémon (o jogador informa)", min_value=0, value=0, step=1, key="cg_np", on_change=_cg_sync_from_np)
+            pp_total = calc_pp_budget(np_)
+
+            pp_spent_moves = sum((m.get("pp_cost") or 0) for m in st.session_state.get("cg_moves", []))
+
+            tabs = st.tabs(
+                [
+                    "1️⃣ Visão Geral",
+                    "2️⃣ Abilities e Defesas",
+                    "3️⃣ Skills e Advantages",
+                    "4️⃣ Golpes",
+                    "5️⃣ Revisão e Exportação",
+                ]
+            )
+            
+            pp_abilities = 0
+            pp_defenses = 0
+            pp_skills = 0
+            pp_advantages = 0
+            pp_moves = pp_spent_moves
+
+            # 4) Atributos base
+            PL = int(np_)
+            cap = 2 * PL
+            
+            atk = int(base_stats.get("attack", 10))
+            spatk = int(base_stats.get("special-attack", 10))
+            spe = int(base_stats.get("speed", 10))
+            def_ = int(base_stats.get("defense", 10))
+            spdef = int(base_stats.get("special-defense", 10))
+            
+            int_base = max(0, (spatk - 10) // 10)
+            stgr_base = max(0, (atk - 10) // 10)
+            
+            den_td = max(1, def_ + spe)
+            thg_base = round((def_ / den_td) * cap)
+            dodge_base = cap - thg_base
+            
+            den_wf = max(1, spdef + def_)
+            will_base = round((spdef / den_wf) * cap)
+            fort_base = cap - will_base
+
+            with tabs[0]:
+                st.markdown(
+                    f"""
+                    <div class="cg-card">
+                        <div class="cg-title">Visão Geral</div>
+                        <span class="cg-pill">NP {np_}</span>
+                        <span class="cg-pill">PP Total {pp_total}</span>
+                        <span class="cg-pill">Tipos: {', '.join(types)}</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    f"**Pokémon:** {pname}  \n"
+                    f"**Abilities escolhidas:** {', '.join(chosen_abilities)}"
+                )
+                st.info("Use as abas para preencher cada etapa. O total de PP gastos é somado automaticamente no final.")
+
+            with tabs[1]:
+                st.markdown("### 📊 Atributos (auto + editável)")
+                cap = 2 * int(st.session_state.get("cg_np", 0) or 0)
+                _cg_init_defenses_if_missing(dodge_base, fort_base)
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    stgr = st.number_input(
+                        "Stgr (Força)",
+                        value=int(st.session_state.get("cg_stgr", stgr_base)),
+                        min_value=0, max_value=99, key="cg_stgr",
+                    )
+                    intellect = st.number_input(
+                        "Int (Intelecto)",
+                        value=int(st.session_state.get("cg_int", int_base)),
+                        min_value=0, max_value=99, key="cg_int",
+                    )
+                
+                with col2:
+                    dodge_value = int(st.session_state.get("cg_dodge", dodge_base))
+                    dodge_min = min(dodge_value, max(0, int(dodge_base) - 2))
+                    dodge_max = max(dodge_value, min(99, int(dodge_base) + 2))
+                    dodge = st.number_input(
+                        "Dodge", key="cg_dodge",
+                        value=dodge_value, min_value=dodge_min, max_value=dodge_max,
+                        on_change=_cg_sync_from_dodge,
+                    )
+                    parry = st.number_input(
+                        "Parry", key="cg_parry",
+                        value=int(st.session_state.get("cg_parry", st.session_state.get("cg_dodge", dodge_base))),
+                        min_value=0, max_value=99, disabled=True,
+                    )
+            
+                with col3:
+                    thg = st.number_input(
+                        "Thg (Toughness)", key="cg_thg",
+                        value=int(st.session_state.get("cg_thg", max(0, cap - int(st.session_state.get("cg_dodge", dodge_base))))),
+                        min_value=0, max_value=99, disabled=True,
+                    )
+                    fortitude = st.number_input(
+                        "Fortitude", key="cg_fortitude",
+                        value=int(st.session_state.get("cg_fortitude", fort_base)),
+                        min_value=min(int(st.session_state.get("cg_fortitude", fort_base)), max(0, int(fort_base) - 2)),
+                        max_value=max(int(st.session_state.get("cg_fortitude", fort_base)), min(99, int(fort_base) + 2)),
+                        on_change=_cg_sync_from_fortitude,
+                    )
+                    will = st.number_input(
+                        "Will", key="cg_will",
+                        value=int(st.session_state.get("cg_will", max(0, cap - int(st.session_state.get("cg_fortitude", fort_base))))),
+                        min_value=0, max_value=99, disabled=True,
+                    )
+
+                st.markdown("### 💰 PP automático")
+                pp_stgr = int(stgr) * 2
+                pp_int  = int(intellect) * 2
+                pp_dodge = int(dodge) * 1
+                pp_parry = int(parry) * 1
+                pp_thg   = int(thg) * 1
+                pp_will  = int(will) * 1
+                pp_fort  = int(fortitude) * 1
+                
+                pp_abilities_auto = pp_stgr + pp_int
+                pp_defenses_auto  = pp_dodge + pp_parry + pp_thg + pp_will + pp_fort
+                
+                st.write(f"**Abilities:** {pp_abilities_auto} PP (STGR {pp_stgr} + INT {pp_int})")
+                st.write(f"**Defesas:** {pp_defenses_auto} PP (Dodge {pp_dodge} + Parry {pp_parry} + Thg {pp_thg} + Will {pp_will} + Fort {pp_fort})")
+                
+                pp_abilities = pp_abilities_auto
+                pp_defenses  = pp_defenses_auto
+
+            with tabs[2]:
+                st.markdown("### 🧠 Skills (M&M 3e)")
+                if "cg_skills" not in st.session_state:
+                    st.session_state["cg_skills"] = {k: 0 for k in SKILLS_MM3}
+                    st.session_state["cg_skill_custom"] = []
+
+                cols_sk = st.columns(3)
+                total_skill_ranks = 0
+                for i, sk in enumerate(SKILLS_MM3):
+                    with cols_sk[i % 3]:
+                        v_sk = st.number_input(sk, min_value=0, max_value=40, value=int(st.session_state["cg_skills"].get(sk, 0)), step=1, key=f"cg_skill_{sk}")
+                        st.session_state["cg_skills"][sk] = int(v_sk)
+                        total_skill_ranks += int(v_sk)
+
+                st.divider()
+                st.markdown("### Skills extras")
+                add_name = st.text_input("Nome da skill extra", key="cg_skill_add_name")
+                if st.button("➕ Adicionar skill extra", key="cg_skill_add_btn"):
+                    if add_name.strip():
+                        st.session_state["cg_skill_custom"].append({"name": add_name.strip(), "ranks": 0})
+
+                for idx, row_sk in enumerate(list(st.session_state["cg_skill_custom"])):
+                    c1, c2, c3 = st.columns([6, 2, 2])
+                    with c1: st.write(row_sk["name"])
+                    with c2:
+                        rv = st.number_input("Ranks", min_value=0, max_value=40, value=int(row_sk.get("ranks", 0)), key=f"cg_skill_custom_rank_{idx}")
+                        row_sk["ranks"] = int(rv)
+                        total_skill_ranks += int(rv)
+                    with c3:
+                        if st.button("❌", key=f"cg_skill_custom_del_{idx}"):
+                            st.session_state["cg_skill_custom"].pop(idx)
+                            st.rerun()
+
+                pp_skills = total_skill_ranks / 2
+                st.info(f"Total de ranks: **{total_skill_ranks}** → PP em Skills: **{pp_skills}**")
+
+                st.markdown("### ⭐ Advantages (sugestões)")
+                adv_suggestions = suggest_advantages(pjson=pjson, base_stats=base_stats, types=types, abilities=abilities)
+                if not adv_suggestions:
+                    st.info("Nenhuma vantagem sugerida automaticamente.")
+                    chosen_adv = []
+                else:
+                    labels = [a.label() for a in adv_suggestions]
+                    notes_map = {a.label(): (a.note or "") for a in adv_suggestions}
+                    saved_adv = st.session_state.get("cg_advantages") or []
+                    chosen_labels = st.multiselect("Selecione advantages:", options=labels, default=[lab for lab in saved_adv if lab in labels])
+                    chosen_adv = chosen_labels
+                    for lab in chosen_labels:
+                        if notes_map.get(lab): st.caption(f"• {lab}: {notes_map[lab]}")
+                    st.session_state["cg_advantages"] = chosen_adv
+
+                pp_advantages = len(chosen_adv)
+                st.info(f"Advantages escolhidas: **{pp_advantages} PP**")
+
+            with tabs[3]:
+                st.markdown("### ⚔️ Golpes")
+                if st.session_state["cg_moves"]:
+                    for i, m_gv in enumerate(list(st.session_state["cg_moves"]), start=1):
+                        c1, c2 = st.columns([6, 1])
+                        with c1:
+                            st.write(f"{i}. **{m_gv['name']}** (Rank {m_gv['rank']}) — PP: {m_gv.get('pp_cost')}")
+                            if m_gv.get("build"):
+                                with st.expander("Ingredientes do golpe"): st.code(m_gv["build"], language="text")
+                        with c2:
+                            if st.button("❌", key=f"cg_guided_move_rm_{i}"):
+                                st.session_state["cg_moves"].pop(i - 1)
+                                st.rerun()
+                else:
+                    st.info("Nenhum golpe confirmado ainda.")
+
+                disabled_add = pp_spent_moves >= (pp_total + 20)
+                if disabled_add: st.error("Limite atingido (PP_total + 20).")
+                
+                if st.button("➕ Adicionar/Editar golpes", key="btn_add_edit_moves", disabled=disabled_add):
+                    st.session_state["cg_return_to"] = "guided"
+                    st.session_state["cg_view"] = "moves"
+                    st.rerun()
+
+                st.info(f"PP gastos em Golpes: {pp_spent_moves}")
+                pp_moves = pp_spent_moves
+
+            with tabs[4]:
+                st.markdown("### 🧾 Revisão de PP")
+                pp_spent_total = int(pp_abilities) + int(pp_defenses) + int(pp_skills) + int(pp_advantages) + int(pp_moves)
+                st.markdown(f"""
+                    <div class="cg-card">
+                        <div class="cg-title">Resumo de PP</div>
+                        <div>Abilities: {pp_abilities} | Defesas: {pp_defenses} | Skills: {pp_skills} | Adv: {pp_advantages} | Golpes: {pp_moves}</div>
+                        <hr/><strong>Total gasto:</strong> {pp_spent_total} / {pp_total}
+                    </div>
+                """, unsafe_allow_html=True)
+
+                if pp_spent_total > pp_total: st.warning("PP total ultrapassado.")
+                else: st.success("PP total dentro do limite. ✅")
+
+                pdf_bytes = build_sheet_pdf(
+                    pname=pname, np_=np_, types=types, abilities=chosen_abilities,
+                    stats={"stgr": int(stgr), "intellect": int(intellect), "dodge": int(dodge), "parry": int(parry), "fortitude": int(fortitude), "will": int(will)},
+                    chosen_adv=chosen_adv, moves=st.session_state.get("cg_moves", [])
+                )
+
+                st.download_button("⬇️ Exportar PDF", data=pdf_bytes, file_name=f"ficha_{pname}_{np_}.pdf", mime="application/pdf")
+
+                if st.button("☁️ Salvar ficha na Nuvem", key="btn_save_sheet_cloud"):
+                    db_fs, bkt_fs = init_firebase()
+                    skills_payload = []
+                    for sk_n, sk_r in st.session_state.get("cg_skills", {}).items():
+                        if int(sk_r) > 0: skills_payload.append({"name": sk_n, "ranks": int(sk_r)})
+                    for row_sk in st.session_state.get("cg_skill_custom", []):
+                        if row_sk.get("name") and int(row_sk.get("ranks", 0)) > 0:
+                            skills_payload.append({"name": row_sk["name"], "ranks": int(row_sk["ranks"])})
+
+                    payload_fs = {
+                        "pokemon": {"id": int(pid), "name": pname, "types": types, "abilities": chosen_abilities},
+                        "np": int(np_), "pp_budget_total": int(pp_total), "pp_spent_total": float(pp_spent_total),
+                        "stats": {"stgr": int(stgr), "int": int(intellect), "dodge": int(dodge), "parry": int(parry), "fortitude": int(fortitude), "will": int(will)},
+                        "advantages": chosen_adv, "skills": skills_payload, "moves": st.session_state.get("cg_moves", [])
+                    }
+                    sid_fs, _ = save_sheet_with_pdf(db=db_fs, bucket=bkt_fs, trainer_name=trainer_name, sheet_payload=payload_fs, pdf_bytes=pdf_bytes, sheet_id=st.session_state.get("cg_edit_sheet_id"))
+                    st.success(f"✅ Salva! ID: {sid_fs}")
+                    st.session_state["cg_edit_sheet_id"] = None
+
+            # Sugestões da Pokédex (Sempre visível no fim do processo se houver nome)
+            if len(pname) >= 2:
                 matches = df[df["Nome"].str.lower().str.contains(pname.lower(), na=False)].head(10)
                 if not matches.empty:
                     st.caption("Sugestões encontradas na sua Pokédex:")
                     st.write(matches[["Nº", "Nome"]])
-        else:
-            # CORREÇÃO: Remova o st.stop() e use um aviso amigável
-            st.info("💡 Digite o nome do Pokémon acima para começar a gerar a ficha.")
-            # Botão para voltar ao menu caso o usuário tenha desistido
-            if st.button("⬅️ Voltar ao Menu"):
+
+            if st.button("⬅️ Voltar"):
                 st.session_state["cg_view"] = "menu"
                 st.rerun()
-        
-        # tenta achar o id no seu df (se não achar, usa 0)
-        row = df[df["Nome"].str.lower() == pname.lower()]
-        pid = str(int(row.iloc[0]["Nº"])) if not row.empty else "0"
 
-
-        with st.spinner("Buscando dados do Pokémon online (stats + ability + tipos)..."):
-            pjson = pokeapi_get_pokemon(poke_query)
-            base_stats = pokeapi_parse_stats(pjson)
-            types = pokeapi_parse_types(pjson)
-            abilities = pokeapi_parse_abilities(pjson)
-            # ✅ jogador pode escolher mais de uma habilidade (inclui hidden)
-            saved_abilities = st.session_state.get("cg_abilities")
-            if not isinstance(saved_abilities, list):
-                saved_abilities = None
-            chosen_abilities = st.multiselect(
-                "Escolha a(s) habilidade(s) (pode mais de uma):",
-                options=abilities,
-                default=[
-                    a for a in (saved_abilities or (abilities[:1] if abilities else []))
-                    if a in abilities
-                ],
-            )
-            
-            # se nada for escolhido, usa todas como fallback (pra não quebrar)
-            if not chosen_abilities:
-                chosen_abilities = abilities
-            st.session_state["cg_abilities"] = chosen_abilities
-        
-
-
-        # 3) NP / PP
-        np_sugerido = get_np_for_pokemon(df, pid, fallback_np=6)
-        np_ = st.number_input("NP do seu Pokémon (o jogador informa)", min_value=0, value=0, step=1, key="cg_np", on_change=_cg_sync_from_np)
-        pp_total = calc_pp_budget(np_)
-
-        # ✅ soma PP a partir dos golpes confirmados
-        pp_spent_moves = sum((m.get("pp_cost") or 0) for m in st.session_state.get("cg_moves", []))
-
-        tabs = st.tabs(
-            [
-                "1️⃣ Visão Geral",
-                "2️⃣ Abilities e Defesas",
-                "3️⃣ Skills e Advantages",
-                "4️⃣ Golpes",
-                "5️⃣ Revisão e Exportação",
-            ]
-        )
-        pp_abilities = 0
-        pp_defenses = 0
-        pp_skills = 0
-        pp_advantages = 0
-        pp_moves = pp_spent_moves
-
-        # 4) atributos (placeholder)
-        PL = int(np_)
-        cap = 2 * PL
-        
-        atk = int(base_stats.get("attack", 10))
-        spatk = int(base_stats.get("special-attack", 10))
-        spe = int(base_stats.get("speed", 10))
-        def_ = int(base_stats.get("defense", 10))
-        spdef = int(base_stats.get("special-defense", 10))
-        
-        # Int máximo do seu PDF: Int = (SpAtk - 10) / 10
-        int_base = max(0, (spatk - 10) // 10)
-        stgr_base = max(0, (atk - 10) // 10)
-        
-        # Thg/Dodge base do seu PDF (mantendo cap 2PL)
-        den_td = max(1, def_ + spe)
-        thg_base = round((def_ / den_td) * cap)
-        dodge_base = cap - thg_base
-        
-        # Will/Fort base do seu PDF (mantendo cap 2PL)
-        den_wf = max(1, spdef + def_)
-        will_base = round((spdef / den_wf) * cap)
-        fort_base = cap - will_base
-
-        with tabs[0]:
-            st.markdown(
-                f"""
-                <div class="cg-card">
-                    <div class="cg-title">Visão Geral</div>
-                    <span class="cg-pill">NP {np_}</span>
-                    <span class="cg-pill">PP Total {pp_total}</span>
-                    <span class="cg-pill">Tipos: {', '.join(types)}</span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f"**Pokémon:** {pname}  \n"
-                f"**Abilities escolhidas:** {', '.join(chosen_abilities)}"
-            )
-            st.info(
-                "Use as abas para preencher cada etapa. O total de PP gastos é "
-                "somado automaticamente no final."
-            )
-
-
-        with tabs[1]:
-            st.markdown("### 📊 Atributos (auto + editável)")
-            cap = 2 * int(st.session_state.get("cg_np", 0) or 0)
-            _cg_init_defenses_if_missing(dodge_base, fort_base)
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                stgr = st.number_input(
-                    "Stgr (Força)",
-                    value=int(st.session_state.get("cg_stgr", stgr_base)),
-                    min_value=0,
-                    max_value=99,
-                    key="cg_stgr",
-                )
-                intellect = st.number_input(
-                    "Int (Intelecto)",
-                    value=int(st.session_state.get("cg_int", int_base)),
-                    min_value=0,
-                    max_value=99,
-                    key="cg_int",
-                )
-            
-            with col2:
-                dodge_value = int(st.session_state.get("cg_dodge", dodge_base))
-                dodge_min = min(dodge_value, max(0, int(dodge_base) - 2))
-                dodge_max = max(dodge_value, min(99, int(dodge_base) + 2))
-                dodge = st.number_input(
-                    "Dodge",
-                    key="cg_dodge",
-                    value=dodge_value,
-                    min_value=dodge_min,
-                    max_value=dodge_max,
-                    on_change=_cg_sync_from_dodge,
-                )
-            
-                # Parry espelha Dodge (como seu original) -> deixa travado
-                parry = st.number_input(
-                    "Parry",
-                    key="cg_parry",
-                    value=int(st.session_state.get("cg_parry", st.session_state.get("cg_dodge", dodge_base))),
-                    min_value=0,
-                    max_value=99,
-                    disabled=True,
-                )
-        
-        with col3:
-            # Thg fecha cap automaticamente -> deixa travado
-            thg = st.number_input(
-                "Thg (Toughness)",
-                key="cg_thg",
-                value=int(st.session_state.get("cg_thg", max(0, cap - int(st.session_state.get("cg_dodge", dodge_base))))),
-                min_value=0,
-                max_value=99,
-                disabled=True,
-            )
-        
-            fortitude = st.number_input(
-                "Fortitude",
-                key="cg_fortitude",
-                value=int(st.session_state.get("cg_fortitude", fort_base)),
-                min_value=min(
-                    int(st.session_state.get("cg_fortitude", fort_base)),
-                    max(0, int(fort_base) - 2),
-                ),
-                max_value=max(
-                    int(st.session_state.get("cg_fortitude", fort_base)),
-                    min(99, int(fort_base) + 2),
-                ),
-                on_change=_cg_sync_from_fortitude,
-            )
-        
-            # Will fecha cap automaticamente -> deixa travado
-            will = st.number_input(
-                "Will",
-                key="cg_will",
-                value=int(st.session_state.get("cg_will", max(0, cap - int(st.session_state.get("cg_fortitude", fort_base))))),
-                min_value=0,
-                max_value=99,
-                disabled=True,
-            )
-
-         
-                       
-            st.markdown("### ✅ Validação de Limites (M&M)")
-            
-            dodge_sum = int(dodge) + int(thg)
-            parry_sum = int(parry) + int(thg)
-            wf_sum = int(will) + int(fortitude)
-            
-            
-            st.divider()
-            st.markdown("### 💰 PP automático")
-
-            # Custos do sistema (regra FINAL):
-            # - STGR e INT: 2 PP por rank
-            # - Dodge, Parry, Thg, Will e Fortitude: 1 PP por rank
-            #
-            # ⚠️ NÃO existe brinde:
-            # todo rank investido é pago, desde o primeiro ponto.
-            
-            # ======================
-            # Abilities (2 PP / rank)
-            # ======================
-            pp_stgr = int(stgr) * 2
-            pp_int  = int(intellect) * 2
-            
-            # ======================
-            # Defesas (1 PP / rank)
-            # ======================
-            pp_dodge = int(dodge) * 1
-            pp_parry = int(parry) * 1
-            pp_thg   = int(thg) * 1
-            pp_will  = int(will) * 1
-            pp_fort  = int(fortitude) * 1
-            
-            # ======================
-            # Totais
-            # ======================
-            pp_abilities_auto = pp_stgr + pp_int
-            pp_defenses_auto  = pp_dodge + pp_parry + pp_thg + pp_will + pp_fort
-            
-            # ======================
-            # Exibição
-            # ======================
-            st.write(
-                f"**Abilities:** {pp_abilities_auto} PP  "
-                f"(STGR {pp_stgr} + INT {pp_int})"
-            )
-            
-            st.write(
-                f"**Defesas:** {pp_defenses_auto} PP  "
-                f"(Dodge {pp_dodge} + Parry {pp_parry} + Thg {pp_thg} + "
-                f"Will {pp_will} + Fort {pp_fort})"
-            )
-            
-            # ======================
-            # Valores usados no total final da ficha
-            # ======================
-            pp_abilities = pp_abilities_auto
-            pp_defenses  = pp_defenses_auto
-
-
-
-        with tabs[2]:
-            st.markdown("### 🧠 Skills (M&M 3e)")
-            st.caption("Preencha RANKS (não bônus). O custo é 1 PP a cada 2 ranks.")
-
-            # Lista base de skills (core)
-
-            if "cg_skills" not in st.session_state:
-                st.session_state["cg_skills"] = {k: 0 for k in SKILLS_MM3}
-                st.session_state["cg_skill_custom"] = []  # skills extras do usuário
-
-            # grid simples
-            cols = st.columns(3)
-            total_skill_ranks = 0
-            for i, sk in enumerate(SKILLS_MM3):
-                with cols[i % 3]:
-                    v = st.number_input(
-                        sk,
-                        min_value=0, max_value=40,
-                        value=int(st.session_state["cg_skills"].get(sk, 0)),
-                        step=1,
-                        key=f"cg_skill_{sk}"
-                    )
-                    st.session_state["cg_skills"][sk] = int(v)
-                    total_skill_ranks += int(v)
-
-            st.divider()
-            st.markdown("### Skills extras (se quiser)")
-            add_name = st.text_input("Nome da skill extra (ex: Expertise: Pokemon)", key="cg_skill_add_name")
-            if st.button("➕ Adicionar skill extra", key="cg_skill_add_btn"):
-                nm = (add_name or "").strip()
-                if nm:
-                    st.session_state["cg_skill_custom"].append({"name": nm, "ranks": 0})
-
-            # render extras
-            for idx, row in enumerate(list(st.session_state["cg_skill_custom"])):
-                c1, c2, c3 = st.columns([6, 2, 2])
-                with c1:
-                    st.write(row["name"])
-                with c2:
-                    rv = st.number_input(
-                        "Ranks",
-                        min_value=0, max_value=40,
-                        value=int(row.get("ranks", 0)),
-                        key=f"cg_skill_custom_rank_{idx}"
-                    )
-                    row["ranks"] = int(rv)
-                    total_skill_ranks += int(rv)
-                with c3:
-                    if st.button("❌", key=f"cg_skill_custom_del_{idx}"):
-                        st.session_state["cg_skill_custom"].pop(idx)
-                        st.rerun()
-
-            # PP automático: 1 PP por 2 ranks
-            pp_skills = total_skill_ranks / 2
-            st.info(f"Total de ranks: **{total_skill_ranks}** → PP em Skills: **{pp_skills}**")
-
-
-            st.markdown("### ⭐ Advantages (sugestões)")
-            adv_suggestions = suggest_advantages(
-                pjson=pjson,
-                base_stats=base_stats,
-                types=types,
-                abilities=abilities,
-            )
-            
-            if not adv_suggestions:
-                st.info("Nenhuma vantagem sugerida automaticamente para este Pokémon (pelas regras atuais).")
-                chosen_adv = []
-            else:
-                labels = [a.label() for a in adv_suggestions]
-                notes_map = {a.label(): (a.note or "") for a in adv_suggestions}
-            
-                saved_adv = st.session_state.get("cg_advantages")
-                if not isinstance(saved_adv, list):
-                    saved_adv = []
-                chosen_labels = st.multiselect(
-                    "Selecione advantages:",
-                    options=labels,
-                    default=[lab for lab in saved_adv if lab in labels],
-                )
-                chosen_adv = chosen_labels  # (salva o label com rank)
-            
-                # mostra notas do que foi escolhido
-                for lab in chosen_labels:
-                    if notes_map.get(lab):
-                        st.caption(f"• {lab}: {notes_map[lab]}")
-                st.session_state["cg_advantages"] = chosen_adv
-
-            pp_advantages = len(chosen_adv)
-            st.info(f"Advantages escolhidas: **{pp_advantages} PP** (1 PP cada).")
-
-        with tabs[3]:
-            st.markdown("### ⚔️ Golpes")
-            if st.session_state["cg_moves"]:
-                for i, m in enumerate(list(st.session_state["cg_moves"]), start=1):
-                    c1, c2 = st.columns([6, 1])
-                    with c1:
-                        st.write(f"{i}. **{m['name']}** (Rank {m['rank']}) — PP: {m.get('pp_cost')}")
-                        build_txt = (m.get("build") or "").strip()
-                        if build_txt:
-                            with st.expander("Ingredientes do golpe"):
-                                st.code(build_txt, language="text")
-                    with c2:
-                        if st.button("❌ Remover", key=f"cg_guided_move_rm_{i}"):
-                            st.session_state["cg_moves"].pop(i - 1)
-                            st.rerun()
-            else:
-                st.info("Nenhum golpe confirmado ainda.")
-
-            # trava simples por PP total (NP×2) + 20 de folga (como você pediu)
-            if pp_spent_moves >= (pp_total + 20):
-                st.error("Limite atingido: você já gastou PP demais (PP_total + 20).")
-                disabled_add = True
-            else:
-                disabled_add = False
-
-            if st.button("➕ Adicionar/Editar golpes", key="btn_add_edit_moves", disabled=disabled_add):
-                st.session_state["cg_return_to"] = "guided"
-                st.session_state["cg_view"] = "moves"
+        else:
+            # Caso não tenha nome digitado
+            st.info("💡 Digite o nome do Pokémon acima para começar a gerar a ficha.")
+            if st.button("⬅️ Voltar ao Menu", key="btn_back_empty"):
+                st.session_state["cg_view"] = "menu"
                 st.rerun()
-
-            st.info(f"PP gastos em Golpes (auto): {pp_spent_moves}")
-            pp_moves = pp_spent_moves
-
-        with tabs[4]:
-            st.markdown("### 🧾 Revisão de PP por etapa")
-
-            pp_spent_total = (
-                int(pp_abilities)
-                + int(pp_defenses)
-                + int(pp_skills)
-                + int(pp_advantages)
-                + int(pp_moves)
-            )
-
-            st.markdown(
-                f"""
-                <div class="cg-card">
-                    <div class="cg-title">Resumo de PP</div>
-                    <div>Abilities: {pp_abilities}</div>
-                    <div>Defesas: {pp_defenses}</div>
-                    <div>Skills: {pp_skills}</div>
-                    <div>Advantages: {pp_advantages}</div>
-                    <div>Golpes: {pp_moves}</div>
-                    <hr style="border-color: rgba(148,163,184,0.2);" />
-                    <strong>Total gasto:</strong> {pp_spent_total} / {pp_total}
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            if pp_spent_total > pp_total:
-                st.warning("PP total ultrapassado. Ajuste os custos por etapa para manter o balanço.")
-            else:
-                st.success("PP total dentro do limite geral. ✅")
-
-            st.markdown("### 📄 Exportar e salvar")
-            pdf_bytes = build_sheet_pdf(
-                pname=pname,
-                np_=np_,
-                types=types,
-                abilities=chosen_abilities,
-                stats={
-                    "stgr": int(stgr),
-                    "intellect": int(intellect),
-                    "dodge": int(dodge),
-                    "parry": int(parry),
-                    "fortitude": int(fortitude),
-                    "will": int(will),
-                },
-                chosen_adv=chosen_adv,
-                moves=st.session_state.get("cg_moves", []),
-            )
-
-            st.download_button(
-                "⬇️ Exportar PDF",
-                data=pdf_bytes,
-                file_name=f"ficha_{pname}_{np_}.pdf",
-                mime="application/pdf",
-            )
-
-            if st.button("☁️ Salvar ficha na Nuvem", key="btn_save_sheet_cloud"):
-                db, bucket = init_firebase()
-
-                skills_payload = []
-                for name, ranks in (st.session_state.get("cg_skills", {}) or {}).items():
-                    try:
-                        ranks = int(ranks)
-                    except Exception:
-                        ranks = 0
-                    if ranks > 0:
-                        skills_payload.append({"name": name, "ranks": ranks})
-                for row in st.session_state.get("cg_skill_custom", []) or []:
-                    if not isinstance(row, dict):
-                        continue
-                    name = str(row.get("name", "")).strip()
-                    try:
-                        ranks = int(row.get("ranks", 0))
-                    except Exception:
-                        ranks = 0
-                    if name and ranks > 0:
-                        skills_payload.append({"name": name, "ranks": ranks})
-
-                # montar payload
-                payload = {
-                    "pokemon": {
-                        "id": int(pid),
-                        "name": pname,
-                        "types": types,
-                        "abilities": chosen_abilities,
-                    },
-                    "np": int(np_),
-                    "pp_budget_total": int(pp_total),
-                    "pp_spent_total": float(pp_spent_total),
-                    "pp_spent_breakdown": {
-                        "abilities": int(pp_abilities),
-                        "defenses": int(pp_defenses),
-                        "skills": int(pp_skills),
-                        "advantages": int(pp_advantages),
-                        "moves": float(pp_moves),
-                    },
-                    "limits": {"pp_overcap": 20},
-                    "stats": {
-                        "stgr": int(stgr),
-                        "int": int(intellect),
-                        "dodge": int(dodge),
-                        "parry": int(parry),
-                        "fortitude": int(fortitude),
-                        "will": int(will),
-                    },
-                    "advantages": chosen_adv,
-                    "skills": skills_payload,
-                    "moves": st.session_state.get("cg_moves", []),
-                }
-
-                sheet_id, storage_path = save_sheet_with_pdf(
-                    db=db,
-                    bucket=bucket,
-                    trainer_name=trainer_name,
-                    sheet_payload=payload,
-                    pdf_bytes=pdf_bytes,
-                    sheet_id=st.session_state.get("cg_edit_sheet_id"),
-                )
-
-                st.success(f"✅ Ficha salva! ID: {sheet_id}")
-                if storage_path:
-                    st.info(f"📦 PDF salvo em: {storage_path}")
-                st.session_state["cg_edit_sheet_id"] = None
-
-        if st.button("⬅️ Voltar"):
-            st.session_state["cg_view"] = "menu"
-            st.rerun()
-
 
 
 
