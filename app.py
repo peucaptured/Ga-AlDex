@@ -3007,8 +3007,8 @@ def apply_non_pokedex_theme() -> None:
             color: #1e293b;
         }
         [data-testid="stHeader"] {
-            background: rgba(248, 250, 252, 0.8);
-            backdrop-filter: blur(6px);
+            background: transparent !important;
+            backdrop-filter: none !important;
         }
         .stTabs [data-baseweb="tab-list"] {
             gap: 0.4rem;
