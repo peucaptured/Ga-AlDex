@@ -4288,7 +4288,28 @@ if page == "Trainer Hub (Meus Pokémons)":
 
             st.markdown('</div>', unsafe_allow_html=True) # Fecha grass-box
 
-
+            # --- 👇 NOVO BLOCO: ADICIONAR EXTERNO ---
+            st.markdown('<div style="margin-top: 10px;"></div>', unsafe_allow_html=True)
+            with st.expander("➕ Adicionar Visitante (Fora da Dex)"):
+                st.caption("Adicione um Pokémon que não está na Pokédex do sistema.")
+                ext_name = st.text_input("Nome (ex: MissingNo)", key="hub_add_ext")
+                
+                if st.button("📥 Adicionar à Box"):
+                    if ext_name.strip():
+                        # Cria ID único com prefixo EXT:
+                        new_ext_id = f"EXT:{ext_name.strip()}"
+                        
+                        # Garante a lista
+                        user_data.setdefault("caught", [])
+                        
+                        if new_ext_id not in user_data["caught"]:
+                            user_data["caught"].append(new_ext_id)
+                            save_data_cloud(trainer_name, user_data)
+                            st.success(f"**{ext_name}** adicionado com sucesso!")
+                            st.rerun()
+                        else:
+                            st.warning("Este Pokémon já está na sua lista.")
+            # ----------------------------------------
 
         # ---------
         # PARTY (equipe ativa)
@@ -4556,7 +4577,7 @@ elif page == "Criação Guiada de Fichas":
             np_ = st.number_input(
                 "NP do seu Pokémon (o jogador informa)", 
                 min_value=0, 
-                value=int(np_salvo), # <--- Carrega o valor salvo ou 0
+                value=int(np_salvo_final), # <--- Carrega o valor salvo ou 0
                 step=1, 
                 key="cg_np", 
                 on_change=_cg_sync_from_np
