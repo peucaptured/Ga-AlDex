@@ -4547,6 +4547,12 @@ elif page == "Criação Guiada de Fichas":
     
             # 3) NP / PP
             np_sugerido = get_np_for_pokemon(df, pid, fallback_np=6)
+            # --- LÓGICA DE RECUPERAÇÃO DO NP (CORREÇÃO) ---
+            # Tenta pegar do rascunho salvo (draft) e do widget atual
+            val_draft = st.session_state.get("cg_draft", {}).get("np", 0)
+            val_widget = st.session_state.get("cg_np", 0)
+            np_salvo_final = max(int(val_draft or 0), int(val_widget or 0))
+            
             np_ = st.number_input(
                 "NP do seu Pokémon (o jogador informa)", 
                 min_value=0, 
@@ -4555,6 +4561,10 @@ elif page == "Criação Guiada de Fichas":
                 key="cg_np", 
                 on_change=_cg_sync_from_np
             )
+            # --- SALVAMENTO FORÇADO ---
+            # Salva no rascunho imediatamente para não perder ao trocar de aba
+            if "cg_draft" in st.session_state:
+                st.session_state["cg_draft"]["np"] = np_
             pp_total = calc_pp_budget(np_)
     
             pp_spent_moves = sum((m.get("pp_cost") or 0) for m in st.session_state.get("cg_moves", []))
