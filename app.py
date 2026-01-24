@@ -326,13 +326,7 @@ class MoveDB:
             raise ValueError(f"Excel sem colunas obrigatórias: {missing}")
         return MoveDB(df)
 
-    def get_by_name(self, name: str) -> Optional[Move]:
-        key = _norm(name)
-        hit = self.df[self.df["__name_norm"] == key]
-        if hit.empty:
-            return None
-        row = hit.iloc[0].to_dict()
-
+    def _row_to_move(self, row: Dict[str, Any]) -> Move:
         return Move(
             name=_safe_str(row.get("Nome")),
             tipo=_safe_str(row.get("Tipo")),
@@ -347,6 +341,21 @@ class MoveDB:
             raw=row,
         )
 
+    def get_by_name(self, name: str) -> Optional[Move]:
+        key = _norm(name)
+        hit = self.df[self.df["__name_norm"] == key]
+        if hit.empty:
+            return None
+        row = hit.iloc[0].to_dict()
+        return self._row_to_move(row)
+
+    def get_all_by_name(self, name: str) -> List[Move]:
+        key = _norm(name)
+        hit = self.df[self.df["__name_norm"] == key]
+        if hit.empty:
+            return []
+        return [self._row_to_move(row.to_dict()) for _, row in hit.iterrows()]
+
     def suggest_by_description(self, description: str, top_k: int = 5) -> List[Tuple[Move, float]]:
         q = _safe_str(description)
         if not q:
@@ -358,19 +367,7 @@ class MoveDB:
         out: List[Tuple[Move, float]] = []
         for i in idxs:
             row = self.df.iloc[i].to_dict()
-            mv = Move(
-                name=_safe_str(row.get("Nome")),
-                tipo=_safe_str(row.get("Tipo")),
-                categoria=_safe_str(row.get("Categoria")),
-                descricao=_safe_str(row.get("Descricao")),
-                build=_safe_str(row.get("Build M&M (adaptado)")),
-                how_it_works=_safe_str(row.get("Como funciona (regras/condições)")),
-                resist_stat=_safe_str(row.get("Resist Stat")),
-                ranged=_boolish(row.get("Ranged")),
-                perception_area=_boolish(row.get("Perception Area")),
-                tags=self._infer_tags(row),
-                raw=row,
-            )
+            mv = self._row_to_move(row)
             out.append((mv, float(sims[i])))
         return out
 
@@ -448,9 +445,16 @@ def render_move_creator(
     last_desc_key = f"{state_key_prefix}_last_desc_suggestions"
     st.session_state.setdefault(last_name_key, None)
     st.session_state.setdefault(last_desc_key, [])
+    st.session_state.setdefault("cg_manual_moves", [])
 
     st.subheader("⚔️ Criação de Golpes (M&M 3e)")
-    tab1, tab2, tab3 = st.tabs(["🔎 Buscar por nome", "🧩 Gerar por descrição", "🛠️ Criar manualmente"])
+    tab1, tab2, tab3, tab4 = st.tabs(
+        ["🔎 Buscar por nome", "🧩 Gerar por descrição", "🛠️ Criar manualmente", "✍️ Entrada Manual"]
+    )
+
+    def _move_default_accuracy(mv) -> int:
+        raw = getattr(mv, "raw", {}) or {}
+        return int(raw.get("Acerto") or raw.get("acerto") or 0)
 
     def _confirm_move(mv, rank: int, build: str, pp):
         st.session_state["cg_moves"].append({
@@ -458,7 +462,7 @@ def render_move_creator(
             "rank": int(rank),
             "build": build,
             "pp_cost": pp,
-            "accuracy": 0,
+            "accuracy": _move_default_accuracy(mv),
             "meta": {
                 "ranged": bool(getattr(mv, "ranged", False)),
                 "perception_area": bool(getattr(mv, "perception_area", False)),
@@ -629,21 +633,44 @@ def render_move_creator(
                     st.session_state["cg_view"] = return_to_view
                     st.rerun()
 
+    def _manual_move_to_move(manual: dict) -> Move:
+        return Move(
+            name=_safe_str(manual.get("Nome")),
+            tipo=_safe_str(manual.get("Tipo")),
+            categoria=_safe_str(manual.get("Categoria") or "Manual"),
+            descricao=_safe_str(manual.get("Descricao")),
+            build=_safe_str(manual.get("Formula")),
+            how_it_works="",
+            resist_stat="—",
+            ranged=bool(manual.get("Ranged", False)),
+            perception_area=bool(manual.get("Area", False)),
+            tags=[],
+            raw=manual,
+        )
+
+    def _search_moves_by_name(name: str) -> List[Move]:
+        hits = db.get_all_by_name(name)
+        manual_hits = [
+            _manual_move_to_move(mv)
+            for mv in st.session_state.get("cg_manual_moves", [])
+            if _norm(mv.get("Nome")) == _norm(name)
+        ]
+        return hits + manual_hits
+
     with tab1:
         name = st.text_input("Nome do golpe", key=f"{state_key_prefix}_name")
         rank = st.slider("Rank", 1, 20, 10, key=f"{state_key_prefix}_rank")
 
         if st.button("Buscar", key=f"{state_key_prefix}_search", type="primary"):
-            mv = db.get_by_name(name)
-            if not mv:
+            matches = _search_moves_by_name(name)
+            if not matches:
                 st.session_state[last_name_key] = None
                 st.error("Não achei pelo nome. Use a aba 'Criar por descrição'.")
             else:
-                st.session_state[last_name_key] = mv.name
+                st.session_state[last_name_key] = name
 
         if st.session_state.get(last_name_key):
-            mv = db.get_by_name(st.session_state[last_name_key])
-            if mv:
+            for mv in _search_moves_by_name(st.session_state[last_name_key]):
                 _render_move_card(mv, rank)
 
     with tab2:
@@ -835,6 +862,64 @@ def render_move_creator(
                     st.success("Golpe customizado adicionado à ficha.")
                     st.session_state["cg_view"] = return_to_view
                     st.rerun()
+
+    with tab4:
+        st.subheader("✍️ Entrada Manual")
+        st.caption("Preencha os campos e salve no repertório para ficar disponível na busca por nome.")
+
+        manual_name = st.text_input("Nome do Golpe", key=f"{state_key_prefix}_m_name")
+        manual_rank = st.number_input(
+            "Rank",
+            min_value=1,
+            max_value=20,
+            value=10,
+            step=1,
+            key=f"{state_key_prefix}_m_rank",
+        )
+        manual_formula = st.text_area("Fórmula", height=120, key=f"{state_key_prefix}_m_formula")
+        manual_accuracy = st.number_input(
+            "Acerto",
+            min_value=0,
+            max_value=30,
+            value=0,
+            step=1,
+            key=f"{state_key_prefix}_m_accuracy",
+        )
+        manual_type = st.text_input("Tipo", key=f"{state_key_prefix}_m_type")
+        manual_desc = st.text_area("Descrição", height=120, key=f"{state_key_prefix}_m_desc")
+        manual_area = st.checkbox("É Área?", key=f"{state_key_prefix}_m_area")
+        manual_ranged = st.checkbox("É Ranged?", key=f"{state_key_prefix}_m_ranged")
+
+        manual_data = {
+            "Nome": manual_name.strip(),
+            "Rank": int(manual_rank),
+            "Formula": manual_formula.strip(),
+            "Acerto": int(manual_accuracy),
+            "Tipo": manual_type.strip(),
+            "Descricao": manual_desc.strip(),
+            "Area": bool(manual_area),
+            "Ranged": bool(manual_ranged),
+            "Categoria": "Manual",
+        }
+
+        can_save_manual = bool(manual_data["Nome"])
+
+        col_save, col_save_add = st.columns(2)
+        with col_save:
+            if st.button("💾 Salvar no repertório", key=f"{state_key_prefix}_m_save", disabled=not can_save_manual):
+                st.session_state["cg_manual_moves"].append(manual_data)
+                st.success("Golpe manual salvo no repertório.")
+
+        with col_save_add:
+            if st.button(
+                "✅ Salvar e adicionar à ficha",
+                key=f"{state_key_prefix}_m_save_add",
+                disabled=not can_save_manual,
+            ):
+                st.session_state["cg_manual_moves"].append(manual_data)
+                mv = _manual_move_to_move(manual_data)
+                _confirm_move(mv, rank=int(manual_data["Rank"]), build=mv.build, pp=None)
+                st.success("Golpe manual salvo e adicionado à ficha.")
 
     st.divider()
     st.subheader("📦 Golpes confirmados nesta ficha")
@@ -5945,9 +6030,6 @@ elif page == "Mochila":
     
     
     
-
-
-
 
 
 
