@@ -641,7 +641,8 @@ def render_move_creator(
             descricao=_safe_str(manual.get("Descricao")),
             build=_safe_str(manual.get("Formula")),
             how_it_works="",
-            resist_stat="—",
+            # ✅ AGORA LÊ A RESISTÊNCIA DO DICIONÁRIO
+            resist_stat=_safe_str(manual.get("Resist Stat") or "—"),
             ranged=bool(manual.get("Ranged", False)),
             perception_area=bool(manual.get("Area", False)),
             tags=[],
@@ -875,30 +876,44 @@ def render_move_creator(
 
     with tab4:
         st.subheader("✍️ Entrada Manual")
-        st.caption("Preencha os campos e salve no repertório para ficar disponível na busca por nome.")
+        st.caption("Preencha os campos para golpes homebrew ou que não estão no Excel.")
 
-        manual_name = st.text_input("Nome do Golpe", key=f"{state_key_prefix}_m_name")
-        manual_rank = st.number_input(
-            "Rank",
-            min_value=1,
-            max_value=20,
-            value=10,
-            step=1,
-            key=f"{state_key_prefix}_m_rank",
-        )
-        manual_formula = st.text_area("Fórmula", height=120, key=f"{state_key_prefix}_m_formula")
-        manual_accuracy = st.number_input(
-            "Acerto",
-            min_value=0,
-            max_value=30,
-            value=0,
-            step=1,
-            key=f"{state_key_prefix}_m_accuracy",
-        )
-        manual_type = st.text_input("Tipo", key=f"{state_key_prefix}_m_type")
-        manual_desc = st.text_area("Descrição", height=120, key=f"{state_key_prefix}_m_desc")
-        manual_area = st.checkbox("É Área?", key=f"{state_key_prefix}_m_area")
-        manual_ranged = st.checkbox("É Ranged?", key=f"{state_key_prefix}_m_ranged")
+        c_man_1, c_man_2 = st.columns([2, 1])
+        with c_man_1:
+            manual_name = st.text_input("Nome do Golpe", key=f"{state_key_prefix}_m_name")
+        with c_man_2:
+            # ✅ CAMPO NOVO: CUSTO DE PP
+            manual_pp = st.number_input("Custo (PP)", min_value=1, value=1, key=f"{state_key_prefix}_m_pp")
+
+        c_man_3, c_man_4 = st.columns(2)
+        with c_man_3:
+            manual_rank = st.number_input("Rank do Efeito", min_value=1, max_value=20, value=10, key=f"{state_key_prefix}_m_rank")
+        with c_man_4:
+            manual_accuracy = st.number_input("Bônus de Acerto", min_value=0, max_value=30, value=0, key=f"{state_key_prefix}_m_accuracy")
+
+        manual_formula = st.text_area("Fórmula / Build (Opcional)", height=80, key=f"{state_key_prefix}_m_formula", placeholder="Ex: Damage 10, Ranged")
+        manual_desc = st.text_area("Descrição", height=100, key=f"{state_key_prefix}_m_desc")
+        
+        # --- Configurações Técnicas ---
+        st.markdown("**Configurações:**")
+        c_cfg1, c_cfg2 = st.columns(2)
+        with c_cfg1:
+            manual_type = st.text_input("Tipo (ex: Fogo, Psíquico)", key=f"{state_key_prefix}_m_type")
+            # ✅ CAMPO NOVO: RESISTÊNCIA
+            manual_resist = st.selectbox(
+                "Resistência (Save do Alvo)", 
+                ["Toughness", "Fortitude", "Will", "Dodge", "Parry", "—"],
+                index=0, # Padrão Toughness
+                key=f"{state_key_prefix}_m_resist"
+            )
+        with c_cfg2:
+            st.caption("Flags:")
+            manual_area = st.checkbox("É Área?", key=f"{state_key_prefix}_m_area")
+            manual_ranged = st.checkbox("É Ranged?", key=f"{state_key_prefix}_m_ranged")
+            manual_is_special = st.checkbox("É Especial (Int)?", key=f"{state_key_prefix}_m_special")
+
+        # Define categoria baseada na flag
+        cat_manual = "Manual Special" if manual_is_special else "Manual Physical"
 
         manual_data = {
             "Nome": manual_name.strip(),
@@ -909,7 +924,10 @@ def render_move_creator(
             "Descricao": manual_desc.strip(),
             "Area": bool(manual_area),
             "Ranged": bool(manual_ranged),
-            "Categoria": "Manual",
+            "Categoria": cat_manual,
+            # ✅ SALVANDO NOVOS DADOS
+            "Resist Stat": manual_resist, 
+            "PP_Custo": int(manual_pp)
         }
 
         can_save_manual = bool(manual_data["Nome"])
@@ -918,18 +936,19 @@ def render_move_creator(
         with col_save:
             if st.button("💾 Salvar no repertório", key=f"{state_key_prefix}_m_save", disabled=not can_save_manual):
                 st.session_state["cg_manual_moves"].append(manual_data)
-                st.success("Golpe manual salvo no repertório.")
+                st.success("Golpe manual salvo no repertório (disponível na busca).")
 
         with col_save_add:
-            if st.button(
-                "✅ Salvar e adicionar à ficha",
-                key=f"{state_key_prefix}_m_save_add",
-                disabled=not can_save_manual,
-            ):
+            if st.button("✅ Salvar e adicionar à ficha", key=f"{state_key_prefix}_m_save_add", disabled=not can_save_manual):
                 st.session_state["cg_manual_moves"].append(manual_data)
+                
+                # Converte para objeto Move
                 mv = _manual_move_to_move(manual_data)
-                _confirm_move(mv, rank=int(manual_data["Rank"]), build=mv.build, pp=None)
-                st.success("Golpe manual salvo e adicionado à ficha.")
+                
+                # ✅ Passa o PP manual diretamente
+                _confirm_move(mv, rank=int(manual_data["Rank"]), build=mv.build, pp=int(manual_data["PP_Custo"]))
+                
+                st.success("Golpe adicionado à ficha com sucesso!")
 
     st.divider()
     st.subheader("📦 Golpes confirmados nesta ficha")
