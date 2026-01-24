@@ -5143,13 +5143,17 @@ elif page == "PvP – Arena Tática":
             return str(pid)
 
         # Definição da Função de Renderização da Coluna (DEFINIDA ANTES DE USAR)
+        # Definição da Função de Renderização da Coluna (MELHORADA)
         def render_player_column(p_name, p_label, is_me):
             st.markdown(f"### {p_label}")
             
             # Busca party e estado público
             p_doc_data = db.collection("rooms").document(rid).collection("public_state").document("players").get().to_dict() or {}
             party_list = p_doc_data.get(p_name, [])[:8] 
+            
+            # Variáveis de Estado de Ação
             moving_piece_id = st.session_state.get("moving_piece_id")
+            placing_pid = st.session_state.get("placing_pid")
             
             state = get_state(db, rid)
             all_pieces = state.get("pieces") or []
@@ -5167,6 +5171,7 @@ elif page == "PvP – Arena Tática":
                 p_obj = next((p for p in p_pieces_on_board if str(p["pid"]) == str(pid)), None)
                 already_seen = str(pid) in seen_pids
                 
+                # Ícone de HP
                 if cur_hp >= 5: hpi = "💚"
                 elif cur_hp >= 3: hpi = "🟡"
                 elif cur_hp >= 1: hpi = "🔴"
@@ -5174,43 +5179,77 @@ elif page == "PvP – Arena Tática":
                 
                 sprite_url = pokemon_pid_to_image(pid, mode="sprite", shiny=is_shiny)
         
+                # Checa se ESTE Pokémon específico está realizando uma ação
+                is_moving_this = (p_obj and moving_piece_id == p_obj.get("id"))
+                is_placing_this = (placing_pid == pid)
+
+                # Estilo da Borda: Amarelo se movendo, Azul se colocando, Padrão caso contrário
+                border_color = "#FFCC00" if is_moving_this else ("#38bdf8" if is_placing_this else None)
+                
+                # Container Visual
                 with st.container(border=True):
                     if is_me:
+                        # Se estiver movendo ou colocando, destaca visualmente
+                        if is_moving_this or is_placing_this:
+                             st.markdown(f"""
+                                <div style="
+                                    background: rgba(0,0,0,0.3); 
+                                    border: 2px solid {border_color}; 
+                                    border-radius: 8px; 
+                                    padding: 5px; 
+                                    text-align: center; 
+                                    margin-bottom: 5px;">
+                                    <div style="font-weight:bold; color:{border_color}; font-size:12px;">
+                                        {'📍 SELECIONE O DESTINO NO MAPA' if is_moving_this else '📍 CLIQUE NO MAPA PARA POSICIONAR'}
+                                    </div>
+                                </div>
+                             """, unsafe_allow_html=True)
+
                         c_img, c_ctrl = st.columns([1, 2.5])
+                        
                         with c_img:
+                            # Imagem (Cinza se fainted)
                             if cur_hp == 0:
                                 st.markdown(f'<img src="{sprite_url}" style="width:100%; filter:grayscale(100%); opacity:0.6;">', unsafe_allow_html=True)
                                 st.caption("**FAINTED**")
                             else:
                                 st.image(sprite_url, width="stretch")
         
-                            if is_on_map:
-                                if p_obj:
-                                    is_rev = p_obj.get("revealed", True)
-                                    if st.button("👁️" if is_rev else "✅", key=f"v_{p_name}_{pid}_{i}"):
+                            # Botões de Controle da Peça (Abaixo da imagem)
+                            if is_on_map and p_obj:
+                                is_rev = p_obj.get("revealed", True)
+                                c_vis, c_del = st.columns(2)
+                                with c_vis:
+                                    if st.button("👁️" if is_rev else "✅", key=f"v_{p_name}_{pid}_{i}", help="Revelar/Esconder"):
                                         p_obj["revealed"] = not is_rev
                                         upsert_piece(db, rid, p_obj)
                                         if p_obj["revealed"]: mark_pid_seen(db, rid, pid)
                                         st.rerun()
-                                    if st.button("❌", key=f"r_{p_name}_{pid}_{i}"):
+                                with c_del:
+                                    if st.button("❌", key=f"r_{p_name}_{pid}_{i}", help="Remover do Mapa"):
                                         delete_piece(db, rid, p_obj["id"])
                                         add_public_event(db, rid, "pokemon_removed", p_name, {"pid": pid})
+                                        st.session_state["moving_piece_id"] = None # Reseta move se deletar
                                         st.rerun()
-                                    if cur_hp > 0:
-                                        if st.button("🚶 Mover", key=f"m_{p_name}_{pid}_{i}"):
-                                            st.session_state["moving_piece_id"] = p_obj["id"]
-                            elif cur_hp > 0:
-                                if st.button("📍 Por", key=f"p_{p_name}_{pid}_{i}"):
-                                    st.session_state["placing_pid"] = pid
-                                    st.session_state["placing_effect"] = None
-                                    st.rerun()
-                        
+
                         with c_ctrl:
-                            if st.session_state.get("placing_pid") == pid or (p_obj and moving_piece_id == p_obj.get("id")):
-                                st.info("Clique no mapa!")
+                            # --- LÓGICA DE INTERFACE DE AÇÃO ---
+                            if is_moving_this:
+                                st.info("Clique em um quadrado vazio.")
+                                if st.button("🔙 Cancelar Mover", key=f"cncl_move_{pid}"):
+                                    st.session_state["moving_piece_id"] = None
+                                    st.rerun()
+                            
+                            elif is_placing_this:
+                                st.info("Clique onde quer invocar.")
+                                if st.button("🔙 Cancelar", key=f"cncl_place_{pid}"):
+                                    st.session_state["placing_pid"] = None
+                                    st.rerun()
+                                    
                             else:
+                                # Interface Padrão (HP e Status)
                                 st.markdown(f"**{hpi} HP: {cur_hp}/6**")
-                                # CHAVES E ARGS ATUALIZADOS PARA O CALLBACK
+                                
                                 st.slider("HP", 0, 6, value=int(cur_hp), 
                                          key=f"hp_{p_name}_{pid}_{i}", 
                                          label_visibility="collapsed", 
@@ -5223,9 +5262,24 @@ elif page == "PvP – Arena Tática":
                                               label_visibility="collapsed", 
                                               on_change=update_poke_state_callback, 
                                               args=(db, rid, p_name, pid, i))
+
+                                # Botões de Ação Principal
+                                if cur_hp > 0:
+                                    # Bloqueia botões se outra ação estiver ocorrendo
+                                    is_busy = (moving_piece_id is not None) or (placing_pid is not None)
+                                    
+                                    if is_on_map:
+                                        if st.button("🚶 Mover", key=f"m_{p_name}_{pid}_{i}", disabled=is_busy, use_container_width=True):
+                                            st.session_state["moving_piece_id"] = p_obj["id"]
+                                            st.rerun()
+                                    else:
+                                        if st.button("📍 Colocar no Campo", key=f"p_{p_name}_{pid}_{i}", disabled=is_busy, use_container_width=True):
+                                            st.session_state["placing_pid"] = pid
+                                            st.session_state["placing_effect"] = None
+                                            st.rerun()
         
                     else:
-                        # Visão do oponente simplificada
+                        # Visão do oponente (Inalterada, apenas ajustado layout)
                         piece_obj = next((p for p in p_pieces_on_board if str(p["pid"]) == str(pid)), None)
                         is_revealed = piece_obj.get("revealed", True) if piece_obj else False
                         show_full = (piece_obj and is_revealed) or already_seen
@@ -5244,7 +5298,6 @@ elif page == "PvP – Arena Tática":
                             c1, c2 = st.columns([1, 2])
                             with c1: st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=40)
                             with c2: st.caption(f"??? {status_txt}")
-
         
         # --- 4. PREPARAÇÃO DE TIMES E VARIÁVEIS (UNIFICADO) ---
         owner_name = (room.get("owner") or {}).get("name", "Host")
@@ -5650,6 +5703,16 @@ elif page == "PvP – Arena Tática":
         with c_map:
             st.markdown(f"### 🗺️ Arena (Sala {rid})")
             
+            # --- ALERTA VISUAL DE AÇÃO NO MAPA ---
+            if st.session_state.get("moving_piece_id"):
+                st.warning("🏃 MODO MOVIMENTO: Clique em um quadrado vazio para mover o Pokémon.", icon="📍")
+            elif st.session_state.get("placing_pid"):
+                st.info("📍 MODO POSICIONAMENTO: Clique no mapa para colocar o Pokémon.", icon="⬇️")
+            elif st.session_state.get("placing_effect"):
+                eff_icon = st.session_state.get("placing_effect")
+                st.info(f"✨ MODO TERRENO: Clique para adicionar {eff_icon}.", icon="✨")
+            # -------------------------------------
+
             # Ferramentas de Campo
             with st.expander("🛠️ Itens e Terrenos", expanded=False):
                 if is_player:
@@ -5657,14 +5720,21 @@ elif page == "PvP – Arena Tática":
                     curr = st.session_state.get("placing_effect")
                     cols = st.columns(8)
                     for i, (k, v) in enumerate(effects_map.items()):
-                        if cols[i].button(v, key=f"ef_{k}"):
+                        # Destaca o botão se estiver selecionado
+                        btn_type = "primary" if curr == v else "secondary"
+                        if cols[i].button(v, key=f"ef_{k}", type=btn_type):
                             st.session_state["placing_effect"] = v if curr != v else None
+                            # Se ativar efeito, cancela outras ações para evitar bugs
+                            st.session_state["moving_piece_id"] = None
+                            st.session_state["placing_pid"] = None
                             st.rerun()
                     if st.button("Limpar Tudo"):
                         db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": []})
                         st.rerun()
 
             show_grid = st.checkbox("Grade Tática", value=True, key=f"grid_{rid}")
+            
+            # ... (Restante do código de renderização do mapa permanece igual) ...
             map_signature = json.dumps({
                 "seed": seed,
                 "tiles": tiles_packed,
@@ -5686,7 +5756,16 @@ elif page == "PvP – Arena Tática":
                     show_grid=show_grid,
                 )
             img = st.session_state.get("map_cache_img")
+            
+            # Use o cursor crosshair se estiver em modo de edição
+            cursor_style = "default"
+            if st.session_state.get("moving_piece_id") or st.session_state.get("placing_pid") or st.session_state.get("placing_effect"):
+                # Nota: streamlit_image_coordinates não suporta CSS direto cursor:pointer facilmente, 
+                # mas o feedback visual acima ajuda.
+                pass 
+
             click = streamlit_image_coordinates(img, key=f"map_{rid}")
+            
 
         with c_opps:
             st.markdown("### 🆚 Oponentes")
