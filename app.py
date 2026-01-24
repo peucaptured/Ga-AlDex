@@ -5064,6 +5064,7 @@ elif page == "PvP – Arena Tática":
             # Busca party e estado público
             p_doc_data = db.collection("rooms").document(rid).collection("public_state").document("players").get().to_dict() or {}
             party_list = p_doc_data.get(p_name, [])[:8] 
+            moving_piece_id = st.session_state.get("moving_piece_id")
             
             state = get_state(db, rid)
             all_pieces = state.get("pieces") or []
@@ -5078,6 +5079,7 @@ elif page == "PvP – Arena Tática":
             for i, pid in enumerate(party_list):
                 cur_hp, cur_cond, cur_stats, is_shiny = get_poke_data(p_name, pid)
                 is_on_map = any(str(p["pid"]) == str(pid) for p in p_pieces_on_board)
+                p_obj = next((p for p in p_pieces_on_board if str(p["pid"]) == str(pid)), None)
                 already_seen = str(pid) in seen_pids
                 
                 if cur_hp >= 5: hpi = "💚"
@@ -5098,7 +5100,6 @@ elif page == "PvP – Arena Tática":
                                 st.image(sprite_url, width="stretch")
         
                             if is_on_map:
-                                p_obj = next((p for p in p_pieces_on_board if str(p["pid"]) == str(pid)), None)
                                 if p_obj:
                                     is_rev = p_obj.get("revealed", True)
                                     if st.button("👁️" if is_rev else "✅", key=f"v_{p_name}_{pid}_{i}"):
@@ -5110,6 +5111,9 @@ elif page == "PvP – Arena Tática":
                                         delete_piece(db, rid, p_obj["id"])
                                         add_public_event(db, rid, "pokemon_removed", p_name, {"pid": pid})
                                         st.rerun()
+                                    if cur_hp > 0:
+                                        if st.button("🚶 Mover", key=f"m_{p_name}_{pid}_{i}"):
+                                            st.session_state["moving_piece_id"] = p_obj["id"]
                             elif cur_hp > 0:
                                 if st.button("📍 Por", key=f"p_{p_name}_{pid}_{i}"):
                                     st.session_state["placing_pid"] = pid
@@ -5117,7 +5121,7 @@ elif page == "PvP – Arena Tática":
                                     st.rerun()
                         
                         with c_ctrl:
-                            if st.session_state.get("placing_pid") == pid:
+                            if st.session_state.get("placing_pid") == pid or (p_obj and moving_piece_id == p_obj.get("id")):
                                 st.info("Clique no mapa!")
                             else:
                                 st.markdown(f"**{hpi} HP: {cur_hp}/6**")
@@ -5208,6 +5212,12 @@ elif page == "PvP – Arena Tática":
         grid = len(tiles) if tiles else 10
 
         # --- 5. INTERFACE DO TOPO ---
+        last_events = list_public_events(db, rid, limit=1)
+        last_dice = next((e for e in last_events if e.get("type") == "dice"), None)
+        if last_dice:
+            pl = last_dice.get("payload", {})
+            st.warning(f"🎲 {last_dice.get('by')}: **{pl.get('result')}** (d{pl.get('sides')})")
+
         top = st.columns([1, 1, 1, 1, 4])
         with top[0]:
             if st.button("⬅️ Lobby"):
@@ -5229,14 +5239,7 @@ elif page == "PvP – Arena Tática":
     """, unsafe_allow_html=True) 
             
             col_me, col_map, col_opps = st.columns([1.5, 3, 2])
-            
-            
-            # Última rolagem (feedback rápido)
-            last_events = list_public_events(db, rid, limit=1)
-            last_dice = next((e for e in last_events if e.get("type") == "dice"), None)
-            if last_dice:
-                pl = last_dice.get("payload", {})
-                st.warning(f"🎲 {last_dice.get('by')}: **{pl.get('result')}** (d{pl.get('sides')})")
+           
 
         # ==========================================
         # 🧮 6. CALCULADORA DE COMBATE
@@ -5577,7 +5580,27 @@ elif page == "PvP – Arena Tática":
                         st.rerun()
 
             show_grid = st.checkbox("Grade Tática", value=True, key=f"grid_{rid}")
-            img = render_map_with_pieces(tiles, theme_key, seed, pieces_to_draw, trainer_name, room, effects=field_effects, show_grid=show_grid)
+            map_signature = json.dumps({
+                "seed": seed,
+                "tiles": tiles_packed,
+                "theme": theme_key,
+                "pieces": pieces_to_draw,
+                "effects": field_effects,
+                "grid": show_grid,
+            }, sort_keys=True, default=str)
+            if st.session_state.get("map_cache_sig") != map_signature:
+                st.session_state["map_cache_sig"] = map_signature
+                st.session_state["map_cache_img"] = render_map_with_pieces(
+                    tiles,
+                    theme_key,
+                    seed,
+                    pieces_to_draw,
+                    trainer_name,
+                    room,
+                    effects=field_effects,
+                    show_grid=show_grid,
+                )
+            img = st.session_state.get("map_cache_img")
             click = streamlit_image_coordinates(img, key=f"map_{rid}")
 
         with c_opps:
@@ -5604,7 +5627,7 @@ elif page == "PvP – Arena Tática":
             if 0 <= row < grid and 0 <= col < grid:
                 ppid = st.session_state.get("placing_pid")
                 peff = st.session_state.get("placing_effect")
-                sel = st.session_state.get("selected_piece_id")
+                moving_piece_id = st.session_state.get("moving_piece_id")
 
                 if peff:
                     curr = state.get("effects") or []
@@ -5631,39 +5654,31 @@ elif page == "PvP – Arena Tática":
                     mark_pid_seen(db, rid, ppid)
                     st.session_state.pop("placing_pid", None)
                     st.rerun()
-                else:
+                elif moving_piece_id and is_player:
                     s_now = get_state(db, rid)
                     all_p = s_now.get("pieces") or []
-                    clicked = find_piece_at(all_p, row, col)
-                    if clicked:
-                        if clicked["owner"] == trainer_name:
-                            if sel == clicked["id"]: st.session_state["selected_piece_id"] = None
-                            else: st.session_state["selected_piece_id"] = clicked["id"]
-                            st.rerun()
-                            
-                    elif sel and is_player:
-                        mover = next((p for p in all_p if p["id"] == sel), None)
-                        if mover:
-                            # 1. Guarda a posição antiga para o Log
-                            old_pos = [mover["row"], mover["col"]]
-                            
-                            # 2. Atualiza para a nova posição
-                            mover["row"] = row
-                            mover["col"] = col
-                            
-                            # 3. Registra o movimento publicamente NO LOG
-                            add_public_event(db, rid, "move", trainer_name, {
-                                "pid": mover["pid"],
-                                "from": old_pos,
-                                "to": [row, col]
-                            })
-                            
-                            # 4. Salva a peça no Firebase
-                            upsert_piece(db, rid, mover)
-                            
-                            # 5. Limpa a seleção e recarrega
-                            st.session_state["selected_piece_id"] = None
-                            st.rerun()
+                    mover = next((p for p in all_p if p["id"] == moving_piece_id), None)
+                    if mover:
+                        # 1. Guarda a posição antiga para o Log
+                        old_pos = [mover["row"], mover["col"]]
+
+                        # 2. Atualiza para a nova posição
+                        mover["row"] = row
+                        mover["col"] = col
+
+                        # 3. Registra o movimento publicamente NO LOG
+                        add_public_event(db, rid, "move", trainer_name, {
+                            "pid": mover["pid"],
+                            "from": old_pos,
+                            "to": [row, col]
+                        })
+
+                        # 4. Salva a peça no Firebase
+                        upsert_piece(db, rid, mover)
+
+                        # 5. Limpa a seleção e recarrega
+                        st.session_state["moving_piece_id"] = None
+                        st.rerun()
 
         # Fora da lógica de clique, mas no final da View Battle
         render_public_log_fragment(db, rid)
@@ -5930,11 +5945,6 @@ elif page == "Mochila":
     
     
     
-
-
-
-
-
 
 
 
