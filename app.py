@@ -449,7 +449,7 @@ def render_move_creator(
 
     st.subheader("⚔️ Criação de Golpes (M&M 3e)")
     tab1, tab2, tab3, tab4 = st.tabs(
-        ["🔎 Buscar por nome", "🧩 Gerar por descrição", "🛠️ Criar manualmente", "✍️ Entrada Manual"]
+        ["🔎 Buscar por nome", "🧩 Procurar por Descrição", "🛠️ Criar Semi Manual", "✍️ Entrada Manual"]
     )
 
     def _move_default_accuracy(mv) -> int:
@@ -694,7 +694,7 @@ def render_move_creator(
                 _render_move_card(mv, rank2)
 
     with tab3:
-        st.subheader("🛠️ Criar Golpe do Zero")
+        st.subheader("🛠️ Criar Semi Manual")
 
         rank3 = st.slider("Rank do golpe", 1, 20, 10, key=f"{state_key_prefix}_z_rank")
         is_special = st.checkbox("Golpe Especial (Intelect Based)", value=True, key=f"{state_key_prefix}_z_special")
@@ -826,12 +826,21 @@ def render_move_creator(
             st.info(f"PP sugerido: **{pp_auto}** (você pode ajustar).")
 
 
+        st.markdown("### 🏷️ Nome do Golpe")
+        custom_name_input = st.text_input(
+            "Defina o nome do seu golpe",
+            value="Golpe Customizado",
+            key=f"{state_key_prefix}_z_custom_name"
+        )
+        # Garante que não fique vazio (se o usuário apagar tudo, volta para o padrão)
+        final_custom_name = custom_name_input.strip() or "Golpe Customizado"
+
         col_confirm_zero, col_add_zero = st.columns(2)
         with col_confirm_zero:
             can_confirm = (pp_final is not None) and (int(pp_final) > 0)
             if st.button("✅ Confirmar golpe criado do zero", key=f"{state_key_prefix}_z_confirm", disabled=not can_confirm):
                 st.session_state["cg_moves"].append({
-                    "name": "Golpe Customizado",
+                    "name": final_custom_name,
                     "rank": int(rank3),
                     "build": build,
                     "pp_cost": int(pp_final),
@@ -841,14 +850,15 @@ def render_move_creator(
                         "sub_ranks": sub_ranks,
                         "pp_manual": bool(custom_sub),
                         "is_special": bool(is_special),
-                    }                })
-                st.success("Golpe customizado adicionado à ficha.")
+                    }
+                })
+                st.success(f"Golpe '{final_custom_name}' adicionado à ficha.")
 
         if return_to_view:
             with col_add_zero:
                 if st.button("➕ Adicionar golpe à ficha", key=f"{state_key_prefix}_z_add_sheet"):
                     st.session_state["cg_moves"].append({
-                        "name": "Golpe Customizado",
+                        "name": final_custom_name,
                         "rank": int(rank3),
                         "build": build,
                         "pp_cost": int(pp_final),
@@ -859,7 +869,7 @@ def render_move_creator(
                             "pp_manual": bool(custom_sub),
                             "is_special": bool(is_special),
                         }                    })
-                    st.success("Golpe customizado adicionado à ficha.")
+                    st.success(f"Golpe '{final_custom_name}' adicionado à ficha.")
                     st.session_state["cg_view"] = return_to_view
                     st.rerun()
 
@@ -939,19 +949,32 @@ def render_move_creator(
             with c2:
                 stats = st.session_state.get("cg_draft", {}).get("stats", {})
                 np_value = int(st.session_state.get("cg_np", 0) or 0)
+                
+                # --- CÓDIGO NOVO (CORREÇÃO) ---
                 acc_limit = _move_accuracy_limit(m, np_value, stats)
+                current_acc = int(m.get("accuracy", 0) or 0)
+                
+                # O "pulo do gato": o máximo é o limite OU o valor atual (o que for maior)
+                # Isso impede o erro se você digitou um valor alto manualmente antes
+                safe_max = max(acc_limit, current_acc)
+
                 new_acc = st.number_input(
                     "Acerto",
                     min_value=0,
-                    max_value=acc_limit,
-                    value=int(m.get("accuracy", 0) or 0),
+                    max_value=safe_max,  # <--- Aqui usamos o safe_max
+                    value=current_acc,
                     step=1,
                     key=f"{state_key_prefix}_acc_{i}",
                 )
+                
                 st.caption(f"Limite: {acc_limit}")
+                if current_acc > acc_limit:
+                    st.warning("⚠️ Acima do limite!")
+
                 if st.button("Definir acerto", key=f"{state_key_prefix}_set_acc_{i}"):
                     m["accuracy"] = int(new_acc)
                     st.rerun()
+                # --- FIM DO CÓDIGO NOVO ---
             with c3:
                 if st.button("❌ Remover", key=f"{state_key_prefix}_remove_{i}"):
                     st.session_state["cg_moves"].pop(i)
