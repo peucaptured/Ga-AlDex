@@ -4214,9 +4214,10 @@ if page == "Trainer Hub (Meus Pokémons)":
             # ✅ FILTRO ATUALIZADO: Pega capturados, remove quem está na party e ignora EXT
             caught_all = [
                 str(c) for c in user_data.get("caught", []) 
-                if str(c) not in party_ids and not str(c).startswith("EXT:")
+                if str(c) not in party_ids
             ]
-            caught_all = list(dict.fromkeys(caught_all)) # Remove duplicados mantendo a ordem
+            # Remove duplicados mantendo a ordem
+            caught_all = list(dict.fromkeys(caught_all))
 
             # Lógica de Paginação (Mantém igual)
             PAGE_SIZE = 36  # Grid 6x6
