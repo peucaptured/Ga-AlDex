@@ -2129,6 +2129,43 @@ def add_room_to_user(db, trainer_name: str, rid: str):
         merge=True
     )
 
+
+def get_room_player_names(room: dict) -> set:
+    names = set()
+    owner = (room.get("owner") or {}).get("name")
+    if owner:
+        names.add(owner)
+    challengers = room.get("challengers") or []
+    names.update([c.get("name") for c in challengers if c.get("name")])
+    legacy_challenger = room.get("challenger")
+    if isinstance(legacy_challenger, dict):
+        legacy_name = legacy_challenger.get("name")
+    else:
+        legacy_name = legacy_challenger
+    if legacy_name:
+        names.add(legacy_name)
+    return names
+
+def delete_room(db, rid: str):
+    room_ref = db.collection("rooms").document(rid)
+    for doc in room_ref.collection("public_state").list_documents():
+        doc.delete()
+    for doc in room_ref.collection("public_events").list_documents():
+        doc.delete()
+    room_ref.delete()
+
+def cleanup_room_if_orphaned(db, rid: str):
+    room = get_room(db, rid)
+    if not room:
+        return
+    player_names = get_room_player_names(room)
+    if not player_names:
+        return
+    for name in player_names:
+        if rid in list_my_rooms(db, name):
+            return
+    delete_room(db, rid)
+            
 def remove_room_from_user(db, trainer_name: str, rid: str):
     uref = get_user_doc_ref(db, trainer_name)
     uref.set(
