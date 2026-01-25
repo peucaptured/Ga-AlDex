@@ -1376,46 +1376,13 @@ def to_pokeapi_name(user_text: str) -> str:
     # remove duplo hífen
     s = re.sub(r"-{2,}", "-", s).strip("-")
 
-# --- Lógica de Variantes (Nidoran, Lycanroc, etc) ---
-        raw_name = pname.strip().lower()
-        
-    is_nidoran_generic = raw_name in ["nidoran", "nidoran♀", "nidoran♂", "nidoran-f", "nidoran-m"]
-    is_lycanroc_generic = raw_name == "lycanroc"
-
-    if is_nidoran_generic:
-        choice = st.radio(
-            "Qual Nidoran?",
-            ["Nidoran ♀", "Nidoran ♂"],
-            horizontal=True,
-            key="nidoran_choice"
-        )
-        poke_query = "nidoran-f" if "♀" in choice else "nidoran-m"
-        # Atualiza o nome visual para ficar bonito na ficha
-        pname = "Nidoran ♀" if "♀" in choice else "Nidoran ♂"
-
-    elif is_lycanroc_generic:
-        lyc_choice = st.radio(
-            "Qual forma do Lycanroc?",
-            ["Midday (Dia)", "Midnight (Noite)", "Dusk (Crepúsculo)"],
-            horizontal=True,
-            key="lycanroc_choice"
-        )
-        
-        if "Noite" in lyc_choice:
-            poke_query = "lycanroc-midnight"
-            pname = "Lycanroc (Midnight)" # Nome que vai para a ficha
-        elif "Crepúsculo" in lyc_choice:
-            poke_query = "lycanroc-dusk"
-            pname = "Lycanroc (Dusk)"
-        else:
-            poke_query = "lycanroc-midday"
-            pname = "Lycanroc (Midday)"
-            
-    else:
-        poke_query = to_pokeapi_name(pname)
-
-    # Atualiza o rascunho com o nome específico da forma
-    st.session_state["cg_draft"]["pname"] = pname
+    # nidoran: vira nidoran-f / nidoran-m
+    if s in ("nidoran", "nidoran-"):
+        return "nidoran"  # deixa ambíguo e você força escolha na UI
+    if s in ("nidoran-f", "nidoranf", "nidoran-female", "nidoran-fem", "nidoran-f."):
+        return "nidoran-f"
+    if s in ("nidoran-m", "nidoranm", "nidoran-male", "nidoran-masc", "nidoran-m."):
+        return "nidoran-m"
 
     # formatos tipo "sandslash-a" / "weezing-g" / "g-weezing"
     if re.match(r"^[aghp]-", s):  # g-weezing
@@ -4684,10 +4651,10 @@ elif page == "Criação Guiada de Fichas":
                     st.write(matches[["Nº", "Nome"]])
                     
             raw_name = pname.strip().lower()
-            st.session_state["cg_draft"]["pname"] = pname
             
-            # Lógica para Nidoran e definição do poke_query
             is_nidoran_generic = raw_name in ["nidoran", "nidoran♀", "nidoran♂", "nidoran-f", "nidoran-m"]
+            is_lycanroc_generic = raw_name == "lycanroc"
+
             if is_nidoran_generic:
                 choice = st.radio(
                     "Qual Nidoran?",
@@ -4696,8 +4663,32 @@ elif page == "Criação Guiada de Fichas":
                     key="nidoran_choice"
                 )
                 poke_query = "nidoran-f" if "♀" in choice else "nidoran-m"
+                pname = "Nidoran ♀" if "♀" in choice else "Nidoran ♂"
+
+            elif is_lycanroc_generic:
+                lyc_choice = st.radio(
+                    "Qual forma do Lycanroc?",
+                    ["Midday (Dia)", "Midnight (Noite)", "Dusk (Crepúsculo)"],
+                    horizontal=True,
+                    key="lycanroc_choice"
+                )
+                
+                if "Noite" in lyc_choice:
+                    poke_query = "lycanroc-midnight"
+                    pname = "Lycanroc (Midnight)"
+                elif "Crepúsculo" in lyc_choice:
+                    poke_query = "lycanroc-dusk"
+                    pname = "Lycanroc (Dusk)"
+                else:
+                    poke_query = "lycanroc-midday"
+                    pname = "Lycanroc (Midday)"
+                    
             else:
+                # Usa a função auxiliar apenas aqui
                 poke_query = to_pokeapi_name(pname)
+
+            # Atualiza o rascunho com o nome específico da forma
+            st.session_state["cg_draft"]["pname"] = pname
     
             # Busca ID no Excel
             row = df[df["Nome"].str.lower() == pname.lower()]
@@ -6184,7 +6175,6 @@ elif page == "Mochila":
     
     
     
-
 
 
 
