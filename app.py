@@ -5498,10 +5498,15 @@ elif page == "PvP – Arena Tática":
                                             st.session_state["placing_effect"] = None
                                             st.rerun()
         
+                    
                     else:
-                        # Visão do oponente (Inalterada, apenas ajustado layout)
+                        # ==========================
+                        # VISÃO DO OPONENTE (Corrigida)
+                        # ==========================
                         piece_obj = next((p for p in p_pieces_on_board if str(p["pid"]) == str(pid)), None)
                         is_revealed = piece_obj.get("revealed", True) if piece_obj else False
+                        
+                        # Se estiver no campo e revelado, OU se já foi visto antes (está na bench mas conhecido)
                         show_full = (piece_obj and is_revealed) or already_seen
                         
                         status_txt = "(Mochila)" if not piece_obj else ("(Escondido)" if not is_revealed else "")
@@ -5509,12 +5514,29 @@ elif page == "PvP – Arena Tática":
                         if show_full:
                             p_real_name = get_poke_display_name(pid)
                             c1, c2 = st.columns([1, 2])
-                            with c1: st.image(sprite_url, width=50)
+                            
+                            with c1: 
+                                # ✅ CORREÇÃO 1: Imagem em escala de cinza se HP for 0
+                                # Antes usava st.image direto, que sempre é colorido.
+                                if cur_hp == 0:
+                                    st.markdown(f'<img src="{sprite_url}" style="width:50px; filter:grayscale(100%); opacity:0.6;">', unsafe_allow_html=True)
+                                else:
+                                    st.image(sprite_url, width=50)
+        
                             with c2:
                                 st.markdown(f"**{p_real_name}**")
                                 st.caption(f"{hpi} HP: {cur_hp}/6 {status_txt}")
-                                if cur_hp == 0: st.caption("**FAINTED**")
+                                
+                                # ✅ CORREÇÃO 2: Exibir ícones de status para o oponente
+                                if cur_cond:
+                                    # Junta os ícones em uma string (ex: "🔥 ☠️")
+                                    cond_str = " ".join(cur_cond)
+                                    st.markdown(f"Status: {cond_str}")
+        
+                                if cur_hp == 0: 
+                                    st.caption("**FAINTED**")
                         else:
+                            # Pokémon desconhecido / escondido
                             c1, c2 = st.columns([1, 2])
                             with c1: st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=40)
                             with c2: st.caption(f"??? {status_txt}")
