@@ -3767,10 +3767,10 @@ if page == "Pokédex (Busca)":
 
         with top_center:
             # --- LÓGICA DE FORMAS VISUAIS (Dex) ---
-            # Define o nome padrão como o nome que vem do Excel
-            display_name_for_image = p_name 
+            # Por padrão, usa o nome do Excel
+            target_visual_name = p_name 
             
-            # Se for Lycanroc, abre o seletor para mudar a imagem
+            # Se for Lycanroc, exibe o seletor
             if "lycanroc" in p_name.lower().strip():
                 lyc_dex_form = st.radio(
                     "Visualizar Forma:",
@@ -3779,19 +3779,20 @@ if page == "Pokédex (Busca)":
                     key="dex_lyc_visual_selector"
                 )
                 
+                # Mapeia a escolha para o nome da API
                 if lyc_dex_form == "Midnight":
-                    display_name_for_image = "Lycanroc (Midnight)"
+                    target_visual_name = "lycanroc-midnight"
                 elif lyc_dex_form == "Dusk":
-                    display_name_for_image = "Lycanroc (Dusk)"
-                # Se for Midday, mantém o "Lycanroc" original que a API entende como padrão
-            
-            # --- RENDERIZA A IMAGEM ---
-            # Usa o nome manipulado (display_name_for_image) para buscar a foto certa
-            final_img_url = get_pokemon_image_url(display_name_for_image, api_name_map, mode="artwork", shiny=False)
-            
+                    target_visual_name = "lycanroc-dusk"
+                else:
+                    target_visual_name = "lycanroc-midday"
+
+            # --- RENDERIZA A IMAGEM PRINCIPAL ---
+            # Usa o nome específico da forma para buscar a arte oficial
+            final_img_url = get_pokemon_image_url(target_visual_name, api_name_map, mode="artwork", shiny=False)
             st.image(final_img_url, use_container_width=True)
         
-            # ✅ Nível de Poder abaixo da imagem (código original mantido)
+            # Nível de Poder (mantido)
             np = row.get("Nivel_Poder", row.get("Nível de Poder", ""))
             if str(np).strip() != "" and str(np).lower() != "nan":
                 st.markdown(
@@ -3799,17 +3800,30 @@ if page == "Pokédex (Busca)":
                     unsafe_allow_html=True
                 )
 
-
         with top_right:
             render_info_columns(info_entries[midpoint:])
 
         render_status_controls()
         render_info_tags()
 
-        st.markdown("#### 🎞️ Variações")
-        sprite_urls = [pokemon_pid_to_image(dex_num, mode="sprite", shiny=s) for s in [False, True]]
-        sprites_html = "".join([f"<img src='{url}' style='width:70px; image-rendering: pixelated;'>" for url in sprite_urls])
-        st.markdown(f"<div class='pokedex-carousel'>{sprites_html}</div>", unsafe_allow_html=True)
+        # --- CARROSSEL DE SPRITES (Atualizado para seguir a forma) ---
+        st.markdown("#### 🎞️ Variações (Sprites)")
+        
+        # Gera URLs baseadas no nome da forma (target_visual_name) em vez do número da Dex
+        sprite_normal = get_pokemon_image_url(target_visual_name, api_name_map, mode="sprite", shiny=False)
+        sprite_shiny  = get_pokemon_image_url(target_visual_name, api_name_map, mode="sprite", shiny=True)
+        
+        sprites_html = f"""
+            <div class='pokedex-carousel'>
+                <div style="text-align:center; font-size:10px;">
+                    <img src='{sprite_normal}' style='width:70px; image-rendering: pixelated;'><br>Normal
+                </div>
+                <div style="text-align:center; font-size:10px;">
+                    <img src='{sprite_shiny}' style='width:70px; image-rendering: pixelated;'><br>Shiny
+                </div>
+            </div>
+        """
+        st.markdown(sprites_html, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
         st.divider()
