@@ -3766,16 +3766,38 @@ if page == "Pokédex (Busca)":
             render_info_columns(info_entries[:midpoint])
 
         with top_center:
-            st.image(pokemon_pid_to_image(dex_num, mode="artwork", shiny=False), width="stretch")
+            # --- LÓGICA DE FORMAS VISUAIS (Dex) ---
+            # Define o nome padrão como o nome que vem do Excel
+            display_name_for_image = p_name 
+            
+            # Se for Lycanroc, abre o seletor para mudar a imagem
+            if "lycanroc" in p_name.lower().strip():
+                lyc_dex_form = st.radio(
+                    "Visualizar Forma:",
+                    ["Midday", "Midnight", "Dusk"],
+                    horizontal=True,
+                    key="dex_lyc_visual_selector"
+                )
+                
+                if lyc_dex_form == "Midnight":
+                    display_name_for_image = "Lycanroc (Midnight)"
+                elif lyc_dex_form == "Dusk":
+                    display_name_for_image = "Lycanroc (Dusk)"
+                # Se for Midday, mantém o "Lycanroc" original que a API entende como padrão
+            
+            # --- RENDERIZA A IMAGEM ---
+            # Usa o nome manipulado (display_name_for_image) para buscar a foto certa
+            final_img_url = get_pokemon_image_url(display_name_for_image, api_name_map, mode="artwork", shiny=False)
+            
+            st.image(final_img_url, use_container_width=True)
         
-            # ✅ Nível de Poder abaixo da imagem (np definido aqui)
+            # ✅ Nível de Poder abaixo da imagem (código original mantido)
             np = row.get("Nivel_Poder", row.get("Nível de Poder", ""))
             if str(np).strip() != "" and str(np).lower() != "nan":
                 st.markdown(
                     f"<div class='power-badge'>⚡ Nível de Poder: {np}</div>",
                     unsafe_allow_html=True
                 )
-
 
 
         with top_right:
