@@ -3988,41 +3988,48 @@ if page == "Pokédex (Busca)":
                 for col, (index, row_g) in zip(cols, rows[start : start + grid_cols]):
                     dex_num = str(row_g["Nº"])
                     p_name = row_g["Nome"]
+
+                    # 1. Gera o link da imagem
                     sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
-                    
-                    # Verifica os status
+
+                    # 2. Define o status
                     is_caught = dex_num in user_data.get("caught", [])
                     is_seen = dex_num in user_data.get("seen", [])
                     is_wished = dex_num in user_data.get("wishlist", [])
-                    
-                    # Define a classe CSS baseada na PRIORIDADE
+
                     if is_caught:
-                        status_key = "caught"   # Prioridade Máxima: Verde
-                        status_icon = "✅"
+                        status_class = "dex-frame--caught"
+                        icon = "✅"
                     elif is_wished:
-                        status_key = "wish"     # Prioridade Média: Amarelo (Quero muito, mas não tenho)
-                        status_icon = "⭐"
+                        status_class = "dex-frame--wish"
+                        icon = "⭐"
                     elif is_seen:
-                        status_key = "seen"     # Prioridade Baixa: Azul (Só vi)
-                        status_icon = "👁️"
+                        status_class = "dex-frame--seen"
+                        icon = "👁️"
                     else:
-                        status_key = "default"  # Cinza
-                        status_icon = ""
-                    
-                    display_name = f"{status_icon} {p_name}".strip()
-                    
+                        status_class = "dex-frame--default"
+                        icon = ""
+
+                    display_name = f"{icon} {p_name}".strip()
+
                     with col:
-                        # A classe CSS 'dex-tile--{status_key}' vai aplicar as cores definidas acima
-                        st.markdown(f"<div class='pokedex-tile dex-tile--{status_key}'>", unsafe_allow_html=True)
-                        st.image(sprite_url, use_container_width=True)
-                        
+                        # 3. Renderiza a MOLDURA + IMAGEM usando HTML puro
+                        # Isso garante que a imagem fique DENTRO da borda colorida
+                        html_card = f"""
+                        <div class="dex-card-frame {status_class}">
+                            <img src="{sprite_url}" class="dex-sprite-img" alt="{p_name}">
+                        </div>
+                        """
+                        st.markdown(html_card, unsafe_allow_html=True)
+
+                        # 4. Botão de interação fica logo abaixo
                         st.button(
                             display_name,
-                            key=f"dex_tile_{dex_num}_{index}",
+                            key=f"dex_btn_{dex_num}_{index}",
                             help=f"#{dex_num} • {p_name}",
                             on_click=select_pokedex_entry,
                             args=(dex_num,),
-                            use_container_width=True,
+                            use_container_width=True, # Faz o botão alinhar com a moldura
                         )
                         st.markdown("</div>", unsafe_allow_html=True)
 
