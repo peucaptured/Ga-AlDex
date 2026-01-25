@@ -4125,7 +4125,7 @@ if page == "Trainer Hub (Meus Pokémons)":
                 # Verifica se é Lycanroc para mostrar o seletor
                 final_hub_image = _get_artwork(pid) # Imagem padrão (ou shiny se já estiver marcado)
                 
-            if "lycanroc" in pname.lower().strip():
+                if "lycanroc" in pname.lower().strip():
                     st.caption("Visualizar Forma:")
                     
                     # 1. Determina qual está salvo atualmente (ou padrão Midday)
