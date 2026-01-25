@@ -3424,10 +3424,10 @@ if page == "Pokédex (Busca)":
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 6px 4px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
+  padding: 8px 4px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.6); /* Fundo escuro padrão */
+  transition: all 0.2s ease-in-out;
 }
 .pokedex-tile img {
   display: block;
