@@ -3988,6 +3988,7 @@ if page == "Pokédex (Busca)":
                 for col, (index, row_g) in zip(cols, rows[start : start + grid_cols]):
                     dex_num = str(row_g["Nº"])
                     p_name = row_g["Nome"]
+                    sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
                     
                     # Verifica os status
                     is_caught = dex_num in user_data.get("caught", [])
