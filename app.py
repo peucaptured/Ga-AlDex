@@ -4015,11 +4015,11 @@ if page == "Pokédex (Busca)":
                     with col:
                         # 3. Renderiza a MOLDURA + IMAGEM usando HTML puro
                         # Isso garante que a imagem fique DENTRO da borda colorida
-                        html_card = f"""
-                        <div class="dex-card-frame {status_class}">
-                            <img src="{sprite_url}" class="dex-sprite-img" alt="{p_name}">
-                        </div>
-                        """
+                        html_card = (
+                            f'<div class="dex-card-frame {status_class}">\n'
+                            f'    <img src="{sprite_url}" class="dex-sprite-img" alt="{p_name}">\n'
+                            "</div>"
+                        )
                         st.markdown(html_card, unsafe_allow_html=True)
 
                         # 4. Botão de interação fica logo abaixo
@@ -4031,7 +4031,8 @@ if page == "Pokédex (Busca)":
                             args=(dex_num,),
                             use_container_width=True, # Faz o botão alinhar com a moldura
                         )
-                        st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
 # ==============================================================================
 # PÁGINA 2: TRAINER HUB
