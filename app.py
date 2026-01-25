@@ -3970,6 +3970,7 @@ if page == "Trainer Hub (Meus Pokémons)":
     user_data.setdefault("wishlist", [])
     user_data.setdefault("shinies", [])
     user_data.setdefault("favorite_moves", {}) # {pid: [move_name,...]}
+    user_data.setdefault("forms", {})
 
     # estados de UI
     st.session_state.setdefault("hub_selected_pid", None)      # abre ficha
@@ -4011,13 +4012,28 @@ if page == "Trainer Hub (Meus Pokémons)":
     def _get_sprite(pid: str) -> str:
         if str(pid).startswith("EXT:"):
             return get_pokemon_image_url(_get_pokemon_name(pid), api_name_map, mode="sprite", shiny=False)
-        is_shiny = pid in user_data.get("shinies", [])
+        
+        is_shiny = str(pid) in user_data.get("shinies", [])
+        
+        # ✅ NOVO: Verifica se tem forma salva
+        saved_form = user_data.get("forms", {}).get(str(pid))
+        if saved_form:
+            # Usa o prefixo EXT: para forçar a busca pelo nome da forma (ex: lycanroc-midnight)
+            return pokemon_pid_to_image(f"EXT:{saved_form}", mode="sprite", shiny=is_shiny)
+            
         return pokemon_pid_to_image(str(pid), mode="sprite", shiny=is_shiny)
 
     def _get_artwork(pid: str) -> str:
         if str(pid).startswith("EXT:"):
             return get_pokemon_image_url(_get_pokemon_name(pid), api_name_map, mode="artwork", shiny=False)
-        is_shiny = pid in user_data.get("shinies", [])
+            
+        is_shiny = str(pid) in user_data.get("shinies", [])
+        
+        # ✅ NOVO: Verifica se tem forma salva na Artwork também
+        saved_form = user_data.get("forms", {}).get(str(pid))
+        if saved_form:
+            return pokemon_pid_to_image(f"EXT:{saved_form}", mode="artwork", shiny=is_shiny)
+            
         return pokemon_pid_to_image(str(pid), mode="artwork", shiny=is_shiny)
 
     def _ensure_stats_slot(pid: str) -> dict:
@@ -4109,29 +4125,46 @@ if page == "Trainer Hub (Meus Pokémons)":
                 # Verifica se é Lycanroc para mostrar o seletor
                 final_hub_image = _get_artwork(pid) # Imagem padrão (ou shiny se já estiver marcado)
                 
-                if "lycanroc" in pname.lower().strip():
+            if "lycanroc" in pname.lower().strip():
                     st.caption("Visualizar Forma:")
-                    lyc_hub_form = st.radio(
+                    
+                    # 1. Determina qual está salvo atualmente (ou padrão Midday)
+                    current_saved = user_data.get("forms", {}).get(pid, "lycanroc-midday")
+                    
+                    # Mapeamento: Nome API <-> Nome Bonito
+                    form_map = {
+                        "lycanroc-midday": "Midday",
+                        "lycanroc-midnight": "Midnight", 
+                        "lycanroc-dusk": "Dusk"
+                    }
+                    reverse_map = {v: k for k, v in form_map.items()}
+                    
+                    # Define o index do radio baseado no salvo
+                    options = list(form_map.values())
+                    try:
+                        default_idx = options.index(form_map.get(current_saved, "Midday"))
+                    except:
+                        default_idx = 0
+
+                    lyc_choice = st.radio(
                         "Forma",
-                        ["Midday", "Midnight", "Dusk"],
+                        options,
+                        index=default_idx,
                         horizontal=True,
                         label_visibility="collapsed",
-                        key=f"hub_lyc_selector_{pid}" # Key única por ID para não conflitar
+                        key=f"hub_lyc_selector_{pid}"
                     )
                     
-                    target_form_name = "lycanroc-midday"
-                    if lyc_hub_form == "Midnight":
-                        target_form_name = "lycanroc-midnight"
-                    elif lyc_hub_form == "Dusk":
-                        target_form_name = "lycanroc-dusk"
+                    # 2. Se mudou, salva e recarrega
+                    selected_api_name = reverse_map[lyc_choice]
                     
-                    # Verifica se ele está na lista de shinies para manter a cor correta
-                    is_shiny_hub = str(pid) in user_data.get("shinies", [])
-                    
-                    # Força a geração da imagem com o nome da forma específica
-                    final_hub_image = get_pokemon_image_url(target_form_name, api_name_map, mode="artwork", shiny=is_shiny_hub)
+                    if selected_api_name != current_saved:
+                        user_data["forms"][pid] = selected_api_name
+                        save_data_cloud(trainer_name, user_data)
+                        st.rerun()
 
-                # Renderiza a imagem final (padrão ou alterada pelo seletor)
+                # Renderiza a imagem final (Os helpers _get_artwork agora leem user_data['forms'] automaticamente)
+                final_hub_image = _get_artwork(pid) 
                 st.image(final_hub_image, use_container_width=True)
                 
                 # --- Resto do código original da coluna esquerda ---
@@ -5231,6 +5264,7 @@ elif page == "PvP – Arena Tática":
                     nested_update[trainer_name][str(pid)] = {
                         "stats": hub_stats,
                         "shiny": is_shiny,
+                        "form": saved_form, # ✅ ENVIANDO PARA O BANCO
                         "updatedAt": str(datetime.now())
                     }
             
@@ -5261,6 +5295,7 @@ elif page == "PvP – Arena Tática":
             cond = p_data.get("cond", [])
             stats = p_data.get("stats", {})
             shiny_status = p_data.get("shiny", False)
+            saved_form = p_data.get("form", None)  # ✅ LER DO BANCO
             
             if t_name == trainer_name:
                 # CORREÇÃO: Converte para string, remove espaços e trata vazio como '0'
@@ -5276,7 +5311,7 @@ elif page == "PvP – Arena Tática":
                         if local_s:
                             stats = local_s
             
-            return hp, cond, stats, shiny_status
+            return hp, cond, stats, shiny_status, saved_form
         
         def get_poke_display_name(pid):
             row = df[df['Nº'].astype(str) == str(pid)]
@@ -5307,7 +5342,9 @@ elif page == "PvP – Arena Tática":
             p_pieces_on_board = [p for p in all_pieces if p.get("owner") == p_name]
         
             for i, pid in enumerate(party_list):
-                cur_hp, cur_cond, cur_stats, is_shiny = get_poke_data(p_name, pid)
+                # 1. Agora recuperamos 5 valores (incluindo p_form)
+                cur_hp, cur_cond, cur_stats, is_shiny, p_form = get_poke_data(p_name, pid)
+                
                 is_on_map = any(str(p["pid"]) == str(pid) for p in p_pieces_on_board)
                 p_obj = next((p for p in p_pieces_on_board if str(p["pid"]) == str(pid)), None)
                 already_seen = str(pid) in seen_pids
@@ -5318,7 +5355,11 @@ elif page == "PvP – Arena Tática":
                 elif cur_hp >= 1: hpi = "🔴"
                 else: hpi = "💀"
                 
-                sprite_url = pokemon_pid_to_image(pid, mode="sprite", shiny=is_shiny)
+                # 2. Lógica da imagem com prioridade para a Forma
+                if p_form:
+                     sprite_url = pokemon_pid_to_image(f"EXT:{p_form}", mode="sprite", shiny=is_shiny)
+                else:
+                     sprite_url = pokemon_pid_to_image(pid, mode="sprite", shiny=is_shiny)
         
                 # Checa se ESTE Pokémon específico está realizando uma ação
                 is_moving_this = (p_obj and moving_piece_id == p_obj.get("id"))
