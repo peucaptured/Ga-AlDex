@@ -3258,7 +3258,7 @@ if page == "Pokédex (Busca)":
     st.markdown("""
     <style>
     /* ============================================================
-       1. ESTILO GLOBAL E GERAL (MANTIDO DO SEU CÓDIGO)
+       1. ESTILO GLOBAL E GERAL (MANTIDO)
        ============================================================ */
     [data-testid="stAppViewContainer"] {
         background: linear-gradient(180deg, #0f2740 0%, #1f4d73 45%, #2f6a8c 100%);
@@ -3386,15 +3386,15 @@ if page == "Pokédex (Busca)":
 
 
     /* ============================================================
-       2. O NOVO CSS DOS TILES (CORREÇÃO VISUAL)
+       2. O NOVO CSS DOS TILES (CORRIGIDO PARA BATER COM O PYTHON)
        ============================================================ */
 
-    /* MOLDURA DO CARD (O quadrado que segura a imagem) */
+    /* MOLDURA DO CARD */
     .dex-card-frame {
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 110px;        /* Altura fixa para alinhar */
+        height: 110px;        
         width: 100%;
         border-radius: 12px;
         margin-bottom: 8px;
@@ -3407,7 +3407,7 @@ if page == "Pokédex (Busca)":
         transform: scale(1.02);
     }
 
-    /* A IMAGEM DO POKÉMON (Dentro da moldura) */
+    /* A IMAGEM */
     .dex-sprite-img {
         max-width: 80px;
         max-height: 80px;
@@ -3419,31 +3419,32 @@ if page == "Pokédex (Busca)":
         z-index: 1;
     }
 
-    /* CORES DOS ESTADOS (Combinando com a lógica Python) */
-    
+    /* --- AQUI ESTAVA O ERRO: NOMES DAS CLASSES --- */
+    /* Antes estava .frame-caught, agora é .dex-frame--caught */
+
     /* 🟢 CAPTURADO (Verde) */
-    .frame-caught {
-        border: 3px solid #00ff41;
+    .dex-frame--caught {
+        border: 2px solid #00ff41;
         box-shadow: 0 0 12px rgba(0, 255, 65, 0.25), inset 0 0 15px rgba(0, 60, 20, 0.6);
         background: rgba(0, 60, 20, 0.4);
     }
 
     /* 🔵 VISTO (Azul) */
-    .frame-seen {
-        border: 3px solid #00d0ff;
+    .dex-frame--seen {
+        border: 2px solid #00d0ff;
         box-shadow: 0 0 12px rgba(0, 208, 255, 0.25), inset 0 0 15px rgba(0, 40, 60, 0.6);
         background: rgba(0, 40, 60, 0.4);
     }
 
     /* ⭐ WISHLIST (Dourado) */
-    .frame-wish {
-        border: 3px solid #ffd700;
+    .dex-frame--wish {
+        border: 2px solid #ffd700;
         box-shadow: 0 0 12px rgba(255, 215, 0, 0.25), inset 0 0 15px rgba(60, 50, 0, 0.6);
         background: rgba(60, 50, 0, 0.4);
     }
 
     /* ⚪ PADRÃO (Cinza) */
-    .frame-default {
+    .dex-frame--default {
         border: 2px solid rgba(255, 255, 255, 0.15);
         background: rgba(255, 255, 255, 0.03);
     }
