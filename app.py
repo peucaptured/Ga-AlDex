@@ -3433,6 +3433,41 @@ if page == "Pokédex (Busca)":
   display: block;
   margin: 0 auto;
 }
+.dex-tile--caught {
+  border-color: rgba(128, 237, 153, 0.65);
+  box-shadow: 0 0 10px rgba(128, 237, 153, 0.18);
+}
+.dex-tile--seen {
+  border-color: rgba(77, 214, 255, 0.6);
+  box-shadow: 0 0 10px rgba(77, 214, 255, 0.16);
+}
+.dex-tile--wish {
+  border-color: rgba(255, 209, 102, 0.65);
+  box-shadow: 0 0 10px rgba(255, 209, 102, 0.18);
+}
+.dex-tile--default {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+.dex-tile--caught button {
+  color: #80ed99 !important;
+  border: 1px solid rgba(128, 237, 153, 0.7) !important;
+  background: rgba(16, 60, 36, 0.55) !important;
+}
+.dex-tile--seen button {
+  color: #4dd6ff !important;
+  border: 1px solid rgba(77, 214, 255, 0.65) !important;
+  background: rgba(14, 43, 70, 0.55) !important;
+}
+.dex-tile--wish button {
+  color: #ffd166 !important;
+  border: 1px solid rgba(255, 209, 102, 0.7) !important;
+  background: rgba(64, 48, 16, 0.55) !important;
+}
+.dex-tile--default button {
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+}
 .info-label {
   color: #ffd166;             /* amarelo */
   font-weight: 800;
@@ -3929,19 +3964,36 @@ if page == "Pokédex (Busca)":
                     dex_num = str(row_g["Nº"])
                     p_name = row_g["Nome"]
                     sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
+                    is_caught = dex_num in user_data.get("caught", [])
+                    is_seen = dex_num in user_data.get("seen", [])
+                    is_wished = dex_num in user_data.get("wishlist", [])
+                    if is_caught:
+                        status_key = "caught"
+                        status_icon = "✅"
+                    elif is_wished:
+                        status_key = "wish"
+                        status_icon = "⭐"
+                    elif is_seen:
+                        status_key = "seen"
+                        status_icon = "👁️"
+                    else:
+                        status_key = "default"
+                        status_icon = ""
+                    display_name = f"{status_icon} {p_name}".strip()
 
                     with col:
 
-                        with st.container(border=True):
-                            st.image(sprite_url, use_container_width=True)
-                            st.button(
-                                f"{p_name}",
-                                key=f"dex_tile_{dex_num}_{index}",
-                                help=f"#{dex_num} • {p_name}",
-                                on_click=select_pokedex_entry,
-                                args=(dex_num,),
-                                use_container_width=True # Faz o botão ocupar a largura da borda
-                            )
+                        st.markdown(f"<div class='pokedex-tile dex-tile--{status_key}'>", unsafe_allow_html=True)
+                        st.image(sprite_url, use_container_width=True)
+                        st.button(
+                            display_name,
+                            key=f"dex_tile_{dex_num}_{index}",
+                            help=f"#{dex_num} • {p_name}",
+                            on_click=select_pokedex_entry,
+                            args=(dex_num,),
+                            use_container_width=True, # Faz o botão ocupar a largura da borda
+                        )
+                        st.markdown("</div>", unsafe_allow_html=True)
 
 # ==============================================================================
 # PÁGINA 2: TRAINER HUB
@@ -4095,7 +4147,36 @@ if page == "Trainer Hub (Meus Pokémons)":
 
             # painel esquerdo: imagem + notas + ações rápidas
             with cA:
-                st.image(_get_artwork(pid), use_container_width=True)
+                # --- LÓGICA DE FORMA DO LYCANROC NO HUB ---
+                # Verifica se é Lycanroc para mostrar o seletor
+                final_hub_image = _get_artwork(pid) # Imagem padrão (ou shiny se já estiver marcado)
+                
+                if "lycanroc" in pname.lower().strip():
+                    st.caption("Visualizar Forma:")
+                    lyc_hub_form = st.radio(
+                        "Forma",
+                        ["Midday", "Midnight", "Dusk"],
+                        horizontal=True,
+                        label_visibility="collapsed",
+                        key=f"hub_lyc_selector_{pid}" # Key única por ID para não conflitar
+                    )
+                    
+                    target_form_name = "lycanroc-midday"
+                    if lyc_hub_form == "Midnight":
+                        target_form_name = "lycanroc-midnight"
+                    elif lyc_hub_form == "Dusk":
+                        target_form_name = "lycanroc-dusk"
+                    
+                    # Verifica se ele está na lista de shinies para manter a cor correta
+                    is_shiny_hub = str(pid) in user_data.get("shinies", [])
+                    
+                    # Força a geração da imagem com o nome da forma específica
+                    final_hub_image = get_pokemon_image_url(target_form_name, api_name_map, mode="artwork", shiny=is_shiny_hub)
+
+                # Renderiza a imagem final (padrão ou alterada pelo seletor)
+                st.image(final_hub_image, use_container_width=True)
+                
+                # --- Resto do código original da coluna esquerda ---
                 stats_slot = _ensure_stats_slot(pid)
 
                 st.markdown('<div class="gba-divider"></div>', unsafe_allow_html=True)
