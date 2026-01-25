@@ -1376,13 +1376,46 @@ def to_pokeapi_name(user_text: str) -> str:
     # remove duplo hífen
     s = re.sub(r"-{2,}", "-", s).strip("-")
 
-    # nidoran: vira nidoran-f / nidoran-m
-    if s in ("nidoran", "nidoran-"):
-        return "nidoran"  # deixa ambíguo e você força escolha na UI
-    if s in ("nidoran-f", "nidoranf", "nidoran-female", "nidoran-fem", "nidoran-f."):
-        return "nidoran-f"
-    if s in ("nidoran-m", "nidoranm", "nidoran-male", "nidoran-masc", "nidoran-m."):
-        return "nidoran-m"
+# --- Lógica de Variantes (Nidoran, Lycanroc, etc) ---
+        raw_name = pname.strip().lower()
+        
+        is_nidoran_generic = raw_name in ["nidoran", "nidoran♀", "nidoran♂", "nidoran-f", "nidoran-m"]
+        is_lycanroc_generic = raw_name == "lycanroc"
+
+        if is_nidoran_generic:
+            choice = st.radio(
+                "Qual Nidoran?",
+                ["Nidoran ♀", "Nidoran ♂"],
+                horizontal=True,
+                key="nidoran_choice"
+            )
+            poke_query = "nidoran-f" if "♀" in choice else "nidoran-m"
+            # Atualiza o nome visual para ficar bonito na ficha
+            pname = "Nidoran ♀" if "♀" in choice else "Nidoran ♂"
+
+        elif is_lycanroc_generic:
+            lyc_choice = st.radio(
+                "Qual forma do Lycanroc?",
+                ["Midday (Dia)", "Midnight (Noite)", "Dusk (Crepúsculo)"],
+                horizontal=True,
+                key="lycanroc_choice"
+            )
+            
+            if "Noite" in lyc_choice:
+                poke_query = "lycanroc-midnight"
+                pname = "Lycanroc (Midnight)" # Nome que vai para a ficha
+            elif "Crepúsculo" in lyc_choice:
+                poke_query = "lycanroc-dusk"
+                pname = "Lycanroc (Dusk)"
+            else:
+                poke_query = "lycanroc-midday"
+                pname = "Lycanroc (Midday)"
+                
+        else:
+            poke_query = to_pokeapi_name(pname)
+
+        # Atualiza o rascunho com o nome específico da forma
+        st.session_state["cg_draft"]["pname"] = pname
 
     # formatos tipo "sandslash-a" / "weezing-g" / "g-weezing"
     if re.match(r"^[aghp]-", s):  # g-weezing
