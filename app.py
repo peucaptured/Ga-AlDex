@@ -3433,20 +3433,45 @@ if page == "Pokédex (Busca)":
   display: block;
   margin: 0 auto;
 }
+/* 🟢 CAPTURADO: Verde Neon Forte */
 .dex-tile--caught {
-  border-color: rgba(128, 237, 153, 0.65);
-  box-shadow: 0 0 10px rgba(128, 237, 153, 0.18);
+  border: 3px solid #00ff41 !important;
+  box-shadow: 0 0 15px rgba(0, 255, 65, 0.4), inset 0 0 10px rgba(0, 255, 65, 0.2) !important;
+  background: rgba(0, 60, 20, 0.8) !important;
 }
+/* Muda a cor do botão interno para combinar */
+.dex-tile--caught button {
+  border: 1px solid #00ff41 !important;
+  color: #00ff41 !important;
+}
+/* 🔵 VISTO: Azul Neon */
 .dex-tile--seen {
-  border-color: rgba(77, 214, 255, 0.6);
-  box-shadow: 0 0 10px rgba(77, 214, 255, 0.16);
+  border: 3px solid #00d0ff !important;
+  box-shadow: 0 0 15px rgba(0, 208, 255, 0.4), inset 0 0 10px rgba(0, 208, 255, 0.2) !important;
+  background: rgba(0, 40, 60, 0.8) !important;
 }
+.dex-tile--seen button {
+  border: 1px solid #00d0ff !important;
+  color: #00d0ff !important;
+}
+/* ⭐ WISHLIST: Dourado/Amarelo */
 .dex-tile--wish {
-  border-color: rgba(255, 209, 102, 0.65);
-  box-shadow: 0 0 10px rgba(255, 209, 102, 0.18);
+  border: 3px solid #ffd700 !important;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4), inset 0 0 10px rgba(255, 215, 0, 0.2) !important;
+  background: rgba(60, 50, 0, 0.8) !important;
 }
+.dex-tile--wish button {
+  border: 1px solid #ffd700 !important;
+  color: #ffd700 !important;
+}
+/* ⚪ PADRÃO: Cinza Transparente */
 .dex-tile--default {
-  border-color: rgba(255, 255, 255, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.2) !important;
+  opacity: 0.8;
+}
+.dex-tile--default:hover {
+  border-color: rgba(255, 255, 255, 0.6) !important;
+  opacity: 1;
 }
 .dex-tile--caught button {
   color: #80ed99 !important;
@@ -3963,35 +3988,40 @@ if page == "Pokédex (Busca)":
                 for col, (index, row_g) in zip(cols, rows[start : start + grid_cols]):
                     dex_num = str(row_g["Nº"])
                     p_name = row_g["Nome"]
-                    sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
+                    
+                    # Verifica os status
                     is_caught = dex_num in user_data.get("caught", [])
                     is_seen = dex_num in user_data.get("seen", [])
                     is_wished = dex_num in user_data.get("wishlist", [])
+                    
+                    # Define a classe CSS baseada na PRIORIDADE
                     if is_caught:
-                        status_key = "caught"
+                        status_key = "caught"   # Prioridade Máxima: Verde
                         status_icon = "✅"
                     elif is_wished:
-                        status_key = "wish"
+                        status_key = "wish"     # Prioridade Média: Amarelo (Quero muito, mas não tenho)
                         status_icon = "⭐"
                     elif is_seen:
-                        status_key = "seen"
+                        status_key = "seen"     # Prioridade Baixa: Azul (Só vi)
                         status_icon = "👁️"
                     else:
-                        status_key = "default"
+                        status_key = "default"  # Cinza
                         status_icon = ""
+                    
                     display_name = f"{status_icon} {p_name}".strip()
-
+                    
                     with col:
-
+                        # A classe CSS 'dex-tile--{status_key}' vai aplicar as cores definidas acima
                         st.markdown(f"<div class='pokedex-tile dex-tile--{status_key}'>", unsafe_allow_html=True)
                         st.image(sprite_url, use_container_width=True)
+                        
                         st.button(
                             display_name,
                             key=f"dex_tile_{dex_num}_{index}",
                             help=f"#{dex_num} • {p_name}",
                             on_click=select_pokedex_entry,
                             args=(dex_num,),
-                            use_container_width=True, # Faz o botão ocupar a largura da borda
+                            use_container_width=True,
                         )
                         st.markdown("</div>", unsafe_allow_html=True)
 
