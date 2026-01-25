@@ -5552,9 +5552,15 @@ elif page == "PvP – Arena Tática":
         player_pieces_map = {name: [] for name in all_players}
 
         for p in all_pieces:
-            # Mantém a correção do ValueError (4 valores) 
-            hp_check, _, _, _, _ = get_poke_data(p.get("owner"), p.get("pid"))
+            # 1. Captura a forma (5ª variável) do banco de dados
+            hp_check, _, _, _, p_form = get_poke_data(p.get("owner"), p.get("pid"))
+            
             p["status"] = "fainted" if hp_check == 0 else "active"
+            
+            # ✅ O TRUQUE: Se tiver forma salva, substituímos o PID temporariamente
+            # Isso força o renderizador do mapa a baixar o sprite da forma correta (ex: EXT:lycanroc-midnight)
+            if p_form:
+                p["pid"] = f"EXT:{p_form}"
 
             # Lógica de Visibilidade: Dono vê tudo, outros veem apenas revelados 
             if p.get("owner") == trainer_name: 
