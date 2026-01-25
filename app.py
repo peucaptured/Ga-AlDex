@@ -5516,7 +5516,7 @@ elif page == "PvP – Arena Tática":
 
         for p in all_pieces:
             # Mantém a correção do ValueError (4 valores) 
-            hp_check, _, _, _ = get_poke_data(p.get("owner"), p.get("pid"))
+            hp_check, _, _, _, _ = get_poke_data(p.get("owner"), p.get("pid"))
             p["status"] = "fainted" if hp_check == 0 else "active"
 
             # Lógica de Visibilidade: Dono vê tudo, outros veem apenas revelados 
