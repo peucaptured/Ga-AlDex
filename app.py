@@ -5248,6 +5248,7 @@ elif page == "PvP – Arena Tática":
             for pid in current_party:
                 is_shiny = pid in user_data.get("shinies", [])
                 hub_stats = user_data["stats"].get(pid, {})
+                saved_form = user_data.get("forms", {}).get(str(pid))
                 if hub_stats:
                     # Se o treinador ainda não está no dicionário, cria
                     if trainer_name not in nested_update:
