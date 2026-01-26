@@ -1859,16 +1859,106 @@ def stop_pvp_sync_listener():
         event_queue.put({"tag": "stop"})
     st.session_state.pop("pvp_sync_listener", None)
 
-def ensure_pvp_sync_listener(db, rid: str):
+def ensure_pvp_sync_listener(db, rid):
+    """
+    Inicia listeners do Firestore (Real-Time) para sincronizar o jogo 
+    automaticamente APENAS quando houver interação de qualquer jogador.
+    """
     if not rid:
         return
+    
+    # Se já existe um listener ativo para essa sala, não recria
     active = st.session_state.get("pvp_sync_listener")
     if active and active.get("rid") == rid:
         return
+
+    # Se trocou de sala, mata o anterior
     stop_pvp_sync_listener()
+
+    # Prepara filas e eventos para thread
     event_queue: queue.Queue = queue.Queue()
     stop_event = threading.Event()
-    ctx = get_script_run_ctx()
+    ctx = get_script_run_ctx() # Pega o contexto da sessão atual do usuário
+
+    # Função auxiliar para colocar na fila de processamento
+    def enqueue(tag: str, source: str):
+        if stop_event.is_set():
+            return
+        # Coloca na fila para a thread principal processar
+        event_queue.put({"tag": tag, "source": source, "ts": time.time()})
+
+    # --- CALLBACKS DO FIRESTORE (Executam quando o banco muda) ---
+    
+    # 1. OUVINTE DE MAPA/PEÇAS
+    def on_state_snapshot(doc_snapshot, changes, read_time):
+        enqueue("state_change", "map")
+
+    # 2. OUVINTE DE HP/STATUS (Party)
+    def on_party_snapshot(col_snapshot, changes, read_time):
+        enqueue("state_change", "party")
+
+    # 3. OUVINTE DE EVENTOS (Dados, Logs, Ataques)
+    def on_events_snapshot(col_snapshot, changes, read_time):
+        for change in changes:
+            if change.type.name == "ADDED": # Só queremos novos eventos
+                enqueue("new_event", "log")
+
+    # --- WORKER: A Thread que força o RERUN do Streamlit ---
+    def rerun_worker():
+        # Anexa esta thread à sessão do usuário (Isso é crucial!)
+        if ctx:
+            add_script_run_ctx(threading.current_thread(), ctx)
+        
+        while not stop_event.is_set():
+            try:
+                # Espera passiva: não gasta CPU, fica travado aqui até o Firebase mandar algo
+                item = event_queue.get(timeout=3) 
+                
+                if item.get("tag") == "stop":
+                    break
+                
+                # Se houver contexto, solicita o Rerun
+                if ctx and ctx.script_requests:
+                    # Cria a solicitação de rerun (A "mágica" do refresh)
+                    rerun_data = script_runner.RerunData(
+                        query_string=ctx.query_string,
+                        page_script_hash=ctx.page_script_hash,
+                        cached_message_hashes=ctx.cached_message_hashes,
+                    )
+                    ctx.script_requests.request_rerun(rerun_data)
+                    
+                    # Pequena pausa para evitar flood de reruns se muitos eventos vierem juntos
+                    time.sleep(0.5) 
+                    
+            except queue.Empty:
+                continue # Timeout do get, volta a esperar
+            except Exception as e:
+                print(f"Erro no worker de sync: {e}")
+                break
+
+    # --- REGISTRO DOS LISTENERS NO FIREBASE ---
+    
+    # Listener 1: Documento de Estado (Mapa)
+    state_unsub = db.collection("rooms").document(rid).collection("public_state").document("state").on_snapshot(on_state_snapshot)
+    
+    # Listener 2: Coleção de Eventos (Últimos 5 eventos)
+    events_query = db.collection("rooms").document(rid).collection("public_events").order_by("ts", direction=firestore.Query.DESCENDING).limit(5)
+    events_unsub = events_query.on_snapshot(on_events_snapshot)
+
+    # Listener 3: Documento de Party (HP/Status)
+    party_unsub = db.collection("rooms").document(rid).collection("public_state").document("party_states").on_snapshot(on_party_snapshot)
+
+    # Inicia a Thread Worker
+    worker = threading.Thread(target=rerun_worker, daemon=True)
+    worker.start()
+
+    # Salva na sessão para podermos cancelar depois
+    st.session_state["pvp_sync_listener"] = {
+        "rid": rid,
+        "queue": event_queue,
+        "stop_event": stop_event,
+        "unsubscribers": [state_unsub, events_unsub, party_unsub], # Guarda funções para desligar
+    }
 
     def enqueue(tag: str, payload: dict | None = None):
         if stop_event.is_set():
@@ -2488,20 +2578,19 @@ def get_state(db, rid: str) -> dict:
     return doc.to_dict() if doc.exists else {}
 
 def update_party_state(db, rid, trainer_name, pid, hp, conditions):
-    # Salva HP e Status no documento 'party_states'
     ref = db.collection("rooms").document(rid).collection("public_state").document("party_states")
     
-    # Estrutura: { "NomeTreinador": { "PID": { "hp": 6, "cond": [...] } } }
-    # Usamos merge=True com notação de ponto para não apagar os outros
     key = f"{trainer_name}.{pid}"
-    
     data = {
         key: {
             "hp": int(hp),
             "cond": conditions,
-            "updatedAt": str(datetime.now())
+            "updatedAt": str(datetime.now()) # Timestamp local serve, mas muda o dado
         }
     }
+    # Força um campo global de update para disparar o listener da coleção/documento
+    data["last_update"] = firestore.SERVER_TIMESTAMP 
+    
     ref.set(data, merge=True)
     
     # Se o HP for 0, precisamos atualizar a peça no tabuleiro para 'fainted' (se ela estiver lá)
@@ -2525,18 +2614,23 @@ def update_party_state(db, rid, trainer_name, pid, hp, conditions):
                     upsert_piece(db, rid, p)
 
 def upsert_piece(db, rid: str, piece: dict):
-    # piece precisa ter id único
+    # Garante que o ID existe
     sref = state_ref_for(db, rid)
+    # Precisamos ler o estado atual para não perder as outras peças
+    # (Ou usar arrayUnion se fosse uma lista simples, mas é lista de dicts)
+    
+    # Melhor abordagem para evitar race conditions em real-time: Transação
+    # Mas para simplificar no seu código atual:
     stt = get_state(db, rid)
     pieces = stt.get("pieces") or []
 
-    # substitui se já existe
+    # Remove a versão antiga da peça, se existir
     new_pieces = [p for p in pieces if p.get("id") != piece.get("id")]
     new_pieces.append(piece)
 
     sref.set({
         "pieces": new_pieces,
-        "updatedAt": firestore.SERVER_TIMESTAMP,
+        "updatedAt": firestore.SERVER_TIMESTAMP, # <--- GATILHO DO SYNC
     }, merge=True)
 
 def delete_piece(db, rid: str, piece_id: str):
@@ -5369,8 +5463,11 @@ elif page == "PvP – Arena Tática":
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
-            click = None
-        ensure_pvp_sync_listener(db, rid)
+        
+        # --- AQUI: INICIA O SISTEMA DE SYNC AUTOMÁTICO ---
+        # Isso cria a thread que fica "dormindo" até o Firebase avisar de uma mudança.
+        ensure_pvp_sync_listener(db, rid) 
+        # -------------------------------------------------
 
         if "last_click_processed" not in st.session_state:
             st.session_state["last_click_processed"] = None
