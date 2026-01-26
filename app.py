@@ -5819,10 +5819,10 @@ elif page == "Criação Guiada de Fichas":
                 st.info(f"Advantages escolhidas: **{pp_advantages} PP**")
     
             with tabs[3]:
-                st.markdown("### ⚔️ Golpes & Poderes (o ponto mais difícil — agora mais rápido)")
+                st.markdown("### ⚔️ Golpes & Poderes (fluxo guiado)")
                 st.caption(
-                    "Aqui você pode **adicionar golpes prontos**, montar um **poder passo a passo** (sem ler texto do M&M) "
-                    "ou abrir o criador completo. Nada muda nas suas fórmulas/PP — só fica mais fácil de usar."
+                    "Adicione golpes prontos, monte um poder **passo a passo** (sem precisar ler o texto do M&M) "
+                    "ou use o criador completo. Suas fórmulas e regras de PP não mudam — apenas organizamos o processo."
                 )
 
                 # garante lista de golpes na sessão
@@ -5863,7 +5863,7 @@ elif page == "Criação Guiada de Fichas":
                         db_moves = None
 
                     st.markdown("#### 1) Sugestões pelo Pokémon (PokeAPI)")
-                    st.caption("Lista de golpes que o Pokémon pode aprender. Eu tento casar com o seu banco e deixar 1-clique para adicionar.")
+                    st.caption("Lista de golpes que o Pokémon pode aprender. Eu comparo com o seu banco e deixo 1 clique para adicionar.")
 
                     rank_default = st.slider(
                         "Rank padrão para adicionar",
@@ -5936,13 +5936,13 @@ elif page == "Criação Guiada de Fichas":
                                     st.success(f"Adicionados: {added} golpe(s).")
                                     st.rerun()
                             with col2:
-                                st.caption("Dica: se algum golpe ficar com PP vazio, preencha em **Lista & ajustes**.")
+                                st.caption("Dica: se algum golpe ficar sem PP, preencha em **Lista & ajustes**.")
                         else:
-                            st.info("Não encontrei golpes do learnset no seu banco (ainda). Use a busca abaixo ou o assistente.")
+                            st.info("Não encontrei golpes do learnset no banco atual. Use a busca abaixo ou o assistente.")
 
                     st.divider()
                     st.markdown("#### 2) Buscar no banco (rápido)")
-                    q = st.text_input("Digite parte do nome (ex: thunder, punch, protect)", key="cg_quick_search")
+                    q = st.text_input("Digite parte do nome (ex.: thunder, punch, protect)", key="cg_quick_search")
                     if db_moves is None:
                         st.stop()
 
@@ -5992,16 +5992,16 @@ elif page == "Criação Guiada de Fichas":
                                                     st.session_state["cg_moves"].append(_cg_confirm_move(mv, int(rank_default), pp_override=int(pp_auto)))
                                                     st.rerun()
                         else:
-                            st.info("Nada encontrado. Tente outra palavra, ou use o Assistente para montar o efeito.")
+                            st.info("Nada encontrado. Tente outra palavra ou use o Assistente para montar o efeito.")
                     else:
-                        st.caption("Digite pelo menos 2 caracteres para buscar.")
+                        st.caption("Informe pelo menos 2 caracteres para buscar.")
 
                 # --------------------------
                                 # (B) Assistente (passo a passo)
                 # --------------------------
                 with sub_tabs[1]:
                     st.caption(
-                        "Aqui você cria um poder customizado. "
+                        "Crie um poder customizado com orientação. "
                         "Use o modo **Rápido** para builds simples, ou o modo **Universal** para "
                         "recriar **qualquer golpe existente** (copiando/colando a build ou carregando do banco)."
                     )
@@ -6029,7 +6029,7 @@ elif page == "Criação Guiada de Fichas":
                 
                                 rank = st.number_input("Rank do golpe", min_value=0, max_value=30, value=int(rank_default), step=1, key="cg_pa_rank")
                 
-                                st.markdown("**O que ele faz?**")
+                                st.markdown("**Qual é o efeito principal?**")
                                 cE1, cE2, cE3 = st.columns(3)
                                 with cE1:
                                     e_damage = st.checkbox("Dano", key="cg_pa_damage")
@@ -6050,7 +6050,7 @@ elif page == "Criação Guiada de Fichas":
                                     weaken_targets["weaken_dodge"] = w3.checkbox("Dodge", key="cg_pa_w_dodge")
                                     weaken_targets["weaken_will"] = w4.checkbox("Will", key="cg_pa_w_will")
                 
-                                st.markdown("**Como ele atinge?**")
+                                st.markdown("**Como ele atinge o alvo?**")
                                 cA, cB, cC = st.columns(3)
                                 with cA:
                                     ranged = st.checkbox("Ranged", key="cg_pa_ranged")
@@ -6353,7 +6353,7 @@ elif page == "Criação Guiada de Fichas":
 # (C) Criador completo (sua tela existente)
                 # --------------------------
                 with sub_tabs[2]:
-                    st.caption("Modo avançado: usa a mesma tela completa de criação/edição de golpes.")
+                    st.caption("Modo avançado: use a tela completa de criação e edição de golpes.")
                     disabled_add = pp_spent_moves_live >= pp_cap_moves
                     if disabled_add:
                         st.error("Limite atingido (PP_total + 20).")
@@ -6366,7 +6366,7 @@ elif page == "Criação Guiada de Fichas":
                             return_to_view=None,
                         )
                     else:
-                        st.info("Marque a caixa acima para abrir o criador completo dentro desta aba. Se preferir, abra pelo menu **Criação de Golpes**.")
+                        st.info("Marque a caixa acima para abrir o criador completo nesta aba. Se preferir, abra pelo menu **Criação de Golpes**.")
 
                     if st.button("Abrir pelo menu Criação de Golpes", key="cg_go_creator_menu"):
                         st.session_state["cg_view"] = "moves"
@@ -6383,7 +6383,7 @@ elif page == "Criação Guiada de Fichas":
                         np_value = int(st.session_state.get("cg_np", 0) or 0)
 
                         for i, m_gv in enumerate(list(st.session_state["cg_moves"]), start=1):
-                            c1, c2, c3 = st.columns([6, 2, 1])
+                            c1, c2, c3 = st.columns([6, 2, 1], vertical_alignment="center")
                             with c1:
                                 accuracy = int(m_gv.get("accuracy", 0) or 0)
                                 pp_here = m_gv.get("pp_cost")
@@ -6434,11 +6434,11 @@ elif page == "Criação Guiada de Fichas":
                                         st.rerun()
 
                             with c3:
-                                if st.button("❌", key=f"cg_guided_move_rm_{i}"):
+                                if st.button("🗑️ Remover", key=f"cg_guided_move_rm_{i}", use_container_width=True):
                                     st.session_state["cg_moves"].pop(i - 1)
                                     st.rerun()
                     else:
-                        st.info("Nenhum golpe confirmado ainda.")
+                        st.info("Nenhum golpe confirmado ainda. Use as abas acima para adicionar e ajustar.")
 
                     # Totais
                     acerto_pp_total = sum(_move_accuracy_pp(m) for m in st.session_state.get("cg_moves", []))
@@ -7742,7 +7742,6 @@ elif page == "Mochila":
     
     
     
-
 
 
 
