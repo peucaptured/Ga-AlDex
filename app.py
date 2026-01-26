@@ -6019,24 +6019,41 @@ elif page == "Criação Guiada de Fichas":
                 st.info(f"Total de ranks: **{total_skill_ranks}** → PP em Skills: **{pp_skills}**")
     
                 st.markdown("### ⭐ Advantages (sugestões)")
+                st.session_state.setdefault("cg_advantages_custom", [])
                 adv_suggestions = suggest_advantages(pjson=pjson, base_stats=base_stats, types=types, abilities=abilities)
                 if not adv_suggestions:
                     st.info("Nenhuma vantagem sugerida automaticamente.")
-                    chosen_adv = []
-                else:
-                    labels = [a.label() for a in adv_suggestions]
-                    notes_map = {a.label(): (a.note or "") for a in adv_suggestions}
-                    saved_adv = st.session_state.get("cg_advantages") or []
-                    all_advantages = sorted(set(labels + list(saved_adv)))
-                    chosen_labels = st.multiselect(
-                        "Selecione advantages:",
-                        options=all_advantages,
-                        default=[lab for lab in saved_adv if lab in all_advantages],
-                    )
-                    chosen_adv = chosen_labels
-                    for lab in chosen_labels:
-                        if notes_map.get(lab): st.caption(f"• {lab}: {notes_map[lab]}")
-                    st.session_state["cg_advantages"] = chosen_adv
+
+                st.markdown("### Advantages manuais")
+                adv_manual_name = st.text_input("Digite a advantage manual", key="cg_advantage_add_name")
+                if st.button("➕ Adicionar advantage manual", key="cg_advantage_add_btn"):
+                    adv_manual_name = adv_manual_name.strip()
+                    if adv_manual_name and adv_manual_name not in st.session_state["cg_advantages_custom"]:
+                        st.session_state["cg_advantages_custom"].append(adv_manual_name)
+
+                for idx, adv_name in enumerate(list(st.session_state["cg_advantages_custom"])):
+                    c1, c2 = st.columns([8, 2])
+                    with c1:
+                        st.write(adv_name)
+                    with c2:
+                        if st.button("❌", key=f"cg_advantage_custom_del_{idx}"):
+                            st.session_state["cg_advantages_custom"].pop(idx)
+                            st.rerun()
+
+                labels = [a.label() for a in adv_suggestions]
+                notes_map = {a.label(): (a.note or "") for a in adv_suggestions}
+                saved_adv = st.session_state.get("cg_advantages") or []
+                all_advantages = sorted(set(labels + list(saved_adv) + list(st.session_state["cg_advantages_custom"])))
+                chosen_labels = st.multiselect(
+                    "Selecione advantages:",
+                    options=all_advantages,
+                    default=[lab for lab in saved_adv if lab in all_advantages],
+                )
+                chosen_adv = chosen_labels
+                for lab in chosen_labels:
+                    if notes_map.get(lab):
+                        st.caption(f"• {lab}: {notes_map[lab]}")
+                st.session_state["cg_advantages"] = chosen_adv
     
                 pp_advantages = len(chosen_adv)
                 st.info(f"Advantages escolhidas: **{pp_advantages} PP**")
@@ -7992,7 +8009,6 @@ elif page == "Mochila":
     
     
     
-
 
 
 
