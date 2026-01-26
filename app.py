@@ -432,7 +432,39 @@ class MoveDB:
         return tags
 
 
+# --- PLANO B: VIGIA DE SINCRONIZAÇÃO ---
+@st.fragment(run_every=2) # Roda esta função sozinha a cada 2 segundos
+def sync_watchdog(db, rid):
+    if not rid:
+        return
+        
+    try:
+        # 1. Olha apenas o timestamp do mapa no banco (leitura leve)
+        doc_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
+        snapshot = doc_ref.get()
+        
+        if not snapshot.exists:
+            return
 
+        server_data = snapshot.to_dict()
+        # Pega a hora da última modificação no servidor
+        server_time = server_data.get("updatedAt") 
+        
+        # Se for a primeira vez, salva na sessão
+        if "last_map_update" not in st.session_state:
+            st.session_state["last_map_update"] = server_time
+            return
+
+        # 2. Compara: Se o horário do servidor for diferente do que eu tenho...
+        if server_time != st.session_state["last_map_update"]:
+            # Atualiza meu horário local
+            st.session_state["last_map_update"] = server_time
+            # Força o recarregamento da página inteira para mostrar o movimento
+            st.rerun()
+            
+    except Exception:
+        pass # Se der erro de conexão, ignora e tenta na próxima
+        
 import streamlit as st  # reimport seguro
 
 try:
@@ -5420,13 +5452,13 @@ elif page == "PvP – Arena Tática":
     # VIEW: BATTLE (CÓDIGO CONSOLIDADO E CORRIGIDO)
     # =========================
     if view == "battle":
+        sync_watchdog(db, rid)
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
         
         # --- AQUI: INICIA O SISTEMA DE SYNC AUTOMÁTICO ---
         # Isso cria a thread que fica "dormindo" até o Firebase avisar de uma mudança.
-        ensure_pvp_sync_listener(db, rid) 
         # -------------------------------------------------
 
         if "last_click_processed" not in st.session_state:
