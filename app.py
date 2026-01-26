@@ -20,6 +20,10 @@ import gzip
 import base64
 import streamlit.components.v1 as components
 from advantages_engine import suggest_advantages
+import queue
+import threading
+import time
+from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx, script_runner
 
 
 # ================================
@@ -1821,7 +1825,86 @@ def coord_to_notation(row, col):
     number = int(row) + 1
     return f"{letter}{number}"
 
-@st.fragment(run_every="3s") # Atualiza o log sozinho a cada 3 segundos
+def stop_pvp_sync_listener():
+    sync_data = st.session_state.get("pvp_sync_listener")
+    if not sync_data:
+        return
+    for unsubscribe in sync_data.get("unsubscribers", []):
+        try:
+            unsubscribe()
+        except Exception:
+            pass
+    stop_event = sync_data.get("stop_event")
+    event_queue = sync_data.get("queue")
+    if stop_event:
+        stop_event.set()
+    if event_queue:
+        event_queue.put({"tag": "stop"})
+    st.session_state.pop("pvp_sync_listener", None)
+
+def ensure_pvp_sync_listener(db, rid: str):
+    if not rid:
+        return
+    active = st.session_state.get("pvp_sync_listener")
+    if active and active.get("rid") == rid:
+        return
+    stop_pvp_sync_listener()
+    event_queue: queue.Queue = queue.Queue()
+    stop_event = threading.Event()
+    ctx = get_script_run_ctx()
+
+    def enqueue(tag: str, payload: dict | None = None):
+        if stop_event.is_set():
+            return
+        event_queue.put({"tag": tag, "payload": payload or {}, "ts": time.time()})
+
+    def on_state_snapshot(doc_snapshot, changes, read_time):
+        enqueue("state")
+
+    def on_events_snapshot(col_snapshot, changes, read_time):
+        for change in changes:
+            if change.type.name != "ADDED":
+                continue
+            data = change.document.to_dict() or {}
+            ev_type = data.get("type")
+            if ev_type in {"move", "dice", "pokemon_removed", "hit_confirmed", "missed", "finished"}:
+                enqueue("event", {"type": ev_type})
+
+    def rerun_worker():
+        if ctx:
+            add_script_run_ctx(threading.current_thread(), ctx)
+        while True:
+            item = event_queue.get()
+            if item.get("tag") == "stop" or stop_event.is_set():
+                break
+            if not ctx or not ctx.script_requests:
+                continue
+            rerun_data = script_runner.RerunData(
+                query_string=ctx.query_string,
+                page_script_hash=ctx.page_script_hash,
+                cached_message_hashes=ctx.cached_message_hashes,
+            )
+            ctx.script_requests.request_rerun(rerun_data)
+
+    state_unsub = state_ref_for(db, rid).on_snapshot(on_state_snapshot)
+    events_query = (
+        db.collection("rooms")
+        .document(rid)
+        .collection("public_events")
+        .order_by("ts", direction=firestore.Query.DESCENDING)
+        .limit(1)
+    )
+    events_unsub = events_query.on_snapshot(on_events_snapshot)
+    worker = threading.Thread(target=rerun_worker, daemon=True)
+    worker.start()
+    st.session_state["pvp_sync_listener"] = {
+        "rid": rid,
+        "queue": event_queue,
+        "stop_event": stop_event,
+        "unsubscribers": [state_unsub, events_unsub],
+    }
+
+@st.fragment
 def render_public_log_fragment(db, rid):
     st.markdown("---")
     st.subheader("📜 Log de Batalha (Tempo Real)")
@@ -3207,6 +3290,9 @@ page = st.sidebar.radio(
     ],
     key="page",
 )
+
+if page != "PvP – Arena Tática":
+    stop_pvp_sync_listener()
 
 
 def apply_non_pokedex_theme() -> None:
@@ -5267,6 +5353,7 @@ elif page == "PvP – Arena Tática":
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
             click = None
+        ensure_pvp_sync_listener(db, rid)
 
         if "last_click_processed" not in st.session_state:
             st.session_state["last_click_processed"] = None
@@ -6097,6 +6184,7 @@ elif page == "PvP – Arena Tática":
         st.stop()
         
     elif view == "lobby":
+            stop_pvp_sync_listener()
             # --- MAPA DE NOMES (Para exibição amigável) ---
             THEME_NAMES = {
                 "cave_water": "Caverna (com água)",
@@ -6357,12 +6445,6 @@ elif page == "Mochila":
     
     
     
-
-
-
-
-
-
 
 
 
