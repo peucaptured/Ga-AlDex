@@ -1745,7 +1745,7 @@ def _cg_confirm_move(mv, rank: int, pp_override: int | None = None, accuracy: in
     }
 
 
-def _cg_recalculate_pp(move_data: dict, rank: int, db_moves: "MoveDB" | None) -> tuple[int | None, str | None]:
+def _cg_recalculate_pp(move_data: dict, rank: int, db_moves: Optional["MoveDB"]) -> Tuple[Optional[int], Optional[str]]:
     mv_name = str(move_data.get("name") or "").strip()
     if db_moves and mv_name:
         try:
@@ -7992,7 +7992,6 @@ elif page == "Mochila":
     
     
     
-
 
 
 
