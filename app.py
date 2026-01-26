@@ -250,6 +250,14 @@ class Move:
         - Caso contrário, usa um estimador simples (você pode trocar depois pela sua tabela oficial).
         Regra base do M&M: custo final por graduação = custo básico + extras - falhas. :contentReference[oaicite:3]{index=3}
         """
+                # (A0) Novo: "PP por Rank" vindo do Excel -> PP total = (pp_por_rank * rank)
+        if "PP por Rank" in self.raw and _safe_str(self.raw.get("PP por Rank")):
+            try:
+                ppr = float(str(self.raw["PP por Rank"]).replace(",", "."))
+                return ppr * float(rank), 'PP total = ("PP por Rank" do Excel) × rank.'
+            except Exception:
+                pass
+
         # (A) override do Excel
         for key in ("PP_Custo", "PP", "Custo_PP"):
             if key in self.raw and _safe_str(self.raw.get(key)):
@@ -458,7 +466,7 @@ def render_move_creator(
 
     def _move_default_accuracy(mv) -> int:
         raw = getattr(mv, "raw", {}) or {}
-        return int(raw.get("Acerto") or raw.get("acerto") or 0)
+        return int(raw.get("Accuracy") or raw.get("Acerto") or raw.get("acerto") or 0)
 
     def _confirm_move(mv, rank: int, build: str, pp):
         st.session_state["cg_moves"].append({
@@ -1867,7 +1875,7 @@ def ensure_pvp_sync_listener(db, rid: str):
                 continue
             data = change.document.to_dict() or {}
             ev_type = data.get("type")
-            if ev_type in {"move", "dice", "pokemon_removed", "hit_confirmed", "missed", "finished"}:
+            if ev_type in {"move", "piece_placed", "effect", "dice", "pokemon_removed", "hit_confirmed", "missed", "finished"}:
                 enqueue("event", {"type": ev_type})
 
     def rerun_worker():
@@ -1877,8 +1885,14 @@ def ensure_pvp_sync_listener(db, rid: str):
             item = event_queue.get()
             if item.get("tag") == "stop" or stop_event.is_set():
                 break
-            st.session_state["pvp_sync_nonce"] = time.time()
-            st.rerun()
+            if not ctx or not ctx.script_requests:
+                continue
+            rerun_data = script_runner.RerunData(
+                query_string=ctx.query_string,
+                page_script_hash=ctx.page_script_hash,
+                cached_message_hashes=ctx.cached_message_hashes,
+            )
+            ctx.script_requests.request_rerun(rerun_data)
 
     state_unsub = state_ref_for(db, rid).on_snapshot(on_state_snapshot)
     events_query = (
@@ -5681,9 +5695,6 @@ elif page == "PvP – Arena Tática":
         # --- 5. INTERFACE DO TOPO ---
         last_events = list_public_events(db, rid, limit=1)
         last_dice = next((e for e in last_events if e.get("type") == "dice"), None)
-        if last_dice:
-            pl = last_dice.get("payload", {})
-            st.warning(f"🎲 {last_dice.get('by')}: **{pl.get('result')}** (d{pl.get('sides')})")
 
         top = st.columns([1, 1, 1, 1, 4])
         with top[0]:
@@ -5697,6 +5708,33 @@ elif page == "PvP – Arena Tática":
         with top[3]:
             if st.button("🎲 d6", disabled=not is_player): roll_die(db, rid, trainer_name, sides=6); st.rerun()
         with top[4]:
+            if last_dice:
+                pl = last_dice.get("payload", {})
+                dice_line = f"🎲 {last_dice.get('by')}: <strong>{pl.get('result')}</strong> (d{pl.get('sides')})"
+                dice_bg = "rgba(34, 197, 94, 0.18)"
+                dice_border = "rgba(34, 197, 94, 0.5)"
+            else:
+                dice_line = "🎲 Aguardando rolagem..."
+                dice_bg = "rgba(148, 163, 184, 0.15)"
+                dice_border = "rgba(148, 163, 184, 0.35)"
+            st.markdown(
+                f"""
+                <div style="
+                    min-height: 42px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-bottom: 8px;
+                    padding: 6px 10px;
+                    border-radius: 10px;
+                    border: 1px solid {dice_border};
+                    background: {dice_bg};
+                    font-weight: 600;">
+                    {dice_line}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
             # ✅ PEDIDO: Mostrar Código da Sala aqui em cima
             st.markdown(f"""
     <div style='display: flex; align-items: center; gap: 10px;'>
@@ -5747,7 +5785,7 @@ elif page == "PvP – Arena Tática":
                         if attacker_sheet:
                             attacker_stats = attacker_sheet.get("stats") or {}
                         else:
-                            _, _, attacker_stats, _ = get_poke_data(trainer_name, attacker_pid)
+                            _, _, attacker_stats, _, _ = get_poke_data(trainer_name, attacker_pid)
                     else:
                         st.info("Sua party está vazia para selecionar o atacante.")
                     # Busca peças de TODOS os outros jogadores que não são você
@@ -5854,7 +5892,7 @@ elif page == "PvP – Arena Tática":
                                 t_p = next((p for p in all_pieces if p['id'] == target_id), None)
                                 
                                 # Pega stats do alvo
-                                _, _, t_stats, _ = get_poke_data(t_p['owner'], t_p['pid'])
+                                _, _, t_stats, _, _ = get_poke_data(t_p['owner'], t_p['pid'])
                                 dodge = int(t_stats.get("dodge", 0))
                                 parry = int(t_stats.get("parry", 0))
                                 
@@ -5884,7 +5922,7 @@ elif page == "PvP – Arena Tática":
                     st.markdown("### 🏃 Rolar Esquiva (Dodge)")
                     if st.button("Rolar Dodge"):
                         d20 = random.randint(1, 20)
-                        _, _, t_stats, _ = get_poke_data(trainer_name, b_data.get('target_pid'))
+                        _, _, t_stats, _, _ = get_poke_data(trainer_name, b_data.get('target_pid'))
                         dodge_val = int(t_stats.get("dodge", 0))
                         
                         total_roll = d20 + dodge_val
@@ -5965,7 +6003,7 @@ elif page == "PvP – Arena Tática":
 
                     if res_type:
                         def_die = random.randint(1, 20)
-                        _, _, t_stats, _ = get_poke_data(trainer_name, b_data.get('target_pid')) 
+                        _, _, t_stats, _, _ = get_poke_data(trainer_name, b_data.get('target_pid'))
                         stat_val = int(t_stats.get(res_type, 0))
                         
                         check_total = def_die + stat_val
@@ -6058,12 +6096,16 @@ elif page == "PvP – Arena Tática":
                             st.session_state["placing_pid"] = None
                             st.rerun()
                     if st.button("Limpar Tudo"):
-                        db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": []})
+                        db.collection("rooms").document(rid).collection("public_state").document("state").update({
+                            "effects": [],
+                            "updatedAt": firestore.SERVER_TIMESTAMP,
+                        })
                         st.rerun()
 
             show_grid = st.checkbox("Grade Tática", value=True, key=f"grid_{rid}")
             
             # ... (Restante do código de renderização do mapa permanece igual) ...
+            state_updated_at = state.get("updatedAt")
             map_signature = json.dumps({
                 "seed": seed,
                 "tiles": tiles_packed,
@@ -6071,6 +6113,7 @@ elif page == "PvP – Arena Tática":
                 "pieces": pieces_to_draw,
                 "effects": field_effects,
                 "grid": show_grid,
+                "updatedAt": state_updated_at,
             }, sort_keys=True, default=str)
             if st.session_state.get("map_cache_sig") != map_signature:
                 st.session_state["map_cache_sig"] = map_signature
@@ -6126,7 +6169,11 @@ elif page == "PvP – Arena Tática":
                     curr = state.get("effects") or []
                     new = [e for e in curr if not (int(e["row"])==row and int(e["col"])==col)]
                     new.append({"icon": peff, "row": row, "col": col, "id": str(uuid.uuid4())[:8]})
-                    db.collection("rooms").document(rid).collection("public_state").document("state").update({"effects": new})
+                    db.collection("rooms").document(rid).collection("public_state").document("state").update({
+                        "effects": new,
+                        "updatedAt": firestore.SERVER_TIMESTAMP,
+                    })
+                    add_public_event(db, rid, "effect", trainer_name, {"icon": peff, "to": [row, col]})
                     st.session_state["placing_effect"] = None
                     st.rerun()
                 elif ppid:
@@ -6145,6 +6192,7 @@ elif page == "PvP – Arena Tática":
                     }
                     upsert_piece(db, rid, new_piece)
                     mark_pid_seen(db, rid, ppid)
+                    add_public_event(db, rid, "piece_placed", trainer_name, {"pid": ppid, "to": [row, col]})
                     st.session_state.pop("placing_pid", None)
                     st.rerun()
                 elif moving_piece_id and is_player:
@@ -6159,15 +6207,17 @@ elif page == "PvP – Arena Tática":
                         mover["row"] = row
                         mover["col"] = col
 
-                        # 3. Registra o movimento publicamente NO LOG
+                        # 3. Salva a peça no Firebase
+                        upsert_piece(db, rid, mover)
+
+                        # 4. Registra o movimento publicamente NO LOG
                         add_public_event(db, rid, "move", trainer_name, {
                             "pid": mover["pid"],
                             "from": old_pos,
                             "to": [row, col]
                         })
 
-                        # 4. Salva a peça no Firebase
-                        upsert_piece(db, rid, mover)
+
 
                         # 5. Limpa a seleção e recarrega
                         st.session_state["moving_piece_id"] = None
