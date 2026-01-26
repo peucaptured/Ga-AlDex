@@ -12,3 +12,4 @@ Pillow
 streamlit-image-coordinates
 scikit-learn
 reportlab
+PyPDF2
