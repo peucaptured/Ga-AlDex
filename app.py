@@ -368,6 +368,15 @@ class MoveDB:
             return []
         return [self._row_to_move(row.to_dict()) for _, row in hit.iterrows()]
 
+    def search_by_name_prefix(self, name: str) -> List[Move]:
+        key = _norm(name)
+        if not key:
+            return []
+        hit = self.df[self.df["__name_norm"].str.startswith(key)]
+        if hit.empty:
+            return []
+        return [self._row_to_move(row.to_dict()) for _, row in hit.iterrows()]
+
     def suggest_by_description(self, description: str, top_k: int = 5) -> List[Tuple[Move, float]]:
         q = _safe_str(description)
         if not q:
@@ -662,11 +671,11 @@ def render_move_creator(
         )
 
     def _search_moves_by_name(name: str) -> List[Move]:
-        hits = db.get_all_by_name(name)
+        hits = db.search_by_name_prefix(name)
         manual_hits = [
             _manual_move_to_move(mv)
             for mv in st.session_state.get("cg_manual_moves", [])
-            if _norm(mv.get("Nome")) == _norm(name)
+            if _norm(mv.get("Nome")).startswith(_norm(name))
         ]
         return hits + manual_hits
 
@@ -6489,7 +6498,6 @@ elif page == "Mochila":
     
     
     
-
 
 
 
