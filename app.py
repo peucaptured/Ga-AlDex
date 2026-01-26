@@ -2551,12 +2551,20 @@ def join_room_as_spectator(db, rid: str, trainer_name: str):
     return "OK"
 
 def add_public_event(db, rid: str, event_type: str, by: str, payload: dict):
+    # 1. Adiciona o evento no histórico (como antes)
     db.collection("rooms").document(rid).collection("public_events").add({
         "type": event_type,
         "by": by,
         "payload": payload or {},
         "ts": firestore.SERVER_TIMESTAMP,
     })
+    
+    # 2. NOVO: Atualiza o timestamp do ESTADO para disparar o sync_watchdog de todos
+    # Isso garante que quem está na sala veja o dado/log aparecer sozinho
+    db.collection("rooms").document(rid).collection("public_state").document("state").update({
+        "updatedAt": firestore.SERVER_TIMESTAMP
+    })
+    
 def state_ref_for(db, rid: str):
     return (
         db.collection("rooms")
@@ -6169,13 +6177,13 @@ elif page == "PvP – Arena Tática":
             st.markdown(f"### 🗺️ Arena (Sala {rid})")
             
             # --- ALERTA VISUAL DE AÇÃO NO MAPA ---
-            if st.session_state.get("moving_piece_id"):
-                st.warning("🏃 MODO MOVIMENTO: Clique em um quadrado vazio para mover o Pokémon.", icon="📍")
-            elif st.session_state.get("placing_pid"):
-                st.info("📍 MODO POSICIONAMENTO: Clique no mapa para colocar o Pokémon.", icon="⬇️")
-            elif st.session_state.get("placing_effect"):
-                eff_icon = st.session_state.get("placing_effect")
-                st.info(f"✨ MODO TERRENO: Clique para adicionar {eff_icon}.", icon="✨")
+            #if st.session_state.get("moving_piece_id"):
+            #    st.warning("🏃 MODO MOVIMENTO: Clique em um quadrado vazio para mover o Pokémon.", icon="📍")
+            #elif st.session_state.get("placing_pid"):
+            #    st.info("📍 MODO POSICIONAMENTO: Clique no mapa para colocar o Pokémon.", icon="⬇️")
+            #elif st.session_state.get("placing_effect"):
+            #    eff_icon = st.session_state.get("placing_effect")
+            #    st.info(f"✨ MODO TERRENO: Clique para adicionar {eff_icon}.", icon="✨")
             # -------------------------------------
 
             # Ferramentas de Campo
