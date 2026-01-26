@@ -5862,8 +5862,8 @@ elif page == "Criação Guiada de Fichas":
                         st.error(f"Não consegui carregar o Excel de golpes: {e}")
                         db_moves = None
 
-                    st.markdown("#### 1) Sugestões pelo Pokémon (PokeAPI)")
-                    st.caption("Lista de golpes que o Pokémon pode aprender. Eu comparo com o seu banco e deixo 1 clique para adicionar.")
+                    st.markdown("#### 1) Sugestões pelo Pokémon (Bulbapedia)")
+                    st.caption("Lista de golpes que o Pokémon pode aprender. Eu comparo com o banco e deixo 1 clique para adicionar.")
 
                     rank_default = st.slider(
                         "Rank padrão para adicionar",
@@ -5936,7 +5936,7 @@ elif page == "Criação Guiada de Fichas":
                                     st.success(f"Adicionados: {added} golpe(s).")
                                     st.rerun()
                             with col2:
-                                st.caption("Dica: se algum golpe ficar sem PP, preencha em **Lista & ajustes**.")
+                                st.caption("Dica: se algum golpe ficar sem PP ou com Rank muito alto, preencha em **Lista & ajustes**.")
                         else:
                             st.info("Não encontrei golpes do learnset no banco atual. Use a busca abaixo ou o assistente.")
 
