@@ -1261,6 +1261,163 @@ def build_sheet_pdf(
     c.save()
     return buffer.getvalue()
 
+
+def parse_sheet_pdf(pdf_bytes: bytes) -> dict:
+    from PyPDF2 import PdfReader
+
+    reader = PdfReader(BytesIO(pdf_bytes))
+    raw_text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+
+    header_re = re.compile(r"^Ficha Pokémon - (.+) \(NP (\d+)\)$")
+    stats_re = re.compile(
+        r"Stgr\s+(\d+)\s*\|\s*Int\s+(\d+)\s*\|\s*Dodge\s+(\d+)\s*\|\s*Parry\s+(\d+)\s*\|\s*Fort\s+(\d+)\s*\|\s*Will\s+(\d+)"
+    )
+    move_re = re.compile(r"^- (.+) \(Rank (\d+)\) \| PP ([^|]+) \| Acerto (\d+)$")
+
+    pname = ""
+    np_value = 0
+    types: list[str] = []
+    abilities: list[str] = []
+    stats: dict[str, int] = {}
+    advantages: list[str] = []
+    moves: list[dict] = []
+
+    for line in lines:
+        header_match = header_re.match(line)
+        if header_match:
+            pname = header_match.group(1).strip()
+            np_value = int(header_match.group(2))
+            continue
+        if line.startswith("Tipos:"):
+            raw_types = line.replace("Tipos:", "", 1).strip()
+            types = [t.strip() for t in raw_types.split(",") if t.strip()]
+            continue
+        if line.startswith("Abilities:"):
+            raw_abilities = line.replace("Abilities:", "", 1).strip()
+            abilities = [a.strip() for a in raw_abilities.split(",") if a.strip()]
+            continue
+        if line.startswith("Advantages:"):
+            raw_adv = line.replace("Advantages:", "", 1).strip()
+            if raw_adv and raw_adv != "(nenhuma)":
+                advantages = [a.strip() for a in raw_adv.split(",") if a.strip()]
+            continue
+        stats_match = stats_re.search(line)
+        if stats_match:
+            stats = {
+                "stgr": int(stats_match.group(1)),
+                "int": int(stats_match.group(2)),
+                "dodge": int(stats_match.group(3)),
+                "parry": int(stats_match.group(4)),
+                "fortitude": int(stats_match.group(5)),
+                "will": int(stats_match.group(6)),
+            }
+
+    in_moves = False
+    current_move = None
+    build_lines: list[str] = []
+    collecting_build = False
+
+    for line in lines:
+        if line == "Golpes:":
+            in_moves = True
+            continue
+        if not in_moves:
+            continue
+
+        move_match = move_re.match(line)
+        if move_match:
+            if current_move:
+                current_move["build"] = "\n".join(build_lines).strip()
+                moves.append(current_move)
+            move_name = move_match.group(1).strip()
+            move_rank = int(move_match.group(2))
+            pp_raw = move_match.group(3).strip()
+            pp_value = int(pp_raw) if pp_raw.isdigit() else None
+            acc_value = int(move_match.group(4))
+            current_move = {
+                "name": move_name,
+                "rank": move_rank,
+                "pp_cost": pp_value,
+                "accuracy": acc_value,
+                "build": "",
+            }
+            build_lines = []
+            collecting_build = False
+            continue
+
+        if line.startswith("Ingredientes"):
+            collecting_build = True
+            continue
+
+        if collecting_build and current_move:
+            build_lines.append(line)
+
+    if current_move:
+        current_move["build"] = "\n".join(build_lines).strip()
+        moves.append(current_move)
+
+    if not pname or np_value <= 0:
+        raise ValueError("Não foi possível identificar nome ou NP no PDF.")
+
+    return {
+        "pokemon": {"name": pname, "types": types, "abilities": abilities},
+        "np": np_value,
+        "stats": stats,
+        "advantages": advantages,
+        "moves": moves,
+    }
+
+
+def apply_imported_sheet_to_session(sheet: dict):
+    pokemon = sheet.get("pokemon", {}) if isinstance(sheet, dict) else {}
+    pname = str(pokemon.get("name", "") or "")
+    np_ = int(sheet.get("np", 0) or 0)
+    stats = sheet.get("stats") or {}
+    moves = sheet.get("moves") or []
+    advantages = sheet.get("advantages") or []
+    abilities = pokemon.get("abilities") or []
+    types = pokemon.get("types") or []
+
+    cap = 2 * np_
+    dodge_val = int(stats.get("dodge", 0) or 0)
+
+    for m in moves:
+        if isinstance(m, dict) and "accuracy" not in m:
+            m["accuracy"] = 0
+
+    st.session_state["cg_edit_sheet_id"] = None
+    st.session_state["cg_imported_name"] = pname
+    st.session_state["cg_imported_types"] = list(types)
+    st.session_state["cg_imported_abilities"] = list(abilities)
+
+    st.session_state["cg_draft"] = {
+        "pname": pname,
+        "np": np_,
+        "stats": {
+            "stgr": int(stats.get("stgr", 0) or 0),
+            "int": int(stats.get("int", 0) or 0),
+            "dodge": dodge_val,
+            "parry": int(stats.get("parry", dodge_val) or 0),
+            "thg": int(stats.get("thg", max(0, cap - dodge_val)) or 0),
+            "fortitude": int(stats.get("fortitude", 0) or 0),
+            "will": int(stats.get("will", 0) or 0),
+        },
+        "moves": list(moves),
+    }
+    st.session_state["cg_moves"] = st.session_state["cg_draft"]["moves"]
+    st.session_state["cg_pname"] = pname
+    st.session_state["cg_np"] = np_
+    st.session_state["cg_stgr"] = st.session_state["cg_draft"]["stats"]["stgr"]
+    st.session_state["cg_int"] = st.session_state["cg_draft"]["stats"]["int"]
+    st.session_state["cg_dodge"] = st.session_state["cg_draft"]["stats"]["dodge"]
+    st.session_state["cg_parry"] = st.session_state["cg_draft"]["stats"]["parry"]
+    st.session_state["cg_thg"] = st.session_state["cg_draft"]["stats"]["thg"]
+    st.session_state["cg_fortitude"] = st.session_state["cg_draft"]["stats"]["fortitude"]
+    st.session_state["cg_will"] = st.session_state["cg_draft"]["stats"]["will"]
+    st.session_state["cg_advantages"] = list(advantages)
+    st.session_state["cg_abilities"] = list(abilities)
+
 def list_sheets(db, trainer_name: str, limit: int = 50):
     trainer_id = safe_doc_id(trainer_name)
     docs = (
@@ -5483,6 +5640,22 @@ elif page == "Criação Guiada de Fichas":
                 base_stats = pokeapi_parse_stats(pjson)
                 types = pokeapi_parse_types(pjson)
                 abilities = pokeapi_parse_abilities(pjson)
+
+                imported_name = st.session_state.get("cg_imported_name")
+                imported_types = (
+                    st.session_state.get("cg_imported_types")
+                    if imported_name and _norm(imported_name) == _norm(pname)
+                    else None
+                )
+                imported_abilities = (
+                    st.session_state.get("cg_imported_abilities")
+                    if imported_name and _norm(imported_name) == _norm(pname)
+                    else None
+                )
+                if imported_types:
+                    types = list(imported_types)
+                if imported_abilities:
+                    abilities = sorted(set(abilities + list(imported_abilities)))
                 
                 # Escolha de Habilidades
                 saved_abilities = st.session_state.get("cg_abilities")
@@ -5492,7 +5665,11 @@ elif page == "Criação Guiada de Fichas":
                     "Escolha a(s) habilidade(s) (pode mais de uma):",
                     options=abilities,
                     default=[
-                        a for a in (saved_abilities or (abilities[:1] if abilities else []))
+                        a
+                        for a in (
+                            saved_abilities
+                            or (imported_abilities if imported_abilities else (abilities[:1] if abilities else []))
+                        )
                         if a in abilities
                     ],
                 )
@@ -5809,7 +5986,12 @@ elif page == "Criação Guiada de Fichas":
                     labels = [a.label() for a in adv_suggestions]
                     notes_map = {a.label(): (a.note or "") for a in adv_suggestions}
                     saved_adv = st.session_state.get("cg_advantages") or []
-                    chosen_labels = st.multiselect("Selecione advantages:", options=labels, default=[lab for lab in saved_adv if lab in labels])
+                    all_advantages = sorted(set(labels + list(saved_adv)))
+                    chosen_labels = st.multiselect(
+                        "Selecione advantages:",
+                        options=all_advantages,
+                        default=[lab for lab in saved_adv if lab in all_advantages],
+                    )
                     chosen_adv = chosen_labels
                     for lab in chosen_labels:
                         if notes_map.get(lab): st.caption(f"• {lab}: {notes_map[lab]}")
@@ -6518,6 +6700,20 @@ elif page == "Criação Guiada de Fichas":
 elif page == "Minhas Fichas":
     st.title("📚 Minhas Fichas")
     st.caption("Veja e gerencie as fichas salvas na nuvem.")
+
+    with st.expander("📥 Importar ficha via PDF", expanded=False):
+        st.caption("Envie um PDF exportado aqui para recriar a ficha automaticamente.")
+        pdf_upload = st.file_uploader("Selecionar PDF da ficha", type=["pdf"], key="sheet_pdf_import")
+        if pdf_upload and st.button("📥 Importar PDF", key="sheet_pdf_import_btn"):
+            try:
+                imported_sheet = parse_sheet_pdf(pdf_upload.getvalue())
+                apply_imported_sheet_to_session(imported_sheet)
+                st.session_state["cg_force_guided"] = True
+                st.session_state["nav_to"] = "Criação Guiada de Fichas"
+                st.success("Ficha importada! Abrindo na criação guiada...")
+                st.rerun()
+            except Exception as exc:
+                st.error(f"Não consegui importar o PDF: {exc}")
 
     db, bucket = init_firebase()
     sheets = list_sheets(db, trainer_name)
@@ -7742,10 +7938,6 @@ elif page == "Mochila":
     
     
     
-
-
-
-
 
 
 
