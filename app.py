@@ -6219,91 +6219,90 @@ elif page == "Criação Guiada de Fichas":
                                 placeholder="Ex.: Damage (Rank = ) [Ranged] [Extra: Increased Range 1]; Linked Affliction 1 (...) ...",
                             )
 
-                st.session_state["cg_u_build"] = (build_u or "").strip()
+                            st.session_state["cg_u_build"] = (build_u or "").strip()
                 
                         with cR:
-                            st.markdown("**Atalhos (opcionais):**")
-                            st.caption("Eles só **inserem texto** na build (não mudam suas fórmulas).")
-                
-                            linked = st.checkbox("Prefixar com 'Linked' no próximo efeito-base", value=False, key="cg_u_next_linked")
-                            base = st.selectbox(
-                                "Inserir efeito-base",
-                                [
-                                    "Damage", "Affliction", "Weaken", "Healing", "Nullify", "Create", "Environment",
-                                    "Teleport", "Dazzle", "Concealment", "Deflect", "Immunity", "Enhanced Trait", "Feature", "Movement",
-                                ],
-                                index=0,
-                                key="cg_u_base_effect",
-                            )
-                            tmpl = {
-                                "Damage": "Damage (Rank = )",
-                                "Affliction": "Affliction (Rank = ) (Fatigued, Dazed, Stunned; Resisted by Fortitude)",
-                                "Weaken": "Weaken Toughness (Rank = ) (Resisted by Fortitude)",
-                                "Healing": "Healing (Rank = )",
-                                "Nullify": "Nullify (Rank = ) (Resisted by Will)",
-                                "Create": "Create (Rank = )",
-                                "Environment": "Environment (Rank = )",
-                                "Teleport": "Teleport (medium) (Rank = )",
-                                "Dazzle": "Dazzle (Rank = ) (Resisted by Fortitude)",
-                                "Concealment": "Concealment (Rank = )",
-                                "Deflect": "Deflect (Rank = )",
-                                "Immunity": "Immunity (Rank = )",
-                                "Enhanced Trait": "Enhanced Trait (Rank = )",
-                                "Feature": "Feature (Rank = )",
-                                "Movement": "Movement (Rank = )",
-                            }
-                
-                            if st.button("➕ Inserir efeito-base", key="cg_u_insert_base"):
-                                piece = tmpl.get(base, f"{base} (Rank = )")
+                            st.markdown('**Atalhos (opcionais):**')
+                            st.caption('Eles só **inserem texto** na build (não mudam suas fórmulas).')
+                            linked = st.checkbox("Prefixar com 'Linked' no próximo efeito-base", value=False, key='cg_u_next_linked')
+                            base = st.selectbox('Inserir efeito-base', ['Damage','Affliction','Weaken','Healing','Nullify','Create','Environment','Teleport','Dazzle','Concealment','Deflect','Immunity','Enhanced Trait','Feature','Movement'], index=0, key='cg_u_base')
+                            rank_b = st.number_input('Rank do efeito-base', min_value=0, max_value=30, value=int(st.session_state.get('cg_u_rank', 1)), step=1, key='cg_u_base_rank')
+                            area = st.selectbox('Área (opcional)', ['—','Burst','Cone','Line','Cloud','Perception Area','Shapeable','Selective'], index=0, key='cg_u_area')
+                            extras_txt = st.text_input('Extras (texto, opcional)', key='cg_u_extras_txt', placeholder='Ex.: [Extra: Increased Range 1] [Extra: Improved Critical 1]')
+                            flaws_txt = st.text_input('Flaws/Limites (texto, opcional)', key='cg_u_flaws_txt', placeholder='Ex.: [Flaw: Limited - Objects] [Flaw: Distracting]')
+                            if st.button('➕ Inserir efeito na build', key='cg_u_insert_base'):
+                                piece = f"{base} {int(rank_b)}"
+                                if area != '—':
+                                    piece += f" [Area: {area}]"
+                                if extras_txt.strip():
+                                    piece += ' ' + extras_txt.strip()
+                                if flaws_txt.strip():
+                                    piece += ' ' + flaws_txt.strip()
                                 if linked:
-                                    piece = "Linked " + piece
-                                cur = (st.session_state.get("cg_u_build") or "").strip()
+                                    piece = 'Linked ' + piece
+                                cur = (st.session_state.get('cg_u_build') or '').strip()
                                 if cur:
-                                    if not cur.endswith(";"):
-                                        cur += ";"
-                                    cur += " " + piece
+                                    if not cur.endswith(';'):
+                                        cur += ';'
+                                    cur += ' ' + piece
                                 else:
                                     cur = piece
-                                st.session_state["cg_u_build"] = cur
-                                st.session_state["cg_u_build_pending"] = st.session_state.get("cg_u_build", "")
+                                st.session_state['cg_u_build'] = cur
+                                st.session_state['cg_u_build_pending'] = cur
                                 st.rerun()
-                
-                            st.markdown("**Inserir modificadores comuns:**")
+                            st.markdown('**Inserir modificadores comuns:**')
                             m1, m2 = st.columns(2)
-                            if m1.button("[Ranged]", key="cg_u_m_ranged"):
-                                st.session_state["cg_u_build"] = ((st.session_state.get("cg_u_build") or "") + " [Ranged]").strip()
-                                st.session_state["cg_u_build_pending"] = st.session_state.get("cg_u_build", "")
+                            if m1.button('[Ranged]', key='cg_u_m_ranged'):
+                                cur = (st.session_state.get('cg_u_build') or '').rstrip()
+                                cur = (cur + ' [Ranged]').strip()
+                                st.session_state['cg_u_build'] = cur
+                                st.session_state['cg_u_build_pending'] = cur
                                 st.rerun()
-                            if m2.button("[Perception Area]", key="cg_u_m_percarea"):
-                                st.session_state["cg_u_build"] = ((st.session_state.get("cg_u_build") or "") + " [Perception Area]").strip()
-                                st.session_state["cg_u_build_pending"] = st.session_state.get("cg_u_build", "")
+                            if m1.button('[Perception]', key='cg_u_m_perception'):
+                                cur = (st.session_state.get('cg_u_build') or '').rstrip()
+                                cur = (cur + ' [Perception]').strip()
+                                st.session_state['cg_u_build'] = cur
+                                st.session_state['cg_u_build_pending'] = cur
                                 st.rerun()
-                            if m1.button("[Close]", key="cg_u_m_close"):
-                                st.session_state["cg_u_build"] = ((st.session_state.get("cg_u_build") or "") + " [Close]").strip()
-                                st.session_state["cg_u_build_pending"] = st.session_state.get("cg_u_build", "")
+                            if m1.button('[Extra: Increased Range 1]', key='cg_u_m_inc_range'):
+                                cur = (st.session_state.get('cg_u_build') or '').rstrip()
+                                cur = (cur + ' [Extra: Increased Range 1]').strip()
+                                st.session_state['cg_u_build'] = cur
+                                st.session_state['cg_u_build_pending'] = cur
                                 st.rerun()
-                            if m2.button("[Perception]", key="cg_u_m_perc"):
-                                st.session_state["cg_u_build"] = ((st.session_state.get("cg_u_build") or "") + " [Perception]").strip()
-                                st.session_state["cg_u_build_pending"] = st.session_state.get("cg_u_build", "")
+                            if m2.button('[Extra: Improved Critical 1]', key='cg_u_m_imp_crit'):
+                                cur = (st.session_state.get('cg_u_build') or '').rstrip()
+                                cur = (cur + ' [Extra: Improved Critical 1]').strip()
+                                st.session_state['cg_u_build'] = cur
+                                st.session_state['cg_u_build_pending'] = cur
                                 st.rerun()
-                
-                            area_sel = st.selectbox("Área", ["—", "Burst", "Cone", "Line", "Cloud"], key="cg_u_area_sel")
-                            if st.button("➕ Inserir [Area: ...]", key="cg_u_m_area"):
-                                if area_sel != "—":
-                                    st.session_state["cg_u_build"] = ((st.session_state.get("cg_u_build") or "") + f" [Area: {area_sel}]").strip()
-                                    st.session_state["cg_u_build_pending"] = st.session_state.get("cg_u_build", "")
-                                    st.rerun()
-                
-                            custom_mod = st.text_input("Modificador custom (ex.: Extra/Flaw/Custom/Duration...)", key="cg_u_custom_mod")
-                            if st.button("➕ Inserir modificador custom", key="cg_u_m_custom"):
-                                if custom_mod.strip():
-                                    mod_txt = custom_mod.strip()
-                                    if not (mod_txt.startswith("[") and mod_txt.endswith("]")):
-                                        mod_txt = "[" + mod_txt + "]"
-                                    st.session_state["cg_u_build"] = ((st.session_state.get("cg_u_build") or "") + " " + mod_txt).strip()
-                                    st.session_state["cg_u_build_pending"] = st.session_state.get("cg_u_build", "")
-                                    st.rerun()
-                
+                            if m2.button('[Flaw: Limited - Objects]', key='cg_u_m_lim_obj'):
+                                cur = (st.session_state.get('cg_u_build') or '').rstrip()
+                                cur = (cur + ' [Flaw: Limited - Objects]').strip()
+                                st.session_state['cg_u_build'] = cur
+                                st.session_state['cg_u_build_pending'] = cur
+                                st.rerun()
+                            if m2.button('[Affect Others]', key='cg_u_m_affect_others'):
+                                cur = (st.session_state.get('cg_u_build') or '').rstrip()
+                                cur = (cur + ' [Affect Others]').strip()
+                                st.session_state['cg_u_build'] = cur
+                                st.session_state['cg_u_build_pending'] = cur
+                                st.rerun()
+                            st.markdown('**Ferramentas rápidas:**')
+                            t1, t2 = st.columns(2)
+                            if t1.button('🧹 Limpar build', key='cg_u_clear'):
+                                st.session_state['cg_u_build'] = ''
+                                st.session_state['cg_u_build_pending'] = ''
+                                st.rerun()
+                            if t2.button('↩️ Desfazer última peça', key='cg_u_undo'):
+                                cur = (st.session_state.get('cg_u_build') or '').strip()
+                                if ';' in cur:
+                                    cur = cur.rsplit(';', 1)[0].strip()
+                                else:
+                                    cur = ''
+                                st.session_state['cg_u_build'] = cur
+                                st.session_state['cg_u_build_pending'] = cur
+                                st.rerun()
                         st.markdown("---")
                         st.markdown("#### Resultado")
                         final_build = (st.session_state.get("cg_u_build") or "").strip()
@@ -7729,10 +7728,6 @@ elif page == "Mochila":
     
     
     
-
-
-
-
 
 
 
