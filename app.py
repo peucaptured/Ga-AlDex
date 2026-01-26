@@ -23,7 +23,7 @@ from advantages_engine import suggest_advantages
 import queue
 import threading
 import time
-from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
+from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx, script_runner
 
 
 # ================================
@@ -6489,8 +6489,6 @@ elif page == "Mochila":
     
     
     
-
-
 
 
 
