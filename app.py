@@ -6396,6 +6396,20 @@ elif page == "Criação Guiada de Fichas":
                                         st.code(m_gv["build"], language="text")
 
                             with c2:
+                                # editar Rank do golpe
+                                cur_rank = int(m_gv.get("rank", 1) or 1)
+                                new_rank = st.number_input(
+                                    "Rank",
+                                    min_value=1,
+                                    max_value=50,
+                                    value=int(cur_rank),
+                                    step=1,
+                                    key=f"cg_guided_move_rank_{i}",
+                                )
+                                if st.button("Definir rank", key=f"cg_guided_move_set_rank_{i}"):
+                                    m_gv["rank"] = int(new_rank)
+                                    st.rerun()
+
                                 acc_limit = _move_accuracy_limit(m_gv, np_value, stats_now)
                                 current_acc = int(m_gv.get("accuracy", 0) or 0)
                                 safe_max = max(int(acc_limit), int(current_acc))
