@@ -1745,6 +1745,47 @@ def _cg_confirm_move(mv, rank: int, pp_override: int | None = None, accuracy: in
     }
 
 
+def _cg_recalculate_pp(move_data: dict, rank: int, db_moves: Optional["MoveDB"]) -> Tuple[Optional[int], Optional[str]]:
+    mv_name = str(move_data.get("name") or "").strip()
+    if db_moves and mv_name:
+        try:
+            mv = db_moves.get_by_name(mv_name)
+        except Exception:
+            mv = None
+        if mv:
+            try:
+                pp_auto, why = mv.pp_cost(int(rank))
+                if pp_auto is not None:
+                    return int(pp_auto), why
+            except Exception:
+                pass
+
+    tmp_build = str(move_data.get("build") or "").strip()
+    if tmp_build:
+        tmp_meta = move_data.get("meta") or {}
+        tmp_mv = Move(
+            name=(mv_name or "Poder Personalizado"),
+            tipo="—",
+            categoria=str(tmp_meta.get("category") or ""),
+            descricao="",
+            build=tmp_build,
+            how_it_works="",
+            resist_stat="",
+            ranged=bool(tmp_meta.get("ranged", False)),
+            perception_area=bool(tmp_meta.get("perception_area", False)),
+            tags=[],
+            raw={},
+        )
+        try:
+            pp_auto, why = tmp_mv.pp_cost(int(rank))
+            if pp_auto is not None:
+                return int(pp_auto), why
+        except Exception:
+            pass
+
+    return None, None
+
+
 
 import math
 from io import BytesIO
@@ -6007,6 +6048,13 @@ elif page == "Criação Guiada de Fichas":
                     "ou use o criador completo. Suas fórmulas e regras de PP não mudam — apenas organizamos o processo."
                 )
 
+                excel_path = _resolve_asset_path("golpes_pokemon_MM_reescritos.xlsx")
+                try:
+                    db_moves_guided = load_move_db(excel_path)
+                except Exception as e:
+                    st.error(f"Não consegui carregar o Excel de golpes: {e}")
+                    db_moves_guided = None
+
                 # garante lista de golpes na sessão
                 st.session_state.setdefault("cg_moves", st.session_state.get("cg_draft", {}).get("moves", []))
                 if "cg_draft" in st.session_state:
@@ -6037,13 +6085,6 @@ elif page == "Criação Guiada de Fichas":
                 # (A) Adicionar rápido
                 # --------------------------
                 with sub_tabs[0]:
-                    excel_path = _resolve_asset_path("golpes_pokemon_MM_reescritos.xlsx")
-                    try:
-                        db_moves = load_move_db(excel_path)
-                    except Exception as e:
-                        st.error(f"Não consegui carregar o Excel de golpes: {e}")
-                        db_moves = None
-
                     st.markdown("#### 1) Sugestões pelo Pokémon (Bulbapedia)")
                     st.caption("Lista de golpes que o Pokémon pode aprender. Eu comparo com o banco e deixo 1 clique para adicionar.")
 
@@ -6054,11 +6095,11 @@ elif page == "Criação Guiada de Fichas":
                         key="cg_quick_rank_default"
                     )
 
-                    if db_moves is not None and isinstance(pjson, dict):
+                    if db_moves_guided is not None and isinstance(pjson, dict):
                         api_moves = _pokeapi_parse_move_names(pjson)
                         matched = []
                         for nm in api_moves[:120]:  # limita para não ficar pesado
-                            mv = _try_match_move_in_db(db_moves, nm)
+                            mv = _try_match_move_in_db(db_moves_guided, nm)
                             if mv:
                                 matched.append(mv)
 
@@ -6091,7 +6132,7 @@ elif page == "Criação Guiada de Fichas":
                                     existing = {_norm(m.get("name", "")) for m in st.session_state.get("cg_moves", [])}
                                     added = 0
                                     for nm in pick:
-                                        mv = db_moves.get_by_name(nm)
+                                        mv = db_moves_guided.get_by_name(nm)
                                         if not mv:
                                             continue
                                         if _norm(mv.name) in existing:
@@ -6125,13 +6166,13 @@ elif page == "Criação Guiada de Fichas":
                     st.divider()
                     st.markdown("#### 2) Buscar no banco (rápido)")
                     q = st.text_input("Digite parte do nome (ex.: thunder, punch, protect)", key="cg_quick_search")
-                    if db_moves is None:
+                    if db_moves_guided is None:
                         st.stop()
 
                     if q and len(q.strip()) >= 2:
-                        results = db_moves.search_by_name_prefix(q.strip())[:20]
+                        results = db_moves_guided.search_by_name_prefix(q.strip())[:20]
                         if not results:
-                            sugg = db_moves.suggest_by_description(q.strip(), top_k=8)
+                            sugg = db_moves_guided.suggest_by_description(q.strip(), top_k=8)
                             results = [mv for (mv, _s) in sugg]
 
                         if results:
@@ -6590,6 +6631,19 @@ elif page == "Criação Guiada de Fichas":
                                 )
                                 if st.button("Definir rank", key=f"cg_guided_move_set_rank_{i}"):
                                     m_gv["rank"] = int(new_rank)
+                                    pp_recalc, _why = _cg_recalculate_pp(m_gv, int(new_rank), db_moves_guided)
+                                    if pp_recalc is not None:
+                                        m_gv["pp_cost"] = int(pp_recalc)
+                                    if db_moves_guided:
+                                        try:
+                                            mv_db = db_moves_guided.get_by_name(str(m_gv.get("name") or ""))
+                                        except Exception:
+                                            mv_db = None
+                                        if mv_db:
+                                            try:
+                                                m_gv["build"] = mv_db.render_build(int(new_rank))
+                                            except Exception:
+                                                pass
                                     st.rerun()
 
                                 acc_limit = _move_accuracy_limit(m_gv, np_value, stats_now)
@@ -7938,11 +7992,6 @@ elif page == "Mochila":
     
     
     
-
-
-
-
-
 
 
 
