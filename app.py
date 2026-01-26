@@ -23,7 +23,9 @@ from advantages_engine import suggest_advantages
 import queue
 import threading
 import time
+from streamlit.runtime import scriptrunner # <--- IMPORTANTE: Importar o módulo inteiro
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
+from streamlit.errors import StreamlitAPIException
 
 
 # ================================
@@ -1878,7 +1880,9 @@ def ensure_pvp_sync_listener(db, rid):
     # Prepara filas e eventos para thread
     event_queue: queue.Queue = queue.Queue()
     stop_event = threading.Event()
-    ctx = get_script_run_ctx() # Pega o contexto da sessão atual do usuário
+    
+    # Pega o contexto da sessão atual do usuário ANTES de entrar na thread
+    ctx = get_script_run_ctx() 
 
     # Função auxiliar para colocar na fila de processamento
     def enqueue(tag: str, source: str):
@@ -1905,13 +1909,14 @@ def ensure_pvp_sync_listener(db, rid):
 
     # --- WORKER: A Thread que força o RERUN do Streamlit ---
     def rerun_worker():
-        # Anexa esta thread à sessão do usuário (Isso é crucial!)
+        # Anexa esta thread à sessão do usuário (CRUCIAL para o st.rerun funcionar)
         if ctx:
             add_script_run_ctx(threading.current_thread(), ctx)
         
         while not stop_event.is_set():
             try:
                 # Espera passiva: não gasta CPU, fica travado aqui até o Firebase mandar algo
+                # Timeout de 3s para checar se deve parar
                 item = event_queue.get(timeout=3) 
                 
                 if item.get("tag") == "stop":
@@ -1920,98 +1925,53 @@ def ensure_pvp_sync_listener(db, rid):
                 # Se houver contexto, solicita o Rerun
                 if ctx and ctx.script_requests:
                     # Cria a solicitação de rerun (A "mágica" do refresh)
-                    rerun_data = script_runner.RerunData(
+                    rerun_data = scriptrunner.RerunData(
                         query_string=ctx.query_string,
                         page_script_hash=ctx.page_script_hash,
                         cached_message_hashes=ctx.cached_message_hashes,
                     )
                     ctx.script_requests.request_rerun(rerun_data)
                     
-                    # Pequena pausa para evitar flood de reruns se muitos eventos vierem juntos
+                    # Pequena pausa para evitar "piscar" demais se vierem muitos eventos juntos
                     time.sleep(0.5) 
+                else:
+                    # Se perdeu o contexto (usuário fechou a aba), para a thread
+                    break
                     
             except queue.Empty:
                 continue # Timeout do get, volta a esperar
             except Exception as e:
                 print(f"Erro no worker de sync: {e}")
-                break
+                # Não damos break aqui para tentar recuperar em próximos eventos
+                time.sleep(1)
 
     # --- REGISTRO DOS LISTENERS NO FIREBASE ---
-    
-    # Listener 1: Documento de Estado (Mapa)
-    state_unsub = db.collection("rooms").document(rid).collection("public_state").document("state").on_snapshot(on_state_snapshot)
-    
-    # Listener 2: Coleção de Eventos (Últimos 5 eventos)
-    events_query = db.collection("rooms").document(rid).collection("public_events").order_by("ts", direction=firestore.Query.DESCENDING).limit(5)
-    events_unsub = events_query.on_snapshot(on_events_snapshot)
+    try:
+        # Listener 1: Documento de Estado (Mapa)
+        state_unsub = db.collection("rooms").document(rid).collection("public_state").document("state").on_snapshot(on_state_snapshot)
+        
+        # Listener 2: Coleção de Eventos (Últimos 5 eventos)
+        events_query = db.collection("rooms").document(rid).collection("public_events").order_by("ts", direction=firestore.Query.DESCENDING).limit(5)
+        events_unsub = events_query.on_snapshot(on_events_snapshot)
 
-    # Listener 3: Documento de Party (HP/Status)
-    party_unsub = db.collection("rooms").document(rid).collection("public_state").document("party_states").on_snapshot(on_party_snapshot)
+        # Listener 3: Documento de Party (HP/Status)
+        party_unsub = db.collection("rooms").document(rid).collection("public_state").document("party_states").on_snapshot(on_party_snapshot)
 
-    # Inicia a Thread Worker
-    worker = threading.Thread(target=rerun_worker, daemon=True)
-    worker.start()
+        # Inicia a Thread Worker
+        worker = threading.Thread(target=rerun_worker, daemon=True)
+        worker.start()
 
-    # Salva na sessão para podermos cancelar depois
-    st.session_state["pvp_sync_listener"] = {
-        "rid": rid,
-        "queue": event_queue,
-        "stop_event": stop_event,
-        "unsubscribers": [state_unsub, events_unsub, party_unsub], # Guarda funções para desligar
-    }
+        # Salva na sessão para podermos cancelar depois
+        st.session_state["pvp_sync_listener"] = {
+            "rid": rid,
+            "queue": event_queue,
+            "stop_event": stop_event,
+            "unsubscribers": [state_unsub, events_unsub, party_unsub], # Guarda funções para desligar
+        }
+    except Exception as e:
+        st.error(f"Erro ao conectar no sync: {e}")
 
-    def enqueue(tag: str, payload: dict | None = None):
-        if stop_event.is_set():
-            return
-        event_queue.put({"tag": tag, "payload": payload or {}, "ts": time.time()})
 
-    def on_state_snapshot(doc_snapshot, changes, read_time):
-        enqueue("state")
-
-    def on_events_snapshot(col_snapshot, changes, read_time):
-        for change in changes:
-            if change.type.name != "ADDED":
-                continue
-            data = change.document.to_dict() or {}
-            ev_type = data.get("type")
-            if ev_type in {"move", "piece_placed", "effect", "dice", "pokemon_removed", "hit_confirmed", "missed", "finished"}:
-                enqueue("event", {"type": ev_type})
-
-    def rerun_worker():
-        if ctx:
-            add_script_run_ctx(threading.current_thread(), ctx)
-        while True:
-            item = event_queue.get()
-            if item.get("tag") == "stop" or stop_event.is_set():
-                break
-            if not ctx or not ctx.script_requests:
-                continue
-            rerun_data = script_runner.RerunData(
-                query_string=ctx.query_string,
-                page_script_hash=ctx.page_script_hash,
-                cached_message_hashes=ctx.cached_message_hashes,
-            )
-            ctx.script_requests.request_rerun(rerun_data)
-
-    state_unsub = state_ref_for(db, rid).on_snapshot(on_state_snapshot)
-    events_query = (
-        db.collection("rooms")
-        .document(rid)
-        .collection("public_events")
-        .order_by("ts", direction=firestore.Query.DESCENDING)
-        .limit(1)
-    )
-    events_unsub = events_query.on_snapshot(on_events_snapshot)
-    worker = threading.Thread(target=rerun_worker, daemon=True)
-    worker.start()
-    st.session_state["pvp_sync_listener"] = {
-        "rid": rid,
-        "queue": event_queue,
-        "stop_event": stop_event,
-        "unsubscribers": [state_unsub, events_unsub],
-    }
-
-@st.fragment
 def render_public_log_fragment(db, rid):
     st.markdown("---")
     st.subheader("📜 Log de Batalha (Tempo Real)")
