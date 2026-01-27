@@ -1,0 +1,151 @@
+{
+  "npcs": {
+    "Jack Walker": {
+      "ocupacao": "Ex-Comandante dos Pokémon Rangers (antes de Solana)",
+      "idade": "35 Anos",
+      "pokemons": [],
+      "status": "Falecido",
+      "sections": {
+        "História": "Jack Walker foi o tipo de homem que acreditava em mapa, relatório e protocolo — e que desconfiava de qualquer coisa que soasse como lenda. Em Ga’Al, isso o tornou respeitado por alguns e odiado por muitos: quando os primeiros relatos de “Demônios” surgiram nas rotas, quando treinadores falaram de criaturas que distorciam a mata e faziam Pokémon selvagens urrar de dor, Jack foi o primeiro a chamar de histeria coletiva. Afinal, ele já tinha visto pânico se espalhar como fogo seco: bastava uma história boa para derrubar uma região inteira.\n\nA queda de Celeste — ou o que sobrou dela — o puxou de volta ao campo. Chamado para investigar os escombros, Jack chegou a uma conclusão que parecia elegante demais: aquilo seria obra de Yveltal. Um lendário. Uma causa única. Um inimigo com nome e forma. E então ele fez o que sempre fez: perseguiu o rastro por anos, caçando uma resposta que cabia na sua lógica. Enquanto isso, em Ga’Al, os sinais do horror real se acumulavam; os Rangers anotavam, tremiam, enterravam, e voltavam para escrever.\n\nO ceticismo dele não quebrou em debate — quebrou em sangue. A base Ranger no Coração Verde foi atacada por algo que não cabia em nenhuma categoria conhecida: não era um Pokémon selvagem, não era um criminoso comum, não era um “lendário mal-humorado”. Era uma coisa feita para doer o mundo. Jack morreu ali. Dizem que, nos últimos instantes, ele gravou um vídeo e mandou para Solana. Um pedido curto, quase sem orgulho: que ela publicasse. Que ela não deixasse ser ignorado.\n\nSe essa gravação foi divulgada, ninguém confirma. Em Ga’Al, às vezes o silêncio também é uma decisão — e, às vezes, é um enterro."
+      }
+    },
+    "Rick": {
+      "ocupacao": "Ex-desafiante da Liga",
+      "idade": "29 Anos",
+      "pokemons": [],
+      "status": "Falecido",
+      "sections": {
+        "História": "Rick não nasceu para aceitar a versão oficial de nada. Em Ga’Al, onde a esperança costuma vir com dentes, ele foi um dos poucos que insistiu em dizer em voz alta o que muitos só pensavam no escuro: que o modelo de Líderes de Ginásio era parte do problema. Poder demais concentrado em poucas mãos. Prestação de contas de menos. “Heróis” que, quando a noite caía, nem sempre estavam do lado de quem sangrava.\n\nA teoria dele não era só discurso de esquina — era um plano. Rick decidiu competir na Liga não por glória, mas para transformar a própria escada do sistema em palanque. A cada insígnia, a cada combate vencido, ele queria um pouco mais de visibilidade para forçar debate público. Queria que a região olhasse para os ginásios e perguntasse: quem vigia os vigilantes?\n\nFoi nessa jornada que ele se aproximou de Morty. Morty carregava outro tipo de frustração — mais íntima, mais cansada — mas os dois se reconheceram na mesma rachadura: a sensação de que o mundo prometia demais e entregava migalhas. Eles partiram juntos, e, por um tempo, a estrada pareceu menos cruel.\n\nA Team Keneze matou Rick antes que ele pudesse levar sua denúncia adiante. Não foi uma morte heroica; foi um corte cirúrgico, como se a organização tivesse entendido que certas ideias são mais perigosas do que qualquer Pokémon. Para quem ainda acreditava que Ga’Al tinha espaço para inocentes, a queda de Rick foi um ponto de ruptura. E para Morty… foi o início do fim."
+      }
+    },
+    "Dra. Aspen": {
+      "ocupacao": "Professora Pokémon regional",
+      "idade": "41 Anos",
+      "pokemons": [
+        "Hippowdon",
+        "Sigilyph"
+      ],
+      "status": "Falecido",
+      "sections": {
+        "História": "Aspen foi, por anos, uma referência silenciosa para quem ainda acreditava que Ga’Al podia ser compreendida antes de ser temida. Enquanto outros gritavam profecias, ela juntava papéis, riscava mapas, catalogava ruínas — e tentava tratar o sobrenatural como um problema de ciência. Era respeitada por isso. E, justamente por isso, era vulnerável quando as coisas deixaram de ser teoria.\n\nPouca gente sabe — e menos gente ainda comenta — o que havia por trás da postura rígida dela. Aspen teve um romance secreto com Ricardo Ratsuko. Não foi uma paixão de novela; foi o tipo de vínculo que nasce em silêncio e morre do mesmo jeito. Desse romance nasceu Mae, uma criança frágil, que precisava de cuidados constantes. Ricardo, alheio às necessidades do menino e obcecado com a própria carreira nos Contests, abandonou Aspen e Mae quando a criança ainda era pequena. Aspen nunca contou a ninguém quem era o pai. Vergonha é uma forma de prisão, e ela preferiu mentir: dizia que o pai havia morrido.\n\nOs anos passaram e o quadro de Mae piorou. A doença virou rotina: noites sem dormir, remédios, atenção dobrada. Aspen começou a falhar no que sempre foi mais fácil para ela — o foco. E então o inevitável aconteceu: Mae morreu. A perda abriu um buraco que a ciência não preenchia. Movida pelo luto, Aspen buscou um templo que havia descoberto no Deserto Sem Fim. Ali, onde as pedras guardavam histórias mais antigas que qualquer cidade, ela realizou um ritual ligado às lendas de Ezenek. Segundo os relatos que havia lido, se marcasse seu filho, Ezenek o salvaria. Aspen acreditou que “salvar” significava continuar vivo.\n\nMas Ezenek não fala a língua humana. Para ele, salvar era levar ao seu lado. A Marca foi infligida pela primeira vez depois de séculos — e Mae morreu em agonia dias depois. Aspen voltou para a Baía Morta com as mãos vazias e o coração cheio de culpa. Meses depois, foi sagrada como Professora da região.\n\nQuando os primeiros relatos de Demônios começaram a chegar, ela ignorou. Quando Celeste caiu, acatou a versão de Jack Walker. E quando enfim aceitou a possibilidade de que os Demônios existiam… já era tarde. Há um episódio citado em sussurros: um agressor mascarado, identificado apenas como “Caçador”, teria encontrado Aspen, espancado-a e cuspido uma sentença simples — que ela era fraca. Ninguém sabe se ela reconheceu ou não a identidade por trás da máscara. Pouco tempo depois, Aspen tirou a própria vida. Em Ga’Al, até a culpa aprende a caçar."
+      }
+    },
+    "O Caçador": {
+      "ocupacao": "A Máscara do Caçador",
+      "idade": "Desconhecida",
+      "pokemons": [
+        "Alakazam",
+        "Gyarados",
+        "Dragonite",
+        "Flygon",
+        "Dusknoir",
+        "Froslass"
+      ],
+      "status": "Falecido",
+      "sections": {
+        "História": "Em Ga’Al, criança aprende cedo que nem todo monstro tem garras.\n\nAlguns têm voz baixa.\n\nAlguns têm passo leve.\n\nE alguns… têm máscara.\n\nDizem que, quando a noite fica quieta demais, alguém sempre canta — não para acalmar, mas para lembrar:\n\n“Não corre na rota, não vai pro cais,\n\nque o Caçador vem e não volta mais.\n\nSe teu Pokémon é grande demais,\n\nele some… e tu nunca sabes por quais.\n\nMáscara branca, sobretudo preto,\n\num passo no barro, um grito no vento.\n\nQuem chama por nome, chama por medo:\n\no Caçador não é homem… é juramento.”\n\nÉ assim que começa a história — como brincadeira de terror. Mas quem viveu o tempo da crise sabe que não era brincadeira. O Caçador foi o nome dado ao predador que operou por anos em Ga’Al: aparições súbitas, batalhas rápidas, e o sumiço de Pokémon acima de um certo patamar. Nenhuma caça falhava. Nenhum rastro era confiável.\n\nSó que Ga’Al é uma terra onde o próprio nome mente. A verdade mais amarga é também a mais perigosa de se dizer em voz alta: o Caçador não era uma pessoa — era uma máscara. Uma função. Uma ideia que vários, provavelmente, vestiram em algum momento. Dois nomes são confirmados: Alex Prime e Ricardo Ratsuko. E existe até rumor, sussurrado com cuidado, de que Felicia Fulgar também teria usado a máscara em algum período — rumor sem prova, mas forte o bastante para fazer gente engolir a própria língua.\n\nNo caso de Ricardo, a máscara tinha motivo. Publicamente, ele era uma celebridade excêntrica, pavão de festivais e polêmicas. Secretamente, ele descobriu algo que mudou a lógica de toda a região: Pokémon marcados pela Team Keneze, se morressem, voltariam como súditos de Ezenek. Quanto mais forte o Pokémon, mais devastador ele seria como escravo pós-morte. Então Ricardo começou a caçar não por ganância, mas por contenção de danos — roubando preventivamente qualquer criatura acima de um certo nível de poder.\n\nOs Pokémon ‘caçados’ não eram vendidos. Eram escondidos. Um Bunker em alto mar — administrado por gente poderosa e perigosa — virou cofre, prisão e salvação ao mesmo tempo, longe do alcance territorial de Ezenek. Até mesmo os Rangers, em silêncio, desviaram Pokémon selvagens de alto nível para esse destino, preferindo o desaparecimento à morte.\n\nO medo, porém, ficou. Mesmo após o suposto fim do Caçador — morte, sumiço, ou só troca de rosto — a máscara continuou assombrando rotas, torneios e decisões políticas. Em Ga’Al, debate costuma ser tão perigoso quanto certeza. E talvez por isso a cantiga sobreviva:\n\n“Não pergunta ‘quem foi’, não pergunta ‘cadê’…\n\nQue máscara se guarda melhor quando ninguém vê.\n\nO Caçador é caminho, é faca, é porquê:\n\nem Ga’Al, até a justiça pode se esconder.”"
+      }
+    },
+    "Henrique": {
+      "ocupacao": "Top 529 de Kanto",
+      "idade": "26 Anos",
+      "pokemons": [
+        "Pinsir"
+      ],
+      "status": "Falecido",
+      "sections": {
+        "História": "Henrique não tinha nome de lenda. Não tinha medalha dourada, não tinha mural, não tinha canto escrito em pedra. Ele era um daqueles treinadores comuns — e, em Ga’Al, “comum” já é quase um milagre.\n\nVeio de Kanto com um objetivo simples, quase inocente: juntar oito pontos, entrar na Liga Pokémon… e, se desse, também provar valor em Contests. Carregava nos registros o rótulo burocrático de “Top 529 de Kanto”, um número que diz pouco sobre a pessoa, mas diz muito sobre o tipo de vida que ele levava: sempre tentando subir, sempre tentando ser notado, sem nunca ter certeza se alguém estava vendo.\n\nHenrique andava com a aparência de quem não queria chamar atenção — camisa branca de alguma banda, calça confortável, pele clara, cabelo loiro e sardas no rosto. E ainda assim chamava atenção do jeito que Ga’Al mais respeita: pela insistência. O Pinsir ao lado dele era a prova. Um Pokémon de briga franca. Sem teatro.\n\nEle morreu antes de ver a própria história virar algo além de plano. Em Ga’Al, muita gente não cai por falta de coragem — cai porque a região decide que coragem, às vezes, é só outra forma de alvo."
+      }
+    },
+    "Scott": {
+      "ocupacao": "Irmão de Albe",
+      "idade": "24 Anos",
+      "pokemons": [],
+      "status": "Falecido",
+      "sections": {
+        "História": "Scott e Albe eram daqueles pares que a gente não aprende a separar nem na memória. Quando um chegava, o outro já estava ali — como se o mundo tivesse nascido com os dois colados, dividindo a mesma sombra e o mesmo riso.\n\nCresceram em Ga’Al com o tipo de cumplicidade que vira abrigo. Scott era o primeiro a falar quando Albe hesitava; Albe era o primeiro a puxar Scott de volta quando a raiva ameaçava virar impulso. Eles não eram iguais — e talvez por isso funcionassem tão bem.\n\nNa região, ninguém “some” sozinho: some com um eco. E o eco de Scott sempre foi Albe."
+      }
+    },
+    "Albe": {
+      "ocupacao": "Irmão de Scott",
+      "idade": "23 Anos",
+      "pokemons": [],
+      "status": "Falecido",
+      "sections": {
+        "História": "Albe tinha a mania de olhar para trás antes de atravessar qualquer ponte — não por medo do abismo, mas por hábito de contar se Scott vinha junto. Era assim desde criança: uma vida inteira medida em dois passos.\n\nQuando as coisas começaram a apodrecer de vez em Ga’Al — marcas aparecendo, pessoas mudando, rotas ficando perigosas demais —, os dois continuaram indo onde não deviam, como se a coragem fosse o único jeito de permanecerem irmãos de verdade.\n\nSe existe uma crueldade particular na morte, é a de tentar separar o que nasceu unido. Mas, mesmo no fim, o nome de Albe nunca é contado sem que o de Scott venha logo depois, como um refrão inevitável."
+      }
+    },
+    "Brad": {
+      "ocupacao": "Ex-desafiante de ginásios (Ga’Al)",
+      "idade": "31 Anos",
+      "pokemons": [],
+      "status": "Falecido",
+      "sections": {
+        "História": "Brad era do tipo que ria alto demais para uma região que prefere sussurrar. Chegou a Ga’Al com o peito cheio de plano e o bolso cheio de comprovantes — pontos, inscrições, rotas traçadas como se o mundo fosse justo.\n\nEle aprendeu rápido que Ga’Al não respeita cronograma. O perigo não avisa, a estrada muda de humor, e o que era “só mais um desafio” pode virar uma noite longa, com cheiro de metal e areia na boca.\n\nAinda assim, Brad insistiu. Porque desistir, para ele, seria admitir que a região tinha o direito de decidir quem ele era.\n\nNo fim, a região decidiu do mesmo jeito. E quem o conheceu não fala de Brad como herói — fala como lembrança do que Ga’Al cobra dos que chegam confiando demais."
+      }
+    },
+    "Less": {
+      "ocupacao": "Ex-líder de ginásio (Ga’Al)",
+      "idade": "38 Anos",
+      "pokemons": [],
+      "status": "Falecido",
+      "sections": {
+        "História": "Less foi, por um tempo, o tipo de líder que parecia sólido: daqueles que dão a impressão de que a cidade tem coluna, mesmo quando o chão treme. O problema é que a coluna dele era feita de orgulho.\n\nEm contraste com Eneias — que acreditava no poder do enxame e estudava genética para entender a adaptação dos insetos —, Less seguia uma lógica mais antiga: autoridade como força, disciplina como medo, controle como estabilidade.\n\nQuando Ga’Al começou a desandar de verdade, Less tentou segurar a maré com as mãos. E, em Ga’Al, mão nua não vence maré: só vira marca.\n\nMorreu como muitos morrem aqui: não porque faltou poder, mas porque sobrou certeza."
+      }
+    },
+    "Dany": {
+      "ocupacao": "Ex-Líder de Ginásio do Coração Verde (Gêmeas)",
+      "idade": "29 Anos",
+      "pokemons": [
+        "Garchomp",
+        "Excadrill",
+        "Hippowdon",
+        "Flygon"
+      ],
+      "status": "Falecido",
+      "sections": {
+        "História": "Dany era um paradoxo bonito — e em Ga’Al, beleza costuma ser ofensa ao destino. Ela foi Líder de Ginásio no Coração Verde, nas Gêmeas, e fez do tipo Terra não apenas uma especialidade, mas um idioma: a paciência do deserto, o peso da rocha, a teimosia do solo que insiste em sustentar vida mesmo quando o mundo pisa em cima.\n\nSó que Dany também era moda. Paixão verdadeira. Onde a maioria vestia o que dava para sobreviver, ela vestia o que dava para resistir. Não era vaidade vazia — era declaração: se Ga’Al queria reduzir gente a estatística e medo, ela responderia com cor, corte, tecido e presença. Ela acreditava que cidade também é roupa: se você reforma, se cuida, se faz caber futuro, as pessoas param de se ver como ruína.\n\nFoi por isso que ela se aproximou das Proles. Enquanto muitos líderes ficavam nas áreas altas, Dany escolheu viver perto do povo miúdo, do cotidiano que não aparece em fotografia. Ela falava de reforma total das Gêmeas — não como slogan político, mas como projeto mesmo: reestruturar ruas, acolher feridos, limpar a lama da violência e devolver dignidade à cidade.\n\nEla era casada com Andy. E, por um tempo, isso parecia âncora. Andy era um homem de valores rígidos, daqueles que juram que o certo se mantém mesmo quando o mundo cai. E Dany acreditava nele como se acredita numa casa: não por perfeição, mas por abrigo.\n\nA morte dela veio como vêm as mortes mais covardes: durante um ataque atribuído ao Caçador. A versão oficial diz que Dany caiu nesse episódio — e o nome do Caçador virou culpado automático, como se bastasse pronunciar a máscara para que o mundo aceitasse qualquer explicação. Mas há um detalhe que apodrece a narrativa por dentro: ninguém viu o Caçador ali. Não existe relato direto. Não há testemunha que descreva o rosto, o passo, a voz. Só o carimbo da versão oficial — e o vazio em volta dele.\n\nEm Ga’Al, às vezes a verdade morre antes do corpo. E a memória de Dany ficou assim: uma líder que queria salvar as Gêmeas, que escolheu viver perto das Proles, e que foi engolida por uma história pronta demais para ser confortável."
+      }
+    },
+    "Andy": {
+      "ocupacao": "Viúvo de Dany",
+      "idade": "31 Anos",
+      "pokemons": [
+        "Staraptor",
+        "Gyarados"
+      ],
+      "status": "Falecido",
+      "sections": {
+        "História": "Andy amava Dany do jeito mais perigoso: como quem coloca a própria identidade dentro do peito de outra pessoa. Quando ela estava viva, isso parecia devoção. Quando ela morreu, virou desabamento.\n\nEle aceitou a versão oficial porque era a única coisa que lhe dava direção. Se o Caçador era culpado, então o mundo ainda tinha formato — ainda existia um inimigo com nome. Andy agarrou essa ideia como se fosse remédio, e fez dela a própria religião. Só que religião, em Ga’Al, é faca de dois gumes: tanto cura quanto abre ferida nova.\n\nO luto não o tornou mais prudente. Tornou-o faminto por vingança. E, quando percebeu que não alcançaria o Caçador com as mãos limpas, Andy fez o que jurava jamais fazer: sujou as mãos por inteiro.\n\nEle entrou em coluio com a Team Keneze. Disse a si mesmo que era arma temporária, acordo curto, ponte para atingir o alvo. Mas a Keneze não dá ponte; dá coleira. Pouco a pouco, Andy foi abrindo portas que nunca deveriam ter sido abertas — entregando informações, cedendo território, sacrificando gente. Matou a própria população, traiu os próprios valores, e ainda assim repetia o nome do Caçador como desculpa, como se o ódio fosse capaz de justificar qualquer coisa.\n\nNo fim, a tragédia de Andy não é só ter perdido Dany. É ter permitido que a morte dela o transformasse naquilo que ela lutava para impedir: mais um homem de Ga’Al que escolheu a ruína como resposta."
+      }
+    },
+    "Saiga Coolname": {
+      "ocupacao": "Campeão de Indigo",
+      "idade": "36 Anos",
+      "pokemons": [
+        "Pupitar",
+        "Charizard",
+        "Pikachu",
+        "Geodude"
+      ],
+      "status": "Falecido",
+      "sections": {
+        "História": "Cantem, ó arquibancadas, o nome de Saiga Coolname — não como se canta um vencedor, mas como se recita um presságio. Porque Saiga foi coroado Campeão de Indigo e, ainda assim, carregou a coroa como quem carrega uma maldição: pesada, brilhante, impossível de largar sem deixar o couro da cabeça junto.\n\nDizem que ele não chegou ao topo por acaso. Ele subiu degrau por degrau com a obstinação de um homem que acreditava que o mundo se curva diante do mérito. Em cada batalha, a multidão via técnica. Via coragem. Via um campeão nascendo. Mas os deuses — se existem deuses em regiões Pokémon — sempre cobram de quem é amado demais.\n\nQuando Saiga venceu, Indigo o chamou de exemplo. Ele sorriu para as câmeras como se estivesse inteiro. E foi aí que a tragédia começou de verdade: porque nada é mais cruel do que exigir que alguém represente esperança quando o peito por dentro já está em guerra.\n\nEm algum ponto, o destino empurrou Saiga para a orla de Ga’Al — ou para um conflito que cheirava a Ga’Al, mesmo longe dela. Há versões e versões: uma escolha errada, uma promessa feita ao público, um compromisso que parecia menor do que era. O fato é que o Campeão descobriu o que todo herói aprende tarde: que há inimigos que não se derrotam com força — e que há vitórias que, depois, cobram juros.\n\nAssim, Saiga terminou como muitos personagens de tragédia: não por falta de poder, mas por excesso de certeza. A mesma mão que levantou o troféu foi a mão que, um dia, não conseguiu impedir a própria queda. E o povo, que antes o chamava de sol, passou a narrar sua história como aviso: até os campeões sangram."
+      }
+    },
+    "Ralf Jones": {
+      "ocupacao": "Pesquisador Pokémon",
+      "idade": "44 Anos",
+      "pokemons": [
+        "Gastly",
+        "Fletchinder",
+        "Doduo",
+        "Kricketot"
+      ],
+      "status": "Falecido",
+      "sections": {
+        "História": "Ralf Jones tinha aquele tipo de calma que só existe em quem vive rodeado de equipamentos e relatórios — e ainda assim escolhe não se esconder. Em Dainise, ele era mais do que pesquisador: era o homem que tentava manter o Centro Pokémon funcionando quando a região parecia ter decidido quebrar tudo o que cura.\n\nQuando o Caçador atacou o Centro Pokémon de Obsidian pela primeira vez, foi Ralf quem entendeu rápido o que estava em jogo: não era só violência, era método. Ele chamou Lance para ajudar, e a batalha que se seguiu virou lenda por falta de registro: grandiosa, confusa, sem vencedor claro — como se o próprio destino tivesse interrompido antes do ponto final.\n\nDepois, houve o gesto de agradecimento. Lance enviou a Ralf um Gastly. Um presente estranho para quem perdeu gente, mas um presente ainda assim: a ideia de que, mesmo em Ga’Al, alguém lembrava de retribuir. Só que o Gastly estava marcado. E, em Ga’Al, marca é convite para coisas piores do que morte.\n\nO demônio veio como vem um predador quando sente sangue: silencioso e certo. A criatura estava perto da região, e a presença do marcado foi o farol. Na batalha que se seguiu, Ralf Jones morreu. Não por imprudência romântica, mas por uma ironia cruel: um homem que dedicou a vida a curar foi morto por um erro que parecia pequeno demais para custar tanto.\n\nEm Dainise, a história de Ralf é lembrada sem glamour. Como deve ser. Porque, se Ga’Al tem um tipo de santidade possível, ela mora nisso: na gente que continuou fazendo o trabalho certo quando tudo em volta incentivava o contrário."
+      }
+    }
+  }
+}

@@ -1,0 +1,786 @@
+{
+  "npcs": {
+    "Alexandra Margoth": {
+      "ocupacao": "Top 2 de Ga'Al",
+      "idade": "29 Anos",
+      "pokemons": [
+        "Delphox",
+        "Malamar",
+        "Yanmega",
+        "Flygon"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Em Ga’Al, o nome de Alexandra Margoth começou como um sussurro — desses que nascem em filas de Centro Pokémon e correm pelos becos antes de chegar às salas onde as decisões são tomadas. Vinda de Kalos, ela chegou com o tipo de educação que faz o povo desconfiar: fala medida, olhar que pesa, e uma calma de quem já viu gente mentindo com a boca e com os dedos no gatilho.\n\nEla não ganhou notoriedade por insígnia, decreto ou palanque. Ganhou porque, quando a crise deixou de ser rumor e virou rotina, Alexandra foi a pessoa que se sentou de frente para treinadores tremendo e disse: “mostra seu ID”. Ao lado da Dra. Tulsi, entrou no plano de contingência que travava a região por dentro — o controle dos Trainer IDs como muralha contra infiltração. Era burocracia por fora, guerra por dentro. E, para dar conta do que papel não mostra, ela usou o que tinha de mais perigoso: um Delphox capaz de ler a mente.\n\nNão era um truque bonito de se ver. Alexandra pedia que o treinador falasse, e o Delphox lia o que vinha por trás das palavras. Às vezes encontrava medo legítimo. Às vezes, silêncio ensaiado. Às vezes… um vazio que parecia treinado por alguém. Isso rendeu inimigos rápidos. Chamaram de abuso. Chamaram de caça às bruxas. E, por um tempo, correu o boato de que ela própria teria transitado nas sombras do Caçador. Ninguém provou nada — e em Ga’Al, o que não prova não morre; só muda de cara e continua andando.\n\nQuando a Team Keneze ainda fazia da noite um território, Alexandra esteve em confrontos em que a crueldade não era detalhe, era método. E foi ali que ela decidiu, com uma dureza que não combina com heroísmo, que não havia espaço para simpatia pela organização. O desprezo dela não era discurso: era cicatriz.\n\nO segundo incidente no Centro Pokémon de Obsidian consolidou seu nome. Delta apareceu como uma maré negra, e a sala — que devia cheirar a antisséptico e esperança — virou palco de invocação, espectros e pânico. Alexandra lutou no meio do caos para manter Tulsi viva. E pagou caro: seu Delphox não voltou daquele dia. Há quem diga que foi morto. Há quem jure que foi levado. Alexandra não costuma corrigir ninguém; ela apenas carrega o silêncio como se fosse a única coisa que restou para segurar.\n\nDepois, quando a poeira assentou, Alexandra não virou santo nem vilã. Virou presença. É dessas pessoas que, quando entram no ambiente, o volume das conversas cai sem ninguém combinar. Em Ga’Al, alguns nomes são espada. O dela é lâmina fina: entra sem anunciar, e só se percebe quando já cortou."
+      }
+    },
+    "Alfonso": {
+      "ocupacao": "Líder de Ginásio de Turquesa",
+      "idade": "38 Anos",
+      "pokemons": [
+        "Vaporeon",
+        "Toxapex",
+        "Slowking",
+        "Gyarados"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Alfonso nasceu onde as paredes são antigas e o luxo vem com tradição — e cresceu acreditando que o mundo existe para ser mantido em ordem. Em Turquesa, ordem é palavra bonita para uma realidade feia: um centro protegido, limpo, quase intocado… e um entorno que paga a conta com o próprio corpo.\n\nFoi ele quem bancou a tecnologia que o povo passou a chamar de “bolha de polaridade”. Dentro dela, a cidade respira melhor. A água parece mais clara. As luzes não tremem com tanta frequência. Do lado de fora, no Subúrbio Continental, o ar pesa, o mar recebe o que a Indústria Rockefeller cospe, e as pessoas aprendem cedo que o mundo nunca foi justo. Alfonso sabe disso. Ele sabe — e ainda assim escolheu. Na cabeça dele, salvar Turquesa sempre significou salvar “o povo” de dentro da bolha. Essa é a parte que ele não diz em voz alta.\n\nPor trás da postura aristocrática, o que o move não é só orgulho: é culpa. Anos atrás, ele falhou em proteger a esposa. A morte dela não ficou como lembrança; ficou como sentença. Desde então, Alfonso cuida da sogra, que afundou no Alzheimer, como quem paga um voto. É uma penitência diária, silenciosa, sem plateia — e talvez por isso seja a única coisa que pareça real nele.\n\nEle também é tio de consideração de James Hiborn, e essa relação o expõe: há um coração grande ali, mas cercado por muros. Alfonso é capaz de gestos genuínos, mas quase sempre reservados a quem ele chama de “seus”. O resto do mundo ele aprende a tratar como estatística.\n\nNo Ginásio, a autoridade dele é tão pesada que até a ausência vira presença. Há histórias de que a vice-líder, Larissa, recebeu tantos desafiante que alguns visitantes juram que ela é a verdadeira líder — e que Alfonso só aparece quando a cidade realmente precisa lembrar quem assina as decisões. Também correm comentários de que Larissa deseja, um dia, ser reconhecida oficialmente. Alfonso não comenta. Em Turquesa, o silêncio costuma ser um tipo de resposta.\n\nStênio, rival e amigo, é uma das poucas pessoas que o encara sem reverência — e isso diz muito sobre Alfonso. Eles se medem como dois homens que sabem demais um do outro, e que carregam o mesmo vício: acreditar que uma escolha terrível pode ser justificada se o resultado parecer grande o suficiente.\n\nSe você encontrar Alfonso numa noite sem cerimônia, talvez o veja olhando o mar como quem escuta acusações. A bolha brilha ao fundo, bonita como promessa. E, fora dela, o mundo lembra que promessas também apodrecem."
+      }
+    },
+    "Andrea": {
+      "ocupacao": "Ex-voluntária dos Rangers de Dainise",
+      "idade": "25 Anos",
+      "pokemons": [
+        "Combee",
+        "Farfetch'd",
+        "Parasect",
+        "Raticate"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Andrea não virou “importante” por insígnia, cargo ou sobrenome — virou porque ficou de pé quando o resto caiu. Em Dainise, quando os Rangers ainda eram uma esperança concreta e não uma memória, ela foi uma das primeiras a vestir o uniforme. Não porque era forte, mas porque odiava a ideia de esperar alguém salvar o mundo no lugar dela.\n\nEla entrou com dedicação demais e paciência de menos. Queria avançar, queria ser vista, queria ser chamada para as missões que viravam história. Mas a promoção nunca vinha no ritmo que a ambição exigia. E, quando a Team Keneze começou a tratar Rangers como alvo prioritário, a ambição virou sentença de morte. Um dia, Andrea percebeu que o uniforme — que antes era orgulho — tinha virado um farol apontado para a própria testa.\n\nFoi aí que ela sumiu. Não de modo heroico, com despedida e discurso. Sumiu como quem apaga o nome de um registro e dobra o papel no bolso. Passou meses no Coração Verde, onde a floresta parece guardar segredos e cobrar pedágios: silêncio, sangue, e a certeza de que todo caminho seguro é, na verdade, um caminho que alguém ainda não descobriu.\n\nDizem que Andrea reapareceu em relatos isolados: guiando viajantes por trilhas que não constam em mapa, abrindo passagem onde a mata fecha, levando gente ferida até onde ainda existe cura. Ela não fala do passado. Evita perguntas como quem evita lâminas. Alguns chamam isso de covardia. Outros chamam de sobrevivência.\n\nQuem já andou com ela conta que Andrea tem um jeito de olhar para ruínas como se reconhecesse as marcas. Como se soubesse onde a história foi enterrada e quem enterrou. E talvez seja por isso que ela incomoda: Andrea é do tipo de pessoa que viu demais cedo demais — e que, mesmo tentando fugir, continua carregando o peso do que sabe.\n\nEm Ga’Al, muita gente morre por gritar verdades. Andrea aprendeu o contrário: às vezes, a única forma de manter uma verdade viva é carregá-la em silêncio."
+      }
+    },
+    "Ash": {
+      "ocupacao": "Portador da Aura",
+      "idade": "44 Anos",
+      "pokemons": [
+        "Pikachu",
+        "Lucario",
+        "Charizard",
+        "Greninja",
+        "Muk",
+        "Noctowl"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Há homens que entram numa região como quem visita um lugar. E há homens que entram como quem faz juramento. Ash chegou a Ga’Al desse segundo jeito — com o corpo já acostumado a perder e a vencer, e com a Aura pulsando como uma segunda respiração. Em outras terras, isso seria lenda. Em Ga’Al, era ferramenta e fardo.\n\nQuando o ataque do General Delta rasgou a história recente da região, Ash virou bastião. Não porque alguém o coroou, mas porque ele ficou na linha de frente quando a linha de frente virou chão. Lutou como quem sabe que, se cair, outros caem junto. E caiu mesmo — não em glória, mas em carne. Saiu daquela batalha gravemente ferido, a ponto de qualquer outro homem virar memória.\n\nMas Ash não era qualquer homem. A Aura nele não permitia o descanso fácil: regenerava, puxava de volta, insistia. Só que o corpo curar não significa que a alma aguente do mesmo jeito. Foi nessa convalescença, entre dor e teimosia, que ele tomou a decisão mais difícil: treinar Logan Miller para ser o próximo Guardião da Aura.\n\nLogan era jovem, mas carregava um nome que machuca — filho de Paul, o rival implacável de Ash. E talvez por isso o treinamento tenha sido tão duro: não era só técnica, era acerto de contas com o próprio passado. Ash enxergava em Logan aquilo que ele mesmo tinha virado com os anos: um mestre moldado por hiperfoco, que acumulou vitórias ao custo de amizades, romances e pedaços de vida que não voltam. O remorso dele não era teatro. Era um cansaço velho nos olhos.\n\nEm algum ponto, Ash entendeu que o poder que carregava — por mais que fosse dele — também era direito de outro. Ele abriu mão do título de Guardião. Deixou que Logan fosse celebrado. E, pela primeira vez em muito tempo, permitiu-se descansar. Não como derrota, mas como entrega.\n\nAntes disso, porém, Ga’Al ainda o puxou de volta para o sangue. No segundo incidente do Centro Pokémon de Obsidian, quando Delta irrompeu como espectro e a cidade quase virou ruína por dentro, Ash estava perto o bastante para impedir que o massacre fosse completo. Ao lado de John Ignis, ajudou a conter o caos — e provou que, mesmo ferido, ainda era o tipo de presença que muda o rumo de uma história.\n\nHá também um capítulo mais íntimo que poucos contam direito: o romance secreto — e turbulento — que ele teve com Anastacia. Eles se amaram e se partiram por visões incompatíveis. Para ela, Pokémon são armas. Para Ash, são vínculo. Em Ga’Al, essas diferenças não ficam no discurso: elas viram sangue no chão.\n\nHoje, quando alguém pronuncia o nome Ash, não fala só de um homem imortal. Fala de um ciclo que ele teve coragem de quebrar: o de ser o centro de tudo. Em Ga’Al, isso é raro. E talvez seja o feito mais difícil de todos."
+      }
+    },
+    "Barry Groovy": {
+      "ocupacao": "Jornalista investigativo",
+      "idade": "31 Anos",
+      "pokemons": [
+        "Electabuzz",
+        "Zubat"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Barry Groovy é o tipo de homem que você encontra antes da notícia acontecer. Em Ga’Al, isso parece impossível — e, ainda assim, ele sempre aparece um passo adiante, como se tivesse ouvidos em cada canto e olhos onde ninguém deveria enxergar.\n\nEle não carrega espada nem insígnia. Carrega papel, gravação, recorte, e a coragem imprudente de publicar nomes quando o resto prefere fingir que não viu. Há quem jure que Barry deveria estar morto há muito tempo. Ele mesmo às vezes parece surpreso por ainda estar respirando.\n\nSuas matérias já miraram gente poderosa demais: Mike Aqua, quando a região tentou vender ao mundo a imagem de que não era tão perigosa; líderes de ginásio, quando a impotência virou rotina; Salete e outros, quando prometeram progresso em cima de ruína; e até a Dra. Tulsi, quando os rastreios e o controle de IDs começaram a atravessar a linha entre proteção e paranoia. Barry critica porque acredita — e esse é o detalhe que o diferencia de quem só quer caos: por trás do sarcasmo e da língua afiada, há um coração bom.\n\nEle troca informações com quem precisa, sem romantizar. Ajuda um desconhecido hoje, denuncia um aliado amanhã, e some antes que alguém decida cobrar. Seus dois companheiros mais constantes são um Electabuzz, que aprendeu a guardar a retaguarda como se fosse instinto, e um Zubat, perfeito para voar por galerias, ruínas e túneis onde a cidade ainda range por dentro.\n\nBarry não é herói de estátua. Ele é herói de margem: o tipo que escreve com as mãos sujas, que volta para casa olhando por cima do ombro, que sabe que a verdade em Ga’Al nunca vem limpa.\n\nE, no fim, talvez seja por isso que ele continue vivo: porque ele não acredita em finais bonitos. Ele acredita em sobrevivência — e em deixar rastro suficiente para que, um dia, alguém consiga ligar os pontos."
+      }
+    },
+    "Alex Prime": {
+      "ocupacao": "Top 1 de Ga’Al",
+      "idade": "34 Anos",
+      "pokemons": [
+        "Kadabra",
+        "Bisharp",
+        "Snover",
+        "Dugtrio",
+        "Tangela"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Quando a crise deixou de ser rumor e virou rotina, Alex não escolheu a saída mais fácil. Ele escolheu a mais perigosa: mexer na cabeça das pessoas. Não com discursos bonitos, mas com um plano que parecia impossível de sustentar em pé. Foi aí que Ricardo lhe contou sobre a antena — um amplificador psíquico que a Team Keneze erguia como se fosse mais uma peça de infraestrutura das Gêmeas, mas pensado para espalhar uma frequência mental que abafasse pânico, substituindo o grito por uma calma obediente.\n\nO movimento que Alex ingressou, se vendeu como salvação. E, em partes, foi. As cidades parara de colapsar toda semana. Treinadores voltaram às ruas. Famílias voltaram a dormir sem cadeados extras. Só que a paz, em Ga’Al, quase sempre vem com uma cláusula escondida.\n\nEm algum ponto dessa escalada, Alex chegou perto demais do coração do problema — Ezenek, o nome que Ga’Al sussurra quando não quer atrair atenção. Ele afirma, para quem pergunta do jeito certo, que conseguiu selar a entidade numa dimensão de bolso: um cárcere pequeno, denso, inacessível. O tipo de vitória que ninguém consegue provar, mas que muda a forma como as pessoas andam. E é aí que a história dele encosta na de Ricardo Ratusko. Porque, para selar algo assim, Alex precisou de conhecimento… e de traição.\n\nO que se sabe — e o que se conta — é que Alex rompeu com Ricardo quando percebeu o tamanho do abismo em que estavam metendo as mãos. Há quem diga que ele usou o Caçador como ferramenta e, quando o preço veio, empurrou a conta para o outro lado. Há quem diga o contrário: que Alex só virou “Prime” porque aprendeu a se mover entre pessoas como quem move peças num tabuleiro.\n\nO fato é que o nome dele ficou marcado em duas frentes. Para muitos, ele é a última muralha antes do caos. Para outros, ele é o primeiro homem que ousou substituir o terror por adoração — e provou que, às vezes, a diferença entre esperança e lavagem cerebral é só a forma como a história é contada. O que muita gente chama de “milagre” foi, na prática, um experimento em massa: trocar medo por devoção, medo por impulso de seguir, medo por culto.\n\nEm Ga’Al, quase ninguém recebe ponto final. Alex Prime também não. Ele vive na contradição: salvou gente demais para ser chamado de vilão com facilidade, e mexeu fundo demais na mente de Ga’Al para ser chamado de herói sem ressalvas."
+      }
+    },
+    "Alpha": {
+      "ocupacao": "A Primeira Marcada",
+      "idade": "36 Anos",
+      "pokemons": [
+        "Honchkrow",
+        "Genesect",
+        "Gardevoir"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Em Ga’Al, “Alpha” não soa como nome. Soa como aviso. Como se a palavra em si já fosse uma cicatriz antiga — e, quando alguém a pronuncia, o ar ao redor lembrasse que certas coisas não deveriam ter sido acordadas.\n\nDizem que ela foi a primeira a carregar a Marca. Não “a primeira” no sentido de história recente, mas no sentido de origem: a primeira após séculos de silêncio, a primeira depois que Ezenek ficou tempo demais sem ser alimentado por devoção humana.\n\nHá relatos espaçados no tempo, em documentos que não conversam entre si, descrevendo a mesma mulher: o mesmo rosto, o mesmo olhar, a mesma calma que não combina com bondade. Como se ela tivesse escolhido uma aparência e se recusado a soltá-la. Em certas épocas, aparece como conselheira de culto; em outras, como sacerdotisa; em outras, como sombra por trás de decisões de  poderosos.\n\nFoi ela, contam, quem soprou ao ouvido de Cyrus o nome de uma entidade que ele batizou de Giratina. E, ao fazer isso, não entregou só uma informação: entregou uma linguagem. Quando você dá um nome novo para o mesmo abismo, o abismo fica mais fácil de vender.\n\nDurante a Tempestade Ácida, a devoção de Alpha teria sido colocada à prova em um confronto contra Henrique Herba. Não há registro limpo do que aconteceu — só relatos quebrados, cheiro de metal queimado no ar e a impressão de que algo ali mudou o rumo de pessoas demais. Depois disso, Alpha simplesmente sumiu. Não como quem foge, mas como quem fecha uma porta e apaga o corredor.\n\nSe a Team Keneze tinha marechais, generais e hierarquias, Alpha não cabia direito em nenhuma caixinha. Ela era mais antiga que a própria estrutura — e, por isso, sempre pareceu maior do que ela.\n\nHoje, sua presença sobrevive de um jeito específico: no medo inteligente. Aquele que não grita nem faz cena. Aquele que só muda o caminho quando escuta uma frase solta, um símbolo repetido, ou alguém jurando que viu uma mulher de rosto conhecido em uma história que não era para ter testemunhas."
+      }
+    },
+    "Anastácia": {
+      "ocupacao": "Líder de Ginásio de Grená",
+      "idade": "38 Anos",
+      "pokemons": [
+        "Heracross",
+        "Machamp",
+        "Infernape",
+        "Medicham"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Em Grená, o ar parece ter espinhos. A terra não perdoa distração, e o próprio ambiente ensina — do jeito mais cruel — que fraqueza não é virtude, é sentença. Foi nesse cenário que Anastácia transformou o próprio nome em uma fronteira: ou você atravessa e muda… ou não atravessa.\n\nEla veio de Kalos, com maneiras que não combinavam com Ga’Al e um olhar que aprendeu a endurecer cedo demais. Quem a conheceu antes ainda lembra de outra Anastácia, mais humana, menos afiada. E foi justamente por ser humana que ela quebrou: a história dela com Ash terminou quando eles perceberam que amavam coisas diferentes sob as mesmas palavras.\n\nAsh enxergava laço. Anastácia enxergava arma. E, quando a região começou a exigir sangue — seja por monstros, por homens, ou por escolhas ruins — ela decidiu que não seria mais a pessoa que chora depois. Ela virou a pessoa que impede a tragédia antes, mesmo que o preço seja ser odiada por isso.\n\nNo ginásio, Anastácia não oferece conforto. Oferece realidade. Ela acredita que é melhor um treinador sair dali mancando e com orgulho ferido do que sair feliz para depois ser embalado em luto. Seu método é violento porque ela quer que quem fique em Ga’Al tenha estômago, disciplina e instinto de sobrevivência. Grená não é sala de aula: é forja.\n\nHá quem a chame de cruel. Há quem a chame de necessária. O que ninguém consegue negar é que ela usa a própria cidade como parte do treino — calor, poeira, ruído, e aquela sensação constante de que o mundo está prestes a cair sobre sua cabeça. Anastácia molda treinadores como molda a si mesma: no limite.\n\nQuando a crise aperta, dizem que ela é uma das poucas lideranças que não desaba em discurso. Ela só aponta o caminho, com a frieza de quem já perdeu demais para brincar de esperança.\n\nE, ainda assim, existe um detalhe que só aparece quando você presta atenção: Anastácia não odeia gente fraca. Ela odeia o sistema que transforma fraqueza em funeral."
+      }
+    },
+    "Antonio": {
+      "ocupacao": "Primeiro Campeão de Ga’Al",
+      "idade": "",
+      "pokemons": [
+        "Pidgeot"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Em Aspargo, o nome de Antonio tem o peso de uma estrada que nunca existiu.\n\nEle foi o primeiro Campeão de Ga’Al — o tipo de treinador que vira mito enquanto ainda está vivo, porque tudo o que faz parece grande demais para caber em explicação simples. E, ainda assim, é lembrado com raiva por quem deveria erguê-lo em estátua.\n\nA vila apostou nele como quem aposta no próprio futuro. Sonhou com uma rodovia que colocaria Aspargo de volta no mapa, com comércio, com gente, com vida circulando. Antonio tinha a força, o prestígio, o poder político informal de quem venceu a Liga. E foi justamente por isso que a decisão dele feriu: ele não fez.\n\nAlguns dizem que foi covardia. Outros, que foi traição. Há também quem sussurre uma versão mais desconfortável: que Antonio não construiu a estrada porque viu algo — algo que a população não estava pronta para enxergar. Seja o tipo de criatura que mora perto demais, seja o tipo de verdade que derruba cidades.\n\nO ódio cresceu tanto que o próprio irmão de Antonio abriu o Clube de Caça, jurando exterminar as criaturas ao redor de Aspargo. Era uma afronta ao nome do campeão, uma tentativa de apagar o passado com fogo e chumbo.\n\nAntes de desaparecer, Antonio voltou uma última vez. Não fez discurso. Não pediu perdão. Só entregou suas Pokébolas para serem guardadas — como quem fecha uma gaveta e aceita que não vai mais abri-la. Depois, seguiu sozinho rumo à Floresta de Pedra que circunda a vila.\n\nNinguém o viu voltar. E é assim que a história dele continua existindo: metade coragem, metade silêncio. Em Ga’Al, lendas não morrem — elas apenas mudam de lugar."
+      }
+    },
+    "Arthur": {
+      "ocupacao": "Ex-Líder de Ginásio de Gamborre",
+      "idade": "48 Anos",
+      "pokemons": [
+        "Bisharp",
+        "Honchkrow",
+        "Pangoro"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Gamborre já foi promessa. Já foi vitrine. Já foi cidade que sonhava alto o suficiente para acreditar que ferro e fumaça poderiam comprar destino. Arthur estava no centro desse sonho — não como espectador, mas como o homem que assinou as linhas mais perigosas do contrato.\n\nEle veio de Unova com a cabeça cheia de números e a moral cheia de atalhos. Quando olhou para Gamborre, não viu só ruas e casas: viu potencial. E foi isso que o tornou convincente. Arthur prometeu auge. Prometeu indústria. Prometeu uma era em que a cidade nunca mais seria tratada como beco do mapa.\n\nO pacto com Rockfeller — e com tudo que vinha junto — fez a cidade crescer rápido demais. O tipo de crescimento que não é vida: é febre. E, quando a febre queima, o que sobra é ruína.\n\nO ‘banquete fantasma’ virou palavra proibida. Quem presenciou fala pouco. Quem não presenciou inventa demais. O fato é que, depois do colapso, Gamborre esvaziou como se tivesse perdido o coração. Arthur se recolheu ao ginásio, e por um tempo ainda aceitava desafios pontuais — como se lutar fosse a última forma de fingir normalidade.\n\nQuando a queda da Team Keneze explodiu como notícia, autoridades foram até ele. Encontraram o ginásio vazio. Nenhuma explicação, nenhum recado, nenhum corpo. Só ausência.\n\nMeses depois, no Jardim Real, uma passagem secreta foi descoberta. Descia para uma câmara subterrânea conectada ao ginásio — uma sala de tortura, fria, escondida, construída para existir sem testemunhas. Lá dentro, encontraram o Pangoro de Arthur. Não como parceiro de batalha, mas como prova viva de que alguém pagou um preço que não se explica só com culpa.\n\nArthur, no entanto, não estava lá. E isso é o pior tipo de final: o que não fecha.\n\nHoje, Gamborre ainda tenta se reconstruir, mas o nome dele continua preso nas paredes — como ferrugem. Porque, em Ga’Al, alguns homens não viram história. Viram assombração."
+      }
+    },
+    "Carlos": {
+      "ocupacao": "Líder do Clube de Caça de Aspargo",
+      "idade": "45 Anos",
+      "pokemons": [
+        "Charizard"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Carlos aprendeu cedo que, em Ga’Al, você não sobrevive sendo gentil. Em Aspargo — onde a floresta de pedra faz sombra até quando o sol está alto — ele cresceu ouvindo a mesma ladainha: que o mundo devia algo à sua família. O nome que pesava na vila, porém, não era o dele. Era o de Antonio, o primeiro Campeão de Ga’Al. E Carlos nunca engoliu o que o povo chama de lenda.\n\nPara ele, Antonio não virou mito; virou dívida. A vila investiu esperança, recursos, orgulho — e, quando o Campeão desapareceu, sobrou só rancor. Caio, irmão de Antonio, transformou esse rancor em método: abriu o Clube de Caça e prometeu “limpar” o entorno de Aspargo, como se a vida selvagem fosse um insulto pessoal. Carlos era o sobrinho que assistia tudo de perto, absorvendo cada discurso, cada exceção, cada justificativa.\n\nQuando Caio saiu de cena, Carlos assumiu o clube com a mesma aspereza, só que mais pragmática. Ele detesta gente se enfiando nos seus negócios, mas vive exatamente disso: controlar quem passa, o que entra, o que sai, e o que “não aparece” nos relatos oficiais. A ironia é cruel: o homem que diz desprezar intrusos sempre teve um pé na tecnologia de guerra — e, por caminhos que ninguém explica com clareza, conseguiu acesso a equipamentos militares ligados à Team Keneze. Em Ga’Al, coincidência e crime costumam usar a mesma roupa.\n\nDo lado de fora da vila de Aspargo, ele mantém o que chama de ‘perímetro’: patrulhas, armadilhas, rotas seguras e um expurgo constante de Pokémon que se aproximam demais. Não é heroísmo; é controle. O ar ali cheira a cinza, couro e óleo de máquina, e os gritos da mata de pedra ecoam como se o lugar tivesse memória.\n\nSeu Charizard é a assinatura dessa autoridade — não só pela força, mas pelo simbolismo: fogo contra medo, presença contra rumor. Para alguns, Carlos é o último bastião de Aspargo; para outros, é a pior herança que Caio deixou. E, ainda assim, quem precisa cruzar aquela região aprende rápido: você negocia com Carlos, ou você sangra por conta própria."
+      }
+    },
+    "Caroline": {
+      "ocupacao": "Aspirante a Enfermeira Joy",
+      "idade": "23 Anos",
+      "pokemons": [
+        "Eevee",
+        "Lapras",
+        "Jigglypuff"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Caroline veio de Kanto com um sonho simples demais para Ga’Al: curar. Não “vencer”, não “dominar”, não “sobreviver a qualquer custo”. Curar. Só que a região não perdoa simplicidade — ela transforma intenções em cicatrizes e testa qualquer vocação como se fosse um juramento.\n\nEla chegou pela Baía Morta com uma mala leve, um crachá improvisado e a coragem tímida de quem ainda acredita que o mundo pode melhorar por insistência. Em Obsidian, o Centro Pokémon nunca parece completamente quieto. Foi ali que Caroline entendeu a diferença entre ferida e trauma: em Ga’Al, todo curativo tem história por trás.\n\nAos poucos, ela passou a se oferecer onde precisava: triagem, entrega de remédios, orientação a viajantes e, quando o medo se espalhava, uma palavra firme para manter as pessoas de pé. O Eevee dela acompanha como se carregasse possibilidades — não como truque, mas como promessa. Lapras é o silêncio paciente de quem atravessa água escura; Jigglypuff, a tentativa de devolver descanso a quem não dorme há meses.\n\nMas Caroline não veio só para tratar corpos. Em Obsidian, ela começou a documentar a memória da cidade: nomes, datas, relatos, pequenos detalhes que as pessoas deixam cair quando acham que ninguém está ouvindo. Ela viu o que aconteceu quando líderes vendem grandeza e entregam ruína — e não quer que Arthur, Rockefeller e os que vieram antes virem apenas ‘capítulos fechados’. Em Ga’Al, esquecer é repetir.\n\nHoje, falam que Caroline está em trânsito: de Obsidian, seguindo para Liberty, buscando aprender mais, ajudar mais, e se aproximar do que sonha ser. Ela ainda não é uma Joy — mas, para muita gente que já foi remendada pelas mãos dela, o título formal virou detalhe. O que importa é que, em um lugar onde o desespero é rotina, Caroline insiste em salvar o que dá para salvar — e em registrar o que não pode ser negado depois."
+      }
+    },
+    "Cassandra": {
+      "ocupacao": "Ex-trabalhadora das minas",
+      "idade": "31 Anos",
+      "pokemons": [
+        "Thwackey",
+        "Lairon",
+        "Steenee"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Cassandra passou boa parte da vida olhando para baixo. Não por submissão, mas por ofício: minério, trilho, picareta, rocha que racha do jeito errado e poeira que gruda no pulmão. Nas minas de Ga’Al, o som da cidade é abafado pelo subsolo, e o tempo tem outro ritmo — um ritmo que ensina paciência à força.\n\nEla sempre gostou de Pokémon, mas a vida não dava espaço para isso. Havia contas, turnos, família, e a certeza amarga de que sonho é luxo de quem tem folga. Acontece que Ga’Al também tira aquilo que você considera garantido. Quando os pais de Cassandra morreram, o vazio veio junto com um dinheiro que ela nunca quis — herança que parecia mais peso do que chance. E foi aí que ela tomou a decisão que muitos chamariam de ‘tarde demais’: usar o que restou para começar a própria jornada.\n\nThwackey entrou na vida dela como um riso inesperado, uma teimosia viva que não aceita o ‘não dá’. Lairon é o eco do subsolo: metal, pedra, perseverança. Steenee, por contraste, é o lembrete de que delicadeza também pode ser disciplina — e que crescimento não precisa ser barulho.\n\nCassandra viaja com um caderno cheio de desenhos, esquemas e anotações de estruturas: pontes improvisadas, geradores velhos, mecanismos que ainda funcionam quando ninguém mais acredita. Ela quer ser engenheira — não por glamour, mas porque entende que reconstruir Ga’Al exige gente que saiba levantar coisas com as próprias mãos, calcular risco, prever queda, consertar o que foi quebrado por negligência ou guerra.\n\nSeu caminho não é épico no sentido clássico. É épico do jeito de Ga’Al: feito de pequenas escolhas repetidas, de seguir adiante mesmo quando o corpo pede recuo, de aprender a comandar um Pokémon sem virar tirana, e de transformar luto em projeto. Cassandra não corre atrás de holofote. Ela corre atrás de futuro — e isso, aqui, já é um ato de coragem."
+      }
+    },
+    "Clementina “Vovó” Joy": {
+      "ocupacao": "Líder de Ginásio de Sinoper (Normal)",
+      "idade": "68 Anos",
+      "pokemons": [
+        "Wigglytuff",
+        "Bibarel",
+        "Miltank",
+        "Kangaskhan"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Clementina já viu muita gente chamar a própria exaustão de vocação. Ela foi Joy por décadas — daquelas que sabem, pelo jeito que a pessoa respira, se a febre vai subir ou baixar. Só que Ga’Al mudou a natureza do que significa ‘cuidar’. Quando o mundo começou a desandar de vez, ela entendeu uma coisa simples: não existe cura onde não existe comida.\n\nFoi assim que Sinoper ganhou uma fazenda antes de ganhar fama. A Fazenda Comum nasceu de mãos sujas de terra, estufas remendadas, pomar que resistiu ao vento, e regras que parecem gentis até você perceber que são firmes: aqui se reparte, aqui se trabalha, aqui não se usa ninguém como degrau. O lugar tem cheiro de barro molhado, palha seca, chá quente e antisséptico — como se Clementina tivesse misturado hospital e campo num mesmo coração.\n\nA cidade, porém, carrega um corte recente. Erick, o antigo líder do ginásio, tentou ‘salvar’ Sinoper expulsando treinadores e fechando portas, convencido de que o caos tinha nome estrangeiro. A mancha ficou. Quando Clementina assumiu, assumiu também a tarefa invisível: desfazer o medo sem trazer a ingenuidade de volta. Reabrir sem se entregar. Acolher sem permitir abuso.\n\nO ginásio dela é um celeiro reformado, nada de estádio brilhante. A batalha ali é como a própria vida rural: desgaste, controle, resistência, gestão de recursos. Clementina ensina novatos a usar itens, a respeitar status, a não se desesperar quando a luta estica. E a gentileza faz parte do método — mas é uma gentileza com coluna. Quem confunde isso com fraqueza perde, não por humilhação, mas por cansaço.\n\nWigglytuff é o afago que vira muralha. Bibarel é trabalho que não para. Miltank é sustento. Kangaskhan é abrigo. Clementina não romantiza Ga’Al — ela organiza o que dá, planta o que dá, cura o que dá. E, quando alguém pergunta por que ainda insiste, ela costuma responder com a mesma calma de sempre: ‘porque alguém precisa ficar para que os outros tenham para onde voltar’."
+      }
+    },
+    "Daniela": {
+      "ocupacao": "Ex-Vice-Líder de Gêmeas",
+      "idade": "30 Anos",
+      "pokemons": [
+        "Nidorina",
+        "Nidorino",
+        "Gigalith",
+        "Excadrill"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Gêmeas sempre teve dois pulsos: o da cidade que sorri, e o da cidade que se defende. Daniela conhecia os dois. Ela serviu por anos como braço direito de Dany, do tipo que não aparece no palco, mas segura o cenário para que o espetáculo não desabe. Foi assim até o dia em que Andy quebrou a espinha da cidade com uma traição — e, de uma noite para outra, Gêmeas passou a ser um território disputado, como se fosse só um mapa em mãos erradas.\n\nQuando a Team Keneze tomou a superfície, Daniela foi onde o medo não alcançava tão fácil: os esgotos. Ali embaixo, o ar era pesado, úmido e metálico; cada passo fazia o som voltar em eco, como se a cidade estivesse repetindo as próprias dores. Mas era o único caminho que a Team não controlava direito — um labirinto de concreto, canos e ruído, perfeito para uma resistência que precisava respirar sem ser vista.\n\nFoi nesse subterrâneo que Daniela virou outra coisa. Não só vice-líder: ponto de gravidade. Ela organizou rotas, turnos, abrigo, suprimentos, e treinou gente comum a operar como se fosse tropa. A “Batalha das Gêmeas” estourou como um terremoto anunciado: o Caçador colidindo com a Team Keneze, a Elite dos 4 entrando no tabuleiro (Felícia e Mike Aqua entre os nomes mais citados), e treinadores notáveis — Michele, Junin, Logan e Alex — puxando a linha de frente enquanto o chão se quebrava com explosões e desabamentos.\n\nNo auge do caos, quando a cidade parecia querer engolir tudo para apagar o que estava acontecendo, Daniela foi soterrada. Sobreviveu, mas o preço veio no corpo: paraplegia, amputação da perna esquerda depois que a necrose tomou o que o esmagamento não deixou inteiro. O tipo de ferida que não termina quando o sangue estanca — porque, em Ga’Al, a dor costuma ficar morando.\n\nSó que Daniela não aceitou virar luto em papel oficial. Enquanto muita gente tratava Gêmeas como cemitério, ela escolheu o verbo que dói mais do que ‘resistir’: reconstruir. Ela corre atrás de financiamento e mão de obra com a mesma fúria com que, um dia, correu por túneis. Carrega trauma, sim — e carrega também uma vontade fria de provar que a cidade não vai ser lembrada apenas pelo dia em que caiu."
+      }
+    },
+    "Delta (O General)": {
+      "ocupacao": "Marechal e estrategista da Team Keneze",
+      "idade": "40 Anos",
+      "pokemons": [
+        "Weavile",
+        "Gallade",
+        "Hydreigon"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Em Ga’Al, existe um tipo de violência que grita. E existe a violência de Delta — aquela que chega em silêncio e vai embora deixando o mapa diferente. Raramente visto em público, ele virou o rosto da guerra quando a Team Keneze precisou agir com pressa e brutalidade. Seus ataques são descritos sempre do mesmo jeito, por bocas que não se conhecem: alvo prioritário, precisão, sumiço. O resto vira consequência.\n\nSó que, com Delta, o medo não nasce apenas da força. Nasce do que ninguém consegue encaixar. Há boatos persistentes de que ele não surgiu “do nada”. Como se por trás da máscara existisse alguém que a região já conheceu em outra vida — alguém que um dia pertenceu à Liga, ou ao Castelo da Elite, ou ao círculo de nomes que Ga’Al respeitava antes de aprender a temer.\n\nO rumor mais perigoso tem nome e sobrenome: Isac Umbra. O penúltimo campeão “oficial” de Ga’Al teria sumido do Castelo da Elite e reaparecido como General da Keneze. Do Isac, sabe-se pouco além do absurdo: ele veio do nada com uma técnica que parecia velha e perfeita, conquistou os pontos necessários com rapidez e venceu o Torneio Pokémon sem dificuldade. Quando desafiou o campeão anterior, foi a mesma facilidade — como se a disputa já estivesse decidida antes de começar.\n\nDepois, ele virou recluso. Raramente era visto. Os anos passaram e o castelo continuou de pé, mas o campeão parecia uma ausência vestida de título. Até que Felícia, a garota prodígio, venceu o Torneio e foi desafiá-lo. Só que Isac não apareceu. Nunca. Ela não o derrotou — foi declarada campeã por WO. E a ausência virou uma rachadura no mito, alimentando a pergunta que Ga’Al não conseguiu calar: para onde vai um campeão quando decide desaparecer?\n\nComo se não bastasse, houve o episódio com a Batalha da Fronteira: cérebros enviados para ajudar Ga’Al teriam sido derrotados por Delta, e ele exigiu silêncio — e “cuidado” com sua vida — como se pedisse proteção de algo que vinha de dentro. E, no segundo incidente do Centro Pokémon de Obsidian, o que se descreve não parece guerra comum: Delta chegando como um espectro, trazendo ‘membros’ demais para um único corpo, invocações, a sensação de que o ar era puxado para outra dimensão. A noite só não virou massacre porque Ash estava por perto — e John Ignis ajudou a conter a escalada.\n\nHoje, Delta é dado como desaparecido. E esse é o pior tipo de final em Ga’Al: o que não encerra, apenas suspende. Porque, se ele é só um general, ele pode cair. Mas se ele é um campeão que virou máscara, então a própria história de Ga’Al — a parte que deveria inspirar — foi devorada por dentro."
+      }
+    },
+    "Dra. Tulsi": {
+      "ocupacao": "Professora Pokémon Regional",
+      "idade": "41 Anos",
+      "pokemons": [
+        "Azumarill",
+        "Shiftry"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Tulsi não foi feita para o palco. Foi feita para o que sustenta o palco sem ninguém notar. Desde cedo, ela foi inteligente demais, rápida demais, e — talvez por isso — perigosa demais para certas pessoas. Enquanto outros Rangers corriam por mato e estrada, Tulsi se enterrava nos arquivos. Relatórios antigos, mapas que ninguém atualizava, padrões que só aparecem para quem aguenta olhar por tempo suficiente.\n\nFoi assim que ela puxou um fio que Ga’Al fingia não existir: os “Demônios”. Para muita gente, eram lendas ou histeria coletiva. Tulsi viu outra coisa: método. Ela conectou relatos distantes a sinais recorrentes e chegou à conclusão que ninguém queria ouvir: não era sobrenatural. Era laboratório. Hibridismo de DNA, manipulação genética — uma tecnologia perigosa, parecida demais com o que a Equipe Rocket já fez no passado. E as provas… tinham o hábito de desaparecer na hora errada.\n\nNo mesmo período, ela identificou uma correlação estatística que virou pesadelo: pessoas que sumiam por duas semanas ou mais frequentemente retornavam diferentes — infiltradas, aliciadas, ou com um comportamento que não combinava com o que eram. Quando a Associação de Batalhas lhe ofereceu o posto de Professora, Tulsi aceitou não por prestígio, mas por posição. Ela montou um sistema rígido de registro e acompanhamento sob o pretexto de segurança. A regra era simples e incômoda: todo treinador precisava falar com ela pessoalmente, sob pena de bloqueio de Trainer ID.\n\nO que o público via como burocracia era, por baixo, contra-inteligência. Rastreadores ocultos instalados nos equipamentos dos novatos, dados cruzados por um algoritmo atribuído a Solana, e, quando a Keneze ainda respirava, obteve o apoio silencioso de Alexandra — que chegou a usar um Delphox para sondar intenções. Métodos controversos. Resultados reais. Vidas salvas.\n\nO nome de Tulsi voltou a circular com força depois do segundo incidente no Centro Pokémon de Obsidian. Relatos descrevem Delta surgindo como se não fosse um homem inteiro, trazendo uma multidão de ‘membros’ consigo, e a noite só não virou massacre porque Ash apareceu nas redondezas e John Ignis ajudou a conter a escalada. Tulsi sobreviveu por pouco — e, desde então, a linha entre professora e alvo ficou ainda mais fina.\n\nSegue ativa em Obsidian, coordenando pesquisa, triagem e apoio emergencial. O que ninguém discute é que Tulsi reuniu evidência demais para ser apenas ‘a professora’. Em uma região que sobrevive de negar a própria tragédia, Tulsi é a mulher que escreve a tragédia em planilhas — e, por isso, assusta mais do que deveria."
+      }
+    },
+    "Draco": {
+      "ocupacao": "Vice-líder de Malva",
+      "idade": "21 Anos",
+      "pokemons": [
+        "Noivern",
+        "Drampa",
+        "Zweilous"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Draco nasceu com um endereço que virou pó. Celeste — a cidade que um dia foi teto, rua, esquina, promessa — virou carnificina e ruína. Ele não gosta de falar do ataque. A maioria dos sobreviventes também não. Só que, em Ga’Al, o silêncio não apaga; ele apenas empilha.\n\nQuando Victória o encontrou no Baixo Deserto, Draco estava morrendo. Fraco, doente, faminto — mais sombra do que gente. Ela o salvou. E, do jeito que Ga’Al é, salvar alguém não é um gesto simples: é assumir o peso do que a pessoa vai virar depois. Victória virou para Draco algo entre mãe, ídolo e norte. Ele cresceu sob essa luz dura, aprendendo a transformar o próprio trauma em disciplina.\n\nO mundo, porém, continuou cruel com quem carrega o rastro de Celeste. A xenofobia contra os “marcados” e contra os que foram tocados pelo desastre tem um veneno específico: ela tenta reduzir gente a etiqueta — como se a dor tivesse um carimbo.\n\nDraco fez o oposto: decidiu que não seria vítima nunca mais. Ele ignora o ódio que destilam contra ele como se fosse só vento. Para Draco, sofrimento é teste de resistência. É martelo. E ele escolheu virar lâmina.\n\nOs dragões se tornaram sua religião particular. Não por glamour, mas por crença: resistência. Poder puro. Presença que obriga respeito. Ele busca ‘a resistência dos dragões’ como quem busca um corpo que o mundo não consiga quebrar. Noivern é a vigília nos céus, Drampa é a calma antiga que não combina com a idade dele, e Zweilous — sempre faminto, sempre brigando consigo mesmo — parece um espelho do que Draco carrega por dentro.\n\nHoje, ele atua como vice-líder de Malva, carregando uma ambição que ele raramente admite em voz alta: ser forte o bastante para que ninguém mais transforme o nome dele em piedade. Em Ga’Al, Draco não quer ser lembrado como sobrevivente. Ele quer ser lembrado como inevitável."
+      }
+    },
+    "Eneias": {
+      "ocupacao": "Líder de Ginásio (Inseto)",
+      "idade": "36 Anos",
+      "pokemons": [
+        "Yanma",
+        "Beedrill",
+        "Scolipede"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Eneias sempre achou engraçado — daquele jeito que não chega a ser riso — como treinadores subestimam insetos. Chamam de fracos, descartáveis, ‘só mais um’. Ele cresceu em Ga’Al vendo o contrário: um mundo que não dá chance para quem luta sozinho. E foi justamente por isso que ele se apaixonou pelo poder do número.\n\nDiferente de Less, que exaltava a sobrevivência individual, Eneias acredita em colônia. Em estratégia. Em adaptação. Para ele, um enxame não é só quantidade — é inteligência distribuída. E, quando ganhou o ginásio, não tratou aquilo como palco. Tratou como laboratório vivo.\n\nCom autorização e verba oficial, montou um núcleo de pesquisa em genética. O objetivo não era vaidade acadêmica: era entender por que Pokémon inseto prosperam em ambientes tão diferentes e como essa plasticidade pode salvar espécies ameaçadas. Em Ga’Al, ecossistema e guerra caminham juntos; quando uma região entra em colapso, os primeiros a sofrer são os que não têm para onde migrar.\n\nOs métodos de Eneias são rígidos e, às vezes, impopulares. Ele exige disciplina, coleta dados com insistência, faz testes de campo, recruta assistentes e cobra resultados como se estivesse administrando uma linha de frente. Mas quase sempre funciona. E isso, para muitos, basta.\n\nYanma é o começo — o olhar rápido que aprende pelo vento. Beedrill é a prova de que ‘pequeno’ pode ser aterrador. Scolipede é o passo pesado, a corrida que não para. A equipe dele parece simples para quem olha de longe — até o momento em que a luta começa e você entende que Eneias não batalha para vencer você. Ele batalha para te estudar.\n\nEntre Obsidian e o Chifre de Ga’Al, Eneias vive em trânsito: coletando amostras, registrando padrões, cruzando rotas e tentando provar, com números, que a sobrevivência de Ga’Al não vai depender só de heróis e lendas — mas de entender como a vida insiste em continuar mesmo quando tudo ao redor pede fim."
+      }
+    },
+    "Erick": {
+      "ocupacao": "Ex-Líder de Ginásio de Sinoper",
+      "idade": "62 Anos",
+      "pokemons": [
+        "Kangaskhan",
+        "Sawsbuck"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Sinoper sempre teve cheiro de terra revirada e pão quente — um tipo de paz que, em Ga’Al, parece mentira até você perceber quantas mãos armadas existem por trás dela. Foi Erick quem ajudou a erguer essa mentira bonita. Quando ainda era líder de ginásio, ele falava em comunidade como quem fala em salvação: uma fazenda comum, uma rotina coletiva, gente cuidando de gente, comida orgânica passando de mão em mão, estufas e pomares como se a região ainda pudesse aprender a ser fértil.\n\nPor anos, ele sustentou a ideia com teimosia e com trabalho. A Comuna foi seu projeto mais ambicioso — e, segundo os próprios moradores, seu maior fruto não foi uma safra, mas um homem: Pablo, que cresceu sob aquela estrutura, aprendendo a enxergar ruínas como mapas e culto como pista. Erick gostava de dizer que Sinoper não precisava de heróis, precisava de método. E, no começo, parecia que ele tinha razão: a cidade respirava como um pulmão que enfim encontrara ritmo.\n\nSó que Ga’Al cobra tudo com juros. Quando a violência da região escalou — quando os convites de Mike Aqua trouxeram treinadores de fora, quando os ataques, os roubos e a paranoia ganharam nome — Erick começou a procurar um culpado que fosse simples. A tragédia pessoal terminou de quebrar o que nele ainda era macio: perdeu família, perdeu neta, e a dor que devia virar luto virou faca. Ele passou a olhar qualquer recém-chegado como um presságio de ruína.\n\nO líder que um dia organizara hortas e clínicas, então, decidiu organizar expulsões. Em um último ato de desespero e fúria, tentou um “expurgo” em Sinoper: treinadores enxotados, portas fechadas, ameaças ditas em voz alta como se a voz alta pudesse purificar a cidade. A Comuna, que nascera para acolher, virou muralha. E muralhas, em Ga’Al, sempre viram prisão.\n\nA queda foi inevitável. O cargo lhe escapou — seja por deposição, seja por exílio silencioso — e o ginásio passou para as mãos de Clementina, a “Vovó” Joy, amiga de infância de Erick. Ela tenta limpar a mancha que ele deixou na história recente de Sinoper, reabrir a hospitalidade e fazer a cidade lembrar do que prometeu ser. Erick, porém, permanece como um fantasma vivo: o homem que construiu um abrigo… e, depois, quis transformá-lo em fortaleza."
+      }
+    },
+    "Felicia Fulgar": {
+      "ocupacao": "Campeã da Liga Pokémon de Ga’Al (Top 1)",
+      "idade": "28 Anos",
+      "pokemons": [
+        "Raichu",
+        "Magnezone",
+        "Raikou"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Em Ga’Al, as histórias de ascensão costumam ter gosto de ferrugem — e a de Felicia também tem. Só que a ferrugem dela brilha. Antes das guerras virarem rotina, ela era presença constante nos Festivais: um rosto conhecido entre luzes, aplausos e a promessa frágil de que a região ainda podia celebrar sem sangrar.\n\nQuando os Festivais se apagaram, Felicia não desapareceu com eles. Ela trocou palco por arena como quem troca um vestido por uma armadura: sem cerimônia, sem saudade pública. Em três anos — três anos em Ga’Al, que valem por uma vida — ela saiu do nada e virou tudo. De treinadora sem insígnia alguma, subiu degrau por degrau, passando por gente que treinava há décadas, até sentar no lugar mais alto da hierarquia de batalha.\n\nO mundo inteiro gosta de contar a parte limpa: a campeã prodígio, a mais jovem da Elite, a mulher que venceu rápido demais. Mas a verdade é que Felicia aprendeu cedo a vencer com a própria pele. O choque das batalhas lhe ensinou a não desperdiçar movimento, a não romantizar vitória, a não fingir que força é só espetáculo. Mas quando entrou no palco para sua última dança, o desafio contra Isac Umbra, não havia parceiro de dança, ela esperou, esperou, até as luzes se apagarem e ela entender, que seu Gran Finalle, nunca iria ocorrer, ela precisava se provar que era realmente a melhor, mas nunca teve a chance.\n\nDesde então, ela carrega o título como quem carrega eletricidade: intensa, perigosa, inevitável. Seu jeito é direto, e o corpo — pequeno, firme, feito de velocidade e resistência — engana quem confunde estatura com ameaça. Ela costuma prender o cabelo em duas longas tranças e usar um vestido amarelo que parece desafiar a poeira e o medo da região; um lembrete de que, mesmo em tempos de guerra, ela se recusa a deixar o mundo ficar cinza.\n\nFelicia não luta para ser símbolo de guerra. No fundo, ela quer reabrir os Festivais — devolver à região um lugar onde as pessoas possam respirar sem pensar em emboscada. Só que ela sabe: em Ga’Al, até alegria precisa ser defendida. E, se o preço para manter acesa uma faísca de eletricidade for caminhar entre monstros, Felicia caminha. Porque ninguém chega ao topo dessa região sem aprender a conviver com a tempestade."
+      }
+    },
+    "Five": {
+      "ocupacao": "Treinadora Pokémon",
+      "idade": "19 Anos",
+      "pokemons": [
+        "Gastrodon",
+        "Arcanine",
+        "Persian",
+        "Umbreon"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Five cresceu entre o barulho doce de uma creche Pokémon: patinhas correndo no chão, cheiros de ração, de pomadas e de frutas, choros curtos que viravam riso quando alguém chegava com cuidado suficiente. Ela é neta de Clotilde, a dona do DayCare de Aspargo, e sobrinha de Rita — a líder de Dainise — uma mulher brilhante cuja própria pesquisa em toxinas deixou no rosto um pedaço necrosado, como se a região sempre exigisse um preço gravado na pele.\n\nA mãe de Five morreu cedo, vítima de uma gripe mal curada. E foi assim, órfã demais e jovem demais, que Five aprendeu a amar como se amar fosse trabalho: alimentando, limpando, cuidando, colocando o mundo de pé um Pokémon por vez. Quem a conhece diz que ela tem um coração que abraça o mundo. Quem a vê de longe costuma achar que é ingenuidade. Em Ga’Al, confundem bondade com falta de experiência. E Five sempre soube disso.\n\nQuando começou a própria jornada, foi no Torneio Arco-Íris de Aspargo que ela apareceu para o mapa. Não como lenda — como presença. Ficou em 4º lugar, e o que parecia só “boa colocação” virou respeito de verdade quando perceberam que ela não tremia na hora de lutar. Ela era jovem, mas tinha aquela coragem quieta de quem já viu demais para se impressionar com gritos.\n\nA Tempestade Ácida veio como vem tudo em Ga’Al: sem pedir permissão. Five não encontrou abrigo a tempo. A chuva corrosiva derreteu parte do seu rosto — não um corte limpo, mas uma ferida que arde na memória antes de arder na pele. E o mundo fez rima com crueldade: a tia, marcada por toxinas e ciência; a sobrinha, marcada por ácido e azar. Duas gerações, duas cicatrizes, como se a região quisesse escrever a mesma frase em corpos diferentes.\n\nSó que Five não virou amargura. Ela aprendeu a sorrir com um lado do rosto antes do outro, a falar de esperança sem soar como propaganda, a permanecer gentil sem ser frágil. Amiga de infância de Seven, ela carrega aquela teimosia luminosa de quem se recusa a deixar o horror ganhar a última palavra. E, quando as estradas começaram a chamar, Five seguiu viagem — não porque fugia, mas porque acredita, com a fé mais rara de Ga’Al, que ainda dá para incentivar outros a continuarem vivos."
+      }
+    },
+    "Gabriela": {
+      "ocupacao": "Prefeita de Gamborre",
+      "idade": "30 Anos",
+      "pokemons": [
+        "Golett"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Gamborre prometeu ouro e entregou ferrugem. Gabriela viu isso acontecer com os próprios olhos. Ela nasceu na cidade e cresceu ouvindo discursos sobre auge, progresso e futuro — até que o futuro virou um prédio inacabado, e as ruas se encheram de trabalhadores que não dormiam, não comiam e não bebiam, como se a cidade fosse uma colmeia e os corpos, engrenagens.\n\nEla aprendeu cedo o cheiro do apodrecimento: Gamborre apodreceu como fruta largada ao sol, lenta, inevitável, atraindo moscas e homens que se alimentavam da desgraça. Ainda assim, Gabriela sobreviveu. E, quando a Team Keneze caiu e Felicia Fulgar determinou que prefeitos teriam mais autonomia, Gabriela entendeu que aquela era a primeira fresta real em anos. Ela fechou a loja de antiguidades que mantinha com ajuda do irmão Pablo e decidiu que o trabalho dela seria devolver futuro à cidade.\n\nNa reconstrução do centro, ela chamou uma paisagista de Kalos. O nome era Pixie, e a história das duas parece mentira boa: amor à primeira vista, uma condessa abandonando terras nobres para sujar as mãos em ruínas, uma prefeita que aprendeu a governar com poeira no cabelo e um Golett sempre por perto, carregando entulho como se carregasse promessa. Pixie aceitou virar líder de ginásio local; Gabriela aceitou virar a voz que puxa, a voz que exige, a voz que convence.\n\nElas organizaram um grande torneio que girou a economia como um motor velho voltando a funcionar, e ainda com a ajuda de James Hiborn lideraram o extermínio completo de uma praga de Yungoos que tomava as ruas e as despensas. Não foi heroísmo de história infantil: foi gestão, foi suor, foi medo, foi insistência. E, pouco a pouco, Gamborre começou a parecer menos ruína e mais cidade — ainda ferida, mas viva.\n\nHoje, quem anda por Gamborre sente uma coisa rara: movimento com propósito. Gabriela não promete milagres. Ela promete trabalho. E, em Ga’Al, isso já é uma forma de fé."
+      }
+    },
+    "Gustavo": {
+      "ocupacao": "“Fixer” de Liberty",
+      "idade": "19 Anos",
+      "pokemons": [
+        "Zangoose",
+        "Trubbish",
+        "Swablu",
+        "Scrafty"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Liberty tem um tipo de fome que não aparece em mesa posta: é fome de oportunidade, fome de sair inteiro do dia. Gustavo nasceu ali, na parte da cidade onde as sirenes são mais comuns que risadas, e onde crescer é aprender rápido o que a lei não alcança.\n\nAinda criança, ele foi recrutado pelo Sindicato Paramilitar. Não como soldado — como ferramenta. Aprendeu a roubar carteiras sem olhar nos olhos, a espionar conversas de bar, a sumir em becos com a mesma naturalidade com que outros somem em quartos. Sua adolescência foi um corredor estreito: ou você corria, ou apanhava.\n\nAos dezesseis, veio a queda. Uma operação da Milicorpe o pegou, e ele passou três anos na cadeia juvenil de Obsidian. Três anos onde o tempo tem gosto de metal e desinfetante, e onde a noite parece sempre a mesma. Foi ali que Gustavo descobriu a coisa mais perigosa de todas: silêncio para pensar. Ele decidiu que não seria mais peão de criminoso algum — e, quando saiu, recusou voltar para o Sindicato.\n\nRecusar, em Liberty, é o mesmo que assinar alvo nas próprias costas. Então Gustavo fez o que sabia fazer: adaptou. As mesmas mãos que aprendiam a arrombar, agora abriam caminho. Os mesmos olhos treinados para espionagem, agora buscavam rotas seguras. Ele virou “fixer”: resolve problemas, encontra gente, atravessa zonas perigosas, recupera coisas, negocia informação. Cobra — porque em Ga’Al ninguém vive de aplauso — mas cobra justo. Fala gíria, mantém postura defensiva, ri pouco. Ainda assim, quando alguém ganha seu respeito, descobre que lealdade, nele, não é discurso. É ato.\n\nHá uma razão que o mantém acordado mesmo quando a cidade dorme: ele quer juntar dinheiro suficiente para tirar a irmã mais nova, ainda presa em Liberty, da órbita do Sindicato. É o tipo de objetivo que não cabe em frase bonita. Cabe em passos repetidos, em escolhas difíceis, em sobreviver sem voltar a se sujar. E Gustavo, do jeito torto dele, está tentando."
+      }
+    },
+    "Henrique Herba": {
+      "ocupacao": "Elite dos 4 de Ga’Al",
+      "idade": "68 Anos",
+      "pokemons": [
+        "Venusaur",
+        "Exeggutor",
+        "Leafeon",
+        "Tangrowth",
+        "Ludicolo"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Henrique Herba virou lenda do jeito que Ga’Al costuma permitir: na marra e no silêncio. Quando jovem, seu nome ainda era repetido em voz alta, como se fosse um troféu da própria região — o homem que dominava o tipo Planta com uma mente brilhante, capaz de transformar raízes em armadilhas e folhas em lâminas. Com o tempo, porém, ele foi deixando a vida pública para trás. Não por fraqueza, mas por escolha: Henrique nunca gostou de aplauso; gostava de resultado.\n\nO castelo da Elite virou mais casa do que vitrine. Henrique passa a maior parte dos dias ali dentro, longe do burburinho, deixando que o mundo especule e invente. Os poucos que o veem de perto descrevem um senhor de idade que não parece cansado — parece concentrado. Como se cada manhã fosse dedicada a um mesmo inimigo invisível: o tempo.\n\nQuando a Chuva Acida caiu, imaginou que finalmente poderia se trancar com a tranquilidade que sempre almejou, mas como uma torrente em fúria a realidade bateu em sua porta. Não se sabe o que levou o velho a encarar a chuva e ir para o lado de fora de Borgonha, mas ele estava ali e sua cina também, enfrentou a Alpha e pagou um preço alto de mais.\n\nHá anos, Henrique começou a sentir sinais claros da idade. E, para alguém cuja força sempre foi a mente, isso é uma ameaça maior do que qualquer desafiador. Ele vacilou, seu corpo tombou e sua mente foi junto. Ainda está vivo, em cmo.\n\nQuem o conhece entende outra coisa: Henrique Herba é o tipo de pessoa que se tornou parte da própria estrutura de Ga’Al — como uma árvore antiga que ninguém derruba… mas que, por dentro, ainda luta para continuar verde."
+      }
+    },
+    "Henry": {
+      "ocupacao": "Top 2 de Johto",
+      "idade": "35 Anos",
+      "pokemons": [
+        "Houndoom",
+        "Castform",
+        "Gastrodon",
+        "Hippowdon"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Henry e Stênio já foram a mesma história contada por duas bocas diferentes. Na juventude, eram inseparáveis em Johto: rivais, melhores amigos, dois treinadores com brilho nos olhos e vontade demais nas mãos. Exploravam como quem caçava destino — estrada, floresta, ruína, ginásio — e cada batalha era uma promessa de futuro.\n\nEntão veio a desavença. E a pior parte é que ninguém consegue dizer o que foi — nem mesmo eles. Talvez tenha sido uma batalha que passou do ponto. Talvez um amor, dinheiro, ego, fama, poder. O fato é que a amizade se dissolveu até virar algo que não cabia mais em conversa: ódio.\n\nHenry chegou a se aposentar por um tempo, como se largar as Pokébolas fosse apagar o incêndio. Não apagou. O gatilho veio pela televisão — como tantas tragédias modernas: a notícia de que Stênio havia se tornado o líder de ginásio mais prestigiado de Ga’Al. Aquilo não foi só orgulho ferido; foi um chamado. Henry pegou suas Pokébolas e atravessou o mar com um único objetivo: humilhar o antigo amigo.\n\nGa’Al, porém, não é palco fácil para vaidade. A região mastiga visitantes com a mesma fome com que mastiga nativos. E ainda assim Henry se manteve inteiro, frio, obstinado. Houndoom parecia feito da mesma matéria do ressentimento dele; Castform mudava o humor do campo como se o clima respondesse à raiva; Gastrodon e Hippowdon eram a lentidão esmagadora de quem decide dominar o chão, não o céu.\n\nO que Henry fez ali virou verdade que corre de boca em boca: ele é um dos poucos treinadores vivos que derrotou Stênio em combate direto. E isso, em Ga’Al, não é estatística — é cicatriz. Ainda assim, por trás do triunfo, existe uma pergunta que Henry evita olhar de frente: se ele finalmente venceu… o que sobra para preencher o espaço que o ódio ocupava?\n\nTalvez por isso Henry siga em frente como quem ainda está no meio do caminho. Ele veio para quebrar um homem — e descobriu que algumas rivalidades, quando ganham o tamanho de uma vida inteira, nunca terminam de verdade. Elas só mudam de forma."
+      }
+    },
+    "Herbie": {
+      "ocupacao": "Move Tutor (Golpes de Planta) em Obsidian",
+      "idade": "68 Anos",
+      "pokemons": [
+        "Meganium",
+        "Ferrothorn",
+        "Bellossom"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Herbie passou a vida inteira com a sombra de Henrique Herba atravessando a porta antes dele. Enquanto o irmão virava lenda e sentava na Elite, Herbie colecionava uma existência mais modesta, mais silenciosa — e, para muitos, invisível. Não foi falta de amor; foi diferença de destino. Henrique era tempestade. Herbie sempre foi chão.\n\nEle nunca teve o talento monstruoso — nem a ambição — para disputar o mesmo patamar. Em vez disso, encontrou seu lugar onde poucos olham com respeito: na técnica. Herbie entende o tipo Planta com um conhecimento de oficina, de mãos sujas e repetição. Ele conhece biomecânica, ritmo, postura, ponto de impacto, o jeito certo de ensinar um golpe até ele deixar de ser truque e virar instinto.\n\nEm Obsidian, nas fazendas ao redor, ele vive como quem escolheu paz. Treinadores chegam buscando poder e saem com método. Herbie não é general, não é campeão, não é herói. Mas, quando um jovem quer aprender de verdade, é para ele que a cidade aponta.\n\nE, claro, existe o folclore: Herbie contando histórias — às vezes exageradas — sobre como ensinou tudo que Henrique sabe. Ele fala com um sorriso de canto, aquele sorriso de quem sabe que a vida foi injusta, mas decidiu responder com humor em vez de veneno. Quem convive um pouco percebe: a brincadeira é escudo. O orgulho é real. E a dor, também.\n\nNo fim, Herbie virou um tipo raro em Ga’Al: alguém que não venceu o mundo… mas também não deixou o mundo vencer ele. Ele se contentou em plantar conhecimento e ver gente crescer. E, numa região onde quase tudo termina em guerra, isso é quase milagre."
+      }
+    },
+    "Hoops": {
+      "ocupacao": "Ex-Líder de Ginásio de Liberty",
+      "idade": "31 Anos",
+      "pokemons": [
+        "Poliwhirl",
+        "Sawk",
+        "Quilladin"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Hoops nasceu com o corpo certo para o esporte e a cabeça errada para a burocracia. Em Liberty, onde poder e violência costumam disputar a mesma rua, ele foi feito líder de ginásio — e, por um tempo, o título parecia combinar com a energia dele. A cidade gostava de espetáculo, e Hoops entregava espetáculo. Só que ginásio, em Ga’Al, nunca é só palco. É trincheira também.\n\nEle nunca teve vocação para proteção civil. O que Hoops queria era competir, treinar, sentir o estádio vibrar. Quando o Touchdown ganhou espaço e a promessa de carreira profissional ficou real, ele escolheu o que o fazia respirar: abandonou o cargo e foi atrás do esporte.\n\nA saída deixou um vácuo. E, em Liberty, vácuo vira convite. Vittorio “Ace” Moretti assumiu o controle do ginásio e a cidade começou a escorregar mais rápido para o caos. Oficialmente, Hoops sempre se declarou indiferente ao Sindicato Paramilitar — dizia ser apenas atleta, nada mais. Só que foi durante sua gestão negligente que as crises de segurança escalaram até o ponto de ruptura.\n\nA Associação de Batalhas chegou a abrir uma investigação sobre sua conduta e possível prevaricação. O processo, porém, nunca andou. Ficou engavetado, preso no mesmo tipo de burocracia que Hoops sempre desprezou. E esse é o detalhe que mais morde: em Ga’Al, às vezes o pior crime não é agir — é não agir.\n\nAinda assim, há quem defenda Hoops com unhas e dentes. Dizem que ele só queria viver. Que ninguém deveria ser forçado a carregar uma cidade inteira nos ombros. E talvez seja verdade. Mas Liberty é o tipo de lugar que lembra: mesmo quando você escolhe sair do jogo… o jogo continua jogando."
+      }
+    },
+    "Ivy": {
+      "ocupacao": "Ex-Líder de Ginásio de Kobicha",
+      "idade": "31 Anos",
+      "pokemons": [
+        "Venomoth",
+        "Drapion",
+        "Trubbish",
+        "Arbok"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Ivy aprendeu o mundo primeiro pela música e pela atitude. Em Unova, foi aprendiz de Roxie — e, com ela, aprendeu que resistência não é só luta: é postura, é voz, é coragem de bater de frente com o que todo mundo finge que é normal. Quando decidiu vir para Ga’Al, não veio por aventura. Veio com ideais de justiça, achando — inocentemente — que a coragem bastava.\n\nGa’Al triturou essa inocência com método. Em Kobicha, a política era uma máquina. Latifundiários mandavam mais do que lei, e cargos viravam coleiras. Ivy tentou lutar como líder de ginásio, tentando proteger pequenos agricultores, salvar pokémons, expor jogos sujos. Mas, em pouco tempo, ela virou refém — e o pior tipo de refém: a que ainda precisa sorrir em público.\n\nForçaram Ivy a assinar decretos que prejudicavam exatamente quem ela queria defender. Cada papel era como engolir areia. Cada assinatura deixava a sensação de que a tinta sujava as mãos por dentro. A pressão psicológica foi virando culpa, e a culpa foi virando um buraco que não fechava.\n\nNuma noite sem cerimônia — como se Kobicha a expulsasse em silêncio — Ivy fugiu. Não houve discurso, não houve despedida. Só a estrada, o peso no peito e o medo de ter se tornado aquilo que prometeu combater.  A quem diga que ela chamou Roxie, mas a versão oficial é que a fuga abriu caminho para sua antiga mentora assumir o caos, como se o destino tivesse decidido fazer rima: a mentora retornando para enfrentar o que a aprendiz não conseguiu sustentar.\n\nDesde então, Ivy vive com o tipo de saudade que dói: saudade do que ela queria ser. Venomoth e Drapion carregam a disciplina do veneno; Trubbish, o retrato de um mundo que produz lixo e depois finge surpresa; Arbok, a ameaça que protege. A equipe dela parece uma confissão ambulante.\n\nEla é o retrato de uma verdade feia de Ga’Al: justiça não morre de uma vez — ela morre por cansaço. E Ivy, mesmo machucada, ainda carrega uma fagulha que insiste em não apagar."
+      }
+    },
+    "Jacquin": {
+      "ocupacao": "Ex-aluno da PokeTec",
+      "idade": "21 Anos",
+      "pokemons": [
+        "Kingler",
+        "Vulpix",
+        "Mightyena"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Jacquin aprendeu a andar por Obsidian como quem aprende a respirar: com o rosto voltado para o vento salgado da costa e os ouvidos atentos às sirenes que nunca parecem calar de verdade. Na PokeTec, ele e James Hiborn eram dois lados da mesma moeda — treino no pátio, estudo na sala, e, no fim do dia, o mesmo costume de carregar Pokémon feridos até o Centro de Pesquisas, porque, naquela época, ainda existia a ilusão de que o mundo se consertava com cuidado suficiente.\n\nA ilusão rachou quando o Centro foi atacado. Não foi só um prédio que sofreu; foi a ideia que Jacquin tinha de futuro. O que ele viu — estilhaços, cheiro de queimado, o medo se movendo como fumaça — deixou nele uma culpa que não se explica direito: como se todo talento que ele tinha fosse inútil diante de um mal que não pede duelo justo. Ele se afastou das batalhas e, por um tempo, tentou viver como se ser “treinador” fosse uma pele que dava para arrancar.\n\nAnos depois, foi no Torneio de Gamborre que a vida voltou a bater na porta dele. Jacquin assistiu James lutar — não como espetáculo, mas como necessidade — e percebeu que o que tinha morrido nele não era a vontade de vencer; era a coragem de tentar de novo. Naquela arquibancada, entre poeira e gritos, ele entendeu que recomeçar não é voltar ao que era. É aceitar que você carrega ruína por dentro… e ainda assim caminha.\n\nDesde então, Jacquin voltou à estrada com um tipo de disciplina mais quieta, quase humilde. Kingler virou seu peso e sua âncora, Vulpix o lembrete de que calor ainda existe mesmo em dias frios, e Mightyena a sombra protetora que segue ao lado. Ele não fala muito sobre o passado, mas ele treina como quem pede desculpas — e como quem promete que, desta vez, não vai fugir quando o mundo mostrar os dentes."
+      }
+    },
+    "Jin": {
+      "ocupacao": "Detetive em formação",
+      "idade": "34 Anos",
+      "pokemons": [
+        "Spheal",
+        "Swinub",
+        "Venonat"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Jin veio de Hoenn com um vício que Ga’Al não gosta de alimentar: perguntas. Ele não desembarcou na região atrás de insígnias, fama ou troféu — desembarcou atrás de padrão. Registros de Trainer ID que não fechavam, desaparecimentos varridos para baixo do tapete, coincidências repetidas demais para serem coincidência. Onde a maioria via boato, Jin via pista.\n\nEle se apresentava como detetive em formação, e tinha um jeito de olhar que incomodava: não era olhar de curiosidade, era olhar de auditoria. Circulava entre centros urbanos e trilhas periféricas, perguntando o que ninguém queria responder. Em Liberty, observava o fluxo de gente e dinheiro como quem lê mapa. Em Sinoper, ouvia histórias de expurgo e comuna com o mesmo cuidado com que um médico ouve sintomas. E em Obsidian, onde a região parece sempre estar prestes a desabar, ele aprendeu o valor de falar pouco e anotar muito.\n\nOs Pokémon dele combinam com o método: Spheal é o fôlego — a paciência que aguenta frio e demora; Swinub é o faro — a insistência em cavar até achar o que está enterrado; Venonat é o detalhe — aquele olhar múltiplo que enxerga onde outros só passam reto. Jin nunca teve a pretensão de ser o herói da história. O plano dele sempre foi simples: juntar prova, montar a linha, entregar a verdade ao lugar certo.\n\nSó que Ga’Al não é lugar onde a verdade sai ilesa. Em algum ponto do caminho, a rede que ele tentava puxar puxou de volta. As perguntas começaram a ter preço. E Jin, que sempre acreditou que investigação era só método, entendeu tarde que, naquela região, método também é provocação.\n\nAinda assim, o nome dele não desaparece de vez. Ele retorna como um sussurro em delegacias e centros Pokémon — alguém que esteve perto demais de algo grande. E, mesmo quando não se encontra Jin, encontram-se rastros: anotações soltas, contatos, linhas sublinhadas em relatórios antigos… como se ele tivesse aprendido a deixar a própria existência espalhada para que a história, um dia, pudesse ser recontada inteira."
+      }
+    },
+    "John Ignis (O Conde)": {
+      "ocupacao": "Elite dos 4 de Ga’Al",
+      "idade": "46 Anos",
+      "pokemons": [
+        "Charizard",
+        "Camerupt"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "O apelido veio antes do respeito. “Conde”, diziam, por causa da pele pálida, dos cabelos prateados e dos olhos vermelhos — uma aparência que parecia deslocada até para os padrões de Ga’Al. Só que John Ignis nunca se importou em parecer deslocado. Ele se importou, desde sempre, em estar certo.\n\nEnquanto muita gente na Liga se agarrou à ideia de que manter torneios e temporada era a única forma de sustentar a região — economia, turismo, prestígio, o teatro inteiro — John foi a voz da prudência radical. Na cabeça dele, havia uma frase que virava martelo: não se troca a roda com o carro andando. Ga’Al, para John, estava andando rápido demais rumo ao abismo para fingir normalidade.\n\nEle defendeu, abertamente, uma pausa total na Temporada da Liga. Queria recursos desviados para reorganizar ginásios como bastiões de defesa, treinar policiais, fortalecer centros Pokémon, preparar rotas, entender os Demônios. Não era medo de batalha — John sempre soube lutar. Era medo de desperdício. Ele via a região sangrar e detestava ver gente aplaudindo enquanto o sangue ainda escorria.\n\nFoi por isso que o nome dele ficou preso a um dos episódios mais lembrados de Obsidian: o segundo incidente no Centro Pokémon. Relatos falam de Delta surgindo como um espectro, trazendo “gente demais para um só corpo”, e a noite pendendo para massacre. Ash apareceu nas redondezas, e John Ignis ajudou a conter a escalada — não com heroísmo teatral, mas com ação fria, do tipo que salva vidas sem pedir crédito.\n\nCharizard e Camerupt parecem escolhas óbvias para quem carrega o nome Ignis — e são. Só que, nas mãos dele, fogo não é celebração: é contenção. É linha de defesa. É aviso. John vive como se cada decisão fosse uma barragem segurando uma enchente, e talvez seja por isso que tanta gente o odeia e tanta gente depende dele ao mesmo tempo.\n\nNo fim, o Conde é isso: não um homem feito para aplauso, mas para crise. E, em Ga’Al, crise é quase tudo que existe."
+      }
+    },
+    "Junin (Robert Junior)": {
+      "ocupacao": "Treinador convidado por Mike Aqua",
+      "idade": "20 Anos",
+      "pokemons": [
+        "Butterfree",
+        "Roserade",
+        "Gastrodon",
+        "Floatzel"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Junin chegou a Ga’Al com a mesma mala que tantos outros trouxeram: esperança embrulhada em propaganda. Mike Aqua dizia que a região precisava de sangue novo, de rostos de fora para provar ao mundo que Ga’Al ainda era viável. Junin aceitou o convite — e, com ele, aceitou a aposta de jogar a própria vida numa terra que todo mundo chamava de maldita.\n\nEsquisito para alguns, discreto para outros, ele tinha o tipo de aparência que faz gente arrogante subestimar: esguio, óculos grossos, postura mais de observador do que de gladiador. O erro deles era confundir silêncio com fraqueza. Junin era estrategista. Ele enxergava tabuleiro antes de enxergar plateia. Butterfree abria o campo como quem espalha neblina; Roserade era precisão; Gastrodon segurava pancada; Floatzel era o golpe que encerra — a peça mais confiável do conjunto.\n\nEntão veio o Caçador. Para Junin, foi só violência: um ataque rápido, calculado, e o desaparecimento do seu Floatzel como se arrancassem um braço. Ele não tinha como saber — ninguém tinha — que por trás daquele roubo existia uma lógica torta de proteção, um jogo maior envolvendo Marca, morte e o tipo de horror que Ga’Al escondeu por tempo demais.\n\nDepois do ataque, Junin ficou rachado por dentro. A dor não foi só perder um Pokémon; foi perceber que a região operava por regras que não estavam em manual algum. Ele oscilou entre raiva e paranoia, entre a ideia de ir embora e a ideia de provar que não seria quebrado por um ladrão mascarado. E, com o tempo, a perda virou outra coisa: uma obsessão por entender. Não era mais sobre vencer. Era sobre decifrar a máquina.\n\nÉ assim que Junin segue, mesmo quando as estradas tentam empurrá-lo para o desespero: reconstruindo estratégia com o que sobrou, aprendendo a transformar frustração em método, e guardando a lembrança do Floatzel como quem guarda uma lâmina — não para se cortar, mas para não esquecer que, em Ga’Al, você só sobrevive quando aprende a ler a intenção por trás do golpe."
+      }
+    },
+    "Kevin": {
+      "ocupacao": "Líder de Ginásio de Jade (desaparecido)",
+      "idade": "54 Anos",
+      "pokemons": [
+        "Froslass",
+        "Abomasnow",
+        "Cloyster"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Kevin veio de Kanto carregando um peso que a maioria jamais entenderia. Filho de Lorelei, uma das figuras mais prestigiadas da Elite, ele cresceu ouvindo que o sobrenome era uma coroa — e descobrindo, cedo, que coroa também é coleira. Em Ga’Al, ele enxergou uma chance: uma região dura o bastante para provar, de uma vez, que não era apenas “o filho de alguém”.\n\nEm Jade, Kevin se tornou um líder sólido, frio no campo e ainda mais frio fora dele. Seu ginásio era um templo de gelo e método, e a pesquisa em criogenia ocupava a maior parte dos seus dias. Ele falava de preservação como quem fala de futuro: corpo pós-morte, conservação de tecidos, sono profundo, interrupção do fim. Para uns, era ciência. Para outros, era medo disfarçado de estudo.\n\nA região guardou o nome de Kevin associado a uma tragédia que ninguém consegue contar sem engasgar: a Avalanche Vermelha. Enquanto Jade era soterrada — neve, terra, deslizamento, o caos inteiro — esperavam dele o gesto que líderes costumam prometer em discursos. Mas Kevin não escolheu salvar a cidade. Escolheu salvar a si mesmo. Refugiou-se nas cavernas e deixou a população perecer como se fosse uma estatística inevitável.\n\nDepois disso, Jade nunca mais olhou para ele do mesmo jeito. E Kevin nunca mais apareceu do mesmo jeito. O que se sabe é fragmentado: que o ginásio permaneceu frio e vazio; que sua pesquisa ficou mais obsessiva; que, após a aparente queda da Team Keneze, o líder simplesmente sumiu. Alguns juram que ele se enterrou em algum projeto de preservação — que tentou transformar a própria vida num experimento. Outros dizem que foi levado. Outros, ainda, que fugiu.\n\nO fato é que Kevin se tornou parte do folclore sombrio de Ga’Al: o homem que queria congelar a morte… e acabou virando um desaparecimento a mais na lista de uma região que engole gente como quem engole neve."
+      }
+    },
+    "Lance": {
+      "ocupacao": "Ex-Campeão",
+      "idade": "52 Anos",
+      "pokemons": [
+        "Dragonite",
+        "Salamence",
+        "Garchomp",
+        "Gastly"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Lance sempre pareceu um homem feito de pressa — daqueles que atravessam um corredor como se estivessem atrasados para salvar alguém. Em Kanto, ele virou símbolo de poder e disciplina; em Ga’Al, ele virou outra coisa: uma presença pesada, um nome que chegava antes dele e fazia a sala esfriar.\n\nEle veio com uma obsessão antiga: caçar o Caçador. Durante anos, perseguiu o fantasma de Ricardo sem nunca conseguir encostar de verdade no alvo. Cada rastro terminava em areia, cada pista virava um beco, como se a própria região conspirasse para manter aquele homem fora do alcance. E Lance, acostumado a vencer na força, começou a entender que havia guerras que não se ganhavam no grito.\n\nQuando Mike Aqua trouxe treinadores de fora para “revitalizar” Ga’Al, Obsidian virou ímã de tudo que era forte, raro e ferido. Os desafiadores se acumulavam, e o Centro Pokémon da cidade passou a funcionar como coração de guerra. Foi ali que o Caçador atacou — rápido, cirúrgico, cruel — e foi ali que Lance se viu no meio de um caos que não escolheu.\n\nMais tarde, o mesmo lugar seria golpeado de novo: o General Delta apareceu como se tivesse arrancado a noite do lugar onde ela dormia. Ralf Jones, pesquisador de Dainise, pediu ajuda a Lance, e a resposta veio como trovão. Em meio a gritos, fumaça e corredores estreitos, Lance enfrentou o Caçador numa batalha colossal que não teve vencedor claro — só teve sobreviventes.\n\nO que veio depois foi pior do que o combate. Em gratidão, Lance enviou a Ralf um Gastly. Um gesto simples, quase doméstico, o tipo de gentileza que ele raramente se permitia. Só que o Gastly carregava a Marca da Team Keneze. E, em Ga’Al, marcas chamam fome. Um Demônio foi atraído para Dainise, e Ralf Jones morreu. Lance carregou essa morte como se fosse dele — e, em parte, era.\n\nDevastado, ele se retirou dos conflitos da região. Não por covardia, mas por culpa: como se cada passo dele atraísse outra tragédia. Apenas depois, quando a máscara do Caçador caiu e as intenções reais vieram à tona — a lógica torta de proteger Pokémon fortes do ciclo de morte e servidão — Lance se moveu de novo. Recuperou o que pôde, do bunker secreto de Alfonso e Stênio, e saiu de cena em silêncio.\n\nEm Ga’Al, às vezes, o herói não morre. Ele só aprende que não dá para salvar todo mundo… e vai embora antes que a próxima escolha o quebre de vez."
+      }
+    },
+    "Letícia": {
+      "ocupacao": "Testemunha ocular da Queda de Celeste",
+      "idade": "21 Anos",
+      "pokemons": [
+        "Purrloin",
+        "Marill",
+        "Geodude"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Letícia aprendeu a dormir com um olho aberto muito antes de Celeste morrer. Morar na rua ensina isso: o som do próprio estômago, o barulho dos passos alheios, o cheiro da chuva antes dela cair. Ela conhecia os becos, os cantos onde o vento não corta tanto, o lugar exato onde a sombra do prédio alto vira abrigo por alguns minutos. Celeste, para ela, não era luxo — era teto improvisado.\n\nNa noite em que tudo terminou, o ar mudou primeiro. Não foi grito, não foi sirene. Foi um silêncio pesado, como se a cidade tivesse prendido a respiração. Ela lembra do céu — um recorte escuro demais, e então a forma: uma criatura alada, colossal, ocupando o espaço onde deveria existir apenas nuvem. O primeiro prédio caiu como dominó. O som não foi explosão. Foi o mundo quebrando em pedaços grandes demais para caber na cabeça.\n\nEla correu. Não foi bravura, foi instinto. Gente corria junto, e, mesmo assim, parecia que ela estava sozinha. Quando os treinadores subiram voando para enfrentar a coisa, Letícia ouviu um tipo de grito que não parecia humano — e então começou a chuva.\n\nChoveu forte por instantes. E, de repente, não era mais água. Era pena, era escama, era sangue. Era membro. Era órgão. A cidade virou um moedor, e o céu virou o funil. Letícia viu pessoas sendo apagadas ao vivo, como se o mundo tivesse decidido que elas não existiram. E viu a Marca surgir na pele dos sobreviventes como queimadura recém-feita — estigmas que não pediam permissão.\n\nEla não sabe explicar por que não foi marcada. Sorte, milagre genético, falha no ritual do mundo — qualquer nome serve quando o resultado é o mesmo: ela ficou ‘limpa’ num lugar onde ‘limpo’ virou senha de sobrevivência. Por anos, escondeu a própria origem. Mentia com naturalidade, porque era isso ou ser tratada como praga. Celeste, quando virou pó, virou também maldição nos lábios alheios.\n\nFoi Dra. Tulsi quem arrancou Letícia do esconderijo. Não com doçura, mas com lógica: a sua sobrevivência não era vergonha — era prova. E, num lugar onde rumores carregam mais peso do que documentos, Letícia entendeu que a verdade precisava ter rosto. Ela passou a trabalhar como assistente de laboratório e treinadora, carregando Purrloin, Marill e Geodude como quem carrega amuletos: pequenos, teimosos, vivos.\n\nMas Celeste ainda vive nela do jeito mais cruel: em flashes. No cheiro de metal molhado. No som de pena raspando pedra. Às vezes, quando a noite está quieta demais, Letícia fecha os olhos e volta para a rua — e sente, por um segundo, que o céu ainda está caindo."
+      }
+    },
+    "Logan Miller": {
+      "ocupacao": "Presidente da Associação de Batalhas Pokémon",
+      "idade": "27 Anos",
+      "pokemons": [
+        "Infernape",
+        "Blastoise",
+        "Pikachu",
+        "Staraptor"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Filho de Paul, o lendário e implacável rival de Ash, Logan Miller cresceu à sombra de um nome que carregava peso, cobrança e expectativa. Desde cedo, aprendeu que força sem propósito leva à ruína — e que vencer não significa apenas subjugar o oponente, mas compreender o custo da batalha.\n\nAos 27 anos, Logan já havia conquistado reconhecimento absoluto na região de Sinnoh, não apenas como treinador, mas como estrategista e líder nato. No entanto, foi ao deixar sua terra natal e partir para a enigmática região de Ga’al que seu verdadeiro amadurecimento começou. Em um mundo mais hostil, onde a linha entre herói e monstro é tênue, Logan enfrentou perdas, decisões irreversíveis e batalhas que deixaram marcas profundas — não apenas em seu corpo, mas em sua alma.\n\nFoi em Ga’al que ele se tornou um Herói, não por aclamação popular, mas por sobreviver onde muitos falharam. Seu domínio da Aura não é exibido como poder, mas carregado como responsabilidade. Como Guardião da Aura, Logan age como elo entre humanos e Pokémon, acreditando que o equilíbrio só existe quando ambos evoluem juntos.\n\nHoje, como Presidente da Associação de Batalhas Pokémon, ele governa com pulso firme e visão clara. Seu objetivo é transformar Ga’al — a região que mais o feriu e o moldou — em um território de paz duradoura, preparando uma nova geração de treinadores para um mundo onde batalhas não são travadas apenas por glória, mas por sobrevivência e significado.\n\nDe expressão pensativa e olhar esmeralda marcado por experiências que não podem ser esquecidas, Logan é um homem que carrega o passado sem ser prisioneiro dele. Sua presença impõe respeito; seu silêncio, autoridade. Infernape, Blastoise, Pikachu e Staraptor não são só equipe — são capítulos: herança, defesa, confiança e vigilância.\n\nLogan não busca ser lembrado como o filho de Paul, nem como um herói perfeito. Ele busca ser o homem que quebrou o ciclo — e construiu algo melhor a partir dele."
+      }
+    },
+    "Lucas": {
+      "ocupacao": "Arqueólogo de renome",
+      "idade": "30 Anos",
+      "pokemons": [
+        "Torterra",
+        "Magmortar",
+        "Electivire",
+        "Gallade"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Lucas já viu o mundo dobrar. Em Sinnoh, ele não foi apenas mais um treinador em busca de insígnias — foi o tipo de pessoa que aparece quando a realidade começa a falhar. Ao lado de Cynthia, enfrentou a Team Galactic e encarou o Distortion World, onde o chão não obedece a lógica e o céu não tem cima. Ele voltou daquele lugar com a certeza de que existem forças que não querem apenas vencer… querem reescrever o que é existir.\n\nPor isso, quando os rumores sobre Ga’Al começaram a circular — “Segunda Dimensão”, manipulação de vida e morte, culto moderno ao caos — Lucas não conseguiu ignorar. A Team Keneze, com seus credos e sua fome por controle, parecia ecoar demais o que ele já tinha visto em outra escala. Ele veio não por glória, mas por responsabilidade: a mesma sensação amarga de que, se você já encarou o abismo uma vez, você tem o dever de impedir que outros caiam.\n\nGa’Al confirmou as suspeitas rápido demais. Ruínas antigas falavam de Ezenek como se falassem de um deus que mastiga alma. E, quanto mais Lucas conectava símbolos, rituais e relatos, mais uma teoria tomava corpo: Ezenek e Giratina eram a mesma coisa — ou faces da mesma moeda — adoradas sob nomes diferentes em regiões diferentes. Não era crença. Era padrão.\n\nTorterra virou chão firme em meio a tempestade; Magmortar, o fogo que não treme; Electivire, a descarga que rompe bloqueio; Gallade, a lâmina consciente que corta sem perder o controle. A equipe dele parecia desenhada para atravessar desordem — e, em Ga’Al, desordem é o idioma nativo.\n\nLucas não se vende como herói. Ele é, antes, um arqueólogo do desastre: alguém que olha para os escombros e tenta entender qual mão os empurrou. E, se a mão for a mesma que ele já enfrentou em Sinnoh, ele não pretende permitir uma segunda queda."
+      }
+    },
+    "Marik": {
+      "ocupacao": "Organizador de Temporada",
+      "idade": "33 Anos",
+      "pokemons": [
+        "Gallade",
+        "Noivern",
+        "Arcanine"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Marik não nasceu para o brilho. Ele nasceu para a regra. Em Ga’Al, onde a lei costuma ser dobrada como papel molhado, isso já é quase uma coragem. Ele começou como árbitro de ligas menores, o tipo de homem que chegava cedo, anotava tudo, e saía tarde sem pedir aplauso. Com o tempo, foi se tornando uma referência rara: alguém que não vendia resultado.\n\nQuando o caos da Team Keneze virou rotina e a temporada da Liga passou a parecer mais um funeral do que um campeonato, Marik assumiu papel de bastidor: organizar horários, negociar segurança, lidar com ginásios vazios, com líderes desaparecendo, com treinadores desistindo ou morrendo. Ele aprendeu a fazer o impossível parecer administrável — mesmo quando nada era.\n\nHá uma frase que o persegue em reuniões e corredores: Felicia Fulgar não participa do torneio porque é a campeã. Marik repete isso como se fosse simples, como se a estrutura ainda existisse inteira. E talvez seja exatamente esse o ponto: ele se agarra às formalidades porque, sem elas, Ga’Al vira só barbárie.\n\nGallade, Noivern e Arcanine formam um trio que diz muito sobre ele: precisão, vigília e presença. Marik não é o tipo de homem que promete salvar a região. Ele só promete o que ninguém mais promete: fazer o certo, mesmo quando o certo não dá recompensa.\n\nEm Ga’Al, honestidade não é virtude romântica. É fraqueza explorável. E ainda assim Marik insiste — como se, de algum jeito, manter a linha fosse a última forma de impedir que o mundo desabe de vez."
+      }
+    },
+    "Mario": {
+      "ocupacao": "Motorista de escolta da Associação",
+      "idade": "28 Anos",
+      "pokemons": [
+        "Machamp",
+        "Luxray",
+        "Sableye"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Mario virou conhecido em Ga’Al do jeito menos glamouroso e mais verdadeiro: pelo serviço. Ele tentou a vida de desafiante quando era mais novo, mas descobriu rápido que a região não recompensa bravura sem lastro. Depois de perder Pokémon, dinheiro e a própria certeza, ele fez o que muitos se recusam a fazer: desistiu do sonho grande e escolheu sobreviver.\n\nFoi assim que entrou na engrenagem da Associação de Batalhas — primeiro como ajudante em torneios, depois como motorista, e, por fim, como escolta. Em Ga’Al, quem transporta gente importante aprende duas coisas: estrada tem ouvido, e curva tem emboscada. Mario aprendeu a ler o som do mato, o silêncio das placas, o cheiro de óleo queimado antes de um ataque.\n\nMachamp é o braço que não treme, Luxray é o farol que enxerga no escuro, Sableye é o aviso de que nem toda ameaça vem com barulho. Ele não fala muito do que viu em noites de escolta, mas o jeito como segura o volante denuncia: mãos de quem já atravessou coisa demais.\n\nMario não é herói de canto épico. Ele é o tipo de personagem que mantém o mundo funcionando enquanto os grandes nomes brigam. E, numa região onde tanta gente gosta de ser lenda, Mario virou algo mais raro: alguém indispensável."
+      }
+    },
+    "Marta": {
+      "ocupacao": "Enfermeira-chefe itinerante",
+      "idade": "44 Anos",
+      "pokemons": [
+        "Blissey",
+        "Altaria",
+        "Weezing"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Marta passou a vida costurando o que Ga’Al rasga. Antes de qualquer título, ela foi só uma enfermeira em Centros Pokémon, uma mulher que via treinadores chegarem com o olho aceso e saírem com o olhar quebrado. Com a escalada da violência — Caçador, Team Keneze, Demônios — o trabalho dela deixou de ser cura e virou contenção de desastre.\n\nQuando os ataques aos Centros se tornaram frequentes, Marta virou referência entre Joys e técnicos de campo. Ela sabia montar enfermaria improvisada em menos de uma hora, sabia escolher rota de evacuação sem colocar gente na mira, sabia reconhecer quando um ferimento não era “de batalha”, mas de crueldade.\n\nBlissey representa o que ela tenta manter vivo: cuidado. Altaria é a calma que ela aprende a fingir para os outros não desabarem. E Weezing… Weezing é a lembrança amarga de que, às vezes, para salvar alguém, você precisa atravessar ar tóxico — literal e moral.\n\nMarta não gosta de discursos. Ela gosta de rotina funcionando. Por isso, quando a região fala de reconstrução, ela sempre responde com a mesma frase: primeiro, precisa haver gente viva para reconstruir. E é nessa linha simples que ela se mantém, dia após dia, como se fosse uma muralha humana contra o colapso."
+      }
+    },
+    "Michele": {
+      "ocupacao": "Rival de Logan",
+      "idade": "19 Anos",
+      "pokemons": [
+        "Sceptile"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Michele cresceu acreditando numa ideia simples: se ela treinasse o bastante, se lutasse com tudo, ela alcançaria qualquer um. Quando Logan apareceu como meteoro no cenário de Ga’Al, ela transformou o nome dele em meta. Não era amor nem ódio — era necessidade. Um rival dá contorno para a ambição.\n\nNo Torneio de Aspargo, ela colocou o Sceptile em campo como quem coloca o coração na mão. Foi uma luta bonita, intensa, e, por isso mesmo, cruel. Ela puxou tudo que o parceiro tinha — técnica, agressividade, orgulho — e ainda assim foi derrotada. Não com humilhação barata, mas com a diferença real entre níveis. Aquele tipo de derrota que ensina mais do que qualquer vitória.\n\nDepois veio o Caçador. Ele atacou sem romantismo, roubou o Sceptile — o Pokémon mais velho, mais confiável, mais dela — e deixou Michele com um vazio que não tinha como preencher. Na época, ela não sabia da lógica por trás do roubo, não sabia de Marca, de morte, de bunker, de guerra escondida. Ela só soube a sensação: ter a própria história arrancada do corpo.\n\nDesde então, Michele abandonou parcialmente as lutas. Não porque virou fraca, mas porque perdeu o motivo. Ela aceitou, a contragosto, que seu rival estava num nível completamente diferente — e que perseguir Logan, sem o Sceptile, parecia mais punição do que sonho.\n\nO que sobrou foi uma imagem marcante: a capa. Michele costura nela as insígnias que já ganhou, uma a uma, como quem borda provas de que existiu. É o jeito dela de não deixar o mundo reduzir sua trajetória a “a garota que perdeu o Sceptile”. Enquanto Ga’Al tenta engolir o passado de todo mundo, Michele insiste em vestir o dela."
+      }
+    },
+    "Mike Aqua": {
+      "ocupacao": "Ex-Presidente da Associação de Batalhas",
+      "idade": "42 Anos",
+      "pokemons": [
+        "Zapdos"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Mike Aqua sempre soube vender esperança. Em Ga’Al, esperança é moeda rara — e, por isso mesmo, perigosa. Quando a região começou a afundar em rumores de Demônios, quando Celeste já tinha caído e o Caçador já tinha manchado a temporada com sangue, Mike fez a aposta que parecia genial e desesperada ao mesmo tempo: convidou treinadores proeminentes de outras regiões.\n\nO discurso era claro: Ga’Al não é tão perigosa quanto dizem. A Liga continua. O mundo não precisa abandonar a região. Ele queria imagem, fluxo, relevância — e, de quebra, acreditava que uma presença internacional traria pressão suficiente para conter a escalada da Team Keneze. O que ele não previu — ou fingiu não prever — foi o custo: muitos dos que vieram morreram, ou viram seus Pokémon serem mortos. A vitrine virou armadilha, e a Team Keneze cresceu alimentada pela tragédia que a propaganda atraiu.\n\nNos últimos meses, Mike Aqua virou personagem de uma polêmica que quase destruiu o pouco de credibilidade que lhe restava. Encontraram, num galpão abandonado, um corpo supostamente dele — ao lado do cadáver de um Zapdos. A região inteira entrou em paranoia: Mike tinha sido assassinado? Tinha fugido? Tinha sido substituído? E então veio a versão mais terrível e mais plausível em Ga’Al: a Team Keneze o clonou. Eles tinham tecnologia para modelar rostos, para plantar agentes, para fabricar identidades como quem fabrica uniforme.\n\nO caso nunca fechou de verdade. No fim, percebeu-se que o Mike Aqua atual é o verdadeiro — mas o estrago estava feito. Porque, em Ga’Al, a dúvida pega mais rápido do que qualquer vírus. E, quando o próprio presidente vira suspeito de ser cópia, a região inteira começa a se perguntar quem mais está usando máscara.\n\nMike segue como uma figura contraditória: para alguns, um homem que tentou salvar a região pela visibilidade; para outros, um oportunista que transformou vidas em estatística. Ele carrega um Zapdos no imaginário como se fosse símbolo e acusação ao mesmo tempo — um raio que iluminou Ga’Al… e queimou quem estava perto demais."
+      }
+    },
+    "Morty": {
+      "ocupacao": "Ex-aluno da Escola de Caçadores",
+      "idade": "22 Anos",
+      "pokemons": [
+        "Haunter",
+        "Banette"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Morty começou como começam os melhores — e os mais perigosos — sonhos: com idolatria. Em Ga’Al, ele cresceu ouvindo falar de Ricardo Ratsuko como se fosse mais que um homem. Ricardo era método, era promessa, era a lenda viva que “entendia a região”. Para um garoto com pouca coisa no bolso e muita fome de sentido, isso bastava.\n\nEle juntou moeda por moeda até conseguir se matricular na Escola de Caçadores, acreditando que encontraria ali um mestre presente, uma disciplina dura e uma verdade que valesse o sacrifício. Só que o que encontrou foi silêncio. Ricardo quase nunca aparecia. As aulas viraram sombra de um projeto maior — e Morty não sabia, na época, que aquele “abandono” era o preço de uma vida dupla.\n\nFoi nessa frustração que Rick entrou. Outro aluno, outro idealista, outra pessoa que começou a enxergar rachaduras na estátua. Os dois formaram uma amizade rápida, daquele tipo que nasce de decepção compartilhada. E, quando perceberam que estavam pagando para assistir a um vazio, abandonaram a escola juntos. Caíram na estrada como quem foge de um templo que perdeu o deus.\n\nGa’Al, porém, não é boa com recomeços. A jornada dos dois virou uma coleção de pequenas violências: noites sem abrigo, rotas perigosas, histórias demais sobre gente que desaparece e volta diferente. E então veio o golpe que muda uma pessoa por dentro: Rick morreu durante a viagem, vítima indireta dos conflitos que a região espalhava como poeira.\n\nDepois disso, Morty nunca mais voltou a ser o mesmo. Ele se convenceu de que seria o próximo — não como superstição boba, mas como certeza amarga. Abandonou a ideia de competir, e a admiração por Ricardo apodreceu dentro dele, virando rancor. Haunter e Banette passaram a ser companhia de alguém que vive em modo de alerta: um nômade amargurado, andando sem rumo, como se a estrada fosse punição e, ao mesmo tempo, única casa possível."
+      }
+    },
+    "Pablo Henrique": {
+      "ocupacao": "Elite dos 4 (Top 3)",
+      "idade": "41 Anos",
+      "pokemons": [
+        "Gengar",
+        "Kangaskhan",
+        "Aggron",
+        "Steelix",
+        "Azumarill"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Pablo nasceu no Deserto Irrigado entre tribos que não tratam ruína como pedra velha: tratam como memória viva. Ele cresceu ouvindo que as dunas guardam segredos e que certos nomes não devem ser repetidos em voz alta. Enquanto outros buscavam a Liga, ele buscava mapa, inscrição, rastro. A tradição, para Pablo, não era folclore — era arquivo.\n\nO problema é que, em Ga’Al, arquivo costuma sangrar.\n\nNo começo, Pablo se via como defensor das velhas culturas. Depois, como intérprete. E por fim, como alguém que precisava cavar mais fundo, mesmo que a pá encontrasse ossos. Foi nesse ponto que ele se aproximou do lendário Caçador — não por romantismo, mas por utilidade. O Caçador queria informação que ninguém ousava organizar; Pablo tinha acesso, língua, contatos e coragem para entrar onde gente sensata não entra.\n\nAs expedições o levaram a templos esquecidos, câmaras soterradas, altares que não pareciam feitos para oração, e sim para fome. Ele juntou peças que ninguém queria encarar: aqueles lugares não celebravam apenas espíritos do deserto. Celebravam Ezenek. Não como metáfora, mas como entidade real, ligada à morte e a uma outra dimensão — uma presença antiga demais para caber num mito simples.\n\nPablo foi um dos primeiros a enxergar o desenho por trás da violência: a Team Keneze não era um delírio moderno surgido do nada. Era emulação — ou ressurgimento — de cultos antigos, os mesmos que pregavam brutalidade, tortura e êxtase destrutivo como forma de “devoção”. E quando ele teve certeza disso, já não dava para fingir ignorância.\n\nA ascensão de Pablo até a Elite dos 4 parece, para muitos, uma contradição: um arqueólogo do oculto, com mãos cheias de poeira de templo, sentado em posição de prestígio. Mas em Ga’Al, prestígio raramente significa paz. Significa responsabilidade. E, para Pablo, responsabilidade virou um vício perigoso: continuar cavando, continuar conectando pontos, continuar entrando em lugares onde o silêncio tem dente."
+      }
+    },
+    "Patrick": {
+      "ocupacao": "Top 2 de Kanto",
+      "idade": "34 Anos",
+      "pokemons": [
+        "Honchkrow",
+        "Slowbro"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Patrick veio para Ga’Al antes de Ga’Al virar moda. Antes dos convites de Mike Aqua, antes da leva de treinadores estrangeiros, antes do discurso de “a região não é tão perigosa”. Ele escolheu vir. E só isso já o torna uma espécie de enigma.\n\nEm Kanto, Patrick era nome grande — Top 2, vitórias consistentes, um daqueles treinadores cuja carreira parecia seguir linha reta. Em Ga’Al, a linha reta sempre quebra. Talvez ele tenha vindo por desafio. Talvez por fuga. Talvez por algo que nunca contou a ninguém.\n\nO fato é que o rastro oficial dele é curto e estranho. Existe um registro no Trainer ID: Patrick conquistou a Insígnia de Stênio em Obsidian, datada logo após a chegada dos primeiros treinadores estrangeiros. Isso significa que ele ainda estava ali quando a região começou a receber gente demais — e, muitas vezes, morrer gente demais.\n\nDepois disso, silêncio. Não há outro registro, não há mais aparição, não há corpo confirmado. Só uma ausência grande o suficiente para virar história.\n\nSeu irmão veio a Ga’Al procurando por ele, como se perseguisse um eco. E o que encontra, na maioria das vezes, são versões: uns juram que Patrick entrou em ruínas e não voltou; outros juram que ele foi visto seguindo para o mar; há quem diga que o Caçador cruzou o caminho dele. Mas Ga’Al é pródiga em rumores porque é pobre em provas.\n\nHonchkrow e Slowbro são as únicas certezas que ainda caminham com o nome dele. O resto… o resto é aquilo que a região faz de melhor: transformar gente em mistério."
+      }
+    },
+    "Paul (O Rei da Pirâmide)": {
+      "ocupacao": "Cérebro da Batalha da Fronteira (Pyramid King)",
+      "idade": "45 Anos",
+      "pokemons": [
+        "Electivire",
+        "Magmortar",
+        "Aggron",
+        "Ursaring"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Paul sempre foi um homem de pedra. Em Sinnoh, seu nome virou sinônimo de rigor e vitória sem ornamento — o tipo de treinador que não consola, não alivia, não faz concessão. A fama dele não veio do carisma, veio do resultado. E, quando um homem assim vira pai, a casa vira campo de prova.\n\nEle veio a Ga’Al por um motivo quase doméstico, embora nada em Paul seja simples: levar Logan de volta para casa depois do caos da Chuva Ácida. A região já mastigava gente quando ele chegou, e Paul não tinha paciência para “história triste”. Ele queria o filho de volta e ponto.\n\nDurante a estadia, viu Logan tentar capturar um Moltres. O jovem falhou. E Paul sentiu vergonha — uma vergonha fria, brutal, como se a fraqueza do filho fosse um insulto pessoal. Só que Paul, apesar da dureza, enxerga. A frieza dele sempre escondeu observação aguçada. No meio do fracasso, ele percebeu algo que não queria admitir: Logan estava crescendo.\n\nPaul retornou sozinho para a Batalha da Fronteira. Meses depois, com a crise da Team Keneze escalando e a região se aproximando do colapso, a Batalha sugeriu enviar seus Cérebros para intervir em Ga’Al. A ideia era simples: força de elite para um problema de elite. Na prática, foi um desastre.\n\nO grupo foi interceptado. O General Delta apareceu — e derrotou todos de forma humilhante. Não foi uma batalha “bonita”. Foi demonstração. Foi aviso. E, no fim, Delta poupou as vidas deles com desprezo, mandando que “cuidassem das próprias vidas”.\n\nPaul voltou carregando um tipo novo de silêncio: o de quem percebeu que existe uma violência em Ga’Al que não respeita currículo. Mesmo assim, a pedra continuou de pé. Paul não muda fácil. Ele só acumula rachaduras e segue em frente."
+      }
+    },
+    "Renya": {
+      "ocupacao": "Tenente Ranger",
+      "idade": "35 Anos",
+      "pokemons": [
+        "Drapion",
+        "Golbat",
+        "Camerupt"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Renya é o tipo de pessoa que Ga’Al produz quando a região precisa de alguém entre o medo e o novato. Ela não tem o luxo da grandiosidade: ela tem patrulha, mapa manchado de poeira, e a responsabilidade de manter vivos aqueles que ainda não aprenderam a sobreviver.\n\nEm Gamborre, onde a história recente cheira a ferrugem e promessas quebradas, Renya se tornou peça essencial do trabalho ranger. Ela é a segunda melhor do destacamento local — e isso, na prática, significa que vive fazendo o serviço que segura a cidade pelos cantos: guiar iniciantes, ensinar rotas seguras, mostrar como capturar Pokémon nas áreas ao redor sem virar estatística.\n\nAs missões dela raramente viram notícia. Não há aplauso quando ela impede um desastre pequeno, quando evita que um treinador se perca numa trilha errada, quando percebe uma movimentação suspeita antes que o pânico se espalhe. E, ainda assim, é esse tipo de trabalho que mantém a região respirando.\n\nRenya anda com Drapion, Golbat e Camerupt — companheiros de campo, de poeira, de noite longa. Ela fala pouco, mas observa muito. E, quando decide ajudar alguém, ajuda do jeito mais valioso em Ga’Al: ensinando a continuar vivo amanhã."
+      }
+    },
+    "Ricardo Ratsuko": {
+      "ocupacao": "Fundador da Escola Ratsuko",
+      "idade": "43 Anos",
+      "pokemons": [
+        "Floatzel",
+        "Magneton",
+        "Alakazam",
+        "Gyarados"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Em Ga’Al, alguns nomes viram parede: você encosta neles quando está cansado, e o frio passa para o corpo. Ricardo Ratsuko é um desses. Durante anos, ele foi o tipo de homem que parecia existir mais no que diziam dele do que nas ruas — um treinador recluso, raro em público, quase inexistente em entrevistas, mas estranhamente presente em relatos de torneios, centros Pokémon e rotas onde algo sempre “sumia” de um jeito errado.\n\nFoi assim que a Escola Ratsuko nasceu — não como um símbolo de prestígio, mas como promessa de método. Morty, por exemplo, gastou as economias para se matricular. Sonhava aprender com o mestre… e encontrou portas fechadas. Ricardo quase nunca aparecia. À primeira vista era descaso; depois, muitos passaram a entender como sinal de que o homem vivia outra vida.\n\nPorque, em paralelo, corria um nome que ninguém dizia com leveza: o Caçador. Um treinador — ou uma ideia — que atacava, roubava, tirava de circulação Pokémon acima de certo nível. No começo, isso parecia só crime. Depois, quando o segredo da Marca veio à tona, a leitura ficou mais amarga: o Caçador não roubava por luxo; roubava para evitar que certas forças fossem mortas… e voltassem como servos do Ezenek.\n\nA teoria mais aceita é simples e cruel: Ricardo era o principal Caçador. Não o único — alguns juram que existiam vários “Caçadores” —, mas o rosto por trás da engrenagem. Seu objetivo era impedir que a Team Keneze reforçasse batalhões com Pokémon fortes marcados e mortos. E, para isso, ele fez o impensável: tomou para si a responsabilidade de decidir quem pode ou não continuar com o próprio parceiro.\n\nDizem que ele guardou esses Pokémon num bunker construído no alto-mar, fora do alcance direto da Team Keneze — e fora do alcance moral de qualquer perdão. A própria limitação da organização, presa à região pelas regras de poder do Ezenek, tornava o mar uma fronteira segura. Só que segurança, em Ga’Al, sempre cobra preço. O que ele salvou em um lugar, destruiu em outro: amizades, carreiras, confiança.\n\nHá também uma história que raramente vem limpa, mas sempre vem: Aspen, a Professora, foi vista uma única vez frente a frente com ele — ou com o Caçador sob a mesma sombra. A agressão foi brutal. Ele a espancou e a chamou de fraca. Ninguém sabe se ela reconheceu o homem por trás da máscara, ou se escolheu fingir que não. Pouco tempo depois, Aspen cometeu suicídio. E o nome de Ricardo ficou preso no mesmo nó, como se a região inteira tivesse aprendido a associá-lo a tragédias que não se explicam com uma linha só.\n\nHoje, Ricardo é aquilo que Ga’Al faz com todo mundo que tenta controlar o caos: vira enigma. Uns o tratam como vilão. Outros, como o único que teve coragem de fazer o que precisava ser feito. E a verdade — se é que existe uma verdade inteira — provavelmente mora na pior parte de todas: no fato de que ele pode ter estado certo… e ainda assim ter destruído pessoas no caminho."
+      }
+    },
+    "Larry": {
+      "ocupacao": "Top 32 de Kanto",
+      "idade": "34 Anos",
+      "pokemons": [
+        "Nidoking",
+        "Lapras",
+        "Zoroark",
+        "Ninetales",
+        "Sudowoodo",
+        "Girafarig"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Larry chegou a Ga’Al com um vício que a maioria dos estrangeiros traz: acreditar que currículo pesa mais do que o chão. Em Kanto, Top 32 era uma medalha invisível — abria conversa, abria portas, abria respeito. Em Ga’Al, a medalha não impede assalto, não afasta Marca, não compra volta para casa.\n\nEle se instalou no Chifre de Ga’Al como quem finca bandeira numa terra que não quer bandeira nenhuma. Dizia que precisava de pontos para a Liga, que era questão de mérito, de trajetória, de fechar uma história do jeito certo. Mas, quanto mais tempo passava, mais dava para sentir que o motivo real estava em outro lugar: Larry buscava o irmão.\n\nNinguém sabe ao certo como o irmão sumiu — Ga’Al oferece dezenas de versões prontas para qualquer desaparecimento: rota errada, emboscada, Centro Pokémon atacado, convite errado, confiança mal depositada, Demônio no lugar errado, noite longa demais. O que Larry sabe é o que o mantém em pé: ele tem a convicção de que o irmão ainda deixou sinais. E ele se agarra a isso como quem segura o último fio de uma vida antiga.\n\nPor isso Larry continua andando entre estalagens e trilhas, colecionando nomes, datas, rostos, pequenas pistas que não provam nada mas alimentam o passo. Quando entra numa cidade, ele pergunta pelo irmão antes de perguntar pelo ginásio. E quando aceita uma batalha, nem sempre é por pontos: é porque o oponente “ouviu algo”, “viu algo”, “conhece alguém”.\n\nHá um tipo de cansaço que Larry tenta esconder — não o cansaço do corpo, mas o de descobrir que a região não responde do jeito que Kanto respondia. Aqui, o silêncio é resposta comum. Aqui, o rumor vale mais que o registro. E, ainda assim, ele insiste. Porque insistir é a única forma que ele encontrou de não aceitar a pior conclusão."
+      }
+    },
+    "Rita": {
+      "ocupacao": "Líder de Ginásio de Dainise",
+      "idade": "49 Anos",
+      "pokemons": [
+        "Vileplume",
+        "Victreebel",
+        "Tangrowth"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Rita nunca gostou do palco — e, ironicamente, a vida a colocou no lugar mais teatral possível: um ginásio. Ela nasceu em Aspargo e cresceu com a cabeça voltada para pesquisa, não para aplauso. O que a fascinava era simples e monstruoso ao mesmo tempo: como um Pokémon planta recompõe o que foi destruído.\n\nA infância dela trouxe um tipo de sentença que molda caráter. A paralisia infantil a atingiu cedo, e o corpo virou obstáculo diário. Rita buscou cura do único jeito que sabia: por teimosia científica. Em algum ponto, ela tentou nos próprios experimentos — toxinas, extratos, combinações — a esperança de recuperar o que lhe faltava. O resultado foi cruel: uma reação alérgica que necrosou parte do seu rosto.\n\nA região costuma transformar cicatriz em símbolo. Rita transformou em rotina. Ela seguiu pesquisando. Seguiu vivendo. E, quando assumiu o ginásio de Dainise, fez do jeito dela: sem vaidade, sem heroísmo, sem sede de provar nada.\n\nRita detesta batalhas. Detesta o ritual, detesta o ego, detesta a repetição. Por muito tempo, ela entregava a insígnia como souvenir para qualquer um que chegasse ao seu ginásio entre árvores gigantes — como se fosse possível separar “Liga” de “gente cansada” numa região como Ga’Al. Isso só parou quando a Associação interveio e exigiu integridade no desafio.\n\nO que poucos entendem é que Rita nunca foi fraca: ela só se recusou a virar cruel para caber na norma. Em Ga’Al, isso é quase um ato de rebeldia."
+      }
+    },
+    "Rockfeller": {
+      "ocupacao": "Magnata do Grupo Rockfeller",
+      "idade": "49 Anos",
+      "pokemons": [
+        "Unfezant",
+        "Metagross",
+        "Persian"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Rockfeller é o tipo de homem que anda como se o chão tivesse sido construído para ele. Em Ga’Al, isso não é só arrogância: é linguagem. Quem controla indústria controla estrada, controla emprego, controla silêncio.\n\nO Grupo Rockfeller aparece em todo lugar onde a região tenta se modernizar — química, farmacêutica, tecnologia, construção civil. Publicamente, ele fala como quem oferece saída: eficiência, investimento, reconstrução. Ele se cerca de doações, projetos e discursos bem ensaiados, sempre com a promessa de que “progresso” vai substituir a decadência.\n\nNos bastidores, a história muda de cor. Contratos opacos. Monopólios regionais. Acordos que ninguém explica. Incidentes ambientais que estouram e, misteriosamente, nunca encontram culpado definitivo. É difícil acusar um homem quando tudo ao redor dele é sistema — e, em Ga’Al, sistema é a forma mais elegante de chamar um crime sem rosto.\n\nHá quem diga que Rockfeller é só oportunista. Há quem jure que ele é necessário, porque sem ele a região não teria sequer o que perder. Ele aceita as duas versões com a mesma calma: a de quem entendeu cedo que reputação, em tempos de crise, é ferramenta — não verdade.\n\nO nome Rockfeller está em conversas de gabinete e em sussurros de bar. E, numa região onde a violência costuma ser direta, a dele é outra: lenta, burocrática, quase invisível — até o dia em que você percebe que não tem mais escolha."
+      }
+    },
+    "Salete": {
+      "ocupacao": "Ex-líder de Mikado",
+      "idade": "41 Anos",
+      "pokemons": [
+        "Camerupt",
+        "Emboar",
+        "Talonflame"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Salete aprendeu cedo que sobrevivência não tem manual limpo. Filha de turistas de Hoenn que decidiram ficar, ela cresceu em Ga’Al com aquela mistura de pertencimento e estranhamento: a sensação de ser “daqui” e, ao mesmo tempo, nunca ser perdoada por não ter nascido do mesmo barro que os outros.\n\nQuando a Team Keneze apertou o cerco, Salete fez o tipo de escolha que a região adora julgar de longe. Ela colaborou — cedeu geradores em troca da segurança da família. A história oficial chama de mercenarismo. A história pessoal chama de desespero. O fato é que Mikado a expulsou e o nome dela virou sinônimo de traição conveniente.\n\nEla fugiu para Lilac, uma cidade quase fantasma, cheia de estruturas que ainda cheiram a petróleo velho e promessa quebrada. Lá, Salete tenta reconstruir prestígio como quem tenta remontar um vaso rachado: fingindo que algumas linhas não existem.\n\nO plano dela tem a cara de quem já foi líder e se recusa a virar nota de rodapé. Ela acredita que os poços antigos ainda têm reserva — ou, no mínimo, potencial geotérmico — suficiente para reativar pesquisas de energia. E vende essa ideia como redenção: modernização, progresso, emprego, futuro. Só que Lilac não confia. Ninguém confia. Ela é isolada, observada, tolerada com dentes cerrados.\n\nSalete continua insistindo porque, para ela, voltar a ser alguém é a única forma de não morrer em vida. Em Ga’Al, às vezes, a punição mais longa não é ser executado. É ser lembrado como erro."
+      }
+    },
+    "Sara Fulgar": {
+      "ocupacao": "Vencedora do Torneio de Meia Temporada",
+      "idade": "25 Anos",
+      "pokemons": [
+        "Woobat",
+        "Pyroar",
+        "Serperior",
+        "Gardevoir"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Sara Fulgar cresceu sob um trovão que não era dela. Ser prima de Felicia Fulgar, campeã de Ga’Al, não era só parentesco: era pressão. Todo elogio vinha com comparação escondida. Todo olhar perguntava se ela também tinha o raio no sangue. E Sara decidiu que sim. Decidiu que provaria.\n\nO auge veio no Torneio de Meia Temporada — o tipo de vitória que vira manchete quando a região ainda consegue fingir normalidade. Naqueles dias, muitos treinadores seguravam seus melhores Pokémon por medo do Caçador. Sara não segurou. Entrou como quem quer ser vista, e venceu. Como prêmio, recebeu uma Gardevoirite das mãos da própria Felicia. A cena parecia coroação.\n\nA empolgação virou imprudência. Ali mesmo, ainda quente de vitória, Sara desafiou a prima para uma batalha oficial. O que veio depois não foi derrota bonita: foi estrondo. Foi diferença de nível escancarada. Em poucos instantes, o sonho dela virou algo que doía até para lembrar. E, para alguém que vivia de provar, a humilhação foi uma lâmina.\n\nSara não morreu — mas uma parte dela fechou as portas. Ela começou a repetir, como mantra e defesa: os tempos de luta acabaram. Se batalha só gera luto e vitrine para predadores, então ela escolheria outra arena. Com influência e recursos da família, passou a empurrar a ideia de Festivais: reabrir teatros, arenas de contest, eventos de arte. Não como fuga leve, mas como tentativa séria de trocar o eixo cultural de uma região viciada em violência.\n\nO problema é que Ga’Al raramente deixa alguém reinventar a própria narrativa sem cobrar pedágio. Sara viaja tentando acender luz onde o mundo insiste em apagar. Às vezes consegue. Às vezes, a realidade da guerra civil lembra que arte também pode ser alvo."
+      }
+    },
+    "Seven": {
+      "ocupacao": "Treinadora de Elite",
+      "idade": "26 Anos",
+      "pokemons": [
+        "Pelipper",
+        "Wartortle",
+        "Nidorina",
+        "Eevee",
+        "Lapras"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Em Aspargo, nascer é aprender a baixar os olhos. A vila vive na sombra do Clube de Caça, homens que tomaram as encostas como se a pedra tivesse dono — e que fizeram do desprezo aos treinadores uma religião doméstica. Seven cresceu ali, ouvindo que sonhar alto era coisa de gente que não conhece o peso do barro. E talvez por isso mesmo ela aprendeu cedo a sonhar com raiva.\n\nPor anos, a vida dela foi feita de batalhas pequenas e derrotas repetidas. Não era o tipo de história que vira lenda — era o tipo de história que vira casca. Ela perdia, levantava, perdia de novo, e cada tropeço servia só para afiar a teimosia. Enquanto muita gente se acomodava na resignação de Aspargo, Seven começou a se mover como se já tivesse decidido que ali não seria túmulo.\n\nQuando o Torneio Arco-Íris incendiou a região, Seven viu uma fresta. Era o primeiro lugar onde o mundo olhava para Aspargo sem rir. E foi ali que ela fez o tipo de coisa que muda o destino de alguém: venceu uma batalha televisionada contra um nome grande o bastante para parecer impossível. A vitória acendeu uma chama que não cabia mais na vila — e, de repente, Seven virou assunto.\n\nEla não fugiu de Aspargo por medo. Fugiu por ambição. Carregava no peito uma ideia teimosa, inspirada por Antônio, o primeiro campeão que também nasceu sob o mesmo céu: provar que Aspargo não é só “roça que odeia treinador”, mas berço de campeões. E, com isso, ganhar peso político suficiente para expulsar, de uma vez, o Clube de Caça de suas encostas.\n\nA amizade com Five — tão gentil que parece desafiar a própria lógica de Ga’Al — virou um lembrete constante do que Seven não quer perder: gente. Porque, no fundo, por trás da casca dura, Seven não quer só vencer. Ela quer mudar as regras do lugar que a feriu. E, em Ga’Al, quem tenta mudar regra precisa primeiro sobreviver ao preço."
+      }
+    },
+    "Solana": {
+      "ocupacao": "Líder Geral dos Pokémon Rangers",
+      "idade": "34 Anos",
+      "pokemons": [
+        "Plusle"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Solana chegou a Ga’Al quando a palavra “Ranger” já soava como sentença. Os líderes anteriores tinham sido caçados e mortos — um a um — para garantir o blackout de informações que a Team Keneze precisava. Havia rotas sem patrulha, cidades sem aviso, e florestas onde o ar doía. Ela veio de Hoenn e encontrou terra arrasada.\n\nOs primeiros relatórios que leu não falavam de bandidos comuns. Falavam de distúrbios na natureza — padrões que se repetiam como febre: áreas onde Pokémon selvagens enlouqueciam, onde o ambiente adoecia ao redor de uma presença. Foi assim que Solana entendeu o que quase ninguém queria admitir: os “Demônios” existiam. E não eram lenda. Eram armas biológicas de Ezenek.\n\nOs Rangers sempre foram a primeira linha contra esse tipo de horror. Só que em Ga’Al os dispositivos de captura, os protocolos e a velha disciplina simplesmente não bastavam. Não havia como “acalmar” um Demônio. Não havia forma limpa de conter aquilo. E, enquanto a Team Keneze transformava informação em escuridão, Solana precisou escolher entre o ideal e o possível.\n\nFoi aí que ela tomou a decisão que ninguém gostaria de ler em voz alta: ela se aliou ao Caçador. Secretamente, passou a desviar Pokémon selvagens de alto nível para ele — não por carinho, mas por cálculo. Melhor escondidos num bunker do que mortos e devolvidos à região como servos marcados. No papel, ela seguia sendo a líder exemplar. Na prática, ela operava na lama.\n\nOficialmente, Solana ainda ajudou Dra. Tulsi a erguer o algoritmo de rastreamento de treinadores — um sistema que, sob a fachada burocrática, detectava padrões de aliciamento pela Team Keneze. E entregou a Alex Prime dispositivos de rastreio de Pokémon, mantendo uma máscara pública enquanto fazia, por trás, o trabalho sujo de manter pessoas vivas.\n\nSolana é, no fim, o tipo de líder que Ga’Al fabrica quando já não há espaço para heroísmo limpo. Ela não carrega glória. Carrega uma contabilidade de escolhas impossíveis — e a certeza de que, se ela não fizesse, alguém pior faria."
+      }
+    },
+    "Stênio": {
+      "ocupacao": "Líder de Ginásio de Obsidian",
+      "idade": "55 Anos",
+      "pokemons": [
+        "Rhyperior",
+        "Cradily",
+        "Corsola",
+        "Solrock",
+        "Lunatone"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "A primeira lembrança que definiu Stênio não foi uma vitória, nem uma insígnia. Foi um vislumbre proibido. Quando ainda era pequeno, ele viu — por entre sombras e poeira — um Pokémon desconhecido dentro da Entrada do Monte Pedra: rochoso, verde, tentáculos proeminentes, um corpo que parecia mais antigo que o próprio mundo. A visão grudou na mente dele como um espinho. E o pior: a exploração do Monte Pedra era proibida.\n\nStênio cresceu com duas paixões que, em Ga’Al, viram obsessão fácil: ferocidade em batalha e arqueologia. Ele cruzou continentes, perseguiu fósseis, estudou restos e histórias enterradas, sempre com a mesma fome. Quanto mais aprendia, mais entendia que o proibido do Monte Pedra não era capricho — era medo.\n\nEle decidiu então que não pediria permissão. Ele conquistaria o direito. Ser Líder de Ginásio de Obsidian não era meta por prestígio: era estratégia. Era a única forma de mudar regras, abrir portas, assinar autorizações, empurrar o limite do que era “permitido” até virar “possível”.\n\nQuando finalmente começou a explorar as profundezas do Monte Pedra, Stênio entendeu o motivo da interdição. Não foi um susto passageiro — foi um conhecimento que pesa. Ele voltou diferente. E, ironicamente, foi ele mesmo quem proibiu grande parte da exploração dali em diante, sob o pretexto de segurança. Alguns dizem hipocrisia. Outros chamam de prudência. Quem conhece Stênio chama de trauma bem administrado.\n\nNo auge, ele virou um líder de ginásio imparável — daqueles que atraem treinadores de outros continentes só para testar orgulho. Com isso, Obsidian virou foco de Pokémon fortes, e foco atrai predadores. O Centro Pokémon foi atacado, e os conflitos ao redor do Caçador e da Team Keneze se adensaram sobre a cidade como tempestade.\n\nHá também o que quase nunca entra na história pública: Stênio e Alfonso administraram um bunker em alto-mar, usado para guardar Pokémon roubados pelo Caçador — não por perversidade, mas para evitar que a Marca os devolvesse como mortos-vivos de Ezenek. Stênio aceitou carregar esse segredo porque ele entende, melhor que quase todos, a diferença entre moral bonita e sobrevivência real.\n\nE então, num movimento que pegou até quem o conhecia de surpresa, Stênio aceitou o convite para a Elite dos 4. Ele sempre recusara antes. Sempre dissera não. Mas algo nele mudou — e ninguém sabe se foi ambição tardia, cansaço, ou a sensação de que a guerra exigia outro tipo de posição. Marlon o sucedeu em Obsidian, seguindo passos que ainda deixam marcas de poeira e pedra pela cidade."
+      }
+    },
+    "Treinador Sem Nome": {
+      "ocupacao": "Mercenário",
+      "idade": "",
+      "pokemons": [
+        "Skuntank",
+        "Lucario",
+        "Alakazam"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Há gente que chega a Ga’Al buscando fama. Há gente que chega buscando pontos para a Liga. E há quem chegue só com uma coisa no bolso: um motivo para matar. O Treinador Sem Nome foi assim — uma presença sombria que atravessou fronteiras como quem atravessa luto.\n\nDizem que ele carregava um acerto de contas com Alex Prime. A história mais repetida é simples: Alex teria matado a melhor amiga dele no passado. Se é verdade ou não, pouco importa diante do que veio depois, porque a dor virou método. Ele caminhou por Ga’Al deixando um rastro de violência que não precisava existir — atacava treinadores nas estradas, vencia torneios com crueldade excessiva, não por prazer exibido, mas para atrair atenção. Ele queria que Alex soubesse. Ele queria que Alex viesse.\n\nE, em algum ponto, parece que veio. Só que o mundo não registrou. Fala-se de uma batalha não documentada — um confronto que aconteceu longe de câmeras, longe de árbitros, longe de qualquer narrativa oficial. E o que se diz, em sussurros, é que ele finalmente encontrou o que procurava… mas o que o encontrou de volta foi pior.\n\nDepois disso, o Treinador Sem Nome desapareceu. Não há corpo. Não há confissão. Só rumores que se contradizem: morto, capturado, transformado em coisa, preso numa dimensão errada. Em Ga’Al, o fim de alguém raramente vem com ponto final. Vem com silêncio — e o silêncio vira lenda."
+      }
+    },
+    "Zuri (Beta)": {
+      "ocupacao": "Administradora de Tecnologia da Team Keneze",
+      "idade": "28 Anos",
+      "pokemons": [
+        "Rotom",
+        "Metagross",
+        "Dugtrio"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Zuri sempre foi o tipo de talento que assusta: não pela força bruta, mas pela facilidade com que entende o que ninguém entende. Dentro da Team Keneze, ela era Beta — um nome que parece simples, mas carregava um peso real, porque a estrutura inteira respirava tecnologia que beirava o alienígena.\n\nEla administrava quase sozinha o setor mais sensível da organização: satélites, invasão de Trainer ID, localização de alvos prioritários. Enquanto outros marchavam e exibiam poder, Zuri fazia o poder funcionar. O que um comandante pedia, ela entregava em coordenada, em mapa, em janela de tempo perfeita. E, quando a Team queria apagar alguém sem fazer barulho, era o trabalho dela que fechava a armadilha.\n\nMas Zuri não era só cérebro. Antes de subir na hierarquia, ela foi rua: luta de esquina, tática suja, disciplina prática. Dentro da Keneze, ela treinava recrutas como quem molda ferramenta — ensinando combate corpo a corpo, emboscada, leitura de ambiente. Era por isso que, quando chamavam Beta de “marechal”, não era metáfora: ela comandava territórios e pessoas.\n\nO acúmulo de obrigações era tão grande que Zuri quase não ia a Ga’Al central. Ela mantinha suas regiões à distância, deixando para Alpha a administração direta dos territórios mais expostos. Mesmo assim, sua presença era sentida: onde havia rastreio perfeito, havia a assinatura invisível dela.\n\nE então ela sumiu. Num mundo onde a Team Keneze transformava gente em peça, desaparecer pode significar muitas coisas: execução silenciosa, captura inimiga, fuga, ou algo pior — a marca encostando e puxando para um lugar de onde não se volta. Zuri, que sempre soube localizar os outros, virou o tipo de alvo que ninguém consegue encontrar."
+      }
+    }
+  }
+}
