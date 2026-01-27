@@ -4038,7 +4038,7 @@ page = st.sidebar.radio(
         "Minhas Fichas",
         "PvP – Arena Tática",
         "Mochila",
-        "Compendium de Ga'Al",
+        "📚 Compendium de Ga'Al",
     ],
     key="page",
 )
@@ -6161,62 +6161,61 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
 
 
 # ==============================================================================
-# 📚 COMPENDIUM NOVO (JSON + DARK SOULS) - CORRIGIDO
+# 📚 COMPENDIUM DE GA'AL — GRIMÓRIO DARK FANTASY (INTEGRAÇÃO COMPLETA)
 # ==============================================================================
+import json
+import os
+import streamlit as st
+
 def render_compendium_page() -> None:
-    import json
-    import os
+    # ---------------------------------------------------------
+    # 1. CARREGAMENTO DOS DADOS (JSON)
+    # ---------------------------------------------------------
+    # Inicializa os dicionários vazios para evitar erros se faltar arquivo
+    locais_data = {"regions": {}, "cities": {}}
+    ginasios_data = {}
+    npcs_vivos_data = {}
+    npcs_mortos_data = {}
+
+    # Função auxiliar para carregar JSON com segurança
+    def load_json(filename):
+        if os.path.exists(filename):
+            try:
+                with open(filename, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                st.error(f"Erro ao ler {filename}: {e}")
+        return {}
+
+    # Carrega os 4 arquivos
+    locais_content = load_json("gaal_locais.json")
+    if locais_content:
+        locais_data = locais_content
+
+    # Ginásios (Separado como pediu)
+    ginasios_content = load_json("gaal_ginasios.json")
+    ginasios_data = ginasios_content.get("npcs", {})
+
+    # NPCs (Vivos e Mortos - Vamos fundir para a aba de Personagens, ou mostrar separado)
+    # Optei por fundir na busca, mas identificando a origem
+    vivos_content = load_json("gaal_npcs_vivos.json")
+    npcs_vivos_data = vivos_content.get("npcs", {})
     
-    # 1. VERIFICAÇÃO DE SEGURANÇA (FALLBACK)
-    # Se faltar qualquer um dos arquivos principais, roda a versão antiga (DOCX)
-    arquivos_necessarios = ["gaal_locais.json", "gaal_ginasios.json"]
-    if not all(os.path.exists(f) for f in arquivos_necessarios):
-        st.warning("⚠️ Arquivos JSON não encontrados. Usando versão antiga (DOCX).")
-        render_compendium_legacy_docx() 
-        return
+    mortos_content = load_json("gaal_npcs_mortos.json")
+    npcs_mortos_data = mortos_content.get("npcs", {})
 
     # ---------------------------------------------------------
-    # 2. CARREGAMENTO DOS DADOS
-    # ---------------------------------------------------------
-    def load_json(f):
-        if not os.path.exists(f): return {}
-        try:
-            return json.load(open(f, "r", encoding="utf-8"))
-        except Exception as e:
-            st.error(f"Erro ao ler '{f}': {e}")
-            return {}
-
-    # Carrega tudo
-    data_locais = load_json("gaal_locais.json")
-    data_ginasios = load_json("gaal_ginasios.json") 
-    data_vivos = load_json("gaal_npcs_vivos.json")
-    data_mortos = load_json("gaal_npcs_mortos.json")
-
-    # Organização dos dados (com proteções contra chaves inexistentes)
-    regions = data_locais.get("regions", {})
-    cities = data_locais.get("cities", {})
-    
-    # Ginásios: Verifica se a chave 'npcs' existe, senão tenta pegar a raiz
-    lideres = data_ginasios.get("npcs", {})
-    if not lideres and data_ginasios: 
-        # Fallback: Se o JSON não tiver a chave "npcs" mas tiver dados direto na raiz
-        lideres = data_ginasios 
-        
-    # NPCs Gerais: Junta Vivos e Mortos
-    npcs_gerais = {}
-    npcs_gerais.update(data_vivos.get("npcs", {}))
-    npcs_gerais.update(data_mortos.get("npcs", {}))
-
-    # ---------------------------------------------------------
-    # 3. ESTILO VISUAL "GRIMÓRIO DARK SOULS"
+    # 2. ESTILO VISUAL "DARK SOULS" (CSS)
     # ---------------------------------------------------------
     st.markdown("""
     <style>
+        /* Esconde elementos padrão para imersão */
         [data-testid="stHeader"] { visibility: hidden; }
         
+        /* Fundo do Card Principal (O Grimório) */
         .lore-card {
-            background-color: #141414;
-            border: 2px solid #6b5c38;
+            background-color: #141414; /* Preto Profundo */
+            border: 2px solid #6b5c38; /* Dourado Envelhecido */
             border-radius: 4px;
             padding: 40px;
             box-shadow: 0 0 50px rgba(0,0,0,0.95);
@@ -6225,38 +6224,80 @@ def render_compendium_page() -> None:
             color: #b0b0b0;
             position: relative;
         }
-        .lore-card::after {
-            content: ""; position: absolute;
+
+        /* Detalhe de Moldura Interna */
+        .lore-card::before {
+            content: "";
+            position: absolute;
             top: 6px; left: 6px; right: 6px; bottom: 6px;
-            border: 1px solid #3d342b; pointer-events: none;
+            border: 1px solid #3d342b;
+            pointer-events: none;
         }
+
+        /* TÍTULO (Nome) */
         .lore-title {
-            font-family: 'Garamond', serif; font-size: 42px;
-            color: #dcb158; text-transform: uppercase; letter-spacing: 3px;
-            text-align: center; border-bottom: 1px solid #5c4d3c;
-            padding-bottom: 15px; margin-bottom: 10px;
+            font-family: 'Garamond', 'Times New Roman', serif;
+            font-size: 42px;
+            color: #dcb158; /* Ouro Pálido */
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-align: center;
+            border-bottom: 1px solid #5c4d3c;
+            padding-bottom: 15px;
+            margin-bottom: 10px;
+            text-shadow: 0px 4px 10px rgba(0,0,0,0.9);
         }
+
+        /* SUBTÍTULO (Metadados) */
         .lore-meta {
-            font-family: 'Courier New', monospace; font-size: 14px;
-            color: #888; text-align: center; text-transform: uppercase;
-            letter-spacing: 2px; margin-bottom: 30px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #888;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
         }
+
+        /* TEXTO DA HISTÓRIA */
         .lore-text {
-            font-family: 'Georgia', serif; font-size: 18px; line-height: 1.7;
-            color: #cfcfcf; text-align: justify; margin-top: 25px; padding: 0 15px;
+            font-family: 'Georgia', serif;
+            font-size: 18px;
+            line-height: 1.7;
+            color: #cfcfcf;
+            text-align: justify;
+            margin-top: 25px;
+            padding: 0 15px;
         }
+
+        /* Títulos de Seções Internas (História, Lore, etc) */
         .lore-section {
-            font-family: 'Garamond', serif; font-size: 24px; color: #a89f91;
-            margin-top: 35px; margin-bottom: 10px; border-bottom: 1px solid #333;
+            font-family: 'Garamond', serif;
+            font-size: 24px;
+            color: #a89f91;
+            margin-top: 35px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #333;
+            display: inline-block;
         }
+
+        /* Box de Status (RPG Style) */
         .lore-stats-box {
-            background: rgba(30, 30, 30, 0.5); border: 1px solid #444;
-            padding: 15px; margin-bottom: 20px; font-family: 'Courier New', monospace;
-            font-size: 14px; color: #aaa; text-align: center;
+            background: rgba(30, 30, 30, 0.5);
+            border: 1px solid #444;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #aaa;
+            text-align: center;
         }
-        /* Ajuste inputs */
+        
+        /* Ajuste dos componentes do Streamlit para combinar */
         .stRadio > label, .stSelectbox > label {
-            color: #dcb158 !important; font-family: 'Garamond', serif !important; font-size: 20px !important;
+            color: #dcb158 !important;
+            font-family: 'Garamond', serif !important;
+            font-size: 20px !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -6264,106 +6305,176 @@ def render_compendium_page() -> None:
     st.markdown("<h1 style='text-align: center; color: #555; font-family: Garamond; font-size: 24px; letter-spacing: 5px; margin-bottom: 30px;'>— ARQUIVOS DE GA'AL —</h1>", unsafe_allow_html=True)
 
     # ---------------------------------------------------------
-    # 4. NAVEGAÇÃO (3 ABAS SEPARADAS)
+    # 3. NAVEGAÇÃO SUPERIOR (3 ABAS: LOCAIS, GINÁSIOS, PERSONAGENS)
     # ---------------------------------------------------------
+    
+    # Menu de categorias
     categorias = ["🗺️ Locais & Cidades", "⚔️ Ginásios (Líderes)", "👤 Personagens (NPCs)"]
-    col_nav, _ = st.columns([2, 1])
-    with col_nav:
-        aba = st.selectbox("Selecione o Tomo:", categorias, label_visibility="collapsed")
+    cat_cols = st.columns([1, 2, 1])
+    with cat_cols[1]:
+        aba_selecionada = st.selectbox("Selecione o Tomo:", categorias, label_visibility="collapsed")
 
-    # Dicionário que vai guardar o conteúdo final para renderizar
-    conteudo = {"titulo": "", "subtitulo": "", "stats": [], "html": "", "img_busca": None}
+    # Variáveis para preencher o card
+    conteudo = {
+        "titulo": "",
+        "subtitulo": "",
+        "imagem": None,
+        "html_texto": "",
+        "stats": [] # Lista de strings para box de status
+    }
+    
+    selected_item = None # Para controlar a imagem depois
 
-    # === ABA 1: LOCAIS ===
-    if aba == "🗺️ Locais & Cidades":
+    # =========================================================
+    # LÓGICA DA ABA: LOCAIS
+    # =========================================================
+    if aba_selecionada == "🗺️ Locais & Cidades":
+        regions = locais_data.get("regions", {})
+        cities = locais_data.get("cities", {})
+        
         c1, c2 = st.columns(2)
         with c1:
-            # ADICIONADO KEY ÚNICA PARA EVITAR CONFLITO
-            regiao_sel = st.selectbox("Região", sorted(list(regions.keys())), key="sel_regiao_locais")
+            lista_regioes = sorted(list(regions.keys()))
+            regiao_sel = st.selectbox("Região", lista_regioes) if lista_regioes else None
+        
         with c2:
-            opcoes = ["📖 Sobre a Região"] + sorted(regions[regiao_sel].get("cities", []))
-            # ADICIONADO KEY ÚNICA
-            local_sel = st.selectbox("Local", opcoes, key="sel_cidade_locais")
-            conteudo["img_busca"] = local_sel if local_sel != "📖 Sobre a Região" else regiao_sel
+            if regiao_sel:
+                cidades_da_regiao = regions[regiao_sel].get("cities", [])
+                opcoes = ["📖 Sobre a Região"] + sorted(cidades_da_regiao)
+                item_sel = st.selectbox("Local", opcoes)
+                selected_item = item_sel if item_sel != "📖 Sobre a Região" else regiao_sel
+            else:
+                item_sel = None
 
-        if local_sel == "📖 Sobre a Região":
-            d = regions[regiao_sel]
+        if item_sel == "📖 Sobre a Região" and regiao_sel:
+            # Exibir Região
+            dados = regions[regiao_sel]
             conteudo["titulo"] = regiao_sel
             conteudo["subtitulo"] = "TERRITÓRIO DE GA'AL"
-            conteudo["html"] = f"<p>{d.get('intro','')}</p>"
-            for k, v in d.get("sections", {}).items():
-                if v.strip(): conteudo["html"] += f"<div class='lore-section'>{k}</div><p>{v}</p>"
-        else:
-            d = cities.get(local_sel, {})
-            conteudo["titulo"] = local_sel
+            conteudo["html_texto"] = f"<p>{dados.get('intro', '')}</p>"
+            for sec, txt in dados.get("sections", {}).items():
+                if txt.strip(): conteudo["html_texto"] += f"<div class='lore-section'>{sec}</div><p>{txt}</p>"
+
+        elif item_sel and item_sel != "📖 Sobre a Região":
+            # Exibir Cidade
+            dados = cities.get(item_sel, {})
+            conteudo["titulo"] = item_sel
             conteudo["subtitulo"] = f"LOCALIZADO EM: {regiao_sel}"
-            vis = d.get("sections", {}).get("Visão geral", "")
-            if vis: conteudo["html"] += f"<p>{vis}</p>"
-            for k, v in d.get("sections", {}).items():
-                if k != "Visão geral" and v.strip() and not k.startswith("_"):
-                    conteudo["html"] += f"<div class='lore-section'>{k}</div><p>{v}</p>"
-            for sub in d.get("sublocais", []):
-                conteudo["html"] += f"<br><strong>📍 {sub['name']}</strong>: {sub['text']}<br>"
-
-    # === ABA 2: GINÁSIOS ===
-    elif aba == "⚔️ Ginásios (Líderes)":
-        lista_gyms = sorted(list(lideres.keys()))
-        
-        if not lista_gyms:
-            st.error("⚠️ Nenhum líder encontrado no arquivo 'gaal_ginasios.json'. Verifique se o JSON tem a chave 'npcs'.")
-        else:
-            # ADICIONADO KEY ÚNICA
-            lider_sel = st.selectbox("Selecione o Líder:", lista_gyms, key="sel_lider_gym")
-            
-            if lider_sel:
-                d = lideres[lider_sel]
-                conteudo["img_busca"] = lider_sel
-                conteudo["titulo"] = lider_sel
-                conteudo["subtitulo"] = d.get("ocupacao", "Líder de Ginásio")
-                
-                # Stats Box
-                if d.get("idade"): conteudo["stats"].append(f"<b>IDADE:</b> {d['idade']}")
-                if d.get("origem"): conteudo["stats"].append(f"<b>ORIGEM:</b> {d['origem']}")
-                if d.get("pokemons"): conteudo["stats"].append(f"<b>POKÉMONS:</b> {', '.join(d['pokemons'])}")
-                
-                # Texto
-                for k, v in d.get("sections", {}).items():
-                    if v.strip():
-                        if k in ["História", "Histórico", "Lore"]: conteudo["html"] += f"<p>{v}</p>"
-                        else: conteudo["html"] += f"<div class='lore-section'>{k}</div><p>{v}</p>"
-
-    # === ABA 3: PERSONAGENS (NPCs) ===
-    elif aba == "👤 Personagens (NPCs)":
-        lista_npcs = sorted(list(npcs_gerais.keys()))
-        # ADICIONADO KEY ÚNICA
-        npc_sel = st.selectbox("Selecione o Personagem:", lista_npcs, key="sel_npc_geral")
-        
-        if npc_sel:
-            d = npcs_gerais[npc_sel]
-            conteudo["img_busca"] = npc_sel
-            conteudo["titulo"] = npc_sel
-            
-            p = []
-            if d.get("ocupacao"): p.append(d["ocupacao"])
-            p.append(f"STATUS: {d.get('status', 'Desconhecido')}")
-            conteudo["subtitulo"] = " | ".join(p)
-            
-            # Stats Box
-            if d.get("idade"): conteudo["stats"].append(f"<b>IDADE:</b> {d['idade']}")
-            if d.get("pokemons"): conteudo["stats"].append(f"<b>POKÉMONS:</b> {', '.join(d['pokemons'])}")
             
             # Texto
-            for k, v in d.get("sections", {}).items():
-                if v.strip():
-                    if k in ["História", "Lore"]: conteudo["html"] += f"<p>{v}</p>"
-                    else: conteudo["html"] += f"<div class='lore-section'>{k}</div><p>{v}</p>"
+            txt_full = ""
+            vis = dados.get("sections", {}).get("Visão geral", "")
+            if vis: txt_full += f"<p>{vis}</p>"
+            
+            for sec, txt in dados.get("sections", {}).items():
+                if sec != "Visão geral" and txt.strip() and not sec.startswith("_"):
+                    txt_full += f"<div class='lore-section'>{sec}</div><p>{txt}</p>"
+            
+            # Sublocais
+            subs = dados.get("sublocais", [])
+            if subs:
+                txt_full += "<br><div class='lore-section'>📍 Pontos de Interesse</div>"
+                for sub in subs:
+                    txt_full += f"<p><strong>{sub['name']}</strong>: {sub['text']}</p>"
+            
+            conteudo["html_texto"] = txt_full
+
+    # =========================================================
+    # LÓGICA DA ABA: GINÁSIOS
+    # =========================================================
+    elif aba_selecionada == "⚔️ Ginásios (Líderes)":
+        lista_lideres = sorted(list(ginasios_data.keys()))
+        
+        col_sel, _ = st.columns([2, 1])
+        with col_sel:
+            if lista_lideres:
+                lider_sel = st.selectbox("Selecione o Líder/Ginásio:", lista_lideres)
+                selected_item = lider_sel
+            else:
+                lider_sel = None
+                st.warning("Nenhum ginásio encontrado. Verifique o arquivo gaal_ginasios.json.")
+
+        if lider_sel:
+            dados = ginasios_data[lider_sel]
+            conteudo["titulo"] = lider_sel
+            
+            # Monta subtítulo
+            parts = []
+            if dados.get("ocupacao"): parts.append(dados["ocupacao"])
+            conteudo["subtitulo"] = " | ".join(parts)
+            
+            # Box de Status
+            if dados.get("idade"): conteudo["stats"].append(f"<b>IDADE:</b> {dados['idade']}")
+            if dados.get("origem"): conteudo["stats"].append(f"<b>ORIGEM:</b> {dados['origem']}")
+            if dados.get("pokemons"): 
+                pokes = ", ".join(dados["pokemons"])
+                conteudo["stats"].append(f"<b>POKÉMONS:</b> {pokes}")
+
+            # Texto
+            txt_full = ""
+            for sec, txt in dados.get("sections", {}).items():
+                if txt.strip():
+                    if sec in ["História", "Histórico", "Lore"]:
+                        txt_full += f"<p>{txt}</p>"
+                    else:
+                        txt_full += f"<div class='lore-section'>{sec}</div><p>{txt}</p>"
+            conteudo["html_texto"] = txt_full
+
+    # =========================================================
+    # LÓGICA DA ABA: PERSONAGENS (NPCs)
+    # =========================================================
+    elif aba_selecionada == "👤 Personagens (NPCs)":
+        # Junta as listas mas marca a origem visualmente no dropdown se quiser
+        # Por enquanto, lista unificada
+        todos_npcs = sorted(list(npcs_vivos_data.keys()) + list(npcs_mortos_data.keys()))
+        
+        col_sel, _ = st.columns([2, 1])
+        with col_sel:
+            if todos_npcs:
+                npc_sel = st.selectbox("Selecione o Personagem:", todos_npcs)
+                selected_item = npc_sel
+            else:
+                npc_sel = None
+                st.warning("Nenhum personagem encontrado. Verifique os arquivos gaal_npcs_vivos.json e gaal_npcs_mortos.json.")
+
+        if npc_sel:
+            # Procura em qual dicionário ele está
+            dados = npcs_vivos_data.get(npc_sel) or npcs_mortos_data.get(npc_sel)
+            
+            if dados:
+                conteudo["titulo"] = npc_sel
+                
+                parts = []
+                if dados.get("ocupacao"): parts.append(dados["ocupacao"])
+                status = dados.get("status", "Desconhecido")
+                parts.append(f"STATUS: {status}")
+                conteudo["subtitulo"] = " | ".join(parts)
+
+                # Box de Status
+                if dados.get("idade"): conteudo["stats"].append(f"<b>IDADE:</b> {dados['idade']}")
+                if dados.get("pokemons"): 
+                    pokes = ", ".join(dados["pokemons"])
+                    conteudo["stats"].append(f"<b>POKÉMONS:</b> {pokes}")
+                
+                # Texto
+                txt_full = ""
+                for sec, txt in dados.get("sections", {}).items():
+                    if txt.strip():
+                        if sec in ["História", "Lore", "Histórico"]:
+                            txt_full += f"<p>{txt}</p>"
+                        else:
+                            txt_full += f"<div class='lore-section'>{sec}</div><p>{txt}</p>"
+                conteudo["html_texto"] = txt_full
 
     # ---------------------------------------------------------
-    # 5. RENDERIZAÇÃO FINAL (O Card)
+    # 4. RENDERIZAÇÃO FINAL (O CARD DARK SOULS)
     # ---------------------------------------------------------
-    img_path = _tentar_achar_imagem_compendium(conteudo["img_busca"])
     
-    col_l, col_main, col_r = st.columns([1, 6, 1])
+    # Tenta achar imagem
+    img_path = _tentar_achar_imagem_compendium(selected_item)
+    
+    col_spacer_l, col_main, col_spacer_r = st.columns([1, 6, 1])
+    
     with col_main:
         st.markdown(f"""
         <div class="lore-card">
@@ -6371,31 +6482,58 @@ def render_compendium_page() -> None:
             <div class="lore-meta">{conteudo['subtitulo']}</div>
         """, unsafe_allow_html=True)
 
+        # Imagem
         if img_path:
             st.image(img_path, use_container_width=True)
         else:
-            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True) # Espaço vazio
         
+        # Box de Stats (se houver)
         if conteudo["stats"]:
-            st.markdown(f"<div class='lore-stats-box'>{' &nbsp;|&nbsp; '.join(conteudo['stats'])}</div>", unsafe_allow_html=True)
+            stats_html = " &nbsp;|&nbsp; ".join(conteudo["stats"])
+            st.markdown(f"<div class='lore-stats-box'>{stats_html}</div>", unsafe_allow_html=True)
 
-        if conteudo['html']:
-            st.markdown(f"<div class='lore-text'>{conteudo['html'].replace(chr(10), '<br>')}</div><br></div>", unsafe_allow_html=True)
-        else:
-            # Caso nenhum item tenha sido selecionado ainda
-            st.markdown("<div class='lore-text' style='text-align: center;'>Selecione um registro nos menus acima.</div><br></div>", unsafe_allow_html=True)
+        # Texto Principal
+        st.markdown(f"""
+            <div class="lore-text">
+                {conteudo['html_texto'].replace(chr(10), '<br>')}
+            </div>
+            <br>
+        </div>
+        """, unsafe_allow_html=True)
 
-# Função auxiliar
-def _tentar_achar_imagem_compendium(nome):
-    if not nome: return None
-    import os
-    # Tenta variações de nome
-    for tentativa in [nome, nome.replace(" ", "_"), nome.replace(" ", ""), nome.lower()]:
-        for ext in [".png", ".jpg", ".jpeg"]:
-            # Procura na pasta raiz e na pasta assets
-            if os.path.exists(tentativa + ext): return tentativa + ext
-            if os.path.exists("assets/" + tentativa + ext): return "assets/" + tentativa + ext
+
+# Função auxiliar interna para achar imagens (mesmo que a sua _resolve_asset_path, mas local aqui)
+def _tentar_achar_imagem_compendium(nome_base):
+    if not nome_base: return None
+    # Primeiro tenta o índice de imagens do compendium (assets/compendium, cidades, treinadores, etc.)
+    try:
+        p = comp_find_image(nome_base)
+        if p:
+            return p
+    except Exception:
+        pass
+    # Lista de tentativas
+    tentativas = [
+        nome_base,
+        nome_base.replace(" ", "_"),
+        nome_base.replace(" ", ""),
+        nome_base.lower(),
+        nome_base.lower().replace(" ", "_")
+    ]
+    extensoes = [".png", ".jpg", ".jpeg"]
+    
+    # Procura na raiz e na pasta assets
+    locais_busca = ["", "assets/", "images/"]
+    
+    for local in locais_busca:
+        for nome in tentativas:
+            for ext in extensoes:
+                caminho = f"{local}{nome}{ext}"
+                if os.path.exists(caminho):
+                    return caminho
     return None
+
 # ==============================================================================
 # PÁGINA 1: POKEDEX (VISÃO DE FOCO + CARROSSEL INFERIOR)
 # ==============================================================================
