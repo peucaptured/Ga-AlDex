@@ -4128,7 +4128,7 @@ def apply_non_pokedex_theme() -> None:
 
 
 # ==============================================================================
-# 📚 COMPENDIUM DE GA'AL — Aba completa (UPGRADED)
+# COMPENDIUM DE GA'AL — Aba completa (UPGRADED)
 # - Split view (lista à esquerda / dossiê à direita)
 # - Breadcrumbs + navegação Próximo/Anterior
 # - Favoritos + Recentes (Locais e NPCs)
@@ -10491,7 +10491,7 @@ elif page == "PvP – Arena Tática":
 
     
 
-elif page == "📚 Compendium de Ga'Al":
+elif page == "Compendium de Ga'Al":
     render_compendium_page()
 
 elif page == "Mochila":
