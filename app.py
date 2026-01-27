@@ -6541,7 +6541,7 @@ def render_compendium_page() -> None:
             padding-bottom: 8px;
             text-align:center;
         }}
-        .ds-poke-container {
+        .ds-poke-container {{
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -6551,13 +6551,13 @@ def render_compendium_page() -> None:
             border-radius: 8px;
             padding: 8px;
             transition: all 0.3s ease;
-        }
-        .ds-poke-container:hover {
+        }}
+        .ds-poke-container:hover {{
             border-color: #FFD700;
             background: rgba(20,20,10,0.8);
             transform: translateY(-3px);
-        }
-        .ds-poke-img {
+        }}
+        .ds-poke-img {{
             width: 60px;
             height: 60px;
             object-fit: contain;
@@ -6565,13 +6565,13 @@ def render_compendium_page() -> None:
             filter: sepia(1) brightness(0.8) contrast(1.2); 
             opacity: 0.85;
             transition: all 0.4s ease;
-        }
+        }}
         /* Quando passar o mouse, revela as cores originais */
-        .ds-poke-container:hover .ds-poke-img {
+        .ds-poke-container:hover .ds-poke-img {{
             filter: sepia(0) brightness(1) contrast(1);
             opacity: 1;
-        }
-        .ds-poke-name {
+        }}
+        .ds-poke-name {{
             font-size: 10px;
             text-transform: uppercase;
             color: #887766;
@@ -6579,10 +6579,10 @@ def render_compendium_page() -> None:
             text-align: center;
             font-family: 'DarkSouls', serif;
             letter-spacing: 1px;
-        }
-        .ds-poke-container:hover .ds-poke-name {
+        }}
+        .ds-poke-container:hover .ds-poke-name {{
             color: #FFD700;
-        }
+        }}
         .ds-history p {{
             color: rgba(255,255,255,0.88);
             font-size: 18px;
