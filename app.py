@@ -4154,6 +4154,8 @@ COMP_DOC_NPCS_VIVOS = "Npcs_Pokemon_vivos_profundo_v2.docx"
 COMP_DOC_NPCS_MORTOS = "Npcs_Pokemon_mortos.docx"  # opcional
 COMP_DOC_GINASIOS = "ginasios.docx"  # opcional (detalhes extras de ginásios)
 COMP_DEFAULT_MAP = "GaAl_2.jpg"  # mapa geral (fallback)
+COMP_DOC_GINASIOS = "ginasios.docx"
+
 
 COMP_REGIOES_PRINCIPAIS = [
     "Baía Morta",
@@ -4432,6 +4434,152 @@ def _h2_city_from_pattern(h2: str) -> str | None:
         left = re.split(r"[—-]", s, maxsplit=1)[0].strip()
         return left
     return None
+
+def _is_city_line(line: str, known_cities: set[str]) -> bool:
+    t = (line or "").strip()
+    if not t:
+        return False
+    if ":" in t:
+        return False
+    if len(t) > 40:
+        return False
+    if _norm(t) in {_norm(x) for x in known_cities}:
+        return True
+    if re.fullmatch(r"[A-Za-zÀ-ÿ'’\- ]+", t) and t[0].isupper():
+        return True
+    return False
+
+
+@st.cache_data(show_spinner=False)
+def parse_ginasios_docx(doc_path: str, known_cities: list[str]) -> dict:
+    gyms: dict[str, dict] = {}
+    if Document is None or not os.path.exists(doc_path):
+        return gyms
+
+    known = set([c for c in known_cities if c])
+    doc = Document(doc_path)
+
+    cur_city: str | None = None
+    cur_person: dict | None = None
+    mode = "normal"  # "history"
+    history_item: dict | None = None
+
+    def ensure_city(city: str):
+        gyms.setdefault(city, {"leaders": [], "vices": [], "people": [], "history": []})
+
+    def flush_person():
+        nonlocal cur_person
+        if not cur_city or not cur_person:
+            cur_person = None
+            return
+        ensure_city(cur_city)
+
+        occ = _norm(cur_person.get("fields", {}).get("Ocupação atual", ""))
+
+        if "líder" in occ or "lider" in occ:
+            gyms[cur_city]["leaders"].append(cur_person)
+        elif "vice" in occ:
+            gyms[cur_city]["vices"].append(cur_person)
+        else:
+            gyms[cur_city]["people"].append(cur_person)
+
+        cur_person = None
+
+    def flush_history():
+        nonlocal history_item
+        if not cur_city or not history_item:
+            history_item = None
+            return
+        ensure_city(cur_city)
+        gyms[cur_city]["history"].append(history_item)
+        history_item = None
+
+    def new_person(name: str):
+        return {"name": name.strip(), "fields": {}, "pokemons": [], "text": ""}
+
+    def add_text(obj: dict, txt: str):
+        txt = (txt or "").strip()
+        if not txt:
+            return
+        obj["text"] = (obj["text"] + "\n\n" + txt).strip()
+
+    for p in doc.paragraphs:
+        t = (p.text or "").strip()
+        if not t:
+            continue
+
+        if "registro histórico" in _norm(t):
+            mode = "history"
+            flush_person()
+            continue
+
+        if mode == "normal" and _is_city_line(t, known):
+            flush_person()
+            cur_city = _clean_title(t)
+            ensure_city(cur_city)
+            continue
+
+        if mode == "history" and cur_city is None:
+            cur_city = "__REGISTRO_HISTORICO__"
+            ensure_city(cur_city)
+
+        if mode == "history" and re.match(r"^\d+\.\s", t):
+            flush_history()
+            history_item = {"title": t.strip(), "fields": {}, "pokemons": [], "text": ""}
+            continue
+
+        if mode == "normal":
+            if cur_city and cur_person is None and ":" not in t and len(t) <= 40:
+                cur_person = new_person(t)
+                continue
+
+        if ":" in t:
+            k, v = t.split(":", 1)
+            kN = _norm(k)
+            v = v.strip()
+
+            if "pokemon" in kN:
+                pokes = [x.strip() for x in re.split(r",|;|/|\|", v) if x.strip()]
+                if mode == "history" and history_item is not None:
+                    history_item["pokemons"].extend(pokes)
+                elif cur_person is not None:
+                    cur_person["pokemons"].extend(pokes)
+                continue
+
+            if mode == "history" and history_item is not None:
+                history_item["fields"][k.strip()] = v
+            elif cur_person is not None:
+                cur_person["fields"][k.strip()] = v
+            else:
+                if cur_city:
+                    ensure_city(cur_city)
+                    gyms[cur_city].setdefault("notes", [])
+                    gyms[cur_city]["notes"].append({k.strip(): v})
+            continue
+
+        if mode == "history":
+            if history_item is not None:
+                add_text(history_item, t)
+            else:
+                ensure_city(cur_city or "__REGISTRO_HISTORICO__")
+                gyms[cur_city or "__REGISTRO_HISTORICO__"].setdefault("history_text", "")
+                gyms[cur_city or "__REGISTRO_HISTORICO__"]["history_text"] = (
+                    gyms[cur_city or "__REGISTRO_HISTORICO__"]["history_text"] + "\n\n" + t
+                ).strip()
+        else:
+            if cur_person is not None:
+                add_text(cur_person, t)
+            else:
+                ensure_city(cur_city or "__SEM_CIDADE__")
+                gyms[cur_city or "__SEM_CIDADE__"].setdefault("city_text", "")
+                gyms[cur_city or "__SEM_CIDADE__"]["city_text"] = (
+                    gyms[cur_city or "__SEM_CIDADE__"]["city_text"] + "\n\n" + t
+                ).strip()
+
+    flush_person()
+    flush_history()
+    return gyms
+
 
 
 @st.cache_data(show_spinner=False)
@@ -4986,7 +5134,6 @@ def comp_load() -> dict:
                 dst.setdefault("sections", {})
                 if not dst["sections"].get(sec):
                     dst["sections"][sec] = obj["sections"][sec]
-
     return data
 
 
@@ -5597,66 +5744,67 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
                         st.image(spr, width=56)
                     st.caption(pnm)
 
+    # ----------------------------
+    # 🏅 Referências de Ginásio
+    # ----------------------------
+    gyms = gyms or {}
+    gym_refs = []
+    for city, g in gyms.items():
+        meta = g.get("meta") or {}
+        lider = (meta.get("lider") or (g.get("staff") or {}).get("lider") or "").strip()
+        vice = (meta.get("vice_lider") or meta.get("vice-lider") or (g.get("staff") or {}).get("vice_lider") or "").strip()
+        if _norm(lider) == _norm(nm):
+            gym_refs.append(("🏅 Líder", city, meta.get("tipo",""), meta.get("status","")))
+        if _norm(vice) == _norm(nm):
+            gym_refs.append(("🥈 Vice", city, meta.get("tipo",""), meta.get("status","")))
 
-        # ----------------------------
-        # 🏅 Referências de Ginásio
-        # ----------------------------
-        gyms = gyms or {}
-        gym_refs = []
-        for city, g in gyms.items():
-            meta = g.get("meta") or {}
-            lider = (meta.get("lider") or (g.get("staff") or {}).get("lider") or "").strip()
-            vice = (meta.get("vice_lider") or meta.get("vice-lider") or (g.get("staff") or {}).get("vice_lider") or "").strip()
-            if _norm(lider) == _norm(nm):
-                gym_refs.append(("🏅 Líder", city, meta.get("tipo",""), meta.get("status","")))
-            if _norm(vice) == _norm(nm):
-                gym_refs.append(("🥈 Vice", city, meta.get("tipo",""), meta.get("status","")))
+    if gym_refs:
+        st.markdown("### 🏅 Ginásio")
+        for role, city, tipo, status in gym_refs:
+            line = f"**{role}** em **{city}**"
+            meta_bits = []
+            if tipo:
+                meta_bits.append(f"Tipo: {tipo}")
+            if status:
+                meta_bits.append(f"Status: {status}")
+            if meta_bits:
+                line += " — " + " • ".join(meta_bits)
+            st.markdown(line)
+            if city in cities:
+                if st.button(f"Abrir cidade: {city}", key=f"npc_open_city_{_stem_key(nm)}_{_stem_key(city)}"):
+                    st.session_state["comp_axis"] = "🌍 Locais"
+                    st.session_state["comp_region"] = cities[city].get("region")
+                    st.session_state["comp_city"] = city
+                    _touch_recent("comp_recent_cities", city)
+                    st.rerun()
 
-        if gym_refs:
-            st.markdown("### 🏅 Ginásio")
-            for role, city, tipo, status in gym_refs:
-                line = f"**{role}** em **{city}**"
-                meta_bits = []
-                if tipo: meta_bits.append(f"Tipo: {tipo}")
-                if status: meta_bits.append(f"Status: {status}")
-                if meta_bits:
-                    line += " — " + " • ".join(meta_bits)
-                st.markdown(line)
-                if city in cities:
-                    if st.button(f"Abrir cidade: {city}", key=f"npc_open_city_{_stem_key(nm)}_{_stem_key(city)}"):
-                        st.session_state["comp_axis"] = "🌍 Locais"
-                        st.session_state["comp_region"] = cities[city].get("region")
-                        st.session_state["comp_city"] = city
-                        _touch_recent("comp_recent_cities", city)
-                        st.rerun()
+    # Cross-links: cidades e NPCs citados
+    city_names = list(cities.keys())
+    npc_names = list(npcs.keys())
+    cm = npc_mentions_cities(npc, city_names)
+    nm_hits = npc_mentions_npcs(npc, npc_names, nm)
+    if cm:
+        st.markdown("**Cidades citadas:**")
+        cols = st.columns(3)
+        for i, cn in enumerate(cm[:9]):
+            with cols[i % 3]:
+                if st.button(f"🏙️ {cn}", key=f"npc_city_{_stem_key(nm)}_{_stem_key(cn)}"):
+                    st.session_state["comp_axis"] = "🌍 Locais"
+                    # tenta inferir região
+                    st.session_state["comp_region"] = cities.get(cn, {}).get("region")
+                    st.session_state["comp_city"] = cn
+                    _touch_recent("comp_recent_cities", cn)
+                    st.rerun()
 
-        # Cross-links: cidades e NPCs citados
-        city_names = list(cities.keys())
-        npc_names = list(npcs.keys())
-        cm = npc_mentions_cities(npc, city_names)
-        nm_hits = npc_mentions_npcs(npc, npc_names, nm)
-        if cm:
-            st.markdown("**Cidades citadas:**")
-            cols = st.columns(3)
-            for i, cn in enumerate(cm[:9]):
-                with cols[i % 3]:
-                    if st.button(f"🏙️ {cn}", key=f"npc_city_{_stem_key(nm)}_{_stem_key(cn)}"):
-                        st.session_state["comp_axis"] = "🌍 Locais"
-                        # tenta inferir região
-                        st.session_state["comp_region"] = cities.get(cn, {}).get("region")
-                        st.session_state["comp_city"] = cn
-                        _touch_recent("comp_recent_cities", cn)
-                        st.rerun()
-
-        if nm_hits:
-            st.markdown("**Outros NPCs citados:**")
-            cols = st.columns(3)
-            for i, other in enumerate(nm_hits[:9]):
-                with cols[i % 3]:
-                    if st.button(f"🧑 {other}", key=f"npc_npc_{_stem_key(nm)}_{_stem_key(other)}"):
-                        st.session_state["comp_npc_selected"] = other
-                        _touch_recent("comp_recent_npcs", other)
-                        st.rerun()
+    if nm_hits:
+        st.markdown("**Outros NPCs citados:**")
+        cols = st.columns(3)
+        for i, other in enumerate(nm_hits[:9]):
+            with cols[i % 3]:
+                if st.button(f"🧑 {other}", key=f"npc_npc_{_stem_key(nm)}_{_stem_key(other)}"):
+                    st.session_state["comp_npc_selected"] = other
+                    _touch_recent("comp_recent_npcs", other)
+                    st.rerun()
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -5686,6 +5834,7 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
             live.setdefault("npcs", {})[nm] = new_tags
             st.session_state["comp_live_overrides"] = live
             st.rerun()
+
 
         merged = _load_comp_tags_overrides()
         merged_live = _get_live_overrides()
@@ -5917,7 +6066,7 @@ def render_compendium_page() -> None:
             else:
                 _render_region_panel(st.session_state["comp_region"], region_obj)
 
-        return
+        
 
     # ----------------------------
     # 🧑‍🤝‍🧑 NPCs (SPLIT VIEW)
@@ -10039,8 +10188,6 @@ elif page == "Mochila":
     
     
     
-
-
 
 
 
