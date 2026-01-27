@@ -6598,64 +6598,145 @@ def render_compendium_page() -> None:
     # NPCs
     # =====================================================================
     if st.session_state["comp_view"] == "npcs":
+        try:
+            from st_click_detector import click_detector
+        except ImportError:
+            st.error("Biblioteca 'st-click-detector' não encontrada. Instale com `pip install st-click-detector`.")
+            return
         render_top_nav("npcs")
 
         left, right = st.columns([1.25, 2.15], gap="large")
 
-        with left:
+with left:
             search = st.text_input(
                 "Buscar personagem (nome ou texto na História)",
                 key="ds_npc_search",
                 placeholder="Digite aqui...",
             ).strip()
 
-            def _normtxt(s: str) -> str:
-                return re.sub(r"\s+", " ", (s or "").strip().lower())
+            def _norm(s: str) -> str:
+                if not isinstance(s, str): return ""
+                return re.sub(r"\s+", " ", s).strip().lower()
 
-            q = _normtxt(search)
+            q = _norm(search)
 
             items: list[tuple[str, dict]] = []
             for nome, obj in (npcs_gerais or {}).items():
-                if not isinstance(obj, dict):
-                    continue
-                secs = obj.get("sections") or {}
+                if not isinstance(obj, dict): continue
                 historia = ""
+                secs = obj.get("sections") or {}
                 if isinstance(secs, dict):
                     historia = secs.get("História") or secs.get("Historia") or ""
-                hay = _normtxt(nome) + " " + _normtxt(historia)
+                hay = _norm(nome) + " " + _norm(historia)
                 if not q or q in hay:
                     items.append((nome, obj))
 
             items.sort(key=lambda x: x[0])
 
-            # GRID 4 colunas (widgets)
-            grid_cols = st.columns(4, gap="small")
-            for idx, (nome, obj) in enumerate(items):
-                col = grid_cols[idx % 4]
-                with col:
-                    url = _npc_static_url(nome)
+            # Cache: gera miniaturas leves
+            @st.cache_data(show_spinner=False)
+            def _thumb_data_uri(path: str, max_w: int = 360, max_h: int = 520) -> str:
+                try:
+                    from PIL import Image
+                    import io, base64, os
+                    if not path or not os.path.exists(path): return ""
+                    img = Image.open(path).convert("RGB")
+                    img.thumbnail((max_w, max_h))
+                    buf = io.BytesIO()
+                    img.save(buf, format="JPEG", quality=72, optimize=True)
+                    b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+                    return f"data:image/jpeg;base64,{b64}"
+                except Exception:
+                    return ""
 
-                    st.markdown("<div class='ds-card'><div class='ds-card-inner'>", unsafe_allow_html=True)
-                    if url:
-                        st.markdown(f"<img class='ds-card-img' src='{url}' />", unsafe_allow_html=True)
+            if not items:
+                st.info("Nenhum NPC encontrado com esse filtro.")
+            else:
+                # --- MONTAGEM DO HTML PARA O CLICK DETECTOR ---
+                
+                # 1. Definimos o CSS do Grid aqui dentro para funcionar no iframe do detector
+                content_html = """
+                <style>
+                    .ds-grid-container {
+                        display: grid;
+                        grid-template-columns: repeat(4, 1fr); /* 4 colunas fixas */
+                        gap: 10px;
+                        width: 100%;
+                    }
+                    /* Adaptar CSS original para funcionar dentro do detector */
+                    .ds-npc-card { display: block; width: 100%; }
+                    .ds-thumb-frame {
+                        border: 2px solid rgba(176,143,60,0.70);
+                        border-radius: 12px;
+                        padding: 6px;
+                        background: rgba(0,0,0,0.55);
+                        position: relative;
+                        overflow: hidden;
+                        aspect-ratio: 3/4;
+                        transition: all 0.2s ease;
+                        cursor: pointer;
+                    }
+                    .ds-thumb-img {
+                        width: 100%; height: 100%; display:block;
+                        border-radius: 8px; object-fit: cover;
+                        filter: saturate(0.92) contrast(1.02);
+                    }
+                    .ds-thumb-name {
+                        position: absolute; left: 6px; right: 6px; bottom: 6px;
+                        padding: 6px 4px; text-align: center;
+                        text-transform: uppercase; font-size: 10px; font-weight: bold;
+                        color: rgba(255,255,255,0.95);
+                        background: linear-gradient(180deg, rgba(0,0,0,0.00), rgba(0,0,0,0.85));
+                        border-top: 1px solid rgba(176,143,60,0.25);
+                        border-radius: 0 0 8px 8px;
+                        font-family: sans-serif; /* Fallback safe */
+                    }
+                    .ds-thumb-frame:hover {
+                        border-color: #FFD700;
+                        transform: scale(1.03);
+                        box-shadow: 0 0 15px rgba(176,143,60,0.4);
+                    }
+                    /* Link limpo */
+                    a { text-decoration: none; color: inherit; }
+                </style>
+                <div class="ds-grid-container">
+                """
+
+                for i, (nome, obj) in enumerate(items):
+                    img_path = None
+                    try: img_path = comp_find_image(nome)
+                    except: img_path = None
+                    
+                    datauri = _thumb_data_uri(img_path) if img_path else ""
+                    
+                    if datauri:
+                        img_tag = f"<img class='ds-thumb-img' src='{datauri}'/>"
                     else:
-                        # fallback: tenta mostrar do filesystem (mais lento)
-                        p = comp_find_image(nome)
-                        if p and os.path.exists(p):
-                            st.image(p, use_container_width=True)
-                        else:
-                            st.markdown("<div class='ds-card-img' style='background:rgba(255,255,255,0.03)'></div>", unsafe_allow_html=True)
+                        img_tag = "<div style='width:100%;height:100%;background:rgba(255,255,255,0.1);'></div>"
 
-                    st.markdown(f"<div class='ds-card-name'>{nome}</div>", unsafe_allow_html=True)
+                    # O 'id' no link <a> é o que será retornado pelo Python quando clicado
+                    # Usamos 'safe_nome' para evitar problemas com aspas no HTML
+                    content_html += f"""
+                    <a href='#' id='{nome}'>
+                        <div class="ds-npc-card">
+                            <div class="ds-thumb-frame">
+                                {img_tag}
+                                <div class="ds-thumb-name">{nome}</div>
+                            </div>
+                        </div>
+                    </a>
+                    """
+                
+                content_html += "</div>"
 
-                    # Botão invisível: clique na área (não abre aba, não depende de HTML link)
-                    st.markdown("<div class='ds-card-btn'>", unsafe_allow_html=True)
-                    if st.button("select", key=f"npc_pick_{idx}_{_safe_slug(nome)}"):
-                        st.session_state["comp_selected_npc"] = nome
-                        st.rerun()
-                    st.markdown("</div>", unsafe_allow_html=True)
+                # 2. Renderiza o detector
+                # Importante: key única baseada na busca para forçar re-render se filtrar
+                clicked_npc = click_detector(content_html)
 
-                    st.markdown("</div></div>", unsafe_allow_html=True)
+                # 3. Lógica de clique
+                if clicked_npc:
+                    st.session_state["comp_selected_npc"] = clicked_npc
+                    st.rerun()
 
         with right:
             nm = st.session_state.get("comp_selected_npc")
