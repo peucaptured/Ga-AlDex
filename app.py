@@ -6387,8 +6387,12 @@ def render_compendium_page() -> None:
         
         col_sel, _ = st.columns([2, 1])
         with col_sel:
-            lider_sel = st.selectbox("Selecione o Líder/Ginásio:", lista_lideres)
-            selected_item = lider_sel
+            if lista_lideres:
+                lider_sel = st.selectbox("Selecione o Líder/Ginásio:", lista_lideres)
+                selected_item = lider_sel
+            else:
+                lider_sel = None
+                st.warning("Nenhum ginásio encontrado. Verifique o arquivo gaal_ginasios.json.")
 
         if lider_sel:
             dados = ginasios_data[lider_sel]
@@ -6426,8 +6430,12 @@ def render_compendium_page() -> None:
         
         col_sel, _ = st.columns([2, 1])
         with col_sel:
-            npc_sel = st.selectbox("Selecione o Personagem:", todos_npcs)
-            selected_item = npc_sel
+            if todos_npcs:
+                npc_sel = st.selectbox("Selecione o Personagem:", todos_npcs)
+                selected_item = npc_sel
+            else:
+                npc_sel = None
+                st.warning("Nenhum personagem encontrado. Verifique os arquivos gaal_npcs_vivos.json e gaal_npcs_mortos.json.")
 
         if npc_sel:
             # Procura em qual dicionário ele está
@@ -6498,6 +6506,13 @@ def render_compendium_page() -> None:
 # Função auxiliar interna para achar imagens (mesmo que a sua _resolve_asset_path, mas local aqui)
 def _tentar_achar_imagem_compendium(nome_base):
     if not nome_base: return None
+    # Primeiro tenta o índice de imagens do compendium (assets/compendium, cidades, treinadores, etc.)
+    try:
+        p = comp_find_image(nome_base)
+        if p:
+            return p
+    except Exception:
+        pass
     # Lista de tentativas
     tentativas = [
         nome_base,
