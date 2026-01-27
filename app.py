@@ -6440,6 +6440,24 @@ def render_compendium_page() -> None:
             border-top: 1px solid rgba(176,143,60,0.25);
             padding-top: 12px;
         }}
+        /* NAV sticky (só quando for no topo) */
+        .ds-nav-sticky {{
+            position: sticky;
+            top: 10px;                 /* distância do topo */
+            z-index: 9998;             /* acima do conteúdo */
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border: 1px solid rgba(176,143,60,0.22);
+            border-radius: 12px;
+            padding: 10px 14px;
+            box-shadow: 0 0 28px rgba(0,0,0,0.85);
+        }}
+        
+        /* dá um respiro entre sticky e o conteúdo */
+        .ds-after-nav-space {{
+            height: 10px;
+        }}
 
     
         /* TOP NAV (tabs) — texto puro, transparente */
@@ -6659,8 +6677,12 @@ def render_compendium_page() -> None:
     def render_top_nav(selected: str, position: str = "top"):
         """
         position: "top" ou "bottom"
+        top = sticky
         """
-        wrapper_class = "ds-nav" if position == "top" else "ds-nav ds-nav-bottom"
+        if position == "top":
+            wrapper_class = "ds-nav ds-nav-sticky"
+        else:
+            wrapper_class = "ds-nav ds-nav-bottom"
     
         st.markdown(f"<div class='{wrapper_class}'>", unsafe_allow_html=True)
     
@@ -6686,8 +6708,13 @@ def render_compendium_page() -> None:
                         _go(v)
     
                 st.markdown("</div>", unsafe_allow_html=True)
+    
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+        # respiro pra não colar no conteúdo
+        if position == "top":
+            st.markdown("<div class='ds-after-nav-space'></div>", unsafe_allow_html=True)
 
-    st.markdown("</div>", unsafe_allow_html=True)
 
     
     # >>> MENU NO TOPO APENAS QUANDO NÃO FOR HOME
