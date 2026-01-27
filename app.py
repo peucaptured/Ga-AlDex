@@ -6593,21 +6593,23 @@ def render_compendium_page() -> None:
                 st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
         return
-
-    # =====================================================================
+# =====================================================================
     # NPCs
     # =====================================================================
     if st.session_state["comp_view"] == "npcs":
+        # Importação (se não estiver no topo do arquivo)
         try:
             from st_click_detector import click_detector
         except ImportError:
             st.error("Biblioteca 'st-click-detector' não encontrada. Instale com `pip install st-click-detector`.")
             return
+
         render_top_nav("npcs")
 
         left, right = st.columns([1.25, 2.15], gap="large")
 
-    with left:
+        # --- COLUNA ESQUERDA (GRID DE IMAGENS CLICÁVEIS) ---
+        with left:
             search = st.text_input(
                 "Buscar personagem (nome ou texto na História)",
                 key="ds_npc_search",
@@ -6633,7 +6635,7 @@ def render_compendium_page() -> None:
 
             items.sort(key=lambda x: x[0])
 
-            # Cache: gera miniaturas leves
+            # Função de Cache para Thumbnails
             @st.cache_data(show_spinner=False)
             def _thumb_data_uri(path: str, max_w: int = 360, max_h: int = 520) -> str:
                 try:
@@ -6652,18 +6654,15 @@ def render_compendium_page() -> None:
             if not items:
                 st.info("Nenhum NPC encontrado com esse filtro.")
             else:
-                # --- MONTAGEM DO HTML PARA O CLICK DETECTOR ---
-                
-                # 1. Definimos o CSS do Grid aqui dentro para funcionar no iframe do detector
+                # 1. Definimos o CSS e o Container
                 content_html = """
                 <style>
                     .ds-grid-container {
                         display: grid;
-                        grid-template-columns: repeat(4, 1fr); /* 4 colunas fixas */
+                        grid-template-columns: repeat(4, 1fr);
                         gap: 10px;
                         width: 100%;
                     }
-                    /* Adaptar CSS original para funcionar dentro do detector */
                     .ds-npc-card { display: block; width: 100%; }
                     .ds-thumb-frame {
                         border: 2px solid rgba(176,143,60,0.70);
@@ -6689,23 +6688,25 @@ def render_compendium_page() -> None:
                         background: linear-gradient(180deg, rgba(0,0,0,0.00), rgba(0,0,0,0.85));
                         border-top: 1px solid rgba(176,143,60,0.25);
                         border-radius: 0 0 8px 8px;
-                        font-family: sans-serif; /* Fallback safe */
+                        font-family: sans-serif;
                     }
                     .ds-thumb-frame:hover {
                         border-color: #FFD700;
                         transform: scale(1.03);
                         box-shadow: 0 0 15px rgba(176,143,60,0.4);
                     }
-                    /* Link limpo */
                     a { text-decoration: none; color: inherit; }
                 </style>
                 <div class="ds-grid-container">
                 """
 
+                # 2. Geramos o HTML de cada card
                 for i, (nome, obj) in enumerate(items):
                     img_path = None
-                    try: img_path = comp_find_image(nome)
-                    except: img_path = None
+                    try: 
+                        img_path = comp_find_image(nome)
+                    except: 
+                        img_path = None
                     
                     datauri = _thumb_data_uri(img_path) if img_path else ""
                     
@@ -6714,8 +6715,7 @@ def render_compendium_page() -> None:
                     else:
                         img_tag = "<div style='width:100%;height:100%;background:rgba(255,255,255,0.1);'></div>"
 
-                    # O 'id' no link <a> é o que será retornado pelo Python quando clicado
-                    # Usamos 'safe_nome' para evitar problemas com aspas no HTML
+                    # Importante: O ID do link é o que o Python recebe
                     content_html += f"""
                     <a href='#' id='{nome}'>
                         <div class="ds-npc-card">
@@ -6729,17 +6729,18 @@ def render_compendium_page() -> None:
                 
                 content_html += "</div>"
 
-                # 2. Renderiza o detector
-                # Importante: key única baseada na busca para forçar re-render se filtrar
+                # 3. Renderiza o detector de cliques
                 clicked_npc = click_detector(content_html)
 
-                # 3. Lógica de clique
                 if clicked_npc:
                     st.session_state["comp_selected_npc"] = clicked_npc
                     st.rerun()
 
+        # --- COLUNA DIREITA (DETALHES DO NPC) ---
         with right:
             nm = st.session_state.get("comp_selected_npc")
+            
+            # Se não tiver ninguém selecionado ou nome inválido
             if not nm or nm not in npcs_gerais:
                 st.markdown(
                     """
@@ -6751,9 +6752,10 @@ def render_compendium_page() -> None:
                     unsafe_allow_html=True,
                 )
             else:
+                # Recupera dados do NPC
                 npc = npcs_gerais.get(nm) or {}
-                idade = npc.get("idade") or ""
-                ocup = npc.get("ocupacao") or npc.get("título") or npc.get("titulo") or ""
+                idade = npc.get("idade") or "Desconhecida"
+                ocup = npc.get("ocupacao") or npc.get("título") or npc.get("titulo") or "Sem título"
                 status = npc.get("status") or ("Ativo" if nm in (data_vivos.get("npcs", {}) or {}) else "Falecido")
 
                 secs = npc.get("sections") or {}
@@ -6762,10 +6764,28 @@ def render_compendium_page() -> None:
                     historia = secs.get("História") or secs.get("Historia") or ""
                 historia = (historia or "").strip()
 
-                url = _npc_static_url(nm)
+                # Tenta pegar a imagem grande para o detalhe
+                img_path_big = None
+                try: img_path_big = comp_find_image(nm)
+                except: pass
+                
+                # Monta o card de detalhes
+                st.markdown(f"""
+                <div class="ds-frame">
+                    <div class="ds-name">{nm}</div>
+                    <div class="ds-meta" style="margin-bottom: 15px;">
+                        <span style="color:#FFD700;">{ocup}</span> • {status} • {idade}
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                if img_path_big and os.path.exists(img_path_big):
+                    st.image(img_path_big, use_container_width=True)
 
-                st.markdown("<div class='ds-frame'>", unsafe_allow_html=True)
-                st.markdown(f"<div class='ds-name'>{nm}</div>", unsafe_allow_html=True)
+                st.markdown(f"""
+                    <div style="margin-top: 15px; text-align: justify; color: #ccc;">
+                        {historia if historia else "<i>Sem registros históricos disponíveis.</i>"}
+                    </div>
+                </div> """, unsafe_allow_html=True)
 
                 meta_parts = []
                 if ocup:
