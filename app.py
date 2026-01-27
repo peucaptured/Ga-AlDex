@@ -6160,514 +6160,364 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
 
 
 
-# ----------------------------
-# PÁGINA (render)
-# ----------------------------
+# ==============================================================================
+# 📚 COMPENDIUM DE GA'AL — GRIMÓRIO DARK FANTASY (INTEGRAÇÃO COMPLETA)
+# ==============================================================================
+import json
+import os
+import streamlit as st
+
 def render_compendium_page() -> None:
-    apply_compendium_theme()
-    _init_comp_state()
+    # ---------------------------------------------------------
+    # 1. CARREGAMENTO DOS DADOS (JSON)
+    # ---------------------------------------------------------
+    # Inicializa os dicionários vazios para evitar erros se faltar arquivo
+    locais_data = {"regions": {}, "cities": {}}
+    ginasios_data = {}
+    npcs_vivos_data = {}
+    npcs_mortos_data = {}
 
-    # carrega dados
-    try:
-        data = comp_load()
-    except Exception as e:
-        st.error(f"Falha ao carregar Compendium: {e}")
-        st.stop()
+    # Função auxiliar para carregar JSON com segurança
+    def load_json(filename):
+        if os.path.exists(filename):
+            try:
+                with open(filename, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                st.error(f"Erro ao ler {filename}: {e}")
+        return {}
 
-    regions = data.get("regions", {}) or {}
-    cities = data.get("cities", {}) or {}
-    npcs = data.get("npcs", {}) or {}
-    gyms = data.get("gyms", {}) or {}
+    # Carrega os 4 arquivos
+    locais_content = load_json("gaal_locais.json")
+    if locais_content:
+        locais_data = locais_content
 
-    # hero (imersivo)
-    st.markdown('<div class="comp-shell">', unsafe_allow_html=True)
-    h_left, h_right = st.columns([1.35, 1], gap="large")
-    with h_left:
-        st.markdown('<div class="comp-hero">', unsafe_allow_html=True)
-        st.markdown('<div class="comp-hero-title">📚 Compendium de Ga\'Al</div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="comp-hero-kicker">Um arquivo vivo de lugares, histórias e rostos. '
-            'Abra um dossiê e deixe a curiosidade guiar o próximo capítulo.</div>',
-            unsafe_allow_html=True,
-        )
-        last_city = (st.session_state.get("comp_recent_cities") or [None])[0]
-        last_npc = (st.session_state.get("comp_recent_npcs") or [None])[0]
-        if last_city or last_npc:
-            st.markdown('<div class="comp-divider"></div>', unsafe_allow_html=True)
-            st.markdown("**Continue de onde parou:**")
-            if last_city and last_city in cities:
-                if st.button(f"🏙️ Voltar para {last_city}", key="comp_resume_city"):
-                    st.session_state["comp_axis"] = "🌍 Locais"
-                    st.session_state["comp_region"] = cities[last_city].get("region")
-                    st.session_state["comp_city"] = last_city
-                    st.rerun()
-            if last_npc and last_npc in npcs:
-                if st.button(f"🧑 Revisitar {last_npc}", key="comp_resume_npc"):
-                    st.session_state["comp_axis"] = "🧑‍🤝‍🧑 NPCs"
-                    st.session_state["comp_npc_selected"] = last_npc
-                    st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+    # Ginásios (Separado como pediu)
+    ginasios_content = load_json("gaal_ginasios.json")
+    ginasios_data = ginasios_content.get("npcs", {})
 
-        stat_cols = st.columns(3)
-        with stat_cols[0]:
-            st.markdown(f'<div class="comp-stat"><div class="comp-mini">Regiões</div><b>{len(regions)}</b></div>', unsafe_allow_html=True)
-        with stat_cols[1]:
-            st.markdown(f'<div class="comp-stat"><div class="comp-mini">Cidades</div><b>{len(cities)}</b></div>', unsafe_allow_html=True)
-        with stat_cols[2]:
-            st.markdown(f'<div class="comp-stat"><div class="comp-mini">NPCs</div><b>{len(npcs)}</b></div>', unsafe_allow_html=True)
-
-    with h_right:
-        st.markdown('<div class="comp-hero">', unsafe_allow_html=True)
-        map_img = comp_find_image(COMP_DEFAULT_MAP)
-        if map_img:
-            st.image(map_img, use_container_width=True)
-            st.markdown('<div class="comp-mini">Mapa geral de Ga\'Al — use como ponto de partida para decidir o próximo destino.</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="comp-mini">Mapa geral: adicione a imagem para enriquecer o compendium.</div>', unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # Checagem de arquivos do Compendium (preferência: JSON; fallback: DOCX)
-    loc_p = _resolve_asset_path(COMP_JSON_LOCAIS)
-    if not os.path.exists(loc_p):
-        loc_doc = _resolve_asset_path(COMP_DOC_LOCAIS)
-        if os.path.exists(loc_doc):
-            loc_p = loc_doc
-        else:
-            st.error(
-                f"Não encontrei o arquivo de locais: {COMP_JSON_LOCAIS} (JSON) "
-                f"nem o fallback {COMP_DOC_LOCAIS} (DOCX). Coloque em ./, ./assets ou ./data."
-            )
-            st.stop()
-
-    npc_p = _resolve_asset_path(COMP_JSON_NPCS_VIVOS)
-    if not os.path.exists(npc_p):
-        npc_doc = _resolve_asset_path(COMP_DOC_NPCS_VIVOS)
-        if os.path.exists(npc_doc):
-            npc_p = npc_doc
-        else:
-            st.warning(
-                f"Não encontrei o arquivo de NPCs vivos: {COMP_JSON_NPCS_VIVOS} (JSON) "
-                f"nem o fallback {COMP_DOC_NPCS_VIVOS} (DOCX). A aba de NPCs ficará vazia."
-            )
-
-    # eixo (rádio horizontal) — permite trocar programaticamente via busca/cross-link
-    st.markdown('<div class="comp-panel">', unsafe_allow_html=True)
-    st.markdown("**Escolha o próximo capítulo**")
-    axis = st.radio(
-        "Navegar",
-        ["🌍 Locais", "🏅 Ginásios", "🧑‍🤝‍🧑 NPCs", "🔎 Busca"],
-        horizontal=True,
-        key="comp_axis",
-        label_visibility="collapsed",
-    )
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # ----------------------------
-    # 🔎 BUSCA GLOBAL
-    # ----------------------------
-    if axis == "🔎 Busca":
-        st.markdown("## 🔎 Busca global no Compendium")
-        q = st.text_input("Buscar (texto completo)", key="comp_global_q", placeholder="Ex.: 'usina', 'Tulsi', 'ruínas', 'Minas'...")
-        types = st.multiselect("Onde procurar", ["Regiões", "Cidades", "Sublocais", "NPCs", "Ginásios"], default=["Cidades","NPCs","Sublocais","Ginásios"])
-        tset = set()
-        map_t = {"Regiões":"region", "Cidades":"city", "Sublocais":"sublocal", "NPCs":"npc", "Ginásios":"gym"}
-        for t in types:
-            tset.add(map_t[t])
-
-        index = build_comp_search_index(data)
-        if q and q.strip():
-            res = comp_search(index, q, types=tset, limit=60)
-            if not res:
-                st.caption("Nenhum resultado.")
-            else:
-                st.caption(f"{len(res)} resultados (top). Clique para abrir.")
-                for r in res:
-                    t = r["type"]
-                    title = r["title"]
-                    snippet = r.get("snippet","")
-                    st.markdown('<div class="comp-row">', unsafe_allow_html=True)
-                    c1, c2 = st.columns([1.2, 0.8], gap="small")
-                    with c1:
-                        icon = {"region":"🌍","city":"🏙️","sublocal":"📍","npc":"🧑"}.get(t, "🔎")
-                        st.markdown(f"**{icon} {title}**")
-                        if snippet:
-                            st.markdown(f"<div class='comp-mini'>{snippet}</div>", unsafe_allow_html=True)
-                    with c2:
-                        if t == "city":
-                            if st.button("Abrir cidade", key=f"open_search_city_{_stem_key(title)}"):
-                                st.session_state["comp_axis"] = "🌍 Locais"
-                                st.session_state["comp_region"] = cities.get(title, {}).get("region")
-                                st.session_state["comp_city"] = title
-                                _touch_recent("comp_recent_cities", title)
-                                st.rerun()
-                        elif t == "region":
-                            if st.button("Abrir região", key=f"open_search_region_{_stem_key(title)}"):
-                                st.session_state["comp_axis"] = "🌍 Locais"
-                                st.session_state["comp_region"] = title
-                                st.session_state["comp_city"] = None
-                                st.rerun()
-                        elif t == "npc":
-                            if st.button("Abrir NPC", key=f"open_search_npc_{_stem_key(title)}"):
-                                st.session_state["comp_axis"] = "🧑‍🤝‍🧑 NPCs"
-                                st.session_state["comp_npc_selected"] = title
-                                _touch_recent("comp_recent_npcs", title)
-                                st.rerun()
-                        elif t == "sublocal":
-                            city = r.get("city")
-                            if st.button("Abrir cidade", key=f"open_search_sublocal_{_stem_key(title)}_{_stem_key(city)}"):
-                                st.session_state["comp_axis"] = "🌍 Locais"
-                                st.session_state["comp_region"] = cities.get(city, {}).get("region")
-                                st.session_state["comp_city"] = city
-                                _touch_recent("comp_recent_cities", city)
-                                st.rerun()
-                    st.markdown("</div>", unsafe_allow_html=True)
-        return
-
-    # ----------------------------
-    # 🌍 LOCAIS (SPLIT VIEW)
-    # ----------------------------
-    if axis == "🌍 Locais":
-        left, right = st.columns([0.95, 1.55], gap="large")
-
-        # opções de regiões
-        regs_main = [r for r in regions.keys() if r in COMP_REGIOES_PRINCIPAIS]
-        regs_extra = [r for r in regions.keys() if r not in regs_main]
-        reg_options = regs_main + regs_extra
-        if not reg_options:
-            st.warning("Nenhuma região encontrada no DOCX de locais.")
-            st.stop()
-
-        # estado região
-        if not st.session_state.get("comp_region") or st.session_state["comp_region"] not in reg_options:
-            st.session_state["comp_region"] = reg_options[0]
-
-        with left:
-            st.markdown('<div class="comp-panel">', unsafe_allow_html=True)
-            st.markdown("### 🌍 Região")
-            region_name = st.selectbox("Selecionar Região", reg_options, index=reg_options.index(st.session_state["comp_region"]), key="comp_region_sel")
-            st.session_state["comp_region"] = region_name
-
-            region_obj = regions.get(region_name) or {"intro":"", "sections":{}, "cities":[]}
-            region_cities = [c for c in (region_obj.get("cities", []) or []) if c in cities]
-
-            st.markdown("### 🏙️ Cidades")
-            q = st.text_input("🔍 Buscar cidade", key="comp_city_q", placeholder="Digite o nome…")
-            only_fav = st.checkbox("⭐ Só favoritos", value=False, key="comp_city_onlyfav")
-            only_gym = st.checkbox("🏅 Só com ginásio", value=False, key="comp_city_onlygym")
-            show_recent = st.checkbox("🕒 Mostrar Recentes", value=True, key="comp_city_showrecent")
-
-            favs = st.session_state.get("comp_fav_cities", []) or []
-            recents = st.session_state.get("comp_recent_cities", []) or []
-            qn = _norm(q or "")
-
-            filtered = [c for c in region_cities if (not qn) or (qn in _norm(c))]
-            if only_fav:
-                filtered = [c for c in filtered if c in favs]
-            if st.session_state.get("comp_city_onlygym", False):
-                filtered = [c for c in filtered if c in gyms]
-
-            # Recentes (da região)
-            if show_recent and recents:
-                rec_region = [c for c in recents if c in region_cities]
-                if rec_region:
-                    with st.expander("🕒 Recentes na região", expanded=True):
-                        for c in rec_region[:8]:
-                            row = st.columns([0.7, 0.3], gap="small")
-                            with row[0]:
-                                if st.button(f"➡ {c}", key=f"recent_city_{_stem_key(region_name)}_{_stem_key(c)}"):
-                                    st.session_state["comp_city"] = c
-                                    _touch_recent("comp_recent_cities", c)
-                                    st.rerun()
-                            with row[1]:
-                                fav = _is_fav("comp_fav_cities", c)
-                                if st.button("⭐" if not fav else "★", key=f"recent_city_fav_{_stem_key(c)}"):
-                                    _toggle_fav("comp_fav_cities", c)
-                                    st.rerun()
-
-            # lista principal com scroll
-            box = st.container(height=560)
-            with box:
-                if not filtered:
-                    st.caption("Nenhuma cidade bateu com o filtro.")
-                else:
-                    # define city selecionada
-                    if not st.session_state.get("comp_city") or st.session_state["comp_city"] not in filtered:
-                        st.session_state["comp_city"] = filtered[0]
-
-                    for cname in filtered:
-                        cobj = cities[cname]
-                        img = comp_find_image(cname)
-                        fav = _is_fav("comp_fav_cities", cname)
-
-                        st.markdown('<div class="comp-row">', unsafe_allow_html=True)
-                        r1, r2, r3 = st.columns([0.35, 0.95, 0.35], gap="small")
-                        with r1:
-                            if img:
-                                st.image(img, use_container_width=True)
-                            else:
-                                st.caption("🖼️")
-                        with r2:
-                            st.markdown(f"**{cname}**")
-                            if st.button("Abrir", key=f"open_city_{_stem_key(region_name)}_{_stem_key(cname)}"):
-                                st.session_state["comp_city"] = cname
-                                _touch_recent("comp_recent_cities", cname)
-                                st.rerun()
-                        with r3:
-                            if st.button("★" if fav else "☆", key=f"fav_city_list_{_stem_key(cname)}"):
-                                _toggle_fav("comp_fav_cities", cname)
-                                st.rerun()
-                        st.markdown("</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        with right:
-            region_obj = regions.get(st.session_state["comp_region"]) or {"intro":"", "sections":{}, "cities":[]}
-            _breadcrumb(["🌍 Locais", st.session_state["comp_region"]] + ([st.session_state["comp_city"]] if st.session_state.get("comp_city") else []))
-
-            if st.session_state.get("comp_city") and st.session_state["comp_city"] in cities:
-                # navegação prev/next dentro do filtro atual
-                # Recalcula 'filtered' (mesma lógica do painel esquerdo)
-                region_cities = [c for c in (region_obj.get("cities", []) or []) if c in cities]
-                q = st.session_state.get("comp_city_q", "")
-                only_fav = st.session_state.get("comp_city_onlyfav", False)
-                qn = _norm(q or "")
-                filtered = [c for c in region_cities if (not qn) or (qn in _norm(c))]
-                if only_fav:
-                    favs = st.session_state.get("comp_fav_cities", []) or []
-                    filtered = [c for c in filtered if c in favs]
-                if st.session_state.get("comp_city_onlygym", False):
-                    filtered = [c for c in filtered if c in gyms]
-                _nav_prev_next(st.session_state["comp_city"], filtered, prefix="comp_city")
-
-                _render_city_dossier(st.session_state["comp_city"], cities[st.session_state["comp_city"]], npcs, cities, gyms, region_obj)
-            else:
-                _render_region_panel(st.session_state["comp_region"], region_obj)
-
-        
-
-    # ----------------------------
-    # 🧑‍🤝‍🧑 NPCs (SPLIT VIEW)
-    # ----------------------------
+    # NPCs (Vivos e Mortos - Vamos fundir para a aba de Personagens, ou mostrar separado)
+    # Optei por fundir na busca, mas identificando a origem
+    vivos_content = load_json("gaal_npcs_vivos.json")
+    npcs_vivos_data = vivos_content.get("npcs", {})
     
-    # ----------------------------
-    # 🏅 GINÁSIOS
-    # ----------------------------
-    if axis == "🏅 Ginásios":
-        st.markdown("## 🏅 Ginásios")
-        if not gyms:
-            st.info("Nenhum ginásio estruturado encontrado. Se você tiver o arquivo, coloque **ginasios.docx** junto do app (./, ./assets ou ./data).")
-        else:
-            # filtros
-            all_status = sorted({(g.get("meta") or {}).get("status","").strip() for g in gyms.values() if (g.get("meta") or {}).get("status")})
-            all_tipos = sorted({(g.get("meta") or {}).get("tipo","").strip() for g in gyms.values() if (g.get("meta") or {}).get("tipo")})
+    mortos_content = load_json("gaal_npcs_mortos.json")
+    npcs_mortos_data = mortos_content.get("npcs", {})
 
-            qg = st.text_input("🔎 Buscar (cidade / líder / vice)", key="comp_gym_q", placeholder="Ex.: Borgonha, Eneias, tipo Aço…")
-            f_status = st.multiselect("Status", all_status, default=all_status, key="comp_gym_status")
-            f_tipo = st.multiselect("Tipo", all_tipos, default=all_tipos, key="comp_gym_tipo")
+    # ---------------------------------------------------------
+    # 2. ESTILO VISUAL "DARK SOULS" (CSS)
+    # ---------------------------------------------------------
+    st.markdown("""
+    <style>
+        /* Esconde elementos padrão para imersão */
+        [data-testid="stHeader"] { visibility: hidden; }
+        
+        /* Fundo do Card Principal (O Grimório) */
+        .lore-card {
+            background-color: #141414; /* Preto Profundo */
+            border: 2px solid #6b5c38; /* Dourado Envelhecido */
+            border-radius: 4px;
+            padding: 40px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.95);
+            margin: 20px auto;
+            max-width: 900px;
+            color: #b0b0b0;
+            position: relative;
+        }
 
-            qn = _norm(qg or "")
-            def match(city: str, g: dict) -> bool:
-                meta = g.get("meta") or {}
-                staff = g.get("staff") or {}
-                blob = _norm(" ".join([
-                    city,
-                    str(meta.get("status","")),
-                    str(meta.get("tipo","")),
-                    str(meta.get("lider","")),
-                    str(meta.get("vice_lider","")),
-                    str(staff.get("lider","")),
-                    str(staff.get("vice_lider","")),
-                    str(g.get("narrative","")),
-                ]))
-                if qn and qn not in blob:
-                    return False
-                if f_status and meta.get("status") and meta.get("status") not in f_status:
-                    return False
-                if f_tipo and meta.get("tipo") and meta.get("tipo") not in f_tipo:
-                    return False
-                return True
+        /* Detalhe de Moldura Interna */
+        .lore-card::before {
+            content: "";
+            position: absolute;
+            top: 6px; left: 6px; right: 6px; bottom: 6px;
+            border: 1px solid #3d342b;
+            pointer-events: none;
+        }
 
-            # ordena por região (se existir cidade no compendium) e por nome
-            def city_region(city: str) -> str:
-                return (cities.get(city, {}) or {}).get("region","") or "—"
+        /* TÍTULO (Nome) */
+        .lore-title {
+            font-family: 'Garamond', 'Times New Roman', serif;
+            font-size: 42px;
+            color: #dcb158; /* Ouro Pálido */
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-align: center;
+            border-bottom: 1px solid #5c4d3c;
+            padding-bottom: 15px;
+            margin-bottom: 10px;
+            text-shadow: 0px 4px 10px rgba(0,0,0,0.9);
+        }
 
-            items = [(city_region(c), c, g) for c, g in gyms.items() if match(c, g)]
-            items.sort(key=lambda x: (_norm(x[0]), _norm(x[1])))
+        /* SUBTÍTULO (Metadados) */
+        .lore-meta {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #888;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+        }
 
-            if not items:
-                st.caption("Nenhum ginásio bateu com os filtros.")
+        /* TEXTO DA HISTÓRIA */
+        .lore-text {
+            font-family: 'Georgia', serif;
+            font-size: 18px;
+            line-height: 1.7;
+            color: #cfcfcf;
+            text-align: justify;
+            margin-top: 25px;
+            padding: 0 15px;
+        }
+
+        /* Títulos de Seções Internas (História, Lore, etc) */
+        .lore-section {
+            font-family: 'Garamond', serif;
+            font-size: 24px;
+            color: #a89f91;
+            margin-top: 35px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #333;
+            display: inline-block;
+        }
+
+        /* Box de Status (RPG Style) */
+        .lore-stats-box {
+            background: rgba(30, 30, 30, 0.5);
+            border: 1px solid #444;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #aaa;
+            text-align: center;
+        }
+        
+        /* Ajuste dos componentes do Streamlit para combinar */
+        .stRadio > label, .stSelectbox > label {
+            color: #dcb158 !important;
+            font-family: 'Garamond', serif !important;
+            font-size: 20px !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<h1 style='text-align: center; color: #555; font-family: Garamond; font-size: 24px; letter-spacing: 5px; margin-bottom: 30px;'>— ARQUIVOS DE GA'AL —</h1>", unsafe_allow_html=True)
+
+    # ---------------------------------------------------------
+    # 3. NAVEGAÇÃO SUPERIOR (3 ABAS: LOCAIS, GINÁSIOS, PERSONAGENS)
+    # ---------------------------------------------------------
+    
+    # Menu de categorias
+    categorias = ["🗺️ Locais & Cidades", "⚔️ Ginásios (Líderes)", "👤 Personagens (NPCs)"]
+    cat_cols = st.columns([1, 2, 1])
+    with cat_cols[1]:
+        aba_selecionada = st.selectbox("Selecione o Tomo:", categorias, label_visibility="collapsed")
+
+    # Variáveis para preencher o card
+    conteudo = {
+        "titulo": "",
+        "subtitulo": "",
+        "imagem": None,
+        "html_texto": "",
+        "stats": [] # Lista de strings para box de status
+    }
+    
+    selected_item = None # Para controlar a imagem depois
+
+    # =========================================================
+    # LÓGICA DA ABA: LOCAIS
+    # =========================================================
+    if aba_selecionada == "🗺️ Locais & Cidades":
+        regions = locais_data.get("regions", {})
+        cities = locais_data.get("cities", {})
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            lista_regioes = sorted(list(regions.keys()))
+            regiao_sel = st.selectbox("Região", lista_regioes) if lista_regioes else None
+        
+        with c2:
+            if regiao_sel:
+                cidades_da_regiao = regions[regiao_sel].get("cities", [])
+                opcoes = ["📖 Sobre a Região"] + sorted(cidades_da_regiao)
+                item_sel = st.selectbox("Local", opcoes)
+                selected_item = item_sel if item_sel != "📖 Sobre a Região" else regiao_sel
             else:
-                for reg, city, g in items:
-                    meta = g.get("meta") or {}
-                    st.markdown('<div class="comp-card">', unsafe_allow_html=True)
-                    top = st.columns([0.9, 1.1, 0.6], gap="small")
-                    with top[0]:
-                        img = comp_find_image(city)
-                        if img:
-                            st.image(img, use_container_width=True)
+                item_sel = None
+
+        if item_sel == "📖 Sobre a Região" and regiao_sel:
+            # Exibir Região
+            dados = regions[regiao_sel]
+            conteudo["titulo"] = regiao_sel
+            conteudo["subtitulo"] = "TERRITÓRIO DE GA'AL"
+            conteudo["html_texto"] = f"<p>{dados.get('intro', '')}</p>"
+            for sec, txt in dados.get("sections", {}).items():
+                if txt.strip(): conteudo["html_texto"] += f"<div class='lore-section'>{sec}</div><p>{txt}</p>"
+
+        elif item_sel and item_sel != "📖 Sobre a Região":
+            # Exibir Cidade
+            dados = cities.get(item_sel, {})
+            conteudo["titulo"] = item_sel
+            conteudo["subtitulo"] = f"LOCALIZADO EM: {regiao_sel}"
+            
+            # Texto
+            txt_full = ""
+            vis = dados.get("sections", {}).get("Visão geral", "")
+            if vis: txt_full += f"<p>{vis}</p>"
+            
+            for sec, txt in dados.get("sections", {}).items():
+                if sec != "Visão geral" and txt.strip() and not sec.startswith("_"):
+                    txt_full += f"<div class='lore-section'>{sec}</div><p>{txt}</p>"
+            
+            # Sublocais
+            subs = dados.get("sublocais", [])
+            if subs:
+                txt_full += "<br><div class='lore-section'>📍 Pontos de Interesse</div>"
+                for sub in subs:
+                    txt_full += f"<p><strong>{sub['name']}</strong>: {sub['text']}</p>"
+            
+            conteudo["html_texto"] = txt_full
+
+    # =========================================================
+    # LÓGICA DA ABA: GINÁSIOS
+    # =========================================================
+    elif aba_selecionada == "⚔️ Ginásios (Líderes)":
+        lista_lideres = sorted(list(ginasios_data.keys()))
+        
+        col_sel, _ = st.columns([2, 1])
+        with col_sel:
+            lider_sel = st.selectbox("Selecione o Líder/Ginásio:", lista_lideres)
+            selected_item = lider_sel
+
+        if lider_sel:
+            dados = ginasios_data[lider_sel]
+            conteudo["titulo"] = lider_sel
+            
+            # Monta subtítulo
+            parts = []
+            if dados.get("ocupacao"): parts.append(dados["ocupacao"])
+            conteudo["subtitulo"] = " | ".join(parts)
+            
+            # Box de Status
+            if dados.get("idade"): conteudo["stats"].append(f"<b>IDADE:</b> {dados['idade']}")
+            if dados.get("origem"): conteudo["stats"].append(f"<b>ORIGEM:</b> {dados['origem']}")
+            if dados.get("pokemons"): 
+                pokes = ", ".join(dados["pokemons"])
+                conteudo["stats"].append(f"<b>POKÉMONS:</b> {pokes}")
+
+            # Texto
+            txt_full = ""
+            for sec, txt in dados.get("sections", {}).items():
+                if txt.strip():
+                    if sec in ["História", "Histórico", "Lore"]:
+                        txt_full += f"<p>{txt}</p>"
+                    else:
+                        txt_full += f"<div class='lore-section'>{sec}</div><p>{txt}</p>"
+            conteudo["html_texto"] = txt_full
+
+    # =========================================================
+    # LÓGICA DA ABA: PERSONAGENS (NPCs)
+    # =========================================================
+    elif aba_selecionada == "👤 Personagens (NPCs)":
+        # Junta as listas mas marca a origem visualmente no dropdown se quiser
+        # Por enquanto, lista unificada
+        todos_npcs = sorted(list(npcs_vivos_data.keys()) + list(npcs_mortos_data.keys()))
+        
+        col_sel, _ = st.columns([2, 1])
+        with col_sel:
+            npc_sel = st.selectbox("Selecione o Personagem:", todos_npcs)
+            selected_item = npc_sel
+
+        if npc_sel:
+            # Procura em qual dicionário ele está
+            dados = npcs_vivos_data.get(npc_sel) or npcs_mortos_data.get(npc_sel)
+            
+            if dados:
+                conteudo["titulo"] = npc_sel
+                
+                parts = []
+                if dados.get("ocupacao"): parts.append(dados["ocupacao"])
+                status = dados.get("status", "Desconhecido")
+                parts.append(f"STATUS: {status}")
+                conteudo["subtitulo"] = " | ".join(parts)
+
+                # Box de Status
+                if dados.get("idade"): conteudo["stats"].append(f"<b>IDADE:</b> {dados['idade']}")
+                if dados.get("pokemons"): 
+                    pokes = ", ".join(dados["pokemons"])
+                    conteudo["stats"].append(f"<b>POKÉMONS:</b> {pokes}")
+                
+                # Texto
+                txt_full = ""
+                for sec, txt in dados.get("sections", {}).items():
+                    if txt.strip():
+                        if sec in ["História", "Lore", "Histórico"]:
+                            txt_full += f"<p>{txt}</p>"
                         else:
-                            st.caption("🖼️ (sem imagem)")
-                    with top[1]:
-                        st.markdown(f"### {city}")
-                        st.caption(f"Região: {reg}")
-                        chips = []
-                        if meta.get("tipo"): chips.append(f"Tipo: {meta.get('tipo')}")
-                        if meta.get("status"): chips.append(f"Status: {meta.get('status')}")
-                        _chip_row(chips)
+                            txt_full += f"<div class='lore-section'>{sec}</div><p>{txt}</p>"
+                conteudo["html_texto"] = txt_full
 
-                        lider = (meta.get("lider") or (g.get("staff") or {}).get("lider") or "").strip()
-                        vice = (meta.get("vice_lider") or (g.get("staff") or {}).get("vice_lider") or "").strip()
-                        if lider: st.markdown(f"**Líder:** {lider}")
-                        if vice: st.markdown(f"**Vice:** {vice}")
-                        if meta.get("localizacao"): st.markdown(f"**Local:** {meta.get('localizacao')}")
-                        if meta.get("arena_extra"): st.markdown(f"**Arena:** {meta.get('arena_extra')}")
-                    with top[2]:
-                        if city in cities and st.button("Abrir Cidade", key=f"open_gym_city_{_stem_key(city)}"):
-                            st.session_state["comp_axis"] = "🌍 Locais"
-                            st.session_state["comp_region"] = cities[city].get("region")
-                            st.session_state["comp_city"] = city
-                            _touch_recent("comp_recent_cities", city)
-                            st.rerun()
-                    st.markdown("</div>", unsafe_allow_html=True)
-        st.stop()
+    # ---------------------------------------------------------
+    # 4. RENDERIZAÇÃO FINAL (O CARD DARK SOULS)
+    # ---------------------------------------------------------
+    
+    # Tenta achar imagem
+    img_path = _tentar_achar_imagem_compendium(selected_item)
+    
+    col_spacer_l, col_main, col_spacer_r = st.columns([1, 6, 1])
+    
+    with col_main:
+        st.markdown(f"""
+        <div class="lore-card">
+            <div class="lore-title">{conteudo['titulo']}</div>
+            <div class="lore-meta">{conteudo['subtitulo']}</div>
+        """, unsafe_allow_html=True)
 
-    if axis == "🧑‍🤝‍🧑 NPCs":
-        left, right = st.columns([1.15, 1.25], gap="large")
+        # Imagem
+        if img_path:
+            st.image(img_path, use_container_width=True)
+        else:
+            st.markdown("<br>", unsafe_allow_html=True) # Espaço vazio
+        
+        # Box de Stats (se houver)
+        if conteudo["stats"]:
+            stats_html = " &nbsp;|&nbsp; ".join(conteudo["stats"])
+            st.markdown(f"<div class='lore-stats-box'>{stats_html}</div>", unsafe_allow_html=True)
 
-        if not npcs:
-            st.info("Nenhum NPC carregado (verifique o DOCX de NPCs).")
-            st.stop()
+        # Texto Principal
+        st.markdown(f"""
+            <div class="lore-text">
+                {conteudo['html_texto'].replace(chr(10), '<br>')}
+            </div>
+            <br>
+        </div>
+        """, unsafe_allow_html=True)
 
-        with left:
-            st.markdown('<div class="comp-panel">', unsafe_allow_html=True)
-            st.markdown("### 🧑‍🤝‍🧑 NPCs — Filtros")
-            f1, f2 = st.columns([0.9, 1.1], gap="small")
-            with f1:
-                status_opt = st.radio("Status", ["Todos", "Vivos", "Mortos"], index=0, key="comp_npc_status")
-            with f2:
-                view = st.radio("Visualização", ["Grid", "Lista"], index=0, key="comp_npc_view", horizontal=True)
 
-            q = st.text_input("🔍 Buscar por nome", key="comp_npc_q", placeholder="Ex.: Tulsi, Stenio…")
-            only_fav = st.checkbox("⭐ Só favoritos", value=False, key="comp_npc_onlyfav")
-            show_recent = st.checkbox("🕒 Mostrar Recentes", value=True, key="comp_npc_showrecent")
-
-            def status_ok(obj: dict) -> bool:
-                stt = _norm(obj.get("status",""))
-                if status_opt == "Vivos":
-                    return "vivo" in stt
-                if status_opt == "Mortos":
-                    return "morto" in stt
-                return True
-
-            qn = _norm(q or "")
-            favs = st.session_state.get("comp_fav_npcs", []) or []
-            items = []
-            for nm, obj in npcs.items():
-                if qn and qn not in _norm(nm):
-                    continue
-                if not status_ok(obj):
-                    continue
-                if only_fav and nm not in favs:
-                    continue
-                items.append((nm, obj))
-
-            # Recentes
-            recents = st.session_state.get("comp_recent_npcs", []) or []
-            if show_recent and recents:
-                rec_filtered = [x for x in recents if x in npcs]
-                if rec_filtered:
-                    with st.expander("🕒 Recentes", expanded=True):
-                        for nm in rec_filtered[:8]:
-                            row = st.columns([0.7, 0.3], gap="small")
-                            with row[0]:
-                                if st.button(f"➡ {nm}", key=f"recent_npc_{_stem_key(nm)}"):
-                                    st.session_state["comp_npc_selected"] = nm
-                                    _touch_recent("comp_recent_npcs", nm)
-                                    st.rerun()
-                            with row[1]:
-                                fav = _is_fav("comp_fav_npcs", nm)
-                                if st.button("★" if fav else "☆", key=f"recent_npc_fav_{_stem_key(nm)}"):
-                                    _toggle_fav("comp_fav_npcs", nm)
-                                    st.rerun()
-
-            st.markdown("### 📇 Lista")
-            box = st.container(height=560)
-            with box:
-                if not items:
-                    st.caption("Nenhum NPC bateu com os filtros.")
-                else:
-                    if not st.session_state.get("comp_npc_selected") or st.session_state["comp_npc_selected"] not in npcs:
-                        st.session_state["comp_npc_selected"] = items[0][0]
-
-                    if view == "Lista":
-                        for nm, obj in items:
-                            img = comp_find_image(nm)
-                            fav = _is_fav("comp_fav_npcs", nm)
-
-                            st.markdown('<div class="comp-row">', unsafe_allow_html=True)
-                            r1, r2, r3 = st.columns([0.35, 0.95, 0.35], gap="small")
-                            with r1:
-                                if img:
-                                    st.image(img, use_container_width=True)
-                                else:
-                                    st.caption("🖼️")
-                            with r2:
-                                st.markdown(f"**{nm}**")
-                                # sprites no card
-                                pokes = obj.get("pokemons") or []
-                                if pokes:
-                                    cols = st.columns(min(3, len(pokes)))
-                                    for j, pnm in enumerate(pokes[:3]):
-                                        with cols[j]:
-                                            spr = _poke_sprite_cached(pnm)
-                                            if spr:
-                                                st.image(spr, width=40)
-                                if st.button("Abrir", key=f"open_npc_{_stem_key(nm)}"):
-                                    st.session_state["comp_npc_selected"] = nm
-                                    _touch_recent("comp_recent_npcs", nm)
-                                    st.rerun()
-                            with r3:
-                                if st.button("★" if fav else "☆", key=f"fav_npc_list_{_stem_key(nm)}"):
-                                    _toggle_fav("comp_fav_npcs", nm)
-                                    st.rerun()
-                            st.markdown("</div>", unsafe_allow_html=True)
-
-                    else:  # Grid
-                        cols = st.columns(4)
-                        for i, (nm, obj) in enumerate(items):
-                            img = comp_find_image(nm)
-                            with cols[i % 4]:
-                                st.markdown('<div class="comp-card">', unsafe_allow_html=True)
-                                if img:
-                                    st.image(img, use_container_width=True)
-                                st.markdown(f"**{nm}**")
-                                pokes = obj.get("pokemons") or []
-                                if pokes:
-                                    spr_cols = st.columns(min(3, len(pokes)))
-                                    for j, pnm in enumerate(pokes[:3]):
-                                        with spr_cols[j]:
-                                            spr = _poke_sprite_cached(pnm)
-                                            if spr:
-                                                st.image(spr, width=42)
-                                if st.button("Abrir", key=f"grid_open_npc_{_stem_key(nm)}"):
-                                    st.session_state["comp_npc_selected"] = nm
-                                    _touch_recent("comp_recent_npcs", nm)
-                                    st.rerun()
-                                st.markdown("</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        with right:
-            sel = st.session_state.get("comp_npc_selected")
-            _breadcrumb(["🧑‍🤝‍🧑 NPCs", sel] if sel else ["🧑‍🤝‍🧑 NPCs"])
-            if sel and sel in npcs:
-                ordered = [nm for nm, _ in items] if 'items' in locals() else list(npcs.keys())
-                _nav_prev_next(sel, ordered, prefix="comp_npc_selected")
-                _render_npc_dossier(sel, npcs[sel], cities, npcs, gyms)
-            else:
-                st.caption("Selecione um NPC para abrir o dossiê.")
-
-        return
-
+# Função auxiliar interna para achar imagens (mesmo que a sua _resolve_asset_path, mas local aqui)
+def _tentar_achar_imagem_compendium(nome_base):
+    if not nome_base: return None
+    # Lista de tentativas
+    tentativas = [
+        nome_base,
+        nome_base.replace(" ", "_"),
+        nome_base.replace(" ", ""),
+        nome_base.lower(),
+        nome_base.lower().replace(" ", "_")
+    ]
+    extensoes = [".png", ".jpg", ".jpeg"]
+    
+    # Procura na raiz e na pasta assets
+    locais_busca = ["", "assets/", "images/"]
+    
+    for local in locais_busca:
+        for nome in tentativas:
+            for ext in extensoes:
+                caminho = f"{local}{nome}{ext}"
+                if os.path.exists(caminho):
+                    return caminho
+    return None
 
 # ==============================================================================
 # PÁGINA 1: POKEDEX (VISÃO DE FOCO + CARROSSEL INFERIOR)
