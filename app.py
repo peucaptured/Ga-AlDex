@@ -6718,7 +6718,7 @@ def render_compendium_page() -> None:
                             st.rerun()
 
 
-        # --- COLUNA DIREITA (DETALHES DO NPC) ---
+# --- COLUNA DIREITA (DETALHES DO NPC) ---
         with right:
             nm = st.session_state.get("comp_selected_npc")
             
@@ -6751,7 +6751,8 @@ def render_compendium_page() -> None:
                 try: img_path_big = comp_find_image(nm)
                 except: pass
                 
-                # Monta o card de detalhes
+                # --- INÍCIO DA RENDERIZAÇÃO DO CARD ---
+                # 1. Cabeçalho (Nome e Metadados)
                 st.markdown(f"""
                 <div class="ds-frame">
                     <div class="ds-name">{nm}</div>
@@ -6760,37 +6761,27 @@ def render_compendium_page() -> None:
                     </div>
                 """, unsafe_allow_html=True)
                 
+                # 2. Imagem (usando st.image para garantir compatibilidade)
                 if img_path_big and os.path.exists(img_path_big):
                     st.image(img_path_big, use_container_width=True)
+                else:
+                    # Placeholder se não tiver imagem
+                    st.markdown("<div style='height:200px; background:rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; color:#555;'>Sem Imagem</div>", unsafe_allow_html=True)
 
-                st.markdown(f"""
-                    <div style="margin-top: 15px; text-align: justify; color: #ccc;">
-                        {historia if historia else "<i>Sem registros históricos disponíveis.</i>"}
-                    </div>
-                </div> """, unsafe_allow_html=True)
-
-                meta_parts = []
-                if ocup:
-                    meta_parts.append(str(ocup))
-                if idade:
-                    meta_parts.append(f"IDADE: {idade}")
-                if status:
-                    meta_parts.append(f"STATUS: {status}")
-                meta_line = " | ".join(meta_parts) if meta_parts else ""
-                st.markdown(f"<div class='ds-meta'>{meta_line}</div>", unsafe_allow_html=True)
-
-                if url:
-                    st.markdown(f"<div class='ds-portrait'><img src='{url}' /></div>", unsafe_allow_html=True)
-
-                st.markdown("<div class='ds-section-title'>História</div>", unsafe_allow_html=True)
+                # 3. História e Fechamento
+                # Convertemos quebras de linha em parágrafos HTML para ficar bonito
                 if historia:
                     paras = [p.strip() for p in historia.split("\n") if p.strip()]
-                    html = "".join(f"<p>{p}</p>" for p in paras)
-                    st.markdown(f"<div class='ds-history'>{html}</div>", unsafe_allow_html=True)
+                    hist_html = "".join(f"<p style='margin-bottom:10px;'>{p}</p>" for p in paras)
                 else:
-                    st.markdown("<div class='ds-meta' style='margin-top:8px;'>Sem história cadastrada.</div>", unsafe_allow_html=True)
+                    hist_html = "<i>Sem registros históricos disponíveis.</i>"
 
-                st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown(f"""
+                    <div style="margin-top: 20px; text-align: justify; color: #ccc; border-top: 1px solid #443311; padding-top: 15px;">
+                        <div class='ds-section-title' style='margin-bottom:10px;'>História</div>
+                        {hist_html}
+                    </div>
+                </div> """, unsafe_allow_html=True)
 
         return
 
