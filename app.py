@@ -6184,13 +6184,18 @@ def render_compendium_page() -> None:
         {font_css}
         /* Aplica a fonte em tudo */
         .block-container {{ font-family: 'DarkSouls', serif !important; }}
-        
-        /* Transforma botões em texto clicável (sem caixa) */
+        /* ESTILO DOS BOTÕES (O que você gostou) */
+        /* Remove a caixa/borda padrão e deixa só o texto */
         .stButton > button {{
-            background: transparent !important; border: none !important;
-            color: #888 !important; font-size: 24px !important;
+            background: transparent !important;
+            border: none !important;
+            color: #888 !important; /* Cor normal (cinza escuro) */
+            font-size: 24px !important;
             text-shadow: 0px 0px 5px rgba(0,0,0,0.8);
             font-family: 'DarkSouls', serif !important;
+            text-transform: uppercase;
+            transition: transform 0.2s, color 0.2s;
+        }}
         }}
         .stButton > button:hover {{
             color: #FFD700 !important; text-shadow: 0 0 10px #FFD700; transform: scale(1.1);
@@ -6198,6 +6203,10 @@ def render_compendium_page() -> None:
         .stButton > button:active, .stButton > button:focus {{
             color: #FFD700 !important; outline: none !important; border: none !important; box-shadow: none !important;
         }}
+        
+    /* Esconde elementos padrão do Streamlit para imersão */
+    [data-testid="stHeader"] {{ visibility: hidden; }}
+    [data-testid="stSidebar"] {{ display: none !important; }}
     </style>
     """, unsafe_allow_html=True)
     import os
@@ -6706,30 +6715,58 @@ def render_compendium_page() -> None:
         </style>
         """, unsafe_allow_html=True)
 
-        # --- 2. MENU SUPERIOR CENTRALIZADO (Substitui render_top_nav) ---
-        # Usamos 5 colunas. As colunas 1 e 5 são vazias para empurrar o conteúdo para o centro.
-        mc1, mc2, mc3, mc4, mc5 = st.columns([1, 1, 1, 1, 1])
-        
-        with mc2:
-            if st.button("NPCs", key="btn_nav_npcs", use_container_width=True):
-                st.session_state["comp_view"] = "npcs"
-                st.rerun()
-        
-        with mc3:
-            if st.button("Locais", key="btn_nav_locais", use_container_width=True):
-                st.session_state["comp_view"] = "locais"
-                st.rerun()
+    # --- 2. MENU DE NAVEGAÇÃO SUPERIOR ---
+    st.markdown("<br>", unsafe_allow_html=True)
 
-        with mc4:
-            # BOTÃO SAIR COM LÓGICA DE RESET
-            if st.button("Sair de Ga'al", key="btn_nav_sair", use_container_width=True):
-                st.session_state["comp_view"] = "npcs"        # Reseta a aba interna para o padrão
-                st.session_state["menu_principal"] = "Início" # <--- Volta para a tela inicial do App
-                st.rerun()
+    # 1. Garante que existe uma view selecionada
+    if "comp_view" not in st.session_state:
+        st.session_state["comp_view"] = "npcs" # Ou "home"
 
-        st.markdown("---") # Linha divisória
-        
-        left, right = st.columns([1.25, 2.15], gap="large")
+    def _go(view_name):
+        st.session_state["comp_view"] = view_name
+        st.rerun()
+
+    # 2. Cria as colunas do menu (4 colunas agora, fica mais organizado que 5 com buracos)
+    cols = st.columns([1, 1, 1, 1], gap="small")
+    
+    # Lista de Botões
+    labels = [
+        ("npcs", "NPCs"), 
+        ("ginasios", "Ginásios"), 
+        ("locais", "Locais"), 
+        ("sair", "Sair de Ga'Al")
+    ]
+
+    # 3. Renderiza os botões com o efeito Dourado na aba ativa
+    for i, (v, lab) in enumerate(labels):
+        with cols[i]:
+            # CSS Mágico: Se for a aba atual, pinta este botão de dourado
+            if st.session_state["comp_view"] == v:
+                st.markdown(f"""
+                <style>
+                div[data-testid="column"]:nth-of-type({i+1}) button {{
+                    color: #FFD700 !important;
+                    border-bottom: 2px solid #FFD700 !important;
+                    text-shadow: 0 0 10px #FFD700 !important;
+                }}
+                </style>
+                """, unsafe_allow_html=True)
+
+            # Botão
+            if st.button(lab, key=f"nav_{v}", use_container_width=True):
+                if v == "sair":
+                    # --- SUA LÓGICA DE SAÍDA AQUI ---
+                    st.session_state["comp_view"] = "npcs" # Reseta se quiser
+                    st.session_state["menu_principal"] = "Início" # <--- O SEU COMANDO
+                    st.rerun()
+                else:
+                    _go(v)
+    
+    st.markdown("---") 
+
+    # --- 3. PREPARAÇÃO DO LAYOUT (Conforme seu código original) ---
+    # Aqui recuperamos aquelas colunas 'left' e 'right' que você usa embaixo
+    left, right = st.columns([1.25, 2.15], gap="large")
 
         # --- COLUNA ESQUERDA ---
         with left:
