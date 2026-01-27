@@ -10242,7 +10242,7 @@ elif page == "PvP – Arena Tática":
 
     
 
-elif page == "📚 Compendium de Ga'Al":
+elif page == "Compendium de Ga'Al":
     render_compendium_page()
 
 elif page == "Mochila":
