@@ -248,19 +248,20 @@ class Move:
     def pp_cost(self, rank: int) -> Tuple[Optional[float], str]:
         """
         Retorna (pp_cost, explicacao). Aqui "PP" = Power Points do M&M.
-
+    
         - Se existir coluna PP_Custo no Excel, usa direto.
         - Caso contrário, usa um estimador simples (você pode trocar depois pela sua tabela oficial).
-        Regra base do M&M: custo final por graduação = custo básico + extras - falhas. :contentReference[oaicite:3]{index=3}
+        Regra base do M&M: custo final por graduação = custo básico + extras - falhas.
         """
-                # (A0) Novo: "PP por Rank" vindo do Excel -> PP total = (pp_por_rank * rank)
+    
+        # (A0) Novo: "PP por Rank" vindo do Excel -> PP total = (pp_por_rank * rank)
         if "PP por Rank" in self.raw and _safe_str(self.raw.get("PP por Rank")):
             try:
                 ppr = float(str(self.raw["PP por Rank"]).replace(",", "."))
                 return ppr * float(rank), 'PP total = ("PP por Rank" do Excel) × rank.'
             except Exception:
                 pass
-
+    
         # (A) override do Excel
         for key in ("PP_Custo", "PP", "Custo_PP"):
             if key in self.raw and _safe_str(self.raw.get(key)):
@@ -269,6 +270,7 @@ class Move:
                     return val, f"PP_Custo vindo do Excel ({key})."
                 except Exception:
                     pass
+
 
         # (B) estimador bem simples (trocável!)
         # Ideia: golpes que têm Damage tendem a escalar mais caro; Linked/Área etc aumentam.
@@ -1944,12 +1946,12 @@ html, body{
     radial-gradient(circle at 90% 30%, rgba(255,255,255,0.04), transparent 40%),
     var(--gba-bg) !important;
 }
-div[data-testid="stAppViewContainer"],
-div[data-testid="stAppViewContainer"] > .main,
-div[data-testid="stHeader"],
-div[data-testid="stSidebar"]{
-  background: transparent !important;
-}
+div[data-testid="stAppViewContainer"]{{
+  background: radial-gradient(ellipse at center, #0a0a0a 0%, #000 62%, #000 100%) !important;
+}}
+div[data-testid="stAppViewContainer"] > .main{{ background: transparent !important; }}
+div[data-testid="stSidebar"]{{ background: #000 !important; }}
+div[data-testid="stHeader"]{{ background: transparent !important; }}
 
 /* =========================================================
    2) FONTE RETRÔ E CONTRASTE GLOBAL (FORÇADO)
@@ -6159,43 +6161,142 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
         st.markdown(v)
 
 
+import base64
 
+@st.cache_data
+def get_font_base64(font_path):
+    """Lê o arquivo de fonte e converte para base64 para uso no CSS."""
+    try:
+        with open(font_path, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except Exception:
+        return None
 # ==============================================================================
 # 📚 COMPENDIUM NOVO (JSON + DARK SOULS) - CORRIGIDO
 # ==============================================================================
+
 def render_compendium_page() -> None:
-    """
-    Compendium de Ga'Al (estilo Dark Souls)
-    - Home screen (tela exclusiva) com tabs NPCs/Ginásios/Locais
-    - Cursor ">" + highlight forte
-    - "PRESS ANY BUTTON" piscando
-    - Submenu NPCs com:
-        - lista à esquerda (imagem pequena + nome)
-        - busca que filtra por texto na História
-        - painel à direita com retrato grande, nome (estilo Dark Souls), idade, sprites dos pokémons e História
-    Observação: Streamlit não oferece captura global de teclado por JS sem componente externo.
-    Portanto:
-      • setas funcionam ao focar o radio (tabs) / botões (comportamento padrão do navegador)
-      • Enter funciona nos botões quando focados (padrão)
-    """
+    # --- INÍCIO DA INSERÇÃO ---
+    font_b64 = get_font_base64("DarkSouls.ttf")
+    font_css = f"@font-face {{ font-family: 'DarkSouls'; src: url('data:font/ttf;base64,{font_b64}') format('truetype'); }}" if font_b64 else ""
+
+    st.markdown(f"""
+    <style>
+        {font_css}
+        /* Aplica a fonte em tudo */
+        .block-container {{ font-family: 'DarkSouls', serif !important; }}
+        /* ESTILO DOS BOTÕES (O que você gostou) */
+        /* Remove a caixa/borda padrão e deixa só o texto */
+        .stButton > button {{
+            background: transparent !important;
+            border: none !important;
+            color: #888 !important; /* Cor normal (cinza escuro) */
+            font-size: 24px !important;
+            text-shadow: 0px 0px 5px rgba(0,0,0,0.8);
+            font-family: 'DarkSouls', serif !important;
+            text-transform: uppercase;
+            transition: transform 0.2s, color 0.2s;
+        }}
+        }}
+        .stButton > button:hover {{
+            color: #FFD700 !important; text-shadow: 0 0 10px #FFD700; transform: scale(1.1);
+        }}
+        .stButton > button:active, .stButton > button:focus {{
+            color: #FFD700 !important; outline: none !important; border: none !important; box-shadow: none !important;
+        }}
+        
+    /* Esconde elementos padrão do Streamlit para imersão */
+    [data-testid="stHeader"] {{ visibility: hidden; }}
+    [data-testid="stSidebar"] {{ display: none !important; }}
+    
+    /* Esconde o resto da UI padrão do Streamlit (menu, toolbar, rodapé) */
+    #MainMenu {{ visibility: hidden; }}
+    footer {{ visibility: hidden; }}
+    header {{ visibility: hidden; }}
+    [data-testid="stToolbar"] {{ visibility: hidden !important; height: 0px !important; }}
+    [data-testid="stStatusWidget"] {{ visibility: hidden !important; }}
+    [data-testid="stDeployButton"] {{ display: none !important; }}
+
+    /* HOME - Menu estilo Dark Souls */
+    .ds-home {{
+        min-height: 75vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 22px;
+    }}
+    .ds-title {{
+        font-size: 56px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.85);
+        text-shadow: 0 0 18px rgba(0,0,0,0.9);
+        margin: 0;
+        padding: 0;
+        text-align: center;
+    }}
+    .ds-home-menu {{
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+        margin-top: 10px;
+    }}
+    .ds-menu-item {{
+        display: inline-block;
+        text-decoration: none !important;
+        border: none !important;
+        background: transparent !important;
+        outline: none !important;
+        color: rgba(255,255,255,0.62) !important;
+        font-size: 24px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        text-shadow: 0 0 8px rgba(0,0,0,0.85);
+        transition: transform 120ms ease, color 120ms ease, text-shadow 120ms ease;
+        padding: 2px 0;
+    }}
+    .ds-menu-item:hover,
+    .ds-menu-item:focus,
+    .ds-menu-item:active {{
+        color: #FFD700 !important;
+        text-shadow: 0 0 12px rgba(255,215,0,0.85), 0 0 24px rgba(255,215,0,0.35);
+        transform: translateX(6px);
+    }}
+    .ds-menu-item.selected {{
+        color: #FFD700 !important;
+        text-shadow: 0 0 12px rgba(255,215,0,0.85), 0 0 24px rgba(255,215,0,0.35);
+    }}
+    .ds-menu-item.selected::before {{
+        content: "› ";
+        color: #FFD700;
+    }}
+
+</style>
+    """, unsafe_allow_html=True)
     import os
     import json
     import base64
     import re
+    import shutil
 
     # ----------------------------
-    # Paths (robusto p/ local + deploy)
+    # Paths
     # ----------------------------
     try:
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     except Exception:
         BASE_DIR = os.getcwd()
 
+    # ----------------------------
+    # Carregamento JSON
+    # ----------------------------
     def _candidates(filename: str) -> list[str]:
         return [
             os.path.join(BASE_DIR, filename),
             os.path.join(BASE_DIR, "data", filename),
-            os.path.join(BASE_DIR, "assets", "data", filename),
             os.path.join(os.getcwd(), filename),
             os.path.join(os.getcwd(), "data", filename),
         ]
@@ -6231,20 +6332,55 @@ def render_compendium_page() -> None:
     data_vivos = _load_json("gaal_npcs_vivos.json")
     data_mortos = _load_json("gaal_npcs_mortos.json")
 
-    regions = data_locais.get("regions", {}) or {}
-    cities = data_locais.get("cities", {}) or {}
-
-    lideres = data_ginasios.get("npcs", {}) or {}
-    if not lideres and isinstance(data_ginasios, dict):
-        lideres = data_ginasios or {}
-
     npcs_gerais: dict = {}
     npcs_gerais.update((data_vivos.get("npcs", {}) or {}))
     npcs_gerais.update((data_mortos.get("npcs", {}) or {}))
 
     # ----------------------------
+    # Static dir (copia retratos p/ cache do navegador)
+    # ----------------------------
+    STATIC_DIR = os.path.join(BASE_DIR, "static")
+    STATIC_TREINADORES = os.path.join(STATIC_DIR, "treinadores")
+    os.makedirs(STATIC_TREINADORES, exist_ok=True)
+
+    # ----------------------------
+    # Índice de imagens (reusa util existente)
+    # ----------------------------
+    def _safe_slug(s: str) -> str:
+        s = (s or "").strip().lower()
+        s = re.sub(r"['’]", "", s)
+        s = re.sub(r"[^a-z0-9áàâãéèêíìîóòôõúùûç\s_-]", "", s, flags=re.IGNORECASE)
+        s = re.sub(r"\s+", "_", s).strip("_")
+        return s
+
+    # Encontrar imagem em /treinadores (ou assets) e garantir cópia em /static/treinadores
+    @st.cache_data(show_spinner=False)
+    def _npc_static_url(npc_name: str) -> str:
+        p = comp_find_image(npc_name)  # já busca em /treinadores e outras pastas
+        if not p or not os.path.exists(p):
+            return ""
+        fn = os.path.basename(p)
+        target = os.path.join(STATIC_TREINADORES, fn)
+        try:
+            if not os.path.exists(target) or os.path.getsize(target) != os.path.getsize(p):
+                shutil.copy2(p, target)
+        except Exception:
+            # se não conseguir copiar, ainda tentamos usar o caminho original via st.image (fallback)
+            return ""
+        # URL servido pelo Streamlit (Static Serving)
+        return f"app/static/treinadores/{fn}"
+
+    # ----------------------------
     # Font injection (TTF opcional)
     # ----------------------------
+    # =============================
+    # COMPENDIUM (BLOCO CORRIGIDO)
+    # - Menu SEMPRE no topo (todas as páginas)
+    # - Indentação corrigida (sem erro no "with left")
+    # - Sem menu duplicado dentro de NPCs
+    # - HOME não cai direto em NPCs
+    # =============================
+    
     def _inject_font_face_if_exists(ttf_path: str, font_family: str) -> str:
         try:
             if not os.path.exists(ttf_path):
@@ -6261,88 +6397,77 @@ def render_compendium_page() -> None:
             """
         except Exception:
             return ""
-
+    
     font_css = (
         _inject_font_face_if_exists(os.path.join(BASE_DIR, "assets", "fonts", "DarkSouls.ttf"), "GaAL_DS")
         or _inject_font_face_if_exists(os.path.join(BASE_DIR, "assets", "fonts", "darksouls.ttf"), "GaAL_DS")
+        or _inject_font_face_if_exists(os.path.join(BASE_DIR, "static", "DarkSouls.ttf"), "GaAL_DS")
+        or _inject_font_face_if_exists(os.path.join(BASE_DIR, "static", "darksouls.ttf"), "GaAL_DS")
     )
-
     ds_font = "GaAL_DS" if font_css.strip() else "Cinzel"
-
+    
     # ----------------------------
-    # CSS (força preto + branco + dourado)
+    # CSS (preto + branco + dourado, tabs no topo)
     # ----------------------------
     st.markdown(
         f"""
         <style>
-        /* Oculta header/toolbar/footer padrão */
         [data-testid="stHeader"] {{ visibility: hidden; }}
         [data-testid="stToolbar"] {{ visibility: hidden; height: 0px; }}
         footer {{ visibility: hidden; }}
-
-        /* Fallback parecido */
+    
+        /* FECHA/ESCONDE SIDEBAR automaticamente no Compendium */
+        [data-testid="stSidebar"] {{ display: none !important; }}
+        [data-testid="stSidebarNav"] {{ display: none !important; }}
+    
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
-
         {font_css}
-
+    
         :root {{
             --ds-font: {ds_font};
             --ds-white: rgba(255,255,255,0.96);
             --ds-dim: rgba(255,255,255,0.80);
             --ds-faint: rgba(255,255,255,0.58);
             --ds-line: rgba(255,255,255,0.12);
-            --ds-black: #050505;
-            --ds-black-2: #000000;
+            --ds-black: #000000;
+            --ds-black-2: #050505;
             --ds-gold: rgba(176,143,60,0.92);
             --ds-gold-dim: rgba(176,143,60,0.50);
         }}
-
-        /* FORÇA: fundo preto, não importa o tema global */
-        [data-testid="stAppViewContainer"],
-        .stApp {{
+    
+        [data-testid="stAppViewContainer"], .stApp {{
             background: radial-gradient(900px 520px at 50% 30%, rgba(255,255,255,0.05), rgba(0,0,0,0) 60%),
                         linear-gradient(180deg, var(--ds-black), var(--ds-black-2)) !important;
             color: var(--ds-white) !important;
         }}
-
-        /* Aplica fonte DS em TODA a aba do compendium */
-        html, body, .stApp, .stApp * {{
+    
+        html, body, .stApp, .stApp *, [data-testid="stAppViewContainer"] * {{
             font-family: var(--ds-font), "Cinzel", "Times New Roman", serif !important;
         }}
-        a, a:visited {{ color: var(--ds-white) !important; }}
-
-        /* Container central */
+    
         [data-testid="stMainBlockContainer"] {{
-            max-width: 1200px;
-            padding-top: 0.6rem;
-            padding-bottom: 2.4rem;
+            max-width: 1320px;
+            padding-top: 0.7rem;
+            padding-bottom: 2.0rem;
         }}
-
-        /* Linhas douradas (como UI do jogo) */
-        .ds-gold-top, .ds-gold-bottom {{
-            position: fixed;
-            left: 0; right: 0;
-            height: 2px;
+    
+        .ds-gold-top {{
+            position: fixed; left:0; right:0; top:0;
+            height:2px;
             background: linear-gradient(90deg, transparent, var(--ds-gold), transparent);
-            z-index: 9999;
-            pointer-events: none;
-            opacity: 0.95;
+            z-index: 9999; pointer-events:none; opacity: 0.95;
         }}
-        .ds-gold-top {{ top: 0; }}
-        .ds-gold-bottom {{ bottom: 0; }}
-
-        /* Home: título */
+    
         .ds-home {{
             min-height: 74vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 22px;
-            padding: 10px 0 0 0;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            gap: 18px;
         }}
         .ds-title {{
-            text-align: center;
+            text-align:center;
             color: var(--ds-white);
             font-size: 56px;
             letter-spacing: 0.28em;
@@ -6350,7 +6475,7 @@ def render_compendium_page() -> None:
             margin: 0;
         }}
         .ds-press {{
-            text-align: center;
+            text-align:center;
             color: var(--ds-faint);
             font-size: 14px;
             letter-spacing: 0.34em;
@@ -6361,124 +6486,130 @@ def render_compendium_page() -> None:
             0%, 48% {{ opacity: 0.10; }}
             60%, 100% {{ opacity: 0.88; }}
         }}
-        .ds-blink {{
-            animation: dsBlink 1.05s ease-in-out infinite;
+        .ds-blink {{ animation: dsBlink 1.05s ease-in-out infinite; }}
+    
+        /* =======================
+           TOP NAV (MENU)
+           ======================= */
+            /* =======================
+           TOP NAV (MENU) - HTML links (não usa st.button)
+           ======================= */
+        
+        .ds-nav {{
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            gap: 44px;
+            margin: 18px 0 16px 0;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(176,143,60,0.25);
         }}
-
-        /* Tabs (radio horizontal) no rodapé */
-        /* Move o radio para o fundo, estilo menu */
-        div[data-testid="stRadio"] {{
-            position: fixed !important;
-            left: 50% !important;
-            transform: translateX(-50%) !important;
-            bottom: 48px !important;
-            z-index: 10000 !important;
-            padding: 10px 18px !important;
-            background: rgba(0,0,0,0.0) !important;
+        
+        .ds-nav-bottom {{
+            margin-top: 24px !important;
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+            border-bottom: none !important;
+            border-top: 1px solid rgba(176,143,60,0.25);
+            padding-top: 12px;
         }}
-        div[data-testid="stRadio"] > label {{
-            display: none !important;
+        
+        .ds-nav-sticky {{
+            position: sticky;
+            top: 10px;
+            z-index: 9998;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border: 1px solid rgba(176,143,60,0.22);
+            border-radius: 12px;
+            padding: 10px 14px;
+            box-shadow: 0 0 28px rgba(0,0,0,0.85);
         }}
-        /* Linha dourada fina acima dos tabs */
-        div[data-testid="stRadio"]::before {{
-            content: "";
-            display: block;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--ds-gold-dim), transparent);
-            margin-bottom: 10px;
+        
+        .ds-after-nav-space {{
+            height: 10px;
         }}
-
-        /* Estilo das opções (cursor + sombra forte) */
-        div[role="radiogroup"] {{
-            display: flex !important;
-            gap: 58px !important;
-            justify-content: center !important;
-            align-items: center !important;
+        
+        .ds-nav-item {{
+            display: inline-block;
+            padding: 6px 10px;
+            background: transparent;
+            border: none;
+            text-decoration: none !important;
+        
+            color: rgba(255,255,255,0.72);
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+        
+            transition: transform 0.15s ease, color 0.15s ease, text-shadow 0.15s ease;
         }}
-        div[role="radiogroup"] > label {{
-            position: relative !important;
-            padding: 8px 14px 10px 26px !important;
-            border-radius: 10px !important;
-            border: 1px solid transparent !important;
-            background: rgba(0,0,0,0.0) !important;
-            transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
-        }}
-        div[role="radiogroup"] > label:hover {{
-            background: rgba(255,255,255,0.06) !important;
-            border-color: rgba(255,255,255,0.10) !important;
-        }}
-        div[role="radiogroup"] input {{
-            display: none !important;
-        }}
-        /* Cursor “>” */
-        div[role="radiogroup"] > label::before {{
-            content: ">";
-            position: absolute;
-            left: 8px;
-            top: 8px;
-            color: rgba(255,255,255,0.0);
-            font-size: 14px;
-            transition: color 160ms ease;
-        }}
-        /* Underline animado */
-        div[role="radiogroup"] > label::after {{
-            content: "";
-            position: absolute;
-            left: 26px;
-            right: 14px;
-            bottom: 5px;
-            height: 1px;
-            background: rgba(255,255,255,0.0);
-            transform: scaleX(0.2);
-            transform-origin: left;
-            transition: transform 180ms ease, background 180ms ease;
-        }}
-
-        /* Texto */
-        div[role="radiogroup"] p {{
-            margin: 0 !important;
-            color: rgba(255,255,255,0.45) !important;
-            letter-spacing: 0.18em !important;
-            text-transform: uppercase !important;
-            font-size: 12px !important;
-        }}
-        /* Selecionado (sombra mais forte) */
-        div[role="radiogroup"] > label:has(input:checked) {{
-            background: rgba(255,255,255,0.08) !important;
-            border-color: rgba(176,143,60,0.45) !important;
-            box-shadow: 0 0 26px rgba(0,0,0,0.85), 0 0 18px rgba(176,143,60,0.16) !important;
+        
+        .ds-nav-item:hover {{
+            color: rgba(255,215,0,0.95);
+            text-shadow: 0 0 14px rgba(255,215,0,0.35);
             transform: translateY(-1px);
         }}
-        div[role="radiogroup"] > label:has(input:checked)::before {{
-            color: rgba(255,255,255,0.92) !important;
+        
+        .ds-nav-item.selected {{
+            color: rgba(255,215,0,0.98);
+            text-shadow: 0 0 16px rgba(255,215,0,0.40);
         }}
-        div[role="radiogroup"] > label:has(input:checked) p {{
-            color: rgba(255,255,255,0.92) !important;
-        }}
-        div[role="radiogroup"] > label:has(input:checked)::after {{
-            background: var(--ds-gold) !important;
-            transform: scaleX(1);
-        }}
-
-        /* Botões (NPC grid) com cara de item */
-        .stButton>button {{
-            width: 100%;
-            background: rgba(0,0,0,0.35) !important;
-            color: var(--ds-white) !important;
-            border: 1px solid rgba(255,255,255,0.12) !important;
-            border-radius: 10px !important;
-            padding: 10px 10px !important;
-            letter-spacing: 0.12em !important;
-            text-transform: uppercase !important;
-            transition: box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
-        }}
-        .stButton>button:hover {{
-            background: rgba(255,255,255,0.06) !important;
-            border-color: rgba(176,143,60,0.30) !important;
-            box-shadow: 0 0 18px rgba(176,143,60,0.14);
+        
+        .ds-nav-item.selected::before {{
+            content: "> ";
+            color: rgba(255,215,0,0.98);
         }}
 
-        /* Painel de detalhes (frame dourado) */
+   
+        /* GRID NPC (4 colunas) */
+        .ds-grid {{
+            display:grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 18px;
+        }}
+        .ds-card {{
+            background: rgba(0,0,0,0.55);
+            border: 2px solid rgba(176,143,60,0.55);
+            border-radius: 12px;
+            overflow:hidden;
+            box-shadow: 0 0 26px rgba(0,0,0,0.85);
+        }}
+        .ds-card-inner {{
+            padding: 10px;
+        }}
+        .ds-card-img {{
+            width:100%;
+            aspect-ratio: 3/4;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.12);
+            filter: saturate(0.92) contrast(1.02);
+            display:block;
+        }}
+        .ds-card-name {{
+            margin-top: 10px;
+            text-align:center;
+            letter-spacing: 0.20em;
+            text-transform: uppercase;
+            font-size: 14px;
+            color: rgba(255,255,255,0.95);
+            padding: 10px 8px;
+            border-top: 1px solid rgba(176,143,60,0.25);
+            background: rgba(176,143,60,0.10);
+            border-radius: 0 0 10px 10px;
+        }}
+        .ds-card-btn div[data-testid="stButton"] > button {{
+            width:100% !important;
+            background: transparent !important;
+            color: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            height: 0 !important;
+            min-height: 0 !important;
+        }}
+    
+        /* Painel de detalhes */
         .ds-frame {{
             background: rgba(0,0,0,0.55);
             border: 2px solid rgba(176,143,60,0.55);
@@ -6513,43 +6644,62 @@ def render_compendium_page() -> None:
             margin-bottom: 18px;
         }}
         .ds-portrait {{
-            display: flex;
-            justify-content: center;
-            margin: 12px 0 10px 0;
+            display:flex; justify-content:center; margin: 12px 0 10px 0;
         }}
         .ds-portrait img {{
-            max-width: 300px;
-            width: 100%;
+            max-width: 320px; width:100%;
             border-radius: 10px;
             border: 1px solid rgba(255,255,255,0.12);
             box-shadow: 0 0 26px rgba(0,0,0,0.75);
         }}
-        .ds-sprites {{
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: center;
-            margin: 10px 0 12px 0;
-        }}
-        .ds-sprites img {{
-            width: 56px;
-            height: 56px;
-            image-rendering: pixelated;
-            background: rgba(0,0,0,0.35);
-            border: 1px solid rgba(255,255,255,0.10);
-            border-radius: 10px;
-            padding: 2px;
-        }}
         .ds-section-title {{
-            margin-top: 14px;
-            margin-bottom: 10px;
+            margin-top: 14px; margin-bottom: 10px;
             color: var(--ds-faint);
             letter-spacing: 0.18em;
             text-transform: uppercase;
             font-size: 14px;
             border-bottom: 1px solid rgba(255,255,255,0.08);
             padding-bottom: 8px;
+            text-align:center;
+        }}
+        .ds-poke-container {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid #443311;
+            border-radius: 8px;
+            padding: 8px;
+            transition: all 0.3s ease;
+        }}
+        .ds-poke-container:hover {{
+            border-color: #FFD700;
+            background: rgba(20,20,10,0.8);
+            transform: translateY(-3px);
+        }}
+        .ds-poke-img {{
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            filter: sepia(1) brightness(0.8) contrast(1.2);
+            opacity: 0.85;
+            transition: all 0.4s ease;
+        }}
+        .ds-poke-container:hover .ds-poke-img {{
+            filter: sepia(0) brightness(1) contrast(1);
+            opacity: 1;
+        }}
+        .ds-poke-name {{
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #887766;
+            margin-top: 5px;
             text-align: center;
+            letter-spacing: 1px;
+        }}
+        .ds-poke-container:hover .ds-poke-name {{
+            color: #FFD700;
         }}
         .ds-history p {{
             color: rgba(255,255,255,0.88);
@@ -6558,150 +6708,234 @@ def render_compendium_page() -> None:
             text-align: justify;
             margin: 0 0 14px 0;
         }}
-        .ds-mark {{
-            background: rgba(176,143,60,0.25);
-            padding: 0 4px;
-            border-radius: 4px;
+        /* TOP NAV — texto puro */
+        .ds-tab div[data-testid="stButton"] > button {{
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+          color: rgba(255,255,255,0.72) !important;
         }}
-
-        /* Corrige labels padrão do Streamlit */
-        .stTextInput label, .stSelectbox label {{
-            color: rgba(255,255,255,0.72) !important;
+        
+        /* Hover dourado */
+        .ds-tab div[data-testid="stButton"] > button:hover {{
+          color: rgba(255,215,0,0.95) !important;
+          text-shadow: 0 0 14px rgba(255,215,0,0.35) !important;
+        }}
+        
+        /* Selecionado = dourado sempre */
+        .ds-tab.selected div[data-testid="stButton"] > button {{
+          color: rgba(255,215,0,0.98) !important;
+          text-shadow: 0 0 18px rgba(255,215,0,0.45) !important;
+        }}
+        
+        /* Remove outline padrão */
+        .ds-tab div[data-testid="stButton"] > button:focus {{
+          outline: none !important;
         }}
         </style>
         <div class="ds-gold-top"></div>
-        <div class="ds-gold-bottom"></div>
         """,
         unsafe_allow_html=True,
     )
-
+    
     # ----------------------------
-    # Estado do Compendium
+    # Estado do Compendium — NÃO cai direto em NPCs
     # ----------------------------
     st.session_state.setdefault("comp_view", "home")
     st.session_state.setdefault("comp_selected_npc", None)
-
+    
     # ----------------------------
-    # HOME (tela exclusiva)
+    # Navegação (sempre no topo)
     # ----------------------------
-    if st.session_state["comp_view"] == "home":
-        st.markdown(
-            """
-            <div class="ds-home">
-                <div class="ds-title">BEM VINDO A GA'AL</div>
-                <div class="ds-press ds-blink">PRESS ANY BUTTON</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        # Tabs (radio) no rodapé
-        tab = st.radio(
-            "Compendium Tabs",
-            ["NPCs", "Ginásios", "Locais"],
-            index=0,
-            horizontal=True,
-            label_visibility="collapsed",
-            key="ds_home_tabs",
-        )
-
-        # Botão Enter (fica acima do rodapé; pode ser acionado com Enter quando focado)
-        # (Streamlit não permite capturar Enter global sem componente JS.)
-        spacer = st.empty()
-        with spacer.container():
-            cols = st.columns([1, 1, 1])
-            with cols[1]:
-                if st.button("ENTER", key="ds_home_enter"):
-                    st.session_state["comp_view"] = tab.lower()
-                    st.rerun()
-        return
-
+    # ----------------------------
+    # Navegação (HOME embaixo / outras páginas em cima e sticky)
+    # ----------------------------
+    def _go(view: str):
+        st.session_state["comp_view"] = view
+        if view != "npcs":
+            st.session_state["comp_selected_npc"] = None
+        st.rerun()
+    
+    def render_top_nav(selected: str, position: str = "top"):
+        """
+        position: "top" ou "bottom"
+        top = sticky
+        """
+        try:
+            from st_click_detector import click_detector
+        except ImportError:
+            st.error("Biblioteca não instalada. Adicione 'st-click-detector' ao requirements.txt e reinicie o app.")
+            return
+    
+        wrapper_class = "ds-nav ds-nav-sticky" if position == "top" else "ds-nav ds-nav-bottom"
+    
+        labels = [
+            ("home", "Menu"),
+            ("npcs", "NPCs"),
+            ("ginasios", "Ginásios"),
+            ("locais", "Locais"),
+            ("sair", "Sair"),
+        ]
+    
+        # HTML do menu (não usa st.button -> não fica azul)
+        html = f"<div class='{wrapper_class}'>"
+        for v, lab in labels:
+            cls = "ds-nav-item selected" if selected == v else "ds-nav-item"
+            html += f"<a href='#' id='{v}' class='{cls}'>{lab}</a>"
+        html += "</div>"
+    
+        clicked = click_detector(html)
+    
+        # respiro pra não colar no conteúdo quando estiver sticky no topo
+        if position == "top":
+            st.markdown("<div class='ds-after-nav-space'></div>", unsafe_allow_html=True)
+    
+        if clicked and clicked != selected:
+            if clicked == "sair":
+                st.session_state["nav_to"] = "Pokédex (Busca)"
+                st.rerun()
+            else:
+                _go(clicked)
+    
+        
+      
     # =====================================================================
-    # SUBMENU: NPCs (layout pedido)
+    # NPCs (VERSÃO CORRIGIDA - SAFE IDs)
     # =====================================================================
     if st.session_state["comp_view"] == "npcs":
-        top = st.columns([1, 6])
-        with top[0]:
-            if st.button("<< MENU", key="ds_back_home"):
-                st.session_state["comp_view"] = "home"
-                st.rerun()
-        with top[1]:
-            st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-
+        try:
+            from st_click_detector import click_detector
+        except ImportError:
+            st.error("Biblioteca não instalada. Adicione 'st-click-detector' ao requirements.txt e reinicie o app.")
+            return
+    
+        # --- LAYOUT PRINCIPAL (SEM INDENTAÇÃO ERRADA) ---
         left, right = st.columns([1.25, 2.15], gap="large")
-
-        # ---- filtro / lista ----
+    
+        # --- COLUNA ESQUERDA ---
         with left:
             search = st.text_input(
-                "Buscar personagem (nome ou texto na História)",
+                "Buscar personagem",
                 key="ds_npc_search",
-                placeholder="Digite aqui...",
+                placeholder="Nome ou história...",
             ).strip()
-
-            # normaliza p/ busca
+    
             def _norm(s: str) -> str:
                 if not isinstance(s, str):
                     return ""
                 return re.sub(r"\s+", " ", s).strip().lower()
-
+    
             q = _norm(search)
-
-            items: list[tuple[str, dict]] = []
+    
+            # Preparar lista
+            items = []
             for nome, obj in (npcs_gerais or {}).items():
                 if not isinstance(obj, dict):
                     continue
+    
                 historia = ""
                 secs = obj.get("sections") or {}
                 if isinstance(secs, dict):
                     historia = secs.get("História") or secs.get("Historia") or ""
+    
                 hay = _norm(nome) + " " + _norm(historia)
                 if not q or q in hay:
                     items.append((nome, obj))
-
+    
             items.sort(key=lambda x: x[0])
-
+    
+            # Cache de imagens
+            @st.cache_data(show_spinner=False)
+            def _thumb_data_uri(path: str, max_w: int = 360, max_h: int = 520) -> str:
+                try:
+                    from PIL import Image
+                    import io, base64, os
+    
+                    if not path or not os.path.exists(path):
+                        return ""
+                    img = Image.open(path).convert("RGB")
+                    img.thumbnail((max_w, max_h))
+                    buf = io.BytesIO()
+                    img.save(buf, format="JPEG", quality=70)
+                    b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+                    return f"data:image/jpeg;base64,{b64}"
+                except:
+                    return ""
+    
             if not items:
-                st.info("Nenhum NPC encontrado com esse filtro.")
+                st.info("Nenhum NPC encontrado.")
             else:
-                # grid simples (2 colunas) com imagem pequena + nome
-                grid_cols = st.columns(2, gap="small")
-                for i, (nome, obj) in enumerate(items):
-                    with grid_cols[i % 2]:
-                        img_path = None
-                        try:
-                            img_path = comp_find_image(nome)
-                        except Exception:
-                            img_path = None
-
-                        if img_path and os.path.exists(img_path):
-                            st.image(img_path, width=120)
-                        else:
-                            # placeholder minimalista
-                            st.markdown(
-                                "<div style='width:120px;height:120px;border:1px solid rgba(255,255,255,0.10);border-radius:10px;background:rgba(0,0,0,0.35);'></div>",
-                                unsafe_allow_html=True,
-                            )
-
-                        # clique (abre no painel direito)
-                        if st.button(nome, key=f"ds_pick_npc_{i}"):
-                            st.session_state["comp_selected_npc"] = nome
-                            st.rerun()
-
-        # ---- painel de detalhes ----
+                content_html = """
+                <style>
+                    .ds-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
+                    .ds-card {
+                        position: relative; aspect-ratio: 3/4;
+                        border: 2px solid #554422; border-radius: 8px;
+                        overflow: hidden; cursor: pointer; transition: transform 0.1s;
+                    }
+                    .ds-card:hover { border-color: #FFD700; transform: scale(1.02); }
+                    .ds-card img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.8); }
+                    .ds-name-tag {
+                        position: absolute; bottom: 0; left: 0; right: 0;
+                        background: rgba(0,0,0,0.85); color: #ddd;
+                        font-size: 10px; text-align: center; padding: 4px;
+                        font-family: sans-serif; font-weight: bold; text-transform: uppercase;
+                    }
+                    a { text-decoration: none; display: block; }
+                </style>
+                <div class='ds-grid'>
+                """
+    
+                id_map = {}
+    
+                for idx, (nome, obj) in enumerate(items):
+                    safe_id = str(idx)
+                    id_map[safe_id] = nome
+    
+                    img_path = None
+                    try:
+                        img_path = comp_find_image(nome)
+                    except:
+                        pass
+    
+                    src = _thumb_data_uri(img_path) if img_path else ""
+                    img_html = f"<img src='{src}' />" if src else "<div style='width:100%;height:100%;background:#222;'></div>"
+    
+                    content_html += f"""
+                    <a href='#' id='{safe_id}'>
+                        <div class="ds-card">
+                            {img_html}
+                            <div class="ds-name-tag">{nome}</div>
+                        </div>
+                    </a>
+                    """
+    
+                content_html += "</div>"
+    
+                clicked_safe_id = click_detector(content_html)
+    
+                if clicked_safe_id is not None:
+                    nome_selecionado = id_map.get(str(clicked_safe_id))
+                    if nome_selecionado and nome_selecionado != st.session_state.get("comp_selected_npc"):
+                        st.session_state["comp_selected_npc"] = nome_selecionado
+                        st.rerun()
+    
+        # --- COLUNA DIREITA ---
         with right:
             sel = st.session_state.get("comp_selected_npc")
             if not sel:
                 st.markdown(
-                    "<div class='ds-frame'><div class='ds-name' style='font-size:30px;'>SELECIONE UM NPC</div><div class='ds-meta'>clique em um retrato à esquerda</div></div>",
+                    "<div class='ds-frame'><div class='ds-name' style='font-size:30px;'>SELECIONE UM NPC</div>"
+                    "<div class='ds-meta'>clique em um retrato à esquerda</div></div>",
                     unsafe_allow_html=True,
                 )
                 return
-
+    
             npc = npcs_gerais.get(sel, {}) or {}
             ocupacao = npc.get("ocupacao", "")
             idade = npc.get("idade", "")
             status = npc.get("status", "")
-
+    
             # retrato grande (base64 p/ garantir)
             portrait_b64 = ""
             portrait_path = None
@@ -6709,12 +6943,11 @@ def render_compendium_page() -> None:
                 portrait_path = comp_find_image(sel)
             except Exception:
                 portrait_path = None
-
+    
             if portrait_path and os.path.exists(portrait_path):
                 try:
                     with open(portrait_path, "rb") as f:
                         portrait_b64 = base64.b64encode(f.read()).decode("utf-8")
-                    # detect ext
                     ext = os.path.splitext(portrait_path)[1].lower().replace(".", "")
                     if ext not in ("png", "jpg", "jpeg", "webp"):
                         ext = "png"
@@ -6723,18 +6956,18 @@ def render_compendium_page() -> None:
                     ext = "png"
             else:
                 ext = "png"
-
+    
             # sprites dos pokemons (usa mapa oficial)
             pokemons = npc.get("pokemons") or npc.get("pokemons_conhecidos") or []
             if not isinstance(pokemons, list):
                 pokemons = []
-
+    
             name_map = {}
             try:
                 name_map = get_official_pokemon_map() or {}
             except Exception:
                 name_map = {}
-
+    
             sprite_imgs = []
             for pkm in pokemons:
                 try:
@@ -6743,29 +6976,27 @@ def render_compendium_page() -> None:
                     url = ""
                 if url:
                     sprite_imgs.append(url)
-
+    
             # história
             historia = ""
             secs = npc.get("sections") or {}
             if isinstance(secs, dict):
                 historia = secs.get("História") or secs.get("Historia") or ""
-
+    
             # highlight busca na história
-            q = st.session_state.get("ds_npc_search", "").strip()
+            q2 = st.session_state.get("ds_npc_search", "").strip()
             h_html = ""
             if isinstance(historia, str) and historia.strip():
                 paragraphs = [p.strip() for p in historia.split("\n\n") if p.strip()]
                 for para in paragraphs:
                     safe = para.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                    if q:
-                        # highlight case-insensitive (simples)
-                        pattern = re.compile(re.escape(q), re.IGNORECASE)
+                    if q2:
+                        pattern = re.compile(re.escape(q2), re.IGNORECASE)
                         safe = pattern.sub(lambda m: f"<span class='ds-mark'>{m.group(0)}</span>", safe)
                     h_html += f"<p>{safe}</p>"
             else:
                 h_html = "<p>(Sem história cadastrada)</p>"
-
-            # monta HTML do painel
+    
             meta_parts = []
             if ocupacao:
                 meta_parts.append(str(ocupacao))
@@ -6774,17 +7005,17 @@ def render_compendium_page() -> None:
             if idade:
                 meta_parts.append(f"IDADE: {idade}")
             meta_line = " | ".join(meta_parts) if meta_parts else ""
-
+    
             portrait_html = ""
             if portrait_b64:
                 portrait_html = f"<div class='ds-portrait'><img src='data:image/{ext};base64,{portrait_b64}' /></div>"
-
+    
             sprites_html = ""
             if sprite_imgs:
                 sprites_html = "<div class='ds-sprites'>" + "".join(
                     f"<img src='{u}' alt='sprite'/>" for u in sprite_imgs
                 ) + "</div>"
-
+    
             st.markdown(
                 f"""
                 <div class="ds-frame">
@@ -6799,27 +7030,133 @@ def render_compendium_page() -> None:
                 unsafe_allow_html=True,
             )
         return
-
+    
     # =====================================================================
-    # SUBMENU: Ginásios / Locais (por enquanto, volta ao menu antigo)
+    # Ginásios / Locais (placeholder)
     # =====================================================================
-    # Para não “sumir” nada, cai na versão anterior do tomo (rápido).
-    # Você pediu "primeiro NPCs" - o próximo passo será refazer Ginásios e Locais nesse mesmo padrão.
-    st.info("Submenu ainda em construção. Volte ao MENU e selecione NPCs por enquanto.")
-    if st.button("<< MENU", key="ds_back_home_any"):
-        st.session_state["comp_view"] = "home"
-        st.rerun()
+    if st.session_state["comp_view"] == "ginasios":
+        st.markdown(
+            "<div class='ds-frame'><div class='ds-name'>GINÁSIOS</div><div class='ds-meta'>EM CONSTRUÇÃO</div></div>",
+            unsafe_allow_html=True,
+        )
+        return
+    
+    if st.session_state["comp_view"] == "locais":
+        st.markdown(
+            "<div class='ds-frame'><div class='ds-name'>LOCAIS</div><div class='ds-meta'>EM CONSTRUÇÃO</div></div>",
+            unsafe_allow_html=True,
+        )
+        return
+    
+    # ... (código existente acima: if st.session_state["comp_view"] == "locais": ...)
 
-def _tentar_achar_imagem_compendium(nome):
-    if not nome: return None
-    import os
-    # Tenta variações de nome
-    for tentativa in [nome, nome.replace(" ", "_"), nome.replace(" ", ""), nome.lower()]:
-        for ext in [".png", ".jpg", ".jpeg"]:
-            # Procura na pasta raiz e na pasta assets
-            if os.path.exists(tentativa + ext): return tentativa + ext
-            if os.path.exists("assets/" + tentativa + ext): return "assets/" + tentativa + ext
-    return None
+    # =========================================================
+    # VIEW: HOME (O CÓDIGO QUE ESTAVA FALTANDO)
+    # =========================================================
+    # =========================================================
+    # VIEW: HOME (Compendium Dark Souls Style)
+    # =========================================================
+    if st.session_state["comp_view"] == "home":
+        try:
+            from st_click_detector import click_detector
+        except ImportError:
+            st.error("Instale o componente: pip install st-click-detector")
+            return
+
+        # HTML + CSS COMPLETO E ISOLADO
+        html_home = """
+        <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+        
+        <style>
+            body {
+                background-color: transparent; /* Usa o fundo preto do app */
+                font-family: 'Cinzel', serif;
+                text-align: center;
+                margin: 0;
+                padding: 60px 0; /* Espaço vertical */
+            }
+            
+            .ds-title {
+                font-size: 48px;
+                font-weight: 700;
+                color: #FFE66D; /* Dourado */
+                text-transform: uppercase;
+                letter-spacing: 6px;
+                margin-bottom: 60px;
+                text-shadow: 0 0 15px rgba(212, 175, 55, 0.6);
+                animation: soul-pulse 3s infinite alternate;
+            }
+
+            .ds-menu-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 25px;
+            }
+
+            .ds-menu-item {
+                display: inline-block;
+                font-size: 22px;
+                color: #BBBBBB; /* Prata envelhecida */
+                text-decoration: none;
+                padding: 12px 40px;
+                border: 1px solid transparent;
+                transition: all 0.3s ease;
+                letter-spacing: 3px;
+                background: rgba(0,0,0,0.3); /* Fundo sutil */
+            }
+
+            .ds-menu-item:hover {
+                color: #FFFFFF;
+                text-shadow: 0 0 10px #FFFFFF, 0 0 20px #FFD700;
+                transform: scale(1.1);
+                border-top: 1px solid rgba(255, 215, 0, 0.5);
+                border-bottom: 1px solid rgba(255, 215, 0, 0.5);
+                background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+            }
+
+            @keyframes soul-pulse {
+                0% { opacity: 0.85; text-shadow: 0 0 10px rgba(212, 175, 55, 0.3); }
+                100% { opacity: 1; text-shadow: 0 0 25px rgba(212, 175, 55, 0.8); }
+            }
+        </style>
+
+        <div class="ds-home">
+            <div class="ds-title">BEM VINDO A GA'AL</div>
+            <div class="ds-menu-container">
+                <a href="#" id="npcs" class="ds-menu-item">❖  NPCs  ❖</a>
+                <a href="#" id="ginasios" class="ds-menu-item">❖  Ginásios  ❖</a>
+                <a href="#" id="locais" class="ds-menu-item">❖  Locais  ❖</a>
+                <a href="#" id="sair" class="ds-menu-item">❖  Sair  ❖</a>
+            </div>
+        </div>
+        """
+        
+        # Renderiza
+        selected = click_detector(html_home)
+        
+        # Lógica do clique (Sem depender de função externa)
+        if selected:
+            if selected == "sair":
+                st.session_state["nav_to"] = "Pokédex (Busca)" 
+                st.rerun()
+            else:
+                # Troca a view e recarrega
+                st.session_state["comp_view"] = selected
+                st.rerun()
+    
+    
+    def _tentar_achar_imagem_compendium(nome):
+        if not nome:
+            return None
+        import os
+        for tentativa in [nome, nome.replace(" ", "_"), nome.replace(" ", ""), nome.lower()]:
+            for ext in [".png", ".jpg", ".jpeg"]:
+                if os.path.exists(tentativa + ext):
+                    return tentativa + ext
+                if os.path.exists("assets/" + tentativa + ext):
+                    return "assets/" + tentativa + ext
+        return None
 # ==============================================================================
 # PÁGINA 1: POKEDEX (VISÃO DE FOCO + CARROSSEL INFERIOR)
 # ==============================================================================
