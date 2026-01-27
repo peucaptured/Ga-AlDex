@@ -7053,38 +7053,97 @@ def render_compendium_page() -> None:
     # =========================================================
     # VIEW: HOME (O CÓDIGO QUE ESTAVA FALTANDO)
     # =========================================================
+    # =========================================================
+    # VIEW: HOME (Compendium Dark Souls Style)
+    # =========================================================
     if st.session_state["comp_view"] == "home":
-        # Importação segura (caso não esteja no topo)
         try:
             from st_click_detector import click_detector
         except ImportError:
-            st.error("Biblioteca st-click-detector não encontrada.")
+            st.error("Instale o componente: pip install st-click-detector")
             return
 
-        # HTML usando as classes .ds-home, .ds-title, etc. que você já definiu no CSS
+        # HTML + CSS COMPLETO E ISOLADO
         html_home = """
+        <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+        
+        <style>
+            body {
+                background-color: transparent; /* Usa o fundo preto do app */
+                font-family: 'Cinzel', serif;
+                text-align: center;
+                margin: 0;
+                padding: 60px 0; /* Espaço vertical */
+            }
+            
+            .ds-title {
+                font-size: 48px;
+                font-weight: 700;
+                color: #FFE66D; /* Dourado */
+                text-transform: uppercase;
+                letter-spacing: 6px;
+                margin-bottom: 60px;
+                text-shadow: 0 0 15px rgba(212, 175, 55, 0.6);
+                animation: soul-pulse 3s infinite alternate;
+            }
+
+            .ds-menu-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 25px;
+            }
+
+            .ds-menu-item {
+                display: inline-block;
+                font-size: 22px;
+                color: #BBBBBB; /* Prata envelhecida */
+                text-decoration: none;
+                padding: 12px 40px;
+                border: 1px solid transparent;
+                transition: all 0.3s ease;
+                letter-spacing: 3px;
+                background: rgba(0,0,0,0.3); /* Fundo sutil */
+            }
+
+            .ds-menu-item:hover {
+                color: #FFFFFF;
+                text-shadow: 0 0 10px #FFFFFF, 0 0 20px #FFD700;
+                transform: scale(1.1);
+                border-top: 1px solid rgba(255, 215, 0, 0.5);
+                border-bottom: 1px solid rgba(255, 215, 0, 0.5);
+                background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+            }
+
+            @keyframes soul-pulse {
+                0% { opacity: 0.85; text-shadow: 0 0 10px rgba(212, 175, 55, 0.3); }
+                100% { opacity: 1; text-shadow: 0 0 25px rgba(212, 175, 55, 0.8); }
+            }
+        </style>
+
         <div class="ds-home">
-            <div class="ds-title ds-blink">BEM VINDO A GA'AL</div>
-            <div class="ds-home-menu">
-                <a href="#" id="npcs" class="ds-menu-item">› NPCs</a>
-                <a href="#" id="ginasios" class="ds-menu-item">› Ginásios</a>
-                <a href="#" id="locais" class="ds-menu-item">› Locais</a>
-                <a href="#" id="sair" class="ds-menu-item">› Sair</a>
+            <div class="ds-title">BEM VINDO A GA'AL</div>
+            <div class="ds-menu-container">
+                <a href="#" id="npcs" class="ds-menu-item">❖  NPCs  ❖</a>
+                <a href="#" id="ginasios" class="ds-menu-item">❖  Ginásios  ❖</a>
+                <a href="#" id="locais" class="ds-menu-item">❖  Locais  ❖</a>
+                <a href="#" id="sair" class="ds-menu-item">❖  Sair  ❖</a>
             </div>
         </div>
         """
         
-        # Renderiza e captura o clique
+        # Renderiza
         selected = click_detector(html_home)
         
+        # Lógica do clique (Sem depender de função externa)
         if selected:
             if selected == "sair":
-                # Redireciona para outra aba do Streamlit
                 st.session_state["nav_to"] = "Pokédex (Busca)" 
                 st.rerun()
             else:
-                # Navega para as sub-seções (npcs, ginasios, locais)
-                _go(selected)
+                # Troca a view e recarrega
+                st.session_state["comp_view"] = selected
+                st.rerun()
     
     
     def _tentar_achar_imagem_compendium(nome):
