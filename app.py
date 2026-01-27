@@ -6159,25 +6159,47 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
         st.markdown(v)
 
 
+import base64
 
+@st.cache_data
+def get_font_base64(font_path):
+    """Lê o arquivo de fonte e converte para base64 para uso no CSS."""
+    try:
+        with open(font_path, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except Exception:
+        return None
 # ==============================================================================
 # 📚 COMPENDIUM NOVO (JSON + DARK SOULS) - CORRIGIDO
 # ==============================================================================
 
 def render_compendium_page() -> None:
-    """
-    COMPENDIUM (Estilo Dark Souls) — versão otimizada com Static File Serving.
-    Requisitos:
-      - Ativar: STREAMLIT_SERVER_ENABLE_STATIC_SERVING=true (ou .streamlit/config.toml com enableStaticServing=true)
-      - Colocar mídias em: ./static/  (este app usa ./static/treinadores/)
+    # --- INÍCIO DA INSERÇÃO ---
+    font_b64 = get_font_base64("DarkSouls.ttf")
+    font_css = f"@font-face {{ font-family: 'DarkSouls'; src: url('data:font/ttf;base64,{font_b64}') format('truetype'); }}" if font_b64 else ""
 
-    O que esta versão corrige:
-      - Ao entrar no Compendium, cai no MENU (Home) por padrão.
-      - Navegação do Compendium fica no TOPO nos submenus.
-      - NPCs em 4 colunas, moldura sem botão azul, sem abrir nova aba.
-      - Clique confiável (Streamlit buttons), com visual “tab” Dark Souls.
-      - Imagens servidas via /app/static/... (cache do navegador) + cópia automática de /treinadores para /static/treinadores.
-    """
+    st.markdown(f"""
+    <style>
+        {font_css}
+        /* Aplica a fonte em tudo */
+        .block-container {{ font-family: 'DarkSouls', serif !important; }}
+        
+        /* Transforma botões em texto clicável (sem caixa) */
+        .stButton > button {{
+            background: transparent !important; border: none !important;
+            color: #888 !important; font-size: 24px !important;
+            text-shadow: 0px 0px 5px rgba(0,0,0,0.8);
+            font-family: 'DarkSouls', serif !important;
+        }}
+        .stButton > button:hover {{
+            color: #FFD700 !important; text-shadow: 0 0 10px #FFD700; transform: scale(1.1);
+        }}
+        .stButton > button:active, .stButton > button:focus {{
+            color: #FFD700 !important; outline: none !important; border: none !important; box-shadow: none !important;
+        }}
+    </style>
+    """, unsafe_allow_html=True)
     import os
     import json
     import base64
@@ -6519,6 +6541,48 @@ def render_compendium_page() -> None:
             padding-bottom: 8px;
             text-align:center;
         }}
+        .ds-poke-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid #443311;
+            border-radius: 8px;
+            padding: 8px;
+            transition: all 0.3s ease;
+        }
+        .ds-poke-container:hover {
+            border-color: #FFD700;
+            background: rgba(20,20,10,0.8);
+            transform: translateY(-3px);
+        }
+        .ds-poke-img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            /* AQUI ESTÁ A MÁGICA DO SÉPIA */
+            filter: sepia(1) brightness(0.8) contrast(1.2); 
+            opacity: 0.85;
+            transition: all 0.4s ease;
+        }
+        /* Quando passar o mouse, revela as cores originais */
+        .ds-poke-container:hover .ds-poke-img {
+            filter: sepia(0) brightness(1) contrast(1);
+            opacity: 1;
+        }
+        .ds-poke-name {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #887766;
+            margin-top: 5px;
+            text-align: center;
+            font-family: 'DarkSouls', serif;
+            letter-spacing: 1px;
+        }
+        .ds-poke-container:hover .ds-poke-name {
+            color: #FFD700;
+        }
         .ds-history p {{
             color: rgba(255,255,255,0.88);
             font-size: 18px;
@@ -6603,8 +6667,68 @@ def render_compendium_page() -> None:
             st.error("Biblioteca não instalada. Adicione 'st-click-detector' ao requirements.txt e reinicie o app.")
             return
 
-        render_top_nav("npcs")
+        # --- 1. INSERÇÃO DO ESTILO (CSS) ---
+        # Isso transforma os botões comuns em texto brilhante sem borda
+        # Certifique-se de que a função 'get_font_base64' foi criada no topo do arquivo como pedi antes
+        font_b64 = get_font_base64("DarkSouls.ttf") 
+        font_css = f"@font-face {{ font-family: 'DarkSouls'; src: url('data:font/ttf;base64,{font_b64}') format('truetype'); }}" if font_b64 else ""
 
+        st.markdown(f"""
+        <style>
+            {font_css}
+            /* Força a fonte no container principal desta aba */
+            .block-container {{ font-family: 'DarkSouls', serif !important; }}
+            
+            /* Remove a caixa dos botões e deixa só o texto */
+            .stButton > button {{
+                background: transparent !important; 
+                border: none !important;
+                color: #888 !important; 
+                font-size: 24px !important;
+                text-shadow: 0px 0px 5px rgba(0,0,0,0.8);
+                font-family: 'DarkSouls', serif !important;
+                text-transform: uppercase;
+                transition: transform 0.2s;
+            }}
+            /* Efeito ao passar o mouse (Dourado) */
+            .stButton > button:hover {{
+                color: #FFD700 !important; 
+                text-shadow: 0 0 15px #FFD700; 
+                transform: scale(1.1);
+            }}
+            /* Remove efeito de clique padrão (borda vermelha/branca) */
+            .stButton > button:active, .stButton > button:focus {{
+                color: #FFD700 !important; 
+                outline: none !important; 
+                border: none !important; 
+                box-shadow: none !important;
+            }}
+        </style>
+        """, unsafe_allow_html=True)
+
+        # --- 2. MENU SUPERIOR CENTRALIZADO (Substitui render_top_nav) ---
+        # Usamos 5 colunas. As colunas 1 e 5 são vazias para empurrar o conteúdo para o centro.
+        mc1, mc2, mc3, mc4, mc5 = st.columns([1, 1, 1, 1, 1])
+        
+        with mc2:
+            if st.button("NPCs", key="btn_nav_npcs", use_container_width=True):
+                st.session_state["comp_view"] = "npcs"
+                st.rerun()
+        
+        with mc3:
+            if st.button("Locais", key="btn_nav_locais", use_container_width=True):
+                st.session_state["comp_view"] = "locais"
+                st.rerun()
+
+        with mc4:
+            # BOTÃO SAIR COM LÓGICA DE RESET
+            if st.button("Sair de Ga'al", key="btn_nav_sair", use_container_width=True):
+                st.session_state["comp_view"] = "npcs"        # Reseta a aba interna para o padrão
+                st.session_state["menu_principal"] = "Início" # <--- Volta para a tela inicial do App
+                st.rerun()
+
+        st.markdown("---") # Linha divisória
+        
         left, right = st.columns([1.25, 2.15], gap="large")
 
         # --- COLUNA ESQUERDA ---
@@ -6718,72 +6842,118 @@ def render_compendium_page() -> None:
                             st.rerun()
 
 
-# --- COLUNA DIREITA (DETALHES DO NPC) ---
         with right:
-            nm = st.session_state.get("comp_selected_npc")
-            
-            # Se não tiver ninguém selecionado ou nome inválido
-            if not nm or nm not in npcs_gerais:
+            sel = st.session_state.get("comp_selected_npc")
+            if not sel:
                 st.markdown(
-                    """
-                    <div class="ds-frame">
-                        <div class="ds-name">SELECIONE UM NPC</div>
-                        <div class="ds-meta">CLIQUE EM UM RETRATO À ESQUERDA</div>
-                    </div>
-                    """,
+                    "<div class='ds-frame'><div class='ds-name' style='font-size:30px;'>SELECIONE UM NPC</div><div class='ds-meta'>clique em um retrato à esquerda</div></div>",
                     unsafe_allow_html=True,
                 )
+                return
+
+            npc = npcs_gerais.get(sel, {}) or {}
+            ocupacao = npc.get("ocupacao", "")
+            idade = npc.get("idade", "")
+            status = npc.get("status", "")
+
+            # retrato grande (base64 p/ garantir)
+            portrait_b64 = ""
+            portrait_path = None
+            try:
+                portrait_path = comp_find_image(sel)
+            except Exception:
+                portrait_path = None
+
+            if portrait_path and os.path.exists(portrait_path):
+                try:
+                    with open(portrait_path, "rb") as f:
+                        portrait_b64 = base64.b64encode(f.read()).decode("utf-8")
+                    # detect ext
+                    ext = os.path.splitext(portrait_path)[1].lower().replace(".", "")
+                    if ext not in ("png", "jpg", "jpeg", "webp"):
+                        ext = "png"
+                except Exception:
+                    portrait_b64 = ""
+                    ext = "png"
             else:
-                # Recupera dados do NPC
-                npc = npcs_gerais.get(nm) or {}
-                idade = npc.get("idade") or "Desconhecida"
-                ocup = npc.get("ocupacao") or npc.get("título") or npc.get("titulo") or "Sem título"
-                status = npc.get("status") or ("Ativo" if nm in (data_vivos.get("npcs", {}) or {}) else "Falecido")
+                ext = "png"
 
-                secs = npc.get("sections") or {}
-                historia = ""
-                if isinstance(secs, dict):
-                    historia = secs.get("História") or secs.get("Historia") or ""
-                historia = (historia or "").strip()
+            # sprites dos pokemons (usa mapa oficial)
+            pokemons = npc.get("pokemons") or npc.get("pokemons_conhecidos") or []
+            if not isinstance(pokemons, list):
+                pokemons = []
 
-                # Tenta pegar a imagem grande para o detalhe
-                img_path_big = None
-                try: img_path_big = comp_find_image(nm)
-                except: pass
-                
-                # --- INÍCIO DA RENDERIZAÇÃO DO CARD ---
-                # 1. Cabeçalho (Nome e Metadados)
-                st.markdown(f"""
+            name_map = {}
+            try:
+                name_map = get_official_pokemon_map() or {}
+            except Exception:
+                name_map = {}
+
+            sprite_imgs = []
+            for pkm in pokemons:
+                try:
+                    url = get_pokemon_image_url(str(pkm), name_map, mode="sprite", shiny=False)
+                except Exception:
+                    url = ""
+                if url:
+                    sprite_imgs.append(url)
+
+            # história
+            historia = ""
+            secs = npc.get("sections") or {}
+            if isinstance(secs, dict):
+                historia = secs.get("História") or secs.get("Historia") or ""
+
+            # highlight busca na história
+            q = st.session_state.get("ds_npc_search", "").strip()
+            h_html = ""
+            if isinstance(historia, str) and historia.strip():
+                paragraphs = [p.strip() for p in historia.split("\n\n") if p.strip()]
+                for para in paragraphs:
+                    safe = para.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                    if q:
+                        # highlight case-insensitive (simples)
+                        pattern = re.compile(re.escape(q), re.IGNORECASE)
+                        safe = pattern.sub(lambda m: f"<span class='ds-mark'>{m.group(0)}</span>", safe)
+                    h_html += f"<p>{safe}</p>"
+            else:
+                h_html = "<p>(Sem história cadastrada)</p>"
+
+            # monta HTML do painel
+            meta_parts = []
+            if ocupacao:
+                meta_parts.append(str(ocupacao))
+            if status:
+                meta_parts.append(f"STATUS: {status}")
+            if idade:
+                meta_parts.append(f"IDADE: {idade}")
+            meta_line = " | ".join(meta_parts) if meta_parts else ""
+
+            portrait_html = ""
+            if portrait_b64:
+                portrait_html = f"<div class='ds-portrait'><img src='data:image/{ext};base64,{portrait_b64}' /></div>"
+
+            sprites_html = ""
+            if sprite_imgs:
+                sprites_html = "<div class='ds-sprites'>" + "".join(
+                    f"<img src='{u}' alt='sprite'/>" for u in sprite_imgs
+                ) + "</div>"
+
+            st.markdown(
+                f"""
                 <div class="ds-frame">
-                    <div class="ds-name">{nm}</div>
-                    <div class="ds-meta" style="margin-bottom: 15px;">
-                        <span style="color:#FFD700;">{ocup}</span> • {status} • {idade}
-                    </div>
-                """, unsafe_allow_html=True)
-                
-                # 2. Imagem (usando st.image para garantir compatibilidade)
-                if img_path_big and os.path.exists(img_path_big):
-                    st.image(img_path_big, use_container_width=True)
-                else:
-                    # Placeholder se não tiver imagem
-                    st.markdown("<div style='height:200px; background:rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; color:#555;'>Sem Imagem</div>", unsafe_allow_html=True)
-
-                # 3. História e Fechamento
-                # Convertemos quebras de linha em parágrafos HTML para ficar bonito
-                if historia:
-                    paras = [p.strip() for p in historia.split("\n") if p.strip()]
-                    hist_html = "".join(f"<p style='margin-bottom:10px;'>{p}</p>" for p in paras)
-                else:
-                    hist_html = "<i>Sem registros históricos disponíveis.</i>"
-
-                st.markdown(f"""
-                    <div style="margin-top: 20px; text-align: justify; color: #ccc; border-top: 1px solid #443311; padding-top: 15px;">
-                        <div class='ds-section-title' style='margin-bottom:10px;'>História</div>
-                        {hist_html}
-                    </div>
-                </div> """, unsafe_allow_html=True)
-
+                    <div class="ds-name">{sel}</div>
+                    <div class="ds-meta">{meta_line}</div>
+                    {portrait_html}
+                    {sprites_html}
+                    <div class="ds-section-title">História</div>
+                    <div class="ds-history">{h_html}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
         return
+
 
     # =====================================================================
     # Ginásios / Locais (placeholder — manteremos layout depois)
