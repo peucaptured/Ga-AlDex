@@ -6424,6 +6424,9 @@ def render_compendium_page() -> None:
         /* =======================
            TOP NAV (MENU)
            ======================= */
+            /* =======================
+           TOP NAV (MENU) - HTML links (não usa st.button)
+           ======================= */
         
         .ds-nav {{
             display:flex;
@@ -6435,7 +6438,6 @@ def render_compendium_page() -> None:
             border-bottom: 1px solid rgba(176,143,60,0.25);
         }}
         
-        /* variação: menu embaixo no HOME */
         .ds-nav-bottom {{
             margin-top: 24px !important;
             margin-bottom: 0 !important;
@@ -6445,7 +6447,6 @@ def render_compendium_page() -> None:
             padding-top: 12px;
         }}
         
-        /* NAV sticky (quando no topo) */
         .ds-nav-sticky {{
             position: sticky;
             top: 10px;
@@ -6459,51 +6460,38 @@ def render_compendium_page() -> None:
             box-shadow: 0 0 28px rgba(0,0,0,0.85);
         }}
         
-        /* espaçamento abaixo do sticky */
         .ds-after-nav-space {{
             height: 10px;
         }}
         
-        /* =======================
-           BOTÕES DO MENU (TEXTO PURO)
-           ======================= */
+        .ds-nav-item {{
+            display: inline-block;
+            padding: 6px 10px;
+            background: transparent;
+            border: none;
+            text-decoration: none !important;
         
-        .ds-tab div[data-testid="stButton"] > button {{
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            color: rgba(255,255,255,0.72) !important;
-            padding: 6px 10px !important;
-            letter-spacing: 0.28em !important;
-            text-transform: uppercase !important;
-            transition: transform 0.15s ease, color 0.15s ease, text-shadow 0.15s ease !important;
+            color: rgba(255,255,255,0.72);
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+        
+            transition: transform 0.15s ease, color 0.15s ease, text-shadow 0.15s ease;
         }}
         
-        /* Hover dourado */
-        .ds-tab div[data-testid="stButton"] > button:hover {{
-            color: rgba(255,215,0,0.95) !important;
-            text-shadow: 0 0 14px rgba(255,215,0,0.35) !important;
-            transform: translateY(-1px) !important;
+        .ds-nav-item:hover {{
+            color: rgba(255,215,0,0.95);
+            text-shadow: 0 0 14px rgba(255,215,0,0.35);
+            transform: translateY(-1px);
         }}
         
-        /* Clique / foco dourado */
-        .ds-tab div[data-testid="stButton"] > button:active,
-        .ds-tab div[data-testid="stButton"] > button:focus {{
-            color: rgba(255,215,0,0.98) !important;
-            text-shadow: 0 0 18px rgba(255,215,0,0.45) !important;
-            outline: none !important;
+        .ds-nav-item.selected {{
+            color: rgba(255,215,0,0.98);
+            text-shadow: 0 0 16px rgba(255,215,0,0.40);
         }}
         
-        /* Aba selecionada (dourado fixo) */
-        .ds-tab.selected div[data-testid="stButton"] > button {{
-            color: rgba(255,215,0,0.98) !important;
-            text-shadow: 0 0 16px rgba(255,215,0,0.40) !important;
-        }}
-        
-        /* Indicador ">" da aba ativa */
-        .ds-tab.selected div[data-testid="stButton"] > button::before {{
+        .ds-nav-item.selected::before {{
             content: "> ";
-            color: rgba(255,215,0,0.98) !important;
+            color: rgba(255,215,0,0.98);
         }}
 
    
@@ -6706,10 +6694,14 @@ def render_compendium_page() -> None:
         position: "top" ou "bottom"
         top = sticky
         """
-        wrapper_class = "ds-nav ds-nav-sticky" if position == "top" else "ds-nav ds-nav-bottom"
-        st.markdown(f"<div class='{wrapper_class}'>", unsafe_allow_html=True)
+        try:
+            from st_click_detector import click_detector
+        except ImportError:
+            st.error("Biblioteca não instalada. Adicione 'st-click-detector' ao requirements.txt e reinicie o app.")
+            return
     
-        cols = st.columns([1, 1, 1, 1, 1], gap="small")
+        wrapper_class = "ds-nav ds-nav-sticky" if position == "top" else "ds-nav ds-nav-bottom"
+    
         labels = [
             ("home", "Menu"),
             ("npcs", "NPCs"),
@@ -6718,48 +6710,27 @@ def render_compendium_page() -> None:
             ("sair", "Sair"),
         ]
     
-        for i, (v, lab) in enumerate(labels):
-            cls = "ds-tab selected" if selected == v else "ds-tab"
-            with cols[i]:
-                st.markdown(f"<div class='{cls}'>", unsafe_allow_html=True)
+        # HTML do menu (não usa st.button -> não fica azul)
+        html = f"<div class='{wrapper_class}'>"
+        for v, lab in labels:
+            cls = "ds-nav-item selected" if selected == v else "ds-nav-item"
+            html += f"<a href='#' id='{v}' class='{cls}'>{lab}</a>"
+        html += "</div>"
     
-                if st.button(lab, key=f"ds_nav_{position}_{v}", use_container_width=True):
-                    if v == "sair":
-                        st.session_state["nav_to"] = "Pokédex (Busca)"
-                        st.rerun()
-                    else:
-                        _go(v)
-    
-                st.markdown("</div>", unsafe_allow_html=True)
-    
-        st.markdown("</div>", unsafe_allow_html=True)
+        clicked = click_detector(html)
     
         # respiro pra não colar no conteúdo quando estiver sticky no topo
         if position == "top":
             st.markdown("<div class='ds-after-nav-space'></div>", unsafe_allow_html=True)
     
+        if clicked:
+            if clicked == "sair":
+                st.session_state["nav_to"] = "Pokédex (Busca)"
+                st.rerun()
+            else:
+                _go(clicked)
     
-    # >>> MENU NO TOPO APENAS QUANDO NÃO FOR HOME
-    if st.session_state["comp_view"] != "home":
-        render_top_nav(st.session_state["comp_view"], position="top")
-    
-    # ----------------------------
-    # HOME (menu embaixo)
-    # ----------------------------
-    if st.session_state["comp_view"] == "home":
-        st.markdown(
-            """
-            <div class="ds-home">
-                <div class="ds-title">BEM VINDO A GA'AL</div>
-                <div class="ds-press ds-blink">PRESS ANY BUTTON</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        render_top_nav("home", position="bottom")
-        return
-
-    
+        
       
     # =====================================================================
     # NPCs (VERSÃO CORRIGIDA - SAFE IDs)
