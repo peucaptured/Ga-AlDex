@@ -11,6 +11,7 @@ import requests
 import unicodedata
 import os
 import re
+import difflib
 import uuid
 from datetime import datetime
 from PIL import Image, ImageDraw
@@ -4183,64 +4184,100 @@ def apply_compendium_theme() -> None:
         """
         <style>
         [data-testid="stAppViewContainer"]{
-            background: radial-gradient(1200px 600px at 12% 0%, rgba(56,189,248,0.12), transparent 55%),
-                        radial-gradient(900px 520px at 92% 10%, rgba(167,139,250,0.10), transparent 55%),
-                        linear-gradient(180deg, #070a12 0%, #0b1220 55%, #070a12 100%);
-            color: #e5e7eb;
+            background:
+                radial-gradient(900px 500px at 12% 0%, rgba(250, 204, 21, 0.10), transparent 60%),
+                radial-gradient(1200px 700px at 92% 10%, rgba(244, 114, 182, 0.10), transparent 60%),
+                linear-gradient(180deg, #0c0a0a 0%, #0f172a 55%, #09080b 100%);
+            color: #f8fafc;
         }
         [data-testid="stHeader"]{ background: transparent !important; }
         h1,h2,h3,h4{ color:#f8fafc !important; letter-spacing:-0.02em; }
-        .stMarkdown, .stMarkdown p, label { color: #e5e7eb !important; }
+        .stMarkdown, .stMarkdown p, label { color: #e2e8f0 !important; }
 
-        .comp-hero{
+        .comp-shell{
             border: 1px solid rgba(148,163,184,0.18);
             background: rgba(15,23,42,0.55);
-            border-radius: 18px;
-            padding: 14px 14px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.35);
-            backdrop-filter: blur(10px);
+            border-radius: 22px;
+            padding: 18px 18px;
+            box-shadow: 0 24px 70px rgba(0,0,0,0.45);
+            backdrop-filter: blur(12px);
+        }
+        .comp-hero{
+            border: 1px solid rgba(203,213,225,0.18);
+            background: linear-gradient(135deg, rgba(17,24,39,0.72), rgba(2,6,23,0.55));
+            border-radius: 20px;
+            padding: 18px;
+            box-shadow: 0 18px 50px rgba(0,0,0,0.35);
+        }
+        .comp-hero-title{
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 6px;
+        }
+        .comp-hero-kicker{
+            color: rgba(248,250,252,0.70);
+            font-size: 14px;
         }
         .comp-muted{ color: rgba(226,232,240,0.72); }
-
-        .comp-chip{
-            display:inline-block;
-            padding: 2px 10px;
+        .comp-cta{
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
             border-radius: 999px;
-            font-size: 12px;
-            border: 1px solid rgba(148,163,184,0.22);
-            background: rgba(2,6,23,0.55);
-            margin-right: 6px;
-            margin-top: 6px;
+            border: 1px solid rgba(250,204,21,0.35);
+            background: rgba(250,204,21,0.12);
+            color: #fde68a;
+            font-weight: 600;
+        }
+        .comp-panel{
+            border: 1px solid rgba(148,163,184,0.16);
+            background: rgba(15,23,42,0.45);
+            border-radius: 18px;
+            padding: 14px;
         }
         .comp-card{
             border: 1px solid rgba(148,163,184,0.18);
             background: rgba(2,6,23,0.55);
             border-radius: 16px;
-            padding: 10px;
+            padding: 12px;
             box-shadow: 0 18px 45px rgba(0,0,0,0.30);
         }
         .comp-divider{
             height: 1px;
             background: rgba(148,163,184,0.18);
-            margin: 10px 0;
+            margin: 12px 0;
         }
         .comp-block{
-            border: 1px solid rgba(148,163,184,0.16);
+            border: 1px solid rgba(148,163,184,0.12);
             background: rgba(15,23,42,0.45);
-            border-radius: 14px;
+            border-radius: 16px;
             padding: 12px;
-            margin: 10px 0;
+            margin: 12px 0;
         }
         .comp-row{
             border: 1px solid rgba(148,163,184,0.12);
             background: rgba(2,6,23,0.35);
-            border-radius: 14px;
-            padding: 8px 10px;
-            margin: 8px 0;
+            border-radius: 16px;
+            padding: 10px 12px;
+            margin: 10px 0;
         }
         .comp-mini{
             font-size: 12px;
             color: rgba(226,232,240,0.70);
+        }
+        .comp-map{
+            border-radius: 16px;
+            border: 1px solid rgba(148,163,184,0.2);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+        }
+        .comp-stat{
+            border: 1px solid rgba(148,163,184,0.2);
+            background: rgba(15,23,42,0.65);
+            border-radius: 14px;
+            padding: 10px 12px;
+            text-align: center;
         }
         </style>
         """,
@@ -4261,7 +4298,9 @@ def _comp_base_dirs() -> list[str]:
         os.getcwd(),
         base,
         os.path.join(base, "assets"),
+        os.path.join(base, "Assets"),
         os.path.join(os.getcwd(), "assets"),
+        os.path.join(os.getcwd(), "Assets"),
         os.path.join(base, "data"),
         os.path.join(os.getcwd(), "data"),
         os.path.join(base, "assets", "compendium"),
@@ -4269,11 +4308,15 @@ def _comp_base_dirs() -> list[str]:
         os.path.join(base, "assets", "cities"),
         os.path.join(base, "assets", "npcs"),
         os.path.join(base, "assets", "portraits"),
+        os.path.join(base, "cidades"),
+        os.path.join(base, "treinadores"),
         os.path.join(os.getcwd(), "assets", "compendium"),
         os.path.join(os.getcwd(), "assets", "locais"),
         os.path.join(os.getcwd(), "assets", "cities"),
         os.path.join(os.getcwd(), "assets", "npcs"),
         os.path.join(os.getcwd(), "assets", "portraits"),
+        os.path.join(os.getcwd(), "cidades"),
+        os.path.join(os.getcwd(), "treinadores"),
     ]
     uniq = []
     for r in roots:
@@ -4294,9 +4337,9 @@ def _stem_key(s: str) -> str:
 
 
 @st.cache_data(show_spinner=False)
-def _build_image_index(roots: tuple[str, ...]) -> dict[str, str]:
+def _build_image_index(roots: tuple[str, ...]) -> dict[str, dict]:
     exts = {".png", ".jpg", ".jpeg", ".webp"}
-    idx: dict[str, str] = {}
+    by_key: dict[str, str] = {}
     for root in roots:
         for dirpath, _, files in os.walk(root):
             for fn in files:
@@ -4305,22 +4348,49 @@ def _build_image_index(roots: tuple[str, ...]) -> dict[str, str]:
                     continue
                 stem = os.path.splitext(fn)[0]
                 k = _stem_key(stem)
-                idx.setdefault(k, os.path.join(dirpath, fn))
-    return idx
+                p = os.path.join(dirpath, fn)
+                if k and (k not in by_key or len(p) < len(by_key[k])):
+                    by_key[k] = p
+
+                # index adicional sem sufixos numéricos
+                base = re.sub(r"[_-]?\d+$", "", stem).strip()
+                if base:
+                    kb = _stem_key(base)
+                    if kb and kb not in by_key:
+                        by_key[kb] = p
+    return {"by_key": by_key, "keys": sorted(by_key.keys())}
 
 
 def comp_find_image(name: str) -> str | None:
     roots = tuple(_comp_base_dirs())
     idx = _build_image_index(roots)
+    by_key = idx.get("by_key", {})
+    all_keys = idx.get("keys", [])
 
-    keys = [
+    variants = [
         _stem_key(name),
         _stem_key(name).replace("_", ""),
         _stem_key(name).replace("_", "-"),
     ]
-    for k in keys:
-        if k in idx and os.path.exists(idx[k]):
-            return idx[k]
+    for k in variants:
+        if k in by_key and os.path.exists(by_key[k]):
+            return by_key[k]
+
+    # tenta aproximação por similaridade
+    for target in variants:
+        if not target:
+            continue
+        close = difflib.get_close_matches(target, all_keys if all_keys else [], n=1, cutoff=0.78)
+        if close:
+            p = by_key.get(close[0])
+            if p and os.path.exists(p):
+                return p
+        if all_keys:
+            for k in all_keys:
+                if target in k or k in target:
+                    p = by_key.get(k)
+                    if p and os.path.exists(p):
+                        return p
 
     exts = [".png", ".jpg", ".jpeg", ".webp"]
     for ext in exts:
@@ -5234,18 +5304,47 @@ def _to_pokeapi_simple(name: str) -> str:
     return x
 
 
+def _extract_pokemon_name(raw: str) -> str:
+    text = (raw or "").strip()
+    if not text:
+        return ""
+    text = re.split(r"[|/;,]", text)[0]
+    text = re.sub(r"\(.*?\)", "", text)
+    text = re.sub(r"\[.*?\]", "", text)
+    text = re.sub(r"\b(?:lvl|lv|level)\s*\d+\b", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"[^A-Za-zÀ-ÿ0-9'\-\. ]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _closest_pokeapi_name(raw: str) -> str:
+    base = to_pokeapi_name(raw)
+    if not api_name_map:
+        return base
+    if base in api_name_map:
+        return base
+    base_simple = base.split("-")[0]
+    if base_simple in api_name_map:
+        return base_simple
+    keys = list(api_name_map.keys())
+    match = difflib.get_close_matches(base, keys, n=1, cutoff=0.78)
+    if not match and base_simple != base:
+        match = difflib.get_close_matches(base_simple, keys, n=1, cutoff=0.76)
+    return match[0] if match else base
+
+
 @st.cache_data(ttl=60*60*24, show_spinner=False)
 def _poke_sprite_cached(poke_name: str) -> str | None:
     """
     Retorna um caminho local (cache) se possível; fallback para URL.
     """
-    raw = (poke_name or "").strip()
+    raw = _extract_pokemon_name(poke_name)
     if not raw:
         return None
 
     # resolve query
     try:
-        q = to_pokeapi_name(raw)  # sua função (melhor p/ formas)
+        q = _closest_pokeapi_name(raw)
     except Exception:
         q = _to_pokeapi_simple(raw)
 
@@ -5470,16 +5569,22 @@ def _nav_prev_next(current: str, ordered: list[str], prefix: str):
 
 
 def _render_region_panel(region_name: str, region_obj: dict) -> None:
-    img = comp_find_image(region_name) or comp_find_image(COMP_DEFAULT_MAP)
+    img_region = comp_find_image(region_name)
+    img_map = comp_find_image(COMP_DEFAULT_MAP)
     st.markdown('<div class="comp-hero">', unsafe_allow_html=True)
     cA, cB = st.columns([1, 1.7], gap="large")
     with cA:
-        if img:
-            st.image(img, use_container_width=True)
+        if img_map:
+            st.image(img_map, use_container_width=True)
+            st.caption("🗺️ Mapa geral")
+        elif img_region:
+            st.image(img_region, use_container_width=True)
         else:
             st.caption("🖼️ (sem imagem encontrada para esta região)")
     with cB:
         st.markdown(f"## 🌍 {region_name}")
+        if img_region and img_map != img_region:
+            st.image(img_region, use_container_width=True)
         intro = (region_obj.get("intro") or "").strip()
         if intro:
             paras = [p.strip() for p in intro.split("\n\n") if p.strip()]
@@ -5490,13 +5595,19 @@ def _render_region_panel(region_name: str, region_obj: dict) -> None:
         else:
             st.caption("(sem texto de identidade detectado)")
 
+        cities = region_obj.get("cities") or []
+        if cities:
+            st.markdown("**Cidades para começar a leitura:**")
+            for cname in cities[:4]:
+                if st.button(f"➡ {cname}", key=f"region_city_pick_{_stem_key(region_name)}_{_stem_key(cname)}"):
+                    st.session_state["comp_city"] = cname
+                    _touch_recent("comp_recent_cities", cname)
+                    st.rerun()
+
     st.markdown("</div>", unsafe_allow_html=True)
 
 
 def _render_city_dossier(city_name: str, city_obj: dict, npcs: dict[str, dict], cities: dict[str, dict], gyms: dict[str, dict] | None = None, region_obj: dict | None = None) -> None:
-    inferred = infer_city_tags(city_obj)
-    tags = _merge_tags("cities", city_name, inferred)
-
     img_city = comp_find_image(city_name)
     img_map = comp_find_image(city_obj.get("region","")) or comp_find_image(COMP_DEFAULT_MAP)
 
@@ -5506,16 +5617,17 @@ def _render_city_dossier(city_name: str, city_obj: dict, npcs: dict[str, dict], 
     with hA:
         if img_city:
             st.image(img_city, use_container_width=True)
+            st.caption("📸 Paisagem da cidade")
         else:
             st.caption("🖼️ (sem imagem da cidade)")
     with hB:
         if img_map:
             st.image(img_map, use_container_width=True)
+            st.caption("🗺️ Mapa da região")
         else:
             st.caption("🗺️ (sem mapa)")
     with hC:
         st.markdown(f"## 🏙️ {city_name}")
-        _chip_row(tags)
         st.markdown(f'<div class="comp-muted">Região: <b>{city_obj.get("region","")}</b></div>', unsafe_allow_html=True)
 
         fav = _is_fav("comp_fav_cities", city_name)
@@ -5536,25 +5648,41 @@ def _render_city_dossier(city_name: str, city_obj: dict, npcs: dict[str, dict], 
                         _touch_recent("comp_recent_npcs", nm)
                         st.rerun()
 
-        # cidades relacionadas (mesma região + tags parecidas)
+        # cidades relacionadas (mesma região)
         same_region = [c for c, obj in cities.items() if obj.get("region") == city_obj.get("region") and c != city_name]
-        rel = []
-        myset = set(tags)
-        for c in same_region:
-            oth = set(_merge_tags("cities", c, infer_city_tags(cities[c])))
-            score = len(myset.intersection(oth))
-            if score > 0:
-                rel.append((score, c))
-        rel.sort(reverse=True)
-        if rel:
-            st.markdown("**Ver também:**")
-            for _, cname in rel[:4]:
+        if same_region:
+            st.markdown("**Continue lendo nesta região:**")
+            for cname in same_region[:4]:
                 if st.button(f"➡ {cname}", key=f"rel_city_{_stem_key(city_name)}_{_stem_key(cname)}"):
                     st.session_state["comp_city"] = cname
                     _touch_recent("comp_recent_cities", cname)
                     st.rerun()
 
     st.markdown("</div>", unsafe_allow_html=True)
+
+    # trilha de leitura
+    if region_obj:
+        st.markdown('<div class="comp-panel">', unsafe_allow_html=True)
+        st.markdown("### 📖 Próximo capítulo")
+        region_cities = [c for c in (region_obj.get("cities") or []) if c in cities and c != city_name]
+        if region_cities:
+            next_city = region_cities[0]
+            if st.button(f"🚪 Ir para {next_city}", key=f"next_city_{_stem_key(city_name)}"):
+                st.session_state["comp_city"] = next_city
+                _touch_recent("comp_recent_cities", next_city)
+                st.rerun()
+        mentions = city_mentions_npcs(city_obj, list(npcs.keys()))
+        if mentions:
+            st.markdown("**NPCs para conhecer:**")
+            cols = st.columns(min(3, len(mentions)))
+            for i, nm in enumerate(mentions[:3]):
+                with cols[i % len(cols)]:
+                    if st.button(f"🧑 {nm}", key=f"city_npc_next_{_stem_key(city_name)}_{_stem_key(nm)}"):
+                        st.session_state["comp_axis"] = "🧑‍🤝‍🧑 NPCs"
+                        st.session_state["comp_npc_selected"] = nm
+                        _touch_recent("comp_recent_npcs", nm)
+                        st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
     
     # ----------------------------
@@ -5680,26 +5808,9 @@ def _render_city_dossier(city_name: str, city_obj: dict, npcs: dict[str, dict], 
                 else:
                     st.caption("(sem descrição)")
 
-    # Editor de tags (não altera arquivo automaticamente; gera JSON para você salvar)
-    with st.expander("🛠️ Editor de tags (opcional)"):
-        live = _get_live_overrides()
-        current_manual = (live.get("cities", {}) or {}).get(city_name, [])
-        new_tags = st.multiselect("Tags manuais desta cidade", options=sorted(set(tags + inferred + ["Industrial","Arruinada","Portuária","Desértica","Florestal","Montanhosa","Urbana"])), default=current_manual)
-        if st.button("Aplicar tags manuais (sessão)", key=f"apply_city_tags_{_stem_key(city_name)}"):
-            live.setdefault("cities", {})[city_name] = new_tags
-            st.session_state["comp_live_overrides"] = live
-            st.rerun()
-
-        merged = _load_comp_tags_overrides()
-        merged_live = _get_live_overrides()
-        out = {"cities": {**(merged.get("cities", {}) or {}), **(merged_live.get("cities", {}) or {})},
-               "npcs": {**(merged.get("npcs", {}) or {}), **(merged_live.get("npcs", {}) or {})}}
-        st.download_button("⬇️ Baixar compendium_tags.json", data=json.dumps(out, ensure_ascii=False, indent=2), file_name="compendium_tags.json", mime="application/json")
 
 
 def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[str, dict], gyms: dict[str, dict] | None = None) -> None:
-    inferred = infer_npc_tags(npc)
-    tags = _merge_tags("npcs", nm, inferred)
     img = comp_find_image(nm)
 
     st.markdown('<div class="comp-hero">', unsafe_allow_html=True)
@@ -5716,7 +5827,6 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
 
     with hB:
         st.markdown(f"## 🧑 {nm}")
-        _chip_row(tags)
 
         status = npc.get("status","")
         idade = npc.get("idade","")
@@ -5743,6 +5853,28 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
                     if spr:
                         st.image(spr, width=56)
                     st.caption(pnm)
+
+        st.markdown('<div class="comp-panel">', unsafe_allow_html=True)
+        st.markdown("### 🔮 Continue lendo")
+        origem = (npc.get("origem") or "").strip()
+        status = (npc.get("status") or "").strip()
+        related = []
+        for other, obj in npcs.items():
+            if other == nm:
+                continue
+            if origem and _norm(obj.get("origem","")) == _norm(origem):
+                related.append(other)
+            elif status and _norm(obj.get("status","")) == _norm(status):
+                related.append(other)
+        if related:
+            for other in related[:3]:
+                if st.button(f"🧑 Conhecer {other}", key=f"npc_related_{_stem_key(nm)}_{_stem_key(other)}"):
+                    st.session_state["comp_npc_selected"] = other
+                    _touch_recent("comp_recent_npcs", other)
+                    st.rerun()
+        else:
+            st.caption("Abra outro NPC da lista ao lado para continuar a história.")
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # ----------------------------
     # 🏅 Referências de Ginásio
@@ -5826,21 +5958,6 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
             st.markdown(f"#### {k}")
         st.markdown(v)
 
-    with st.expander("🛠️ Editor de tags (opcional)"):
-        live = _get_live_overrides()
-        current_manual = (live.get("npcs", {}) or {}).get(nm, [])
-        new_tags = st.multiselect("Tags manuais deste NPC", options=sorted(set(tags + inferred + ["Líder de Ginásio","Cientista","Ranger","Treinador","Mercenário","Político"])), default=current_manual)
-        if st.button("Aplicar tags manuais (sessão)", key=f"apply_npc_tags_{_stem_key(nm)}"):
-            live.setdefault("npcs", {})[nm] = new_tags
-            st.session_state["comp_live_overrides"] = live
-            st.rerun()
-
-
-        merged = _load_comp_tags_overrides()
-        merged_live = _get_live_overrides()
-        out = {"cities": {**(merged.get("cities", {}) or {}), **(merged_live.get("cities", {}) or {})},
-               "npcs": {**(merged.get("npcs", {}) or {}), **(merged_live.get("npcs", {}) or {})}}
-        st.download_button("⬇️ Baixar compendium_tags.json", data=json.dumps(out, ensure_ascii=False, indent=2), file_name="compendium_tags.json", mime="application/json")
 
 
 # ----------------------------
@@ -5849,11 +5966,6 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
 def render_compendium_page() -> None:
     apply_compendium_theme()
     _init_comp_state()
-
-    st.markdown('<div class="comp-hero">', unsafe_allow_html=True)
-    st.markdown("# 📚 Compendium de Ga'Al")
-    st.markdown('<div class="comp-muted">Locais, cidades e NPCs — navegação rápida com favoritos, recentes e busca global.</div>', unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
 
     # carrega dados
     try:
@@ -5867,6 +5979,54 @@ def render_compendium_page() -> None:
     npcs = data.get("npcs", {}) or {}
     gyms = data.get("gyms", {}) or {}
 
+    # hero (imersivo)
+    st.markdown('<div class="comp-shell">', unsafe_allow_html=True)
+    h_left, h_right = st.columns([1.35, 1], gap="large")
+    with h_left:
+        st.markdown('<div class="comp-hero">', unsafe_allow_html=True)
+        st.markdown('<div class="comp-hero-title">📚 Compendium de Ga\'Al</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="comp-hero-kicker">Um arquivo vivo de lugares, histórias e rostos. '
+            'Abra um dossiê e deixe a curiosidade guiar o próximo capítulo.</div>',
+            unsafe_allow_html=True,
+        )
+        last_city = (st.session_state.get("comp_recent_cities") or [None])[0]
+        last_npc = (st.session_state.get("comp_recent_npcs") or [None])[0]
+        if last_city or last_npc:
+            st.markdown('<div class="comp-divider"></div>', unsafe_allow_html=True)
+            st.markdown("**Continue de onde parou:**")
+            if last_city and last_city in cities:
+                if st.button(f"🏙️ Voltar para {last_city}", key="comp_resume_city"):
+                    st.session_state["comp_axis"] = "🌍 Locais"
+                    st.session_state["comp_region"] = cities[last_city].get("region")
+                    st.session_state["comp_city"] = last_city
+                    st.rerun()
+            if last_npc and last_npc in npcs:
+                if st.button(f"🧑 Revisitar {last_npc}", key="comp_resume_npc"):
+                    st.session_state["comp_axis"] = "🧑‍🤝‍🧑 NPCs"
+                    st.session_state["comp_npc_selected"] = last_npc
+                    st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        stat_cols = st.columns(3)
+        with stat_cols[0]:
+            st.markdown(f'<div class="comp-stat"><div class="comp-mini">Regiões</div><b>{len(regions)}</b></div>', unsafe_allow_html=True)
+        with stat_cols[1]:
+            st.markdown(f'<div class="comp-stat"><div class="comp-mini">Cidades</div><b>{len(cities)}</b></div>', unsafe_allow_html=True)
+        with stat_cols[2]:
+            st.markdown(f'<div class="comp-stat"><div class="comp-mini">NPCs</div><b>{len(npcs)}</b></div>', unsafe_allow_html=True)
+
+    with h_right:
+        st.markdown('<div class="comp-hero">', unsafe_allow_html=True)
+        map_img = comp_find_image(COMP_DEFAULT_MAP)
+        if map_img:
+            st.image(map_img, use_container_width=True)
+            st.markdown('<div class="comp-mini">Mapa geral de Ga\'Al — use como ponto de partida para decidir o próximo destino.</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="comp-mini">Mapa geral: adicione a imagem para enriquecer o compendium.</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
     loc_p = _resolve_asset_path(COMP_DOC_LOCAIS)
     npc_p = _resolve_asset_path(COMP_DOC_NPCS_VIVOS)
     if not os.path.exists(loc_p):
@@ -5876,6 +6036,8 @@ def render_compendium_page() -> None:
         st.warning(f"Não encontrei o DOCX de NPCs vivos: {COMP_DOC_NPCS_VIVOS} (a aba de NPCs ficará vazia).")
 
     # eixo (rádio horizontal) — permite trocar programaticamente via busca/cross-link
+    st.markdown('<div class="comp-panel">', unsafe_allow_html=True)
+    st.markdown("**Escolha o próximo capítulo**")
     axis = st.radio(
         "Navegar",
         ["🌍 Locais", "🏅 Ginásios", "🧑‍🤝‍🧑 NPCs", "🔎 Busca"],
@@ -5883,6 +6045,7 @@ def render_compendium_page() -> None:
         key="comp_axis",
         label_visibility="collapsed",
     )
+    st.markdown("</div>", unsafe_allow_html=True)
 
     # ----------------------------
     # 🔎 BUSCA GLOBAL
@@ -5964,6 +6127,7 @@ def render_compendium_page() -> None:
             st.session_state["comp_region"] = reg_options[0]
 
         with left:
+            st.markdown('<div class="comp-panel">', unsafe_allow_html=True)
             st.markdown("### 🌍 Região")
             region_name = st.selectbox("Selecionar Região", reg_options, index=reg_options.index(st.session_state["comp_region"]), key="comp_region_sel")
             st.session_state["comp_region"] = region_name
@@ -6017,8 +6181,6 @@ def render_compendium_page() -> None:
 
                     for cname in filtered:
                         cobj = cities[cname]
-                        inferred = infer_city_tags(cobj)
-                        tags = _merge_tags("cities", cname, inferred)
                         img = comp_find_image(cname)
                         fav = _is_fav("comp_fav_cities", cname)
 
@@ -6031,8 +6193,6 @@ def render_compendium_page() -> None:
                                 st.caption("🖼️")
                         with r2:
                             st.markdown(f"**{cname}**")
-                            if tags:
-                                st.caption(" • ".join(tags[:3]))
                             if st.button("Abrir", key=f"open_city_{_stem_key(region_name)}_{_stem_key(cname)}"):
                                 st.session_state["comp_city"] = cname
                                 _touch_recent("comp_recent_cities", cname)
@@ -6042,6 +6202,7 @@ def render_compendium_page() -> None:
                                 _toggle_fav("comp_fav_cities", cname)
                                 st.rerun()
                         st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
         with right:
             region_obj = regions.get(st.session_state["comp_region"]) or {"intro":"", "sections":{}, "cities":[]}
@@ -6162,6 +6323,7 @@ def render_compendium_page() -> None:
             st.stop()
 
         with left:
+            st.markdown('<div class="comp-panel">', unsafe_allow_html=True)
             st.markdown("### 🧑‍🤝‍🧑 NPCs — Filtros")
             f1, f2 = st.columns([0.9, 1.1], gap="small")
             with f1:
@@ -6172,9 +6334,6 @@ def render_compendium_page() -> None:
             q = st.text_input("🔍 Buscar por nome", key="comp_npc_q", placeholder="Ex.: Tulsi, Stenio…")
             only_fav = st.checkbox("⭐ Só favoritos", value=False, key="comp_npc_onlyfav")
             show_recent = st.checkbox("🕒 Mostrar Recentes", value=True, key="comp_npc_showrecent")
-
-            all_tags = sorted({t for obj in npcs.values() for t in _merge_tags("npcs", obj.get("name",""), infer_npc_tags(obj))})
-            tag_filter = st.multiselect("Tags", options=all_tags, default=st.session_state.get("comp_npc_tags", []), key="comp_npc_tags")
 
             def status_ok(obj: dict) -> bool:
                 stt = _norm(obj.get("status",""))
@@ -6192,12 +6351,9 @@ def render_compendium_page() -> None:
                     continue
                 if not status_ok(obj):
                     continue
-                tags = _merge_tags("npcs", nm, infer_npc_tags(obj))
-                if tag_filter and not any(t in tags for t in tag_filter):
-                    continue
                 if only_fav and nm not in favs:
                     continue
-                items.append((nm, obj, tags))
+                items.append((nm, obj))
 
             # Recentes
             recents = st.session_state.get("comp_recent_npcs", []) or []
@@ -6228,7 +6384,7 @@ def render_compendium_page() -> None:
                         st.session_state["comp_npc_selected"] = items[0][0]
 
                     if view == "Lista":
-                        for nm, obj, tags in items:
+                        for nm, obj in items:
                             img = comp_find_image(nm)
                             fav = _is_fav("comp_fav_npcs", nm)
 
@@ -6241,8 +6397,6 @@ def render_compendium_page() -> None:
                                     st.caption("🖼️")
                             with r2:
                                 st.markdown(f"**{nm}**")
-                                if tags:
-                                    st.caption(" • ".join(tags[:3]))
                                 # sprites no card
                                 pokes = obj.get("pokemons") or []
                                 if pokes:
@@ -6264,15 +6418,13 @@ def render_compendium_page() -> None:
 
                     else:  # Grid
                         cols = st.columns(4)
-                        for i, (nm, obj, tags) in enumerate(items):
+                        for i, (nm, obj) in enumerate(items):
                             img = comp_find_image(nm)
                             with cols[i % 4]:
                                 st.markdown('<div class="comp-card">', unsafe_allow_html=True)
                                 if img:
                                     st.image(img, use_container_width=True)
                                 st.markdown(f"**{nm}**")
-                                if tags:
-                                    st.caption(" • ".join(tags[:2]))
                                 pokes = obj.get("pokemons") or []
                                 if pokes:
                                     spr_cols = st.columns(min(3, len(pokes)))
@@ -6286,12 +6438,13 @@ def render_compendium_page() -> None:
                                     _touch_recent("comp_recent_npcs", nm)
                                     st.rerun()
                                 st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
         with right:
             sel = st.session_state.get("comp_npc_selected")
             _breadcrumb(["🧑‍🤝‍🧑 NPCs", sel] if sel else ["🧑‍🤝‍🧑 NPCs"])
             if sel and sel in npcs:
-                ordered = [nm for nm, _, _ in items] if 'items' in locals() else list(npcs.keys())
+                ordered = [nm for nm, _ in items] if 'items' in locals() else list(npcs.keys())
                 _nav_prev_next(sel, ordered, prefix="comp_npc_selected")
                 _render_npc_dossier(sel, npcs[sel], cities, npcs, gyms)
             else:
@@ -10188,19 +10341,3 @@ elif page == "Mochila":
     
     
     
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
