@@ -1,0 +1,729 @@
+{
+  "regions": {
+    "Baía Morta": {
+      "intro": "A Baía Morta é a face mais exposta de Ga’Al: aberta ao mar, ao comércio e ao olhar estrangeiro, mas também à instabilidade que acompanha tudo o que chega de fora. Suas cidades cresceram de maneiras distintas em torno da mesma promessa — acesso, progresso e relevância — e todas pagaram um preço por isso. Portos movimentados, rotas aéreas, centros de pesquisa e polos culturais coexistem com ressentimentos antigos, desconfiança em relação a treinadores Pokémon e uma memória coletiva marcada por decisões tomadas longe da população comum. Aqui, nada permanece isolado por muito tempo: crises se espalham com a mesma velocidade que mercadorias e boatos.\n\nApesar da aparência cosmopolita, a Baía Morta não é homogênea. Obsidian concentra poder, ciência e infraestrutura; Aspargo carrega o peso de ter sido deixada para trás; e Dainise vive no limite entre a civilização e o avanço do ambiente selvagem. O cheiro de sal, óleo e pedra úmida é constante, assim como a sensação de que algo pode sair do controle a qualquer momento. Para viajantes e treinadores, a região oferece oportunidades únicas — visibilidade, recursos e influência — mas também cobra atenção redobrada: na Baía Morta, cada escolha ecoa além da cidade onde foi feita.",
+      "cities": [
+        "Obsidian",
+        "Vila de Aspargo",
+        "Dainise",
+        "Anexo: Ruínas de Celeste (nota breve)"
+      ]
+    },
+    "Baixo Deserto": {
+      "intro": "",
+      "cities": [
+        "Visão geral da Região",
+        "Malva",
+        "Sinoper",
+        "Jade"
+      ]
+    },
+    "Campos Longos": {
+      "intro": "Campos Longos — Dossiê Regional (para jogadores)\n\nOs Campos Longos ocupam os planaltos elevados do nordeste de Ga’Al, onde a promessa de modernização bate de frente com o abandono. Esta é uma região de contrastes: de um lado, Liberty — vitrine de neon, shoppings e apostas; do outro, Gamborre — antiga joia industrial reduzida a ruínas e reconstruída a passos cuidadosos.",
+      "cities": [
+        "Liberty",
+        "Gamborre"
+      ]
+    },
+    "Chifre de Ga'Al": {
+      "intro": "Chifre de Ga'Al — Compendium (Revisado)",
+      "cities": [
+        "Visão geral da região",
+        "Grená — Visão geral",
+        "Ginásio de Grená",
+        "Locais em Grená",
+        "Kobicha — Visão geral",
+        "Ginásio de Kobicha",
+        "Locais em Kobicha"
+      ]
+    },
+    "Deserto Irrigado": {
+      "intro": "Deserto Irrigado — Dossiê Regional (Versão para Jogadores)\n\nEste dossiê reúne informações públicas, relatos de viajantes e observações de campo sobre o Deserto Irrigado — uma faixa árida cortada por rios temporários e canais que, quando cheios, transformam poeira em promessa. Nem tudo aqui é consenso: boatos, versões contraditórias e ‘verdades úteis’ fazem parte do lugar.",
+      "cities": [
+        "Visão geral da região",
+        "Lilac",
+        "Mikado"
+      ]
+    },
+    "Terras Fluviais": {
+      "intro": "Terras Fluviais — Dossiê Regional (Versão para Jogadores)\n\nCompilação pública para consulta rápida (com foco em sublocais). Alguns detalhes podem variar conforme relatos locais.",
+      "cities": [
+        "Visão geral da região",
+        "Turquesa",
+        "Borgonha",
+        "Cardo"
+      ]
+    },
+    "Coração Verde": {
+      "intro": "",
+      "cities": [
+        "Visão geral",
+        "Localidades"
+      ]
+    },
+    "Ginásios de Ga'Al": {
+      "intro": "Ginásios de Ga'Al — Compendium Padronizado\n\nFormato pensado para leitura humana (compendium) e para parsing simples por código.",
+      "cities": [
+        "Como ler por código",
+        "Ginásios abertos",
+        "Ginásios fechados (registro histórico)"
+      ]
+    }
+  },
+  "cities": {
+    "Obsidian": {
+      "region": "Baía Morta",
+      "sections": {
+        "Visão geral": "Erguida onde a montanha se inclina para o mar, Obsidian é uma metrópole de pedra escura e vento salgado. O ar costuma trazer cheiro de diesel e maresia, misturado ao calor metálico dos guindastes do Porto Pedra. À noite, a neblina encobre letreiros e sacadas, e o som distante das ondas se confunde com sirenes e anúncios do metrô. O contraste define a cidade: centro vertical e luminoso; subúrbio mais humano, com mercados, escolas e igrejas; e, acima de tudo, o Monte Pedra, presença constante no horizonte.\n\nPara quem chega pela costa, Obsidian parece sempre em movimento — contratos fechados em cafés, caminhões em fila, treinadores indo e voltando do ginásio. Os principais pontos de interesse e sublocais estão organizados na seção “Locais em Obsidian”, para consulta rápida no site.\n\nObsidian também é onde o poder se concentra: portos, ciência, cultura e esportes dividem o mesmo espaço, mas raramente com o mesmo peso. Quem nasce no subúrbio aprende cedo que a cidade tem ‘dois relógios’: um para quem negocia no centro e outro para quem sustenta os serviços, os depósitos e as rotas de carga. A diferença não é só econômica — é de acesso, segurança e até de como as autoridades escolhem escutar (ou ignorar) um problema.",
+        "Como é viver em Obsidian": "O cotidiano é barulhento: guindastes rangem, caminhões travam as vias de acesso ao Porto Pedra, sirenes cortam a neblina e anúncios públicos competem com música de rua. O ar muda conforme o bairro: no centro, perfume caro e ar-condicionado; perto do porto, diesel, sal e ferrugem; na base do Monte Pedra, pó mineral e umidade fria. Mesmo em dias comuns, a cidade passa a sensação de estar sempre ‘em alerta’, como se um incidente fosse apenas questão de timing.",
+        "Treinadores, estrangeiros e controle": "Obsidian recebe mais estrangeiros do que qualquer outro lugar da Baía Morta. Isso cria oportunidades — e uma paranoia razoável. Chegadas e partidas alimentam histórias: alguns juram que há triagens informais para certos perfis de treinador; outros dizem que é apenas burocracia de cidade grande. O consenso é que o passado recente ensinou a Obsidian a desconfiar de ‘novos rostos’ — especialmente quando trazem Pokémon fortes ou tecnologia demais para o contexto local.",
+        "Ginásio de Obsidian": "Líder: Marlon  |  Tipo: Terra  |  Localização: Dentro do Monte Pedra (acesso pela zona externa).\n\nNo interior do Monte Pedra, o ginásio é um corte de rocha e concreto: corredores frios, pó mineral no ar e ecos longos. A sensação é a de entrar numa pedreira viva — cada passo reverbera, e a umidade condensa nas paredes como suor de pedra.\n\nVeteranos da cidade ainda citam o nome de Stênio — antigo líder local e figura temida — quando falam do Monte Pedra. A exploração profunda da montanha é assunto sensível, com regras que mudam conforme quem pergunta. A versão ‘oficial’ sempre menciona segurança; a versão de bar fala de coisas que ninguém quer acordar lá embaixo.",
+        "Sublocais e pontos de interesse": "Abaixo estão os sublocais de Obsidian, no formato de dossiê: cada entrada descreve ambiente, função prática, o que se costuma ouvir/cheirar/ver e o tipo de interação que tende a acontecer ali."
+      },
+      "sublocais": [
+        {
+          "name": "Centro da cidade",
+          "text": "O coração vertical de Obsidian: arranha-céus de concreto negro, letreiros brilhantes, cafés lotados e negócios em ritmo acelerado. Aqui, a cidade soa como passos apressados e portas automáticas, e o brilho escuro das fachadas reflete o céu como um espelho gasto.\n\nÉ onde decisões ‘invisíveis’ ganham forma: licenças, contratos, convênios e disputas de influência. Treinadores circulam em grupos pequenos, geralmente entre shopping, cafés e eventos no Centro Cultural — e quem chama atenção demais tende a atrair olhares da segurança privada antes mesmo das autoridades."
+        },
+        {
+          "name": "Subúrbio",
+          "text": "Bairros de ruas mais estreitas e vida cotidiana mais visível — mercados, escolas e pequenos templos. À tarde, o vento vindo do mar carrega poeira fina das encostas; à noite, a luz amarelada dos postes revela o contraste entre a Obsidian turística e a Obsidian que trabalha.\n\nAqui a cidade fala mais alto em rostos e histórias do que em vitrines. É comum ouvir moradores medirem um recém-chegado pelo jeito que ele trata os Pokémon de serviço, os vendedores de rua e os religiosos locais. Quem precisa de informação ‘real’ sobre Obsidian quase sempre começa por aqui."
+        },
+        {
+          "name": "Centro Cultural Obsidian",
+          "text": "Exposições, oficinas e eventos ocupam salões amplos dentro de um arranha-céu central. O ambiente mistura o silêncio de galerias com a vibração de shows e debates — e é um dos poucos lugares onde diferentes classes da cidade se encontram sem o filtro do porto ou do comércio.\n\nAlém da programação oficial, o lugar é famoso por encontros discretos: professores, artistas, ativistas e treinadores usam salas menores e corredores laterais para conversar sem o ruído do porto. Em noites de evento, a mistura de classes torna o ambiente fértil para alianças — e para mal-entendidos."
+        },
+        {
+          "name": "Aquário Marinho de Obsidian",
+          "text": "Um passeio por habitats marinhos recriados com tecnologia de ponta. O som abafado das bombas d’água, a luz azulada dos tanques e a vista da orla criam um refúgio hipnótico — perfeito para uma pausa… ou para encontros discretos.\n\nA calmaria é parte do charme e parte do risco: é fácil baixar a guarda entre luz azul e vidro grosso. Guardiões locais conhecem rotas de serviço, depósitos e passagens técnicas — úteis para quem quer se encontrar sem ser visto ou escapar quando um encontro ‘dá errado’."
+        },
+        {
+          "name": "Parque das Pedras",
+          "text": "Trilhas e mirantes na base do Monte Pedra, onde o ar fica mais frio e úmido. Formações rochosas e cachoeiras escondidas oferecem aventura — e também rotas para quem prefere entrar e sair da cidade longe dos olhos do Porto Pedra.\n\nAs trilhas mudam de humor conforme o clima. Em dias úmidos, a rocha ‘respira’ e o som de água escondida engana distâncias. Há mirantes usados por treinadores para testar mobilidade e por gente comum para fugir do caos urbano; e há trilhas que não aparecem nos mapas turísticos."
+        },
+        {
+          "name": "Museu da Aviação",
+          "text": "Aeronaves, simuladores e histórias de voo em um prédio no subúrbio, próximo ao aeroporto. Metal polido e cheiro de combustível seco acompanham exposições que encantam curiosos e atraem interessados em tecnologia.\n\nMecânicos e estudantes visitam o museu tanto quanto turistas. Quem presta atenção percebe que conversas sobre rotas aéreas, manutenção e importações são tão valiosas quanto a exposição. Em certos dias, o museu parece uma feira informal de tecnologia."
+        },
+        {
+          "name": "Estádio Pedra Branca",
+          "text": "Casa do time local de Touchdown, o Pedra Branca, com arquibancadas que tremem em dias de jogo. Antes e depois das partidas, o entorno vira feira: comida de rua, música e rivalidades antigas reacendem.\n\nEm dias de jogo, a cidade muda: torcidas se organizam cedo, ambulantes tomam as calçadas, e rivalidades antigas viram espetáculo. Para quem narra cenas urbanas, é um dos melhores lugares para ‘tensão controlada’: brigas podem começar por nada, mas também é onde alianças improváveis nascem no calor da arquibancada."
+        },
+        {
+          "name": "O Grande Shopping da Bahia",
+          "text": "Comércio, serviços e a maior concentração de TM’s da região. Segurança reforçada, vitrines reluzentes e corredores que parecem nunca acabar fazem do lugar um pequeno mundo à parte.\n\nO shopping funciona como ‘zona neutra’ para compras e encontros, justamente por ser vigiado. Há lojas de TM’s, serviços de reparo e consultorias de batalha; e há o que se vende fora do catálogo, desde que a pessoa certa seja abordada no horário certo."
+        },
+        {
+          "name": "Anfiteatro Staryu de Pedra",
+          "text": "Palco à beira-mar para apresentações artísticas. À noite, a brisa fria e o som das ondas acompanham performances que tentam manter viva a memória dos festivais.\n\nQuando o vento vem do mar, a acústica muda e as apresentações ficam quase íntimas, mesmo com público grande. Artistas locais tratam o anfiteatro como resistência cultural — e, em noites específicas, o palco vira tribuna, com discursos que nem sempre agradam quem manda."
+        },
+        {
+          "name": "Pedrelago",
+          "text": "Competições mensais de pesca e um clima de vila nos arredores da metrópole. O espelho d’água, quando o vento para, reflete as luzes distantes de Obsidian como estrelas tremidas.\n\nAs competições de pesca atraem famílias e veteranos, mas também ‘olheiros’ atrás de Pokémon incomuns e técnicas raras. É um lugar excelente para conversas longas, troca de histórias e acordos que pedem tempo — o tipo de negociação que Obsidian raramente permite no centro."
+        },
+        {
+          "name": "Laboratório Pokémon",
+          "text": "O centro de pesquisa da região, onde decisões científicas influenciam toda a Baía Morta. O acesso é controlado, e rumores correm sobre projetos que não aparecem nos relatórios públicos.\n\nA presença da Dra. Tulsi é sentida mesmo por quem nunca entrou. Ela é citada como brilhante e inflexível; alguns treinadores a respeitam, outros a consideram ‘controladora’. O laboratório influencia políticas práticas: relatórios, orientações, padrões de segurança e decisões que respingam em toda a Baía Morta."
+        },
+        {
+          "name": "Farol Ponta da Pedra",
+          "text": "Estrutura desativada e tomada por Pokémon, hoje mais misteriosa do que útil. Em noites de neblina, marinheiros dizem ver um clarão curto onde não deveria haver luz.\n\nO farol é um lugar de risco físico (pedra escorregadia, visibilidade instável) e de risco narrativo: o tipo de cenário perfeito para rastros, mensagens deixadas, encontros marcados e ‘coincidências’ demais. Muitos evitam ficar ali depois que a neblina fecha."
+        },
+        {
+          "name": "Museu de História Natural",
+          "text": "Coleção de fósseis e artefatos arqueológicos; um ponto de visita obrigatória para quem busca contexto histórico — ou pistas escondidas entre vitrines e depósitos.\n\nPesquisadores e curiosos buscam fósseis por paixão, mas também por pistas. Há depósitos e salas técnicas pouco visitadas onde um ‘item fora do lugar’ pode mudar a leitura do passado. É um ótimo ponto para introduzir documentos, mapas antigos e ruídos de história que não encaixam na versão oficial."
+        },
+        {
+          "name": "Porto Pedra",
+          "text": "O grande portal de Obsidian para o mundo. O fluxo é constante: carga, passageiros e contratos fechados sob o barulho de guindastes e gaivotas.\n\nO porto é o motor e a garganta de Obsidian. Barulho de metal, apitos, ordens gritadas e gaivotas formam o caos cotidiano. Além do comércio regular, é onde se sente o ‘submundo’ sem precisar procurá-lo: carregamentos desaparecem, pessoas embarcam sem deixar rastro, e informações circulam mais rápido do que a polícia consegue acompanhar."
+        },
+        {
+          "name": "Aeroporto Internacional de Obsidian",
+          "text": "Próximo ao subúrbio e citado com frequência junto ao Museu da Aviação, o aeroporto é a rota rápida para quem entra e sai da Baía Morta sem depender do porto. O cheiro de querosene e o ronco das turbinas contrastam com o silêncio pesado do Monte Pedra. Em horários de pico, o saguão vira vitrine de estrangeiros, pesquisadores e treinadores — e também um lugar onde ‘documentos’ e identidades são checados com rigor variável, dependendo do clima político da semana."
+        }
+      ]
+    },
+    "Vila de Aspargo": {
+      "region": "Baía Morta",
+      "sections": {
+        "Visão geral": "Aspargo é pequena e orgulhosa, espremida entre Obsidian e Dainise, no centro baixo de um planalto. O lugar cheira a terra úmida e tinta velha: a vila cultiva cores como quem desafia o cinza da Baía Morta. Mesmo assim, há um cansaço constante no ar — madeira rangendo, cercas gastas, paredes manchadas por chuvas ácidas do passado.\n\nO ressentimento local tem nome e história: a ferrovia que impulsionou Ga’Al passou ao largo, e Aspargo ficou com a sensação de ter sido deixada para trás. Ainda hoje, muitos jovens partem para Obsidian em busca de futuro, enquanto quem fica aprende a sobreviver com o que tem.\n\nA vila aprendeu a associar ‘treinador famoso’ a promessa quebrada. Por isso, visitas de forasteiros oscilam entre hospitalidade pragmática (todo dinheiro ajuda) e hostilidade aberta. A estética colorida não significa leveza: em Aspargo, cor é teimosia. A sensação constante é de comunidade pequena, onde todo mundo sabe de tudo — e onde um erro vira conversa por meses.",
+        "Treinadores e reputação": "O torneio local e o Estádio Arco-íris são tentativas de trazer fluxo de volta para a vila, mas isso convive com a memória do ‘abandono’. Parte da população culpa Antônio por ter ‘virado as costas’ ao permitir que a ferrovia passasse longe; outra parte considera que ninguém sabe a história completa. Esse conflito aparece em gestos pequenos: um comerciante que trata um treinador com frieza, uma família que fecha a janela quando uma batalha começa, ou uma conversa que muda de assunto quando o nome de Antônio surge."
+      },
+      "sublocais": [
+        {
+          "name": "Estádio Arco-íris",
+          "text": "Construído dentro de um antigo clube, o estádio transformou uma piscina olímpica em ringue improvisado. O azulejo úmido, o cheiro de cloro antigo e a arquibancada remendada denunciam a tentativa — quase desesperada — de atrair treinadores de volta para a vila.\n\nO estádio também virou símbolo de ‘teimosia coletiva’. Quando a arquibancada enche, a vila parece lembrar do que já foi. Treinadores que vencem aqui ganham respeito rápido — mas não carinho automático. O lugar é perfeito para rivalidades locais e para ver quem aguenta lutar em um cenário improvisado, sem glamour."
+        },
+        {
+          "name": "Day Care Aspargo",
+          "text": "Uma creche onde treinadores deixam seus Pokémon: um grande rancho com cercas gastas e estruturas sucateadas, mas ainda em funcionamento. Fica do lado de fora da cidade, subindo a encosta — e, nos dias quentes, o som de Pokémon correndo se mistura ao rangido da madeira e ao canto dos insetos.\n\nO Day Care é um dos poucos negócios que realmente ‘funcionam’ apesar da crise. Muita gente da vila depende dele para renda indireta: ração, manutenção, remédios e pequenos serviços. E por ficar na encosta, o rancho também serve como ponto de observação: dá para ver quem chega e quem sai antes de alcançar a rua principal."
+        },
+        {
+          "name": "Museu do Herói",
+          "text": "A antiga casa do maior treinador que Aspargo já produziu, desaparecido misteriosamente há alguns anos. Hoje, o lugar é administrado por Maria e vive ameaçado de fechar por falta de verba — um corredor de lembranças que cheira a poeira, verniz e nostalgia.\n\nMaria mantém o museu com uma mistura de orgulho e amargura. Há histórias de que as Pokébolas de Antônio estão guardadas ali — para alguns, relíquia; para outros, provocação. A casa-museu é um ótimo lugar para cenas de investigação, confronto moral e memórias conflitantes contadas por guias diferentes."
+        },
+        {
+          "name": "Pousada Vila",
+          "text": "A última pousada sobrevivente dos tempos áureos. Administrada por Lucas, um jovem que tenta manter a cervejaria e o negócio funcionando, o prédio é um abrigo quente nas noites frias do planalto, com iluminação colorida refletindo em copos e madeira antiga.\n\nA pousada é o ‘último calor’ de Aspargo. Em noites de vento no planalto, é onde viajantes se concentram — e onde boatos se espalham. Se você precisa que os personagens descubram algo sem parecer forçado, coloque alguém no balcão dizendo que ‘ouviu uma coisa’."
+        },
+        {
+          "name": "Barragem",
+          "text": "Uma barragem perto do rio que não foi erguida a tempo de proteger a vila da chuva ácida. O concreto manchado e as marcas de corrosão contam a história de uma promessa quebrada — e o leito do rio, quando sobe, lembra a todos por quê.\n\nA barragem é cicatriz visível. Mesmo quem não viveu a chuva ácida entende o recado ao olhar as manchas e corrosões. É um cenário forte para flashbacks, discursos e decisões difíceis: ir embora, reconstruir, ou aceitar que a vila sempre ficará vulnerável."
+        },
+        {
+          "name": "O Clube de Caça",
+          "text": "Do lado de fora da vila, subindo a encosta que a cerca, caçadores se reúnem para capturar Pokémon selvagens e vendê-los no mercado cinza. Administrado por Caio, o local tem cheiro de couro, pólvora e fogueiras, e conversa sussurrada — como se as árvores pudessem escutar.\n\nO clube não é apenas um ‘lugar de caçadores’; é uma ideologia local de controle pela força. Caio é citado como figura antiga, mas relatos mais recentes apontam Carlos como o homem que hoje mantém as operações — rancoroso, ranzinza e dono de um Charizard que ninguém subestima. O clube serve como ponte para o mercado cinza e para conflitos morais diretos com jogadores."
+        }
+      ]
+    },
+    "Dainise": {
+      "region": "Baía Morta",
+      "sections": {
+        "Visão geral": "Dainise se ergue na borda onde a Baía Morta encontra o Coração Verde — um limite nítido entre ar seco e floresta viva. Da parte alta, dá para sentir a mudança: a brisa salgada perde força e dá lugar ao perfume de folhas, resina e terra quente. O som também troca de pele: motores e trilhos ficam para trás, e passam a dominar os cantos de Pokémon, o farfalhar das copas e o murmúrio de água escondida.\n\nDainise se mistura com a natureza: passarelas suspensas conectam copas de árvores gigantes, e casas de madeira recebem revestimentos especiais para manter o interior fresco. À noite, fungos bioluminescentes iluminam caminhos e varandas, criando uma luz suave que parece ‘viva’. O resultado é quase mágico — mas não inocente. A proximidade com o Coração Verde faz com que a cidade trate o ambiente como aliado e ameaça ao mesmo tempo.",
+        "Ginásio de Dainise": "Líder: Rita  |  Tipo: Grama\n\nGinásio de Dainise\n\nTreinadores costumam dizer que batalhar aqui é ‘lutar contra o lugar’, não só contra o líder: umidade, odores de resina e a sensação de que a floresta observa cada movimento. Para jogadores, o ginásio funciona também como portal de informação — porque quem trabalha com pesquisa acaba sabendo de coisas que ninguém mais cataloga."
+      },
+      "sublocais": []
+    },
+    "Anexo: Ruínas de Celeste (nota breve)": {
+      "region": "Baía Morta",
+      "sections": {
+        "_sem_secao": "Ao sul da Baía Morta, onde as correntes ficam mais frias e o mar muda de cor, as Ruínas de Celeste surgem como um quebra-mar antigo e fraturado. Em maré baixa, linhas de pedra branca aparecem sob o lodo salgado; em maré cheia, tudo vira uma silhueta fantasmagórica sob a água turva. O ar ali cheira a sal velho e algas, e o som das ondas batendo nas colunas partidas cria um ritmo que lembra passos dentro de um salão vazio.\n\nCeleste é um lugar de passagem curta e atenção constante: o piso escorrega, a visibilidade muda de um instante para outro, e qualquer movimento parece ecoar demais. Use as ruínas como ponto de descoberta (relíquias, inscrições, rastros) ou como cenário de encontro tenso — a maré determina quanto tempo os personagens têm antes que corredores e escadarias voltem a ser engolidos pelo mar.\n\nPontos rápidos (para uso em mesa e indexação):\n\nGalerias de Maré\nTúneis semi-alagados que se abrem com a maré baixa; paredes lisas, marcas de sal e um silêncio que amplifica qualquer conversa.\n\nPátio das Colunas\nUm pátio aberto, tomado por areia e detritos; colunas rachadas formam sombras compridas ao entardecer e escondem linhas de visão.\n\nPlataforma do Farol Quebrado\nRestos de uma estrutura elevada com vista para o litoral; vento forte, aves e sinais de que alguém ainda observa a baía dali."
+      },
+      "sublocais": []
+    },
+    "Visão geral da Região": {
+      "region": "Baixo Deserto",
+      "sections": {
+        "_sem_secao": "Entre o calor do deserto e as franjas verdes da irrigação, o Baixo Deserto é a face mais contrastante de Ga’Al: trilhos e arranha-céus ao lado de vales soterrados; crédito fácil e segurança privada ao lado de comunas que sobrevivem pela partilha. O vento costuma trazer poeira fina e um cheiro mineral de ferro aquecido, mas basta seguir algumas léguas para que o ar mude — terra úmida de estufa, fruto amadurecendo ao sol, água represada em canais estreitos. É uma região de passagem, de reconstrução e de cicatrizes.\n\nTrês núcleos definem o ritmo: Malva é a vitrine planejada, um centro corporativo erguido para mover minério e dinheiro; Sinoper é a resposta comunitária, com fazenda comum e uma cultura de cuidado que virou política; Jade é memória e tabu — uma cidade soterrada pela Avalanche Vermelha, preservada sob camadas de terra e neve, com escavações proibidas. Entre elas, rotas ferroviárias, campos irrigados e estradas poeirentas sustentam comércio, boatos e o sentimento constante de que o solo guarda histórias que ninguém quer desenterrar."
+      },
+      "sublocais": []
+    },
+    "Malva": {
+      "region": "Baixo Deserto",
+      "sections": {
+        "Visão geral": "Malva foi a primeira cidade planejada de Ga’Al no Baixo Deserto. Concebida para facilitar o escoamento do ferro extraído no Deserto Irrigado, cresceu em torno de minas, logística e linhas de crédito — e ganhou um rosto corporativo com os edifícios do império Rockefeller. De longe, a cidade parece um desenho de régua: avenidas largas, viadutos, pátios ferroviários e torres de vidro refletindo um céu quase sempre seco. De perto, ela soa como metal em movimento: apitos de trem, caminhões em marcha lenta e o tilintar constante de ferramentas.",
+        "Como é viver em Malva": "A paisagem de Malva mistura rusticidade e sofisticação. Nos arredores, a irrigação sustenta faixas verdes de algodão, milho e pomares — um contraste que salta aos olhos contra o tom ocre do deserto. No centro, o ar cheira a concreto quente e ar-condicionado, e as sombras dos arranha-céus criam corredores de vento que empurram poeira para dentro das vielas. Depois da queda das Gêmeas, a cidade recebeu um fluxo de pessoas marcadas buscando reintegração; isso trouxe solidariedade em alguns quarteirões e xenofobia em outros, elevando a tensão nas ruas e nos portões corporativos.\n\nPara conter a escalada de conflitos, a prefeita Karine contratou a Milicorpe, e a presença de segurança privada virou parte do cenário: rondas em dupla, postos improvisados em cruzamentos, drones simples sobre a estação e olhares que medem desconhecidos pelo jeito de caminhar. Em Malva, quase tudo parece ter um preço — e quase tudo parece estar sendo observado.",
+        "Ginásio de Malva": "Líder: Vitória  |  Tipo: Dragão  |  Localização: Malva (núcleo urbano).\n\nVitória conduz o ginásio como extensão do seu método: cada batalha é, ao mesmo tempo, confronto e aula. Ela costuma anunciar o que pretende fazer para observar a reação do desafiante e, ao final, entrega um relatório direto sobre decisões, tempo de troca e leitura de campo — um estilo que atrai treinadores sérios e irrita quem espera espetáculo fácil.\n\nDurante a expansão da Team Keneze no Baixo Deserto, Vitória ganhou respeito por agir onde outros recuavam: ao encontrar pessoas marcadas, oferecia água, comida, tratamento médico e acompanhamento psicológico, e buscava reinseri-las com dignidade. Para sustentar isso em uma cidade de receita irregular, contraiu empréstimos com a Associação de Batalha; hoje, o endividamento é uma sombra constante sobre o cargo. Seu vice, Draco, carrega devoção quase religiosa à líder — e a condição de que só será ‘oficial’ quando conseguir derrotá-la em batalha reconhecida virou história repetida em filas de inscrição.",
+        "Sublocais e pontos de interesse": "Abaixo estão os sublocais de Malva, no formato de dossiê: cada entrada descreve ambiente, função prática e o tipo de interação que costuma acontecer ali."
+      },
+      "sublocais": [
+        {
+          "name": "Parque Rockefeller",
+          "text": "Parque público construído por Rockefeller como “presente” para a cidade. Lagos, fontes e alamedas viram um raro respiro num lugar dominado por trilhos e poeira. Entre árvores jovens e canteiros geométricos, o som de água corrente tenta abafar os apitos de trem que nunca param.\n\nCarrossel, roda-gigante, labirinto de espelhos e um mini-zoológico competem pela atenção de famílias e visitantes. Em dias de evento, o parque vira vitrine: fotógrafos, vendedores e seguranças misturam alegria com vigilância — um bom lugar para encontros públicos, e um péssimo lugar para quem quer passar despercebido."
+        },
+        {
+          "name": "Milicorpe",
+          "text": "Sede local da empresa de segurança privada contratada pela prefeita Karine. O prédio mistura academia, alojamentos e pátio de treino para agentes e seus Pokémon; o ar cheira a desinfetante, metal e café ralo, e o silêncio tenso de disciplina atravessa os corredores.\n\nA Milicorpe não é apenas ‘guarda’: faz triagem de boatos, recolhe depoimentos informais e define, na prática, por onde é seguro circular à noite. Treinadores promissores chamam atenção — e atenção aqui pode virar convite, cobrança… ou acompanhamento constante."
+        },
+        {
+          "name": "Centro de Reintegração",
+          "text": "Centro que oferece apoio a pessoas marcadas que chegam a Malva em busca de recomeço. Salas de aconselhamento, cursos de formação e triagem médica dividem espaço com filas discretas e conversas sussurradas; há um esforço deliberado para que o lugar pareça acolhedor, mesmo quando a cidade lá fora não é.\n\nUma ala é dedicada a Pokémon marcados, abandonados ou maltratados. O som de passos costuma ser mais cuidadoso ali, como se qualquer ruído alto pudesse quebrar confiança recém-construída. Para campanhas, é um ponto forte de encontros humanos: pedidos de ajuda, histórias incompletas, e dilemas sobre ‘ser visto’ ou ‘ser salvo’."
+        },
+        {
+          "name": "Muda a Moda",
+          "text": "Centro de moda considerado o berço de estilistas, modelos e coordenadores de Ga’Al. Lojas, ateliês, salões e estúdios vivem cheios em épocas de festival; perfume, tecido novo e luzes de passarela contrastam com a poeira que insiste em entrar pelas portas.\n\nOs festivais de moda — onde treinadores e Pokémon exibem criatividade e técnica — atraem turistas, patrocinadores e olhares interessados. Por trás do brilho, há competitividade: contratos, favores e rivalidades se costuram com a mesma precisão que uma capa de palco."
+        },
+        {
+          "name": "Arena de Batalha Rockefeller",
+          "text": "Estádio de batalhas Pokémon erguido para atrair treinadores de elite. O rugido da plateia e o eco dos impactos batem nas arquibancadas como se a própria cidade apostasse no resultado; telões, holofotes e corredores largos dão à arena um ar de ‘capital’ mesmo em meio ao deserto.\n\nOlheiros da Milicorpe circulam pelos arredores observando quem demonstra sangue-frio e potencial. Para alguns, é vitrine de ascensão; para outros, é o lugar onde uma vitória vira alvo — e uma derrota vira dívida."
+        },
+        {
+          "name": "Estação de Trem do Deserto",
+          "text": "Estação que conecta Malva às outras cidades do Baixo Deserto. Trilhos quentes ao meio-dia, apitos longos e a vibração do solo anunciam chegadas e partidas; o cheiro de óleo e ferrugem se mistura ao de frutas dos carregamentos irrigados.\n\nÉ um ponto de passagem onde boatos correm mais rápido do que locomotivas. Viajantes se cruzam por minutos e separam como se nunca tivessem se visto — perfeito para encontros rápidos, entregas discretas e notícias ‘quentes’ que mudam de forma a cada repetição."
+        },
+        {
+          "name": "Parque Natural do Deserto",
+          "text": "Vasta área de preservação nos arredores de Malva. A vegetação aparece em manchas resistentes; o vento carrega areia fina que arranha a pele e apaga pegadas em minutos. O silêncio ali é diferente do silêncio urbano: amplo, com o som constante do próprio vento.\n\nO parque é belo e hostil na mesma medida. Trilhas mudam com o clima, e a orientação depende mais de marcos naturais do que de placas. Bom para exploração, encontros com Pokémon selvagens e cenas de sobrevivência — perigoso para quem subestima o calor e a distância."
+        },
+        {
+          "name": "Mercado de Minérios",
+          "text": "Mercado animado onde moradores vendem e trocam minérios e pedras preciosas das minas. Bancas rangem sob peso, ferramentas tilintam, e a conversa vira avaliação: brilho, corte, procedência. O cheiro de poeira mineral fica impregnado nas roupas depois de poucos minutos.\n\nAlém do comércio, o mercado funciona como mural vivo de Malva: quem está contratando, quem está devendo, onde houve ‘acidente’ na mina, que rota ficou perigosa. Uma boa visita rende suprimentos… e informação, se a pessoa souber ouvir sem se exibir."
+        },
+        {
+          "name": "Biblioteca Ecológica",
+          "text": "Biblioteca dedicada ao estudo dos nichos ecológicos de Ga’Al. Prateleiras, mapas e relatórios de campo dividem espaço com amostras, fotos e cadernos de expedição. O ambiente é fresco, com cheiro de papel e terra seca, como se o deserto estivesse ali em estado de observação.\n\nPesquisadores, estudantes e rangers passam por ali em busca de dados que não circulam no boca-a-boca. É um dos poucos lugares onde ‘entender o Baixo Deserto’ é mais importante do que dominá-lo — e onde perguntas cuidadosas valem mais do que bravata."
+        },
+        {
+          "name": "Museu do Ferro",
+          "text": "Museu que conta a história da mineração de ferro na região, dos primeiros colonos aos dias atuais. Exposições interativas incluem simuladores de escavação, maquetes de minas e forjas, além de ferramentas e artefatos antigos. O som metálico de demonstrações e o brilho opaco das peças fazem o passado parecer pesado — literalmente.\n\nTuristas veem progresso; veteranos veem custo. O museu também é um lugar de memória local: fotos de turnos antigos, relatos de acidentes e homenagens discretas a quem ‘ficou na mina’. Para narrativas, é um bom cenário para pistas, heranças e versões concorrentes do que Malva deve a si mesma."
+        }
+      ]
+    },
+    "Sinoper": {
+      "region": "Baixo Deserto",
+      "sections": {
+        "Visão geral": "Sinoper nasceu quando a modernização agrícola de Malva empurrou trabalhadores para fora das fazendas. Com experiência de campo e poucas opções, eles reuniram recursos e ergueram um assentamento que funciona por cooperação: uma fazenda comum no coração da vila e decisões tomadas em conjunto. Quem chega percebe rápido a diferença de clima — não o clima do céu, mas o das pessoas: menos fachada, mais rotina; menos vitrine, mais panela no fogo.\n\nA aposta de Sinoper foi clara: saúde e formação. Com o lucro das vendas, a vila investiu em estrutura médica e se tornou a escolha óbvia quando a Associação de Batalhas criou a primeira universidade Pokémon de Ga’Al, dedicada à formação de Joys e profissionais do cuidado. Por aqui, ‘comida e cura’ são política — e o cheiro de terra úmida de estufa se mistura a caldo quente, antisséptico e ração recém-preparada.",
+        "Feridas recentes e reconstrução de confiança": "A história recente, porém, deixou uma cicatriz: Erick, ex-líder do ginásio, viu o luto e a insegurança corroerem a cidade e concluiu que a violência começou com a chegada de treinadores estrangeiros. Ele tentou um “expurgo”, expulsando gente à força e manchando o nome da comuna. Sua queda tirou a vila do caminho do radicalismo — mas a desconfiança ficou. Hoje, Sinoper reaprende hospitalidade sem baixar a guarda: portas abertas, regras claras, e vigilância que não se anuncia com farda.",
+        "Ginásio de Sinoper": "Líder: Clementina “Vovó” Joy  |  Tipo: Normal (tema: cuidado e agricultura)  |  Localização: Centro da vila (celeiro reformado).\n\nClementina é uma antiga Enfermeira Joy aposentada do serviço ativo há décadas. Em vez de permanecer na linha de frente médica, ela concluiu que curar o mundo pós-apocalíptico de Ga’Al passa por garantir que as pessoas tenham o que comer e onde dormir. Por isso, ajudou a consolidar a Fazenda Comum e defende a partilha como princípio — e, desde que assumiu o ginásio, carrega também uma missão silenciosa: desfazer a desconfiança deixada por Erick e restaurar a reputação da vila como lugar seguro para viajantes.\n\nSeu ginásio não é um estádio tecnológico: funciona em um celeiro reformado com aroma de palha seca, chá quente e antisséptico. Clementina educa treinadores novatos em resistência, uso estratégico de itens e controle de status. A gentileza faz parte do método — mas não confunda gentileza com fraqueza: quem se afoba aqui perde para o desgaste.",
+        "Sublocais e pontos de interesse": "Abaixo estão os sublocais de Sinoper, no formato de dossiê: cada entrada descreve ambiente, função prática e o tipo de interação que costuma acontecer ali."
+      },
+      "sublocais": [
+        {
+          "name": "Fazenda Comum",
+          "text": "Fazenda administrada coletivamente pelos habitantes. Campos, estufas, pomares e hortas produzem frutas, verduras, legumes e grãos; há uma pequena loja para comprar, trocar ou simplesmente deixar doações. O lugar é vivo: cheiro de terra, som de regadores e vozes dividindo tarefas.\n\nMais do que produção, a fazenda é o ‘coração social’ de Sinoper: aqui se resolvem disputas com conversa, se combinam turnos e se mede quem é confiável pelo jeito de trabalhar. Visitantes que chegam com humildade costumam ser acolhidos; quem chega exigindo, encontra portas fechadas — sem grito, só com firmeza."
+        },
+        {
+          "name": "Centro de Formação Joy",
+          "text": "Universidade especializada em formar Joys e profissionais do cuidado Pokémon. Prédios simples, laboratórios, salas de aula e clínicas compõem o campus; à noite, luzes ficam acesas em algumas janelas porque o estudo não para quando a região precisa de gente preparada.\n\nAlém de aulas, o centro mantém protocolos de triagem e métodos de cura que se espalharam por outras cidades. É comum ver estudantes correndo com prontuários, caixas de suprimentos e equipamentos de emergência — e ouvir discussões técnicas que parecem simples conversa de corredor para quem não entende o jargão."
+        },
+        {
+          "name": "Centro de Resgate Pokémon",
+          "text": "Centro que recebe e cuida de Pokémon resgatados das minas de ferro ao sul ou das madeireiras do Coração Verde. Enfermarias, quartos, salas de recreação e áreas externas abrigam tanto os resgatados quanto voluntários; o ar alterna cheiro de remédio, ração e terra molhada.\n\nHá programas de adoção e apadrinhamento para quem quer oferecer um novo lar. Para narrativas, o centro é um ponto natural de encontros com histórias interrompidas: Pokémon traumatizados, treinadores arrependidos, e casos que não cabem em um relatório curto."
+        },
+        {
+          "name": "Base dos Pokémon Rangers",
+          "text": "Uma das bases-sede dos Rangers na região. Estrutura simples e funcional: mapas nas paredes, equipamentos prontos, caixas de primeiros socorros e uma rotina de saídas rápidas — porque no Baixo Deserto, emergências raramente avisam.\n\nA base é ponto de apoio para patrulhas, resgates e missões de proteção ambiental. Quem passa por ali aprende que os rangers não ‘dominam’ a região; eles negociam com ela. E, quando voltam de missão, voltam com poeira nos olhos e informação nos bolsos."
+        }
+      ]
+    },
+    "Jade": {
+      "region": "Baixo Deserto",
+      "sections": {
+        "Visão geral": "Jade está ligada ao Monte Neve desde antes das rotas modernas de Ga’Al. Arqueólogos afirmam que os primeiros gaalenses se fixaram aqui por causa da montanha: o solo escuro ao redor é rico em nutrientes, e o lençol freático corre raso — como se a própria terra guardasse água para tempos piores. Hoje, porém, Jade é lembrada tanto pelo que foi quanto pelo que não se permite tocar.",
+        "A Avalanche Vermelha": "Conflitos por posse e fronteira atravessam a história de Jade, mas o evento decisivo aconteceu há menos de um século. Durante um ataque sob nevasca, a visibilidade caiu a quase nada; uma barragem de Draco Meteors atingiu o Monte Neve e desprendeu parte do maciço. A avalanche varreu a cidade. Quando o céu clareou, a paisagem era irreconhecível: onde havia ruas vivas, restou neve tingida de vermelho.\n\nA área foi declarada sagrada e interditada. Escavações são proibidas — não apenas por respeito aos mortos, mas pelo medo do que pode estar preservado sob cerca de oito metros de terra, pedras e neve. Casa, veículos, objetos pessoais e o que era ‘riqueza’ de Jade repousam como cápsula do tempo: um silêncio enterrado que a região aprendeu a chamar de tabu.\n\nFragmento atribuído ao poeta Eliel:\n\n“Ó terra de Jade, outrora verde e serena,\n\nTeus campos tingidos de escarlate dor,\n\nOnde o sangue verteu, o lamento ressoa,\n\nEm ruas que eram caminhos de amor.\n\nTeus lençóis de água, cristalinos e calmos,\n\nAgora são manchados, um vermelho perverso,\n\nAs guerras cruéis trouxeram danos extremos,\n\nTransformando a pureza em cenário adverso.”",
+        "Ginásio de Jade": "Líder: Kevin (desaparecido)  |  Tipo: Gelo  |  Localização: Nova Jade (instalação criogênica).\n\nOficialmente, o ginásio pertence a Kevin — um líder marcado por pesquisas de criogenia e por um silêncio que nunca se resolveu. Filho da Elite 4 Lorelei, ele veio a Ga’Al tentando superar o peso do legado, mas sua reputação desabou durante a Avalanche Vermelha: há quem diga que, enquanto a cidade era soterrada, Kevin priorizou a própria sobrevivência, refugiando-se e deixando gente morrer sob neve e terra.\n\nA instalação do ginásio, mantida a temperaturas extremas (há relatos de -50°C), virou um mausoléu gelado: ciência e luto misturados, com rumores de preservação de corpos. Kevin desapareceu após a queda da Team Keneze, e o lugar segue como tabu — uma porta fria demais para ser aberta sem consequências.",
+        "Sublocais e pontos de interesse": "Abaixo estão os sublocais de Jade, no formato de dossiê: cada entrada descreve ambiente, função prática e o tipo de interação que costuma acontecer ali."
+      },
+      "sublocais": [
+        {
+          "name": "Entrada para o Monte Neve",
+          "text": "A antiga entrada para as cavernas do Monte Neve permanece selada sob uma camada espessa de neve. Houve tentativas de alcançar o ponto original — chegou-se a estudar um túnel paralelo —, mas nenhum projeto avançou. A brancura aqui não é ‘limpa’; é compacta, pesada, e estala sob o passo.\n\nA via mais arriscada é abrir passagem no alto do cume, cavando túneis na zona elevada. Imagens de ultrassom indicam grandes bolsões de ar no interior, como câmaras esperando um passo em falso. Quem insiste em ‘entrar’ costuma aprender que, em Jade, o perigo não grita — ele desaba."
+        },
+        {
+          "name": "Nova Jade",
+          "text": "Povoado discreto erguido com o que restou após a avalanche. Casas baixas, depósitos de madeira, trilhas marcadas no gelo e uma rotina que alterna trabalho duro e cuidado com os seus. O ar é cortante, e o som chega abafado, como se a neve ainda engolisse parte do mundo.\n\nÀ margem do assentamento, a estrutura do ginásio criogênico permanece como um bloco frio. Em certos dias, o ronco baixo de sistemas de resfriamento é audível à distância; em outros, o lugar parece morto demais para estar de pé. Para cenas, Nova Jade é sobrevivência cotidiana — e o ginásio, a lembrança de que nem todo avanço trouxe salvação."
+        },
+        {
+          "name": "Campo Santo de Jade",
+          "text": "Cemitério a céu aberto, pontuado por cruzes e por poucos escombros que sobreviveram ao deslizamento. Mesmo durante o dia, há a sensação de que o som chega amortecido, como se a neve ainda cobrisse tudo.\n\nO Campo Santo é um lugar de visita silenciosa e de promessas difíceis: quem perdeu alguém vem para falar com o vento; quem busca resposta vem para encarar o tabu. À noite, o frio aperta e a luz da lua torna as sombras longas demais — o tipo de cenário onde boatos nascem sem ninguém assumir autoria."
+        }
+      ]
+    },
+    "Liberty": {
+      "region": "Campos Longos",
+      "sections": {
+        "Visão geral": "Erguida no Planalto Alto como vitrine de prosperidade, Liberty nasceu para puxar investimentos para o nordeste de Ga’Al e ampliar o “ciclo do dinheiro” entre Obsidian e Turquesa. A cidade foi planejada com inspiração em Celadon (Kanto): avenidas largas, fachadas espelhadas, letreiros de neon e um coração turístico feito para convencer visitantes de que aqui tudo funciona — mesmo quando não funciona.\n\nCom o tempo, bancos e grandes marcas se instalaram, e Liberty se consolidou como paraíso fiscal. O luxo, porém, ficou atrás de muros e condomínios: fora deles, toldos de lona se acumulam na base dos arranha-céus, ambulantes disputam cada esquina e a vida acontece no improviso. À noite, o ar mistura ozônio de neon, óleo queimado e fritura de rua; geradores roncam, e as vitrines piscam como promessas que mudam de cor mas não de intenção.\n\nQuando os rumores de bloqueio continental e a sombra da Team Keneze chegaram, a alta sociedade saiu primeiro. O que ficou foi um vácuo de poder: empresas privadas de segurança recuaram, atentados e “expurgos” noturnos se multiplicaram, e por semanas Liberty pareceu uma cidade sitiada. A Keneze desapareceu tão rápido quanto surgiu, e o vazio foi ocupado pelo Sindicato — uma força paramilitar que controla a violência por meio de um preço de “proteção”. Em Liberty, recusar custa caro; pagar também.",
+        "Como é viver em Liberty": "Viver em Liberty é aprender a ler dois mapas ao mesmo tempo: o dos cartões-postais e o das passagens de serviço. De dia, a cidade é barulho de tráfego e propaganda — telas gigantes, carros de luxo e filas silenciosas diante de bancos. De noite, o brilho se intensifica, mas as ruas ficam mais estreitas: surgem becos com vigias, pontos de encontro que mudam de lugar e um comércio paralelo que opera no ritmo das luzes piscando.\n\nA sensação constante é de vigilância difusa. Nem sempre há polícia — mas há câmeras, seguranças privados, olheiros e drones (alguns oficiais, outros não). Quem anda sozinho aprende a escolher roupa, caminho e horário; quem anda em grupo aprende a não parecer um grupo.",
+        "Dinheiro, controle e sobrevivência": "Liberty sempre viveu de apostas: dinheiro, fama, informação, reputação. O ginásio virou espetáculo televisivo; cassinos, shoppings e clubes noturnos funcionam como mercados de favores; e o Sindicato, quando interfere, o faz como quem cobra juros atrasados.\n\nPara treinadores, isso cria oportunidades e armadilhas. É possível ganhar visibilidade rápido — e também perder o nome em um único episódio público. Muitos veteranos recomendam tratar Liberty como uma mesa de jogo: entre com limite, saia com história, e nunca aposte algo que não possa perder.",
+        "Ginásio de Liberty": "Tipo: Variado  |  Liderança: Hoops (registro antigo) • Vittorio “Ace” Moretti (controle atual)  |  Insígnia: Insígnia da Aposta (Gamble Badge)\n\nEm Liberty, o ginásio conversa com a rua. O estádio e suas câmeras transformam cada desafio em evento; e, nos bastidores, alianças e rivalidades são tão importantes quanto a batalha em si.",
+        "Sublocais e pontos de interesse": "Abaixo estão os principais sublocais de Liberty no formato de dossiê: cada entrada descreve ambiente, função prática e o tipo de interação que costuma acontecer ali."
+      },
+      "sublocais": [
+        {
+          "name": "Joia da Liberdade",
+          "text": "Estádio do ginásio e palco do “Touchdown”: arquibancadas altas, telões e drones de transmissão zumbindo no ar. O campo muda de configuração conforme o evento — e certas regras só ficam claras para quem já viu uma partida inteira de perto.\n\nEm noites de casa cheia, o chão vibra com a torcida e o cheiro de bebida doce se mistura ao metal aquecido dos refletores. É um lugar perfeito para vitórias públicas… e para humilhações muito bem editadas."
+        },
+        {
+          "name": "Luz e Ação",
+          "text": "O maior estúdio de cinema de Ga’Al: um prédio inteiro convertido em sets, um por andar. A atmosfera alterna entre silêncio de bastidores e explosões de atividade: técnicos correndo, cabos pelo chão, fumaça cênica e luzes quentes que fazem qualquer corredor parecer palco.\n\nComo quase tudo aqui tem porta de serviço, o lugar atrai negociações discretas. Figurinos, identidades e “papéis” podem ser comprados — oficialmente ou não — se você souber com quem falar."
+        },
+        {
+          "name": "Gran Catino",
+          "text": "O cassino-símbolo de Liberty: tapetes que abafam passos, fichas tilintando e mesas onde todo sorriso parece ensaiado. O Gran Catino sobreviveu pouco tempo sem estrangeiros; passou por ocupações sucessivas e hoje opera em um equilíbrio tenso — com acordos e interesses que nem sempre aparecem no letreiro.\n\nÉ fácil perder a noção de tempo lá dentro: luz baixa, ar condicionado forte e música que não termina. O que se ganha aqui raramente é só dinheiro — e o que se perde quase nunca é só dinheiro."
+        },
+        {
+          "name": "Goldenrod Plaza",
+          "text": "Mega loja varejista onde “tudo existe”: eletrodomésticos, eletrônicos, livros, itens de decoração e uma ala inteira voltada a necessidades de treinadores. O brilho das prateleiras contrasta com o mundo do lado de fora, como se o caos fosse apenas ruído de fundo.\n\nSeguranças privados observam cada corredor e cada sacola. Para alguns, é um refúgio; para outros, um lembrete incômodo de quem ainda tem acesso a conforto."
+        },
+        {
+          "name": "Luminose Plus",
+          "text": "Boutique de grife, joias e luxo motorizado — ou o que sobrou dela. Durante um período de vandalismo e retomadas, vitrines foram remendadas e mannequins ficaram rachados, presos em poses eternas de elegância.\n\nHoje, o espaço funciona como sede do Sindicato. O contraste entre perfume caro e presença armada diz muito sobre Liberty: poder não precisa ser bonito, só precisa estar no lugar certo."
+        },
+        {
+          "name": "Celadon Storage",
+          "text": "Um dos shoppings que atravessou ciclos de poder sem fechar as portas. Vende de tudo para treinadores — itens de viagem, reparo, serviços e uma circulação constante de gente que vai e vem como maré.\n\nCom taxas e “proteções” cada vez mais caras, a manutenção oscila: ar-condicionado falha, elevadores gemem e corredores cheiram a poeira elétrica. Ainda assim, é um dos poucos lugares onde desconhecidos conseguem se cruzar sem que isso pareça imediatamente um erro."
+        },
+        {
+          "name": "Próxima Meia Noite",
+          "text": "A maior balada de Ga’Al — “Zero Hora” para os íntimos — orgulhosa de nunca fechar. A música vibra no concreto, e a luz de neon ‘pinga’ nas poças da rua como tinta líquida.\n\nÉ um mercado de informação e reputação. Quem entende a noite diz que a pista é só a fachada: as conversas importantes acontecem nos corredores laterais, nas áreas VIP e no lado de fora, onde o som vira murmúrio e tudo fica mais perigoso."
+        },
+        {
+          "name": "Fumacê",
+          "text": "Rua tomada por ambulantes e comércio ilícito deliberado: drogas para humanos e para Pokémon circulam com pouca cerimônia. A fumaça é literal — de grelha, escapamento e incenso barato — e faz o ar ficar sempre pesado.\n\nTambém é um território de olheiros. Quem entra procurando algo costuma encontrar; quem entra sem saber por que entrou pode sair sem carteira… ou sem memória clara de como saiu."
+        },
+        {
+          "name": "Meta-Quântico",
+          "text": "Laboratório de engenharia robótica responsável por parte da antiga rede de drones que fiscalizava a cidade. O lugar cheira a metal frio e ozônio, e seus corredores têm aquele silêncio típico de quem guarda equipamento caro — e segredos mais caros ainda.\n\nHá quem diga que todas as gravações do período da Keneze desapareceram daqui. Se isso é verdade, a pergunta vira outra: quem levou… e por quê?"
+        },
+        {
+          "name": "Plasma",
+          "text": "Loja de armas legais marcada pelo símbolo de um canhão de Genesect — nome polêmico por lembrar a Team Plasma (Unova). Administrada por um senhor de idade, tem balcões impecáveis, vidro reforçado e um atendimento que parece medir o cliente antes do produto.\n\nNos bastidores, serve de ponto para a gangue Ñóm. Mesmo quando tudo parece ‘certinho’, há sempre um detalhe fora do lugar — e em Liberty, detalhe fora do lugar é aviso."
+        },
+        {
+          "name": "A Última Ladeira",
+          "text": "Pista de kart enfiada no desfiladeiro do planalto. O vento corta o rosto, o eco dos motores se multiplica nas rochas e o cheiro de borracha queimada fica preso no ar.\n\nEm dias de corrida, a sensação é de festa. Em noites erradas, vira palco de apostas altas e acertos de contas discretos — porque desfiladeiro não guarda testemunhas por muito tempo."
+        },
+        {
+          "name": "Antigo Ginásio",
+          "text": "Estádio do primeiro prefeito, antes dedicado a batalhas com Pokémon felinos. Depois de uma tragédia ligada a Celeste, o local foi ocupado por moradores de rua e virou um labirinto de barracas, entulho e arquibancadas que rangem.\n\nHá quem ainda tente reaver a propriedade, mas o prédio parece ter sido abandonado pelas autoridades. Para muitos, é o símbolo de Liberty: um monumento que ainda existe, mas não cumpre mais a promessa que vendia."
+        },
+        {
+          "name": "Mansão Pokémon",
+          "text": "Laboratório ligado a Cinnabar especializado em pesquisa genética e sequenciamento de traços para criação de ovos Pokémon. O ambiente tem cheiro de desinfetante, vidro e eletrônica — e uma calma que não combina com o resto da cidade.\n\nPor algum motivo, o Sindicato não controla a área. Isso atrai ladrões, caçadores e curiosos: um lugar silencioso demais em Liberty costuma ser o tipo de silêncio que morde."
+        }
+      ]
+    },
+    "Gamborre": {
+      "region": "Campos Longos",
+      "sections": {
+        "Visão geral": "Gamborre foi o primeiro grande laboratório de modernização de Ga’Al: uma cidade de “aço e pedra”, alimentada por ferro vindo do Deserto Irrigado e por engenheiros chamados para erguer prédios e esculturas monumentais. O sonho terminou em um terremoto devastador. Prédios cederam, estátuas se estilhaçaram e as ruínas se espalharam como dentes quebrados — com poeira, ferrugem e histórias que ninguém gosta de contar duas vezes.\n\nNo pós-desastre, a natureza tomou o que restou. Ervas invadiram as calçadas, trepadeiras subiram por vigas retorcidas e o silêncio se instalou, quebrado só pelo vento atravessando estruturas ocas e pelo som do rio nas margens. Durante anos, Gamborre acumulou tentativas de reerguer-se que morriam antes de nascer, como projetos desenhados em papel molhado.\n\nMais recentemente, a cidade voltou a ter movimento em pontos específicos. Pixie, como prefeita e líder, investiu recursos próprios para criar um novo centro de atividade (Palácio de Batalha, Centro Pokémon e Poke Hotel) e oferecer terras e linhas de crédito quase a zero — desde que não haja vínculo com Rockfeller. Gamborre ainda parece uma cidade fantasma… mas agora existem luzes acesas onde antes só havia eco.",
+        "Como é viver em Gamborre": "Viver (ou apenas passar) por Gamborre é conviver com contrastes. Em um quarteirão, ruínas cobertas por trepadeiras e placas antigas rangendo ao vento; no seguinte, uma obra recente, limpa demais para parecer real. De manhã, o ar tem cheiro de metal úmido e grama esmagada; ao entardecer, a poeira fina levanta fácil e faz o horizonte parecer sempre meio desbotado.\n\nO perigo aqui costuma ser silencioso: pisos instáveis, estruturas que cedem, áreas industriais tomadas por ocupantes e um tipo de ‘calma’ que atrai quem quer desaparecer. Ao mesmo tempo, a cidade oferece espaço — e, para muitos, espaço é chance.",
+        "Ginásio de Gamborre": "Tipo: Fada  |  Líder: Pixie  |  Vice-líder: Lancelot\n\nO ginásio de Gamborre virou parte do projeto de reconstrução. Entre ruínas e jardins planejados, a cidade tenta costurar um medievo elegante com o contemporâneo. Pixie trata cada vitória como prova de que Gamborre pode voltar a ser grande; Lancelot, veterano de Galar, mantém a disciplina dos desafios e dá ao local a reputação de não perdoar erros táticos.",
+        "Sublocais e pontos de interesse": "Abaixo estão os principais sublocais de Gamborre no formato de dossiê: cada entrada descreve ambiente, função prática e como pode entrar em cena."
+      },
+      "sublocais": [
+        {
+          "name": "Aeroporto de Ferro",
+          "text": "Aeroporto icônico construído no centro, com teto de vidro e base de aço amarelado. Quando chove, a água martela o vidro como dedos impacientes; por dentro, o som vira eco e parece que a cidade inteira cabe naquele vazio.\n\nHavia um posto onde rangers orientavam treinadores novatos a explorar a região. Hoje, a estrutura está fechada — e, mesmo assim, ainda há gente que passa por ali para ler avisos antigos e lembrar do que Gamborre prometia ser."
+        },
+        {
+          "name": "Ostraria A Pérola",
+          "text": "Cabana de clube de pesca às margens do rio. Todo dia, às 17h, acontece o concurso de pesca negra: uma centena de participantes tenta encontrar uma pérola escondida entre ostras. O ar cheira a água doce, salmouras improvisadas e madeira úmida.\n\nÉ um lugar de competição amistosa por fora — e de pequenas apostas por dentro. Histórias correm como correnteza: pérolas ‘falsas’, prêmios trocados, e gente que volta todo dia como se estivesse caçando mais do que uma pedra brilhante."
+        },
+        {
+          "name": "Bairro Industrial",
+          "text": "Fileiras de galpões abandonados, tomadas por ferrugem e pichações. O vento faz portas de metal baterem de leve, e o som pode ser só clima… ou um aviso para quem está entrando onde não devia.\n\nUsuários de drogas e ocupantes improvisaram moradia entre máquinas paradas. É uma área violenta, ideal para cenas de perseguição, emboscada ou investigação — e péssima para caminhar sem rota de saída."
+        },
+        {
+          "name": "Snorlax Faminto",
+          "text": "Restaurante para Pokémon com rodízio de rações premium; em certas noites, o vencedor da ‘prova’ recebe uma boa quantia em dinheiro. O lugar tem cheiro de ração aquecida, panela industrial e suor de competição.\n\nNos fins de semana, rola torneio de sumô improvisado. Treinadores vão por esporte, por fama ou por necessidade — e, em Gamborre, necessidade costuma ser o que define o tom."
+        },
+        {
+          "name": "Antiquado Tudo Caro",
+          "text": "Antiquário de um colecionador de velharias, com itens da antiga Ga’Al. Poeira fina, vitrines rangendo e preços que parecem piada — até você perceber que alguns objetos não deveriam estar ali, à venda para qualquer um.\n\nÉ um ponto perfeito para pistas: mapas desbotados, peças de máquinas, lembranças de campeões antigos e bugigangas que podem ser só bugigangas… ou chaves para ruínas que ninguém mais visita."
+        },
+        {
+          "name": "Jardim Real",
+          "text": "Santuário-jardim construído por Pixie, com Pokémon trazidos de outras regiões. O perfume das flores engana: o lugar é bonito, mas também é vasto, e é fácil perder a direção entre canteiros e caminhos que se repetem.\n\nA regra é tentadora: quem entrar sem Pokémon e capturar o exemplar mais raro ganha acesso vitalício e um prêmio considerável. Isso transforma o Jardim em prova — de coragem, de ética e de autocontrole."
+        },
+        {
+          "name": "Palácio de Batalha",
+          "text": "O coração atual da cidade e seu principal atrativo. O Palácio foi erguido como farol de atividade em meio às ruínas: luzes novas, estruturas sólidas, e um fluxo constante de treinadores que chega buscando desafio — ou recomeço.\n\nTrês eventos sustentam o movimento: o Desafio do Lancelot (batalhas 2 contra 1), o Ranking da Casa (ranqueamento interno com regras rígidas e convite restrito) e o Festival de Prata (um evento mensal que, por algumas horas, faz Gamborre lembrar de uma cidade viva)."
+        }
+      ]
+    },
+    "Visão geral da região": {
+      "region": "Chifre de Ga'Al",
+      "sections": {
+        "_sem_secao": "O Chifre de Ga'Al é uma região marcada por extremos: rios férteis e bolsões agrícolas convivem com áreas progressivamente mais secas, resultado de intervenções humanas antigas e de cicatrizes ambientais que ainda aparecem no chão. A paisagem alterna entre margens úmidas e terreno fofo, onde rachaduras se abrem como veias, e trechos desertificados que rangem sob o vento.\n\nDuas localidades resumem bem esse contraste. Grená nasceu como vitrine de progresso, erguida para servir a uma usina e hoje sustentada por turismo e pelo ginásio, sob a presença inquietante de fissuras noturnas e do fogo fátuo. Kobicha, por sua vez, tem solo rico e água abundante, mas carrega o peso de uma mentira que reorganizou a posse da terra e aprofundou desigualdades. Para fins de compendium, cada localidade abaixo traz uma visão geral e, em seguida, seus sublocais como entradas prontas para consulta no site.\n\nO Deserto Irrigado vive de ciclos. Quando chove nas serras e o leito dos rios volta a correr, o vento traz cheiro de barro molhado, os canais enchem, e o deserto parece aceitar a vida de volta — por alguns dias ou semanas. Quando o fluxo some, restam calhas secas, poças salobras, sal nos lábios percebe-se ao respirar, e uma sensação constante de que tudo aqui depende do próximo aguaceiro.\n\nAs rotas são traiçoeiras: dunas mudam o mapa, tempestades de areia apagam rastros e, nos períodos de cheia, enxurradas repentinas podem cortar caminhos inteiros. Isso faz do Deserto Irrigado um terreno perfeito para guias, contrabandistas, caçadores de Pokémon silvestres e gente que prefere não ser encontrada.\n\nEntre o mar aberto e o leito largo do Rio Plessi, as Terras Fluviais são uma faixa de cidades e vilas moldadas pela água: canais que recortam o terreno, passagens hidroviárias que decidem rotas e preços, e margens onde a vida se equilibra entre palafitas, pedra e metal. A brisa salobra costuma trazer névoa fria ao amanhecer, enquanto o cheiro de lodo do rio se mistura, em alguns trechos, ao de óleo e produtos químicos. Aqui, distância não se mede só em quilômetros, mas em correntes, marés e pontes que podem fechar o caminho.\n\nNas Terras Fluviais, as cidades se definem pela forma como ‘encostam’ na água: algumas tentam domá-la com tecnologia e prestígio; outras se escondem dentro dela; e outras sobrevivem aceitando que o rio decide mais do que qualquer decreto. Para viajantes, o principal risco não é só o combate — é a logística: pontes, marés, travessias e as pessoas que controlam esses gargalos."
+      },
+      "sublocais": []
+    },
+    "Grená — Visão geral": {
+      "region": "Chifre de Ga'Al",
+      "sections": {
+        "_sem_secao": "Planejada como “Cidade do Futuro”, Grená foi construída pela Usina de Energia do Chifre para abrigar trabalhadores durante a obra. Para erguer ruas simétricas e casas pequenas, um enorme pântano foi aterrado — decisão que contribuiu para a desertificação do Chifre como um todo e deixou a cidade assentada sobre um solo instável.\n\nQuando parte do solo da usina afundou, liberou-se radiação em quantidade considerável, mas não a ponto de exigir evacuação imediata. Ainda assim, o desemprego esvaziou Grená: hoje, grande parte da população é idosa, e a cidade se mantém com turismo e com o ginásio, criado como tentativa de revitalização. O chão rachado é onipresente; ao cair da noite, as fissuras parecem “respirar” luz fraca, e o fogo fátuo passa a pontilhar ruas e esquinas."
+      },
+      "sublocais": []
+    },
+    "Ginásio de Grená": {
+      "region": "Chifre de Ga'Al",
+      "sections": {
+        "_sem_secao": "Ginásio Local\n\nLíder: Anastácia\n\nTipo: Lutador\n\nEm Grená, o ginásio funciona como âncora social: é um dos lugares onde a cidade ainda se reúne, comenta a vida e mede forças. O ambiente é duro e direto — o tipo de espaço em que o silêncio antes do combate pesa, e cada impacto parece ecoar mais do que deveria.\n\nNPCs e informações associadas ao ginásio:\n\nAnastácia\nIdade: 38\nLocal de nascimento: Kalos\nPokémons conhecidos: Pangoro, Mega Heracross, Machamp, Infernape, Medicham\nOcupação atual: Líder do ginásio da cidade de Grená.\nPerfil: Conhecida pela alta agressividade em lutas e por não demonstrar compaixão. É racional e pouco receptiva com treinadores novatos. Já se relacionou afetivamente com Ash.\nEstado atual: Em Grená.\nPontos: 2\nPesquisa: Artes marciais e estilos de combate para humanos.\n\nSoko\nIdade: 44\nLocal de nascimento: Ga'Al\nPokémons conhecidos: Hitmonchan, Hariyama, Fearow (Shiny)\nOcupação atual: Vice-líder em Grená. Como Anastácia é aficionada por batalhas, ele raramente precisa cumprir funções formais de vice, o que o deixa livre para viajar.\nEstado atual: Desconhecido.\n\nEstratégia de batalha do ginásio: Anastácia adota um estilo agressivo e de antecipação. Ela busca explorar áreas frágeis do oponente para reduzir sua capacidade de continuar lutando e costuma arriscar, tentando ler movimentos antes que aconteçam."
+      },
+      "sublocais": []
+    },
+    "Locais em Grená": {
+      "region": "Chifre de Ga'Al",
+      "sections": {
+        "_sem_secao": "Os sublocais abaixo são entradas de compendium: descrições curtas, sensoriais e prontas para consulta. Use-as como referência direta para cenas, encontros e ganchos na cidade e em seus arredores imediatos.\n\nUsina Nuclear\nA cerca de 10 km da cidade, próxima ao rio, a usina parece menor do que o imaginário popular sugere — o que só torna o desastre mais estranho. Parte do solo ao redor afundou e tragou o depósito no processo. O lugar tem cheiro de metal úmido e terra revirada, e a sensação persistente de que algo ali “não deveria” ter cedido.\n\nDojo Ataque Aki\nOrganizado por Soko, este dojo é voltado ao treinamento de humanos em combate. O som de golpes secos, respiração controlada e instruções firmes marca o ritmo do local — um ponto de disciplina em meio ao cansaço lento de Grená.\n\nCemitério da Cidade\nNa periferia, entre túmulos simples e capim baixo, o ar esfria mais cedo. É daqui que o fogo fátuo começa a surgir durante a noite, como pequenas chamas azuladas que se movem com teimosia própria, guiadas por correntes de vento que ninguém vê.\n\nLoja de Armas\nUma das poucas lojas de armas de fogo da região. O balcão cheira a óleo e pólvora velha, e os clientes costumam falar baixo — mais por hábito do que por regra.\n\nAeroporto de Grená\nGrená não tem estação de trem por causa do solo instável; por isso, aviões se tornaram o transporte mais eficaz. O aeroporto é um ponto de passagem constante, com motores ao longe e anúncios curtos atravessando a névoa da manhã.\n\nCorrida de Balões\nFestival da cidade: treinadores se reúnem com seus Pokémon para corridas em balões ao redor do Monte del Chifre. O espetáculo colore o céu, e, por algumas horas, o vento parece carregar risos e gritos competitivos em vez de silêncio e estalos de rachadura.\n\nMuseu Nuclear\nPróximo ao ginásio, o museu reúne informações sobre a usina e funciona como memorial aos quatro funcionários mortos no soterramento. Luzes frias, placas explicativas e vitrines quietas transformam o lugar num corredor de lembranças — e de perguntas mal respondidas."
+      },
+      "sublocais": []
+    },
+    "Kobicha — Visão geral": {
+      "region": "Chifre de Ga'Al",
+      "sections": {
+        "_sem_secao": "Com rios abundantes e solo rico, Kobicha sempre favoreceu a agricultura. O verde das plantações contrasta com a tensão social: há alguns anos, uma campanha de desinformação espalhou o boato de que a usina vazava radiação e que as terras estavam contaminadas. Assustados, muitos agricultores venderam propriedades por valores baixos.\n\nO resultado foi uma concentração de poder. Um grupo de latifundiários passou a controlar grande parte da vila e das plantações, explorando uma tecnologia chamada “In Vivo”. A desigualdade é visível: fazendas luxuosas dividem o horizonte com casas humildes. No centro, a praça e o mercado ainda sustentam feiras de fim de semana dos poucos pequenos produtores que restaram — e, perto dali, o ginásio serve como raríssimo lugar de energia elétrica constante, graças a um painel solar no telhado. Kobicha vive sob a sombra de uma usina nuclear e de uma mentira, mas ainda guarda gente disposta a brigar por um futuro melhor."
+      },
+      "sublocais": []
+    },
+    "Ginásio de Kobicha": {
+      "region": "Chifre de Ga'Al",
+      "sections": {
+        "_sem_secao": "Ginásio Local\n\nLíder: Roxie\n\nTipo: Veneno\n\nEm Kobicha, o ginásio é ponto de encontro e válvula de escape: jovens estudam, treinam e transformam rivalidades em algo que parece mais justo do que a disputa por terras. O ar tem o peso de laboratório e oficina ao mesmo tempo — um lugar onde a coragem se testa e a reputação se constrói.\n\nNPCs e informações associadas ao ginásio:\n\nRoxie\nIdade: 51\nHistórico: Roxie sempre teve duas paixões — música e batalhas Pokémon. Aos 21 anos, tornou-se Líder de Ginásio em Unova e seguiu também a carreira de Pop-Star. Com dificuldade para equilibrar as duas vidas, acabou se dedicando mais à música do que às batalhas e, aos 30 anos, perdeu o cargo. O golpe a levou a vícios e depressão, mas ela passou por um longo processo de recuperação e conseguiu se livrar das drogas. Agora, decidiu recomeçar em Ga'Al, em uma vila que lembra sua terra natal.\n\nEstratégia de batalha do ginásio: Desconhecida."
+      },
+      "sublocais": []
+    },
+    "Locais em Kobicha": {
+      "region": "Chifre de Ga'Al",
+      "sections": {
+        "_sem_secao": "Os sublocais abaixo concentram o cotidiano de Kobicha — onde a desigualdade se vê de perto, mas também onde o trabalho e a vida comunitária ainda acontecem. Mantidos em formato direto para facilitar indexação e consulta.\n\nMercado Municipal\nUm espaço de terra batida, com esgoto a céu aberto, onde ocorrem as feiras de fim de semana. Quase todo tipo de produto agrícola aparece nas bancas; as tendas de lona ficam recolhidas durante a semana, deixando a praça mais vazia e silenciosa. Ao redor, casebres abrigam antigos pequenos fazendeiros que foram empurrados para perto do centro.\n\nIndústria de Químicos Rockfield\nO único prédio industrial da vila, localizado à margem, próximo ao rio — e onde trabalha boa parte dos moradores. O cheiro químico e o zumbido de máquinas denunciam a presença constante da indústria, mesmo quando o resto de Kobicha tenta fingir normalidade."
+      },
+      "sublocais": []
+    },
+    "Lilac": {
+      "region": "Deserto Irrigado",
+      "sections": {
+        "Visão geral": "Lilac sempre foi um problema diplomático: culturalmente ligada às Terras Fluviais, mas fincada em solo de deserto. O lugar existia há muito tempo como vila de passagem — até que, há cerca de cinquenta anos, a descoberta de petróleo nos arredores colocou a cidade no centro de um conflito aberto entre regiões.\n\nA vitória fluvial trouxe ocupação e pressa, mas o ‘ouro negro’ secou cedo: em menos de uma década, os poços murcharam e a promessa de riqueza virou ferrugem. A partir daí, Lilac foi sendo abandonada em camadas. Na época, a posse da vila foi transferida oficialmente ao Deserto — decisão acatada sem alarde.",
+        "Como é viver em Lilac": "Hoje, Lilac é silêncio quebrado por vento e metal. O centro da cidade permanece em grande parte vazio; ruas largas com calhas e canaletas parecem exagero — até o dia em que os rios temporários voltam e a água corre, turva e preciosa, levando vida às casas que ainda resistem na borda urbana.\n\nQuem ficou vive de improviso: reparo de motores antigos, venda de sucata, guiar viajantes por dunas instáveis e, principalmente, do comércio irregular de Pokémon silvestres. A hospitalidade existe, mas vem com desconfiança: forasteiros podem ser clientes… ou problemas.",
+        "Treinadores, lei e ‘mercado cinza’": "A ausência de uma autoridade sólida fez nascer regras locais: quem chega deve ‘se apresentar’ — nem sempre a um oficial, mas a alguém que controla acesso a água, abrigo ou informações. Treinadores são bem-vindos quando compram, trocam ou escoltam; viram alvo quando fazem perguntas demais.\n\nFala-se que certas figuras tentam transformar Lilac em vitrine de progresso outra vez — promessas de reativar poços, erguer um ginásio ou abrir rota comercial. O problema é que, por aqui, promessa costuma custar caro e durar pouco.",
+        "Sublocais e pontos de interesse": "Abaixo estão os sublocais de Lilac no formato de dossiê: cada entrada descreve atmosfera, função e o tipo de história que costuma nascer ali."
+      },
+      "sublocais": [
+        {
+          "name": "Casa do Terror",
+          "text": "Uma mansão antiga no coração do centro abandonado. De dia, a madeira range como se respirasse; à noite, janelas quebradas devolvem o brilho da lua em ângulos errados, e o vento atravessa corredores como um lamento.\n\nMoradores juram ver ‘luzes’ se acenderem onde não há energia e ouvir passos no segundo andar. Alguns dizem que é só gente usando o lugar como esconderijo; outros evitam até olhar para o portão enferrujado."
+        },
+        {
+          "name": "Centro de Tratamento",
+          "text": "Quando o rio enche, este prédio vira o coração prático da vila: filtragem, distribuição e controle de água. Cheira a cloro, óleo de máquina e barro, e o som de bombas e válvulas marca o ritmo do trabalho.\n\nEm períodos de seca, funciona como posto de racionamento e negociação. Quem controla a fila controla a cidade — e é aqui que boatos se espalham mais rápido do que qualquer areia."
+        },
+        {
+          "name": "Antigo Campo Petrolífero",
+          "text": "No horizonte, torres de extração abandonadas se recortam como esqueletos metálicos. As estruturas rangem ao vento; cabos soltos cantam em tons agudos, e poças escuras endurecidas lembram que ali já houve fartura.\n\nExploradores buscam peças, mapas de túneis e ‘restos’ de equipamentos. Há quem procure algo mais valioso: cofres esquecidos, documentos do conflito, ou pistas sobre por que o petróleo acabou tão de repente."
+        },
+        {
+          "name": "Dunas do Norte",
+          "text": "Um mar de areia em movimento. As dunas ‘andam’ com o vento, mudando trilhas e engolindo marcos. O calor sobe do chão como uma miragem, e a noite traz um frio seco que faz os ossos reclamarem.\n\nPerfeitas para emboscadas e desaparecimentos. Guias experientes leem padrões no vento e na cor da areia; inexperientes acabam seguindo círculos — às vezes para nunca mais voltar."
+        },
+        {
+          "name": "Grande Cânion",
+          "text": "Uma falha geológica que rasga o Deserto Irrigado e marca a separação natural de áreas do Monte Fogo. O som do vento aqui é diferente: ele sobe pelas paredes e se transforma em um uivo contínuo.\n\nNo passado, viajantes vinham lançar moedas e fazer desejos, como se o abismo aceitasse barganhas. Hoje, é ponto de passagem perigosa e lugar favorito para encontros ‘discretos’ — longe de olhares e de regras."
+        },
+        {
+          "name": "Caçadores e Pokémon silvestres",
+          "text": "Nas bordas habitáveis, microambientes raros se formam quando a água aparece e some: poças temporárias, canais improvisados e manchas de vegetação resistente. É onde Pokémon incomuns surgem — e onde caçadores montam acampamento.\n\nA presença deles traz dinheiro e violência. Alguns são guias honestos; outros, traficantes. Em Lilac, a linha entre ‘caça’ e ‘roubo’ é tão fina quanto a água que mantém tudo de pé."
+        },
+        {
+          "name": "Poços de petróleo e exploração",
+          "text": "Mesmo esgotados, os poços continuam pontuando os arredores como um museu da ambição. Tubulações enterradas, valas antigas e placas corroídas contam a história de um auge rápido demais.\n\nEm dias de vento, o cheiro de ferrugem e terra quente domina. A área também serve de rota para quem quer entrar e sair sem passar pela ‘cidade viva’ — o que explica por que tanta coisa acontece aqui fora."
+        },
+        {
+          "name": "Calhas e ruas de água",
+          "text": "As canaletas que cortam Lilac parecem cicatrizes no asfalto rachado. Quando cheias, carregam água potável até as casas, e a cidade muda de humor: gente na rua, baldes, crianças correndo, comerciantes abrindo portas.\n\nQuando secas, viram corredores de poeira e lixo. Ainda assim, são o melhor ‘mapa’ do lugar: seguir as calhas é seguir a lógica de sobrevivência que mantém Lilac respirando."
+        }
+      ]
+    },
+    "Mikado": {
+      "region": "Deserto Irrigado",
+      "sections": {
+        "Visão geral": "Mikado foi construída nas alturas do Monte Fogo, agarrada à rocha como se o mundo abaixo fosse provisório. Apesar de haver muitos rios na região, quase todos são temporários: dependem de chuva, somem rápido e deixam leitos secos que viram estrada de poeira.\n\nO solo é pobre e duro, e por isso a vida se concentra onde o monte permite: fontes termais, cavernas com fungos comestíveis e veios minerais. A vila antiga tem casas esculpidas na pedra; a nova, no sopé, cresceu depois que obras de energia remanejaram famílias inteiras.",
+        "Como é viver em Mikado": "O ar aqui costuma vir quente e mineral, com cheiro de enxofre leve em dias de vapor. De manhã cedo, o monte parece respirar: névoa térmica sobe das fendas e deixa o horizonte tremendo.\n\nA vida é feita de altura e esforço: carregar água, manter trilhas seguras, sustentar minas e conviver com a tensão entre ‘vila antiga’ e ‘vila do sopé’. Em Mikado, política tem cheiro de fumaça — e de dinheiro.",
+        "Ginásio de Mikado": "Ginásio Local: Tipo Fogo  |  Liderança: Falco (interino) • Salete (ex-líder, banida).\n\nO ginásio nasceu como extensão de um projeto científico e industrial: uma arena que conversa com o calor do Monte Fogo, com plataformas aquecidas, zonas de vapor e desafios que punem deslocamento descuidado.\n\nA antiga liderança prometia progresso em troca de risco — e acumulou inimigos. Hoje, Falco tenta manter a vila funcional com medidas pragmáticas e pouco glamour. Sobre Salete, a versão pública é de queda e exílio; a versão de rua é mais confusa e cheia de ‘mas’.",
+        "Sublocais e pontos de interesse": "Abaixo estão os sublocais de Mikado no mesmo formato: entradas densas, prontas para consulta e para virar cena."
+      },
+      "sublocais": [
+        {
+          "name": "Vila Alta (casas na rocha)",
+          "text": "O coração antigo: casas talhadas na pedra, janelas pequenas para segurar o calor e corredores que cheiram a rocha úmida. O som de passos ecoa diferente aqui — como se a montanha devolvesse cada conversa.\n\nÉ onde a tradição pesa. Moradores antigos guardam histórias de clãs, de períodos de isolamento e de regras não escritas sobre o que pode — e o que não deve — ser explorado no Monte Fogo."
+        },
+        {
+          "name": "Vila do Sopé",
+          "text": "A vila nova cresceu ao pé da montanha depois do remanejamento causado pelas obras de energia. Casas mais simples, ruas mais largas e um sentimento constante de ‘ter sido empurrado para fora’.\n\nAqui moram muitos dos que perderam espaço — e ganharam rancor. É onde circulam as melhores fofocas sobre corrupção, acordos de bastidor e o preço real do progresso."
+        },
+        {
+          "name": "Usina e geradores",
+          "text": "O complexo que alimenta as minas — e a discórdia. Concreto, tubulações quentes e um ronco contínuo que vibra no peito quando se chega perto. À noite, o brilho laranja das luzes industriais mancha a névoa.\n\nO projeto foi vendido como ‘necessidade’ e ‘salvação’. O custo social, porém, está gravado na geografia: casas removidas, terrenos disputados e uma sensação de que Mikado nunca mais pertenceu só aos seus moradores."
+        },
+        {
+          "name": "Fontes Termais",
+          "text": "Construídas no interior do Monte Fogo, as fontes são o ponto turístico mais famoso — e o mais controverso. Vapor espesso, cheiro mineral e pedra quente sob os pés criam um conforto quase indecente no meio do deserto.\n\nA obra carrega escândalos: compra de terreno a preço irrisório, revenda, e até ‘vendas solidárias’ durante tempos de crise. Muitos apontam um mesmo sobrenome em toda transação; outros preferem fingir que não veem, porque turismo é dinheiro."
+        },
+        {
+          "name": "Floricultura Terra Rocha",
+          "text": "Uma floricultura de raridades improváveis em solo pobre: canteiros bem cuidados onde cores vivas estouram contra a cinza da pedra. O cheiro de pétalas e terra úmida engana a mente por alguns minutos.\n\nVirou símbolo de poder local. Quando Falco assumiu, uma das primeiras medidas foi tomar controle do negócio — antes nas mãos de uma pequena elite — para usar o lucro como sustento coletivo. Ainda assim, quem controla flores controla favores."
+        },
+        {
+          "name": "Teleférico",
+          "text": "O caminho mais fácil até Mikado: um teleférico na base da montanha, com cabos que rangem ao vento e cabines que balançam o suficiente para lembrar que altura é risco.\n\nA subida revela o deserto inteiro, e também revela quem chega. Em dias de visibilidade boa, vigias da vila conseguem ver trânsito de longe — o que faz do teleférico uma rota conveniente, mas nunca ‘neutra’."
+        },
+        {
+          "name": "Minas de Ferro e Cristal",
+          "text": "Galerias de minério e veios cristalinos escondidos sob camadas de rocha quente. O ar lá embaixo é pesado, com poeira fina e um sabor metálico que gruda na língua.\n\nAs minas foram a origem da necessidade de energia contínua — e o argumento perfeito para justificar projetos agressivos. Com mudanças recentes no poder local, a permanência da vila sofre ameaças: quando as minas param, Mikado perde seu motivo de existir."
+        },
+        {
+          "name": "Cavernas de Gelo",
+          "text": "No centro do Monte Fogo, um complexo de cavernas congeladas desafia a lógica do deserto. A temperatura cai de repente; o som fica ‘limpo’ demais, e o silêncio parece engrossar.\n\nAbandonadas no último século, já foram lar de clãs antigos. Há marcas e símbolos nas paredes, histórias de rituais e de exílios. Exploradores juram ver trilhas recentes no gelo — mas ninguém concorda sobre quem as deixou."
+        }
+      ]
+    },
+    "Turquesa": {
+      "region": "Terras Fluviais",
+      "sections": {
+        "Visão geral": "Turquesa se apresenta como um espelho azul e calmo: quarteirões flutuantes interligados por passarelas aéreas e canais largos, tudo sob uma bolha quase impermeável que filtra impurezas do ar e da chuva. A tecnologia de reversão de polaridade atribuída a Alfonso mantém a cidade brilhando por cima — mas, na margem, uma realidade mais áspera cresce em silêncio.\n\nÀ sombra do centro insular, o Subúrbio Continental se espalha em palafitas ao redor dos bairros luxuosos. Ali, o ar é mais úmido, o piso range sob passos apressados e as enchentes voltam com frequência; doenças e violência encontram terreno fácil onde a cidade é menos protegida. A economia gira em torno da indústria petroquímica Rockfeller, que subsidia as pesquisas de Alfonso e, segundo boatos, investiu somas bilionárias para poluir sem carregar o peso das consequências — confiando que a própria tecnologia possa “limpar” o que ela suja.\n\nA bolha e os quarteirões flutuantes criam uma imagem de pureza e futuro — mas basta olhar para a margem para ver a fricção: a cidade brilha por cima e range por baixo. Turquesa não é ‘uma’ cidade; é um acordo instável entre quem vive sob proteção e quem vive à mercê dela.",
+        "Como é viver aqui": "A vida cotidiana é moldada por água, rotas e humor do céu. O mesmo trajeto pode ser fácil numa manhã de maré baixa e virar atraso quando pontes fecham, balsas lotam ou o vento muda. Quem mora aqui aprende a ler cheiros (lodo, sal, diesel), sons (cordas estalando, motores, água batendo em casco) e o movimento das pessoas para entender se o dia será tranquilo — ou se algo está fora do normal.",
+        "Treinadores, reputação e trânsito": "Treinadores são bem-vindos quando trazem dinheiro, soluções ou prestígio — e malvistos quando parecem caçar, explorar ou complicar a rotina local. Em Terras Fluviais, reputação viaja rápido: boatos correm de barco, chegam com cargas e se espalham em mercados, portos e filas. Se você quer passar despercebido, aprende cedo que ‘ser discreto’ é tão importante quanto ser forte.",
+        "Ginásio": "Ginásio Local\n\nTipo: Água\n\nLíder: Alfonso\n\nEm Turquesa, a arena favorece o movimento e a instabilidade do mar aberto: a água balança, a distância se alonga e o horizonte vira parte do combate. O som das ondas reverbera sob a bolha, e a sensação é de lutar com o mundo inteiro respirando em volta — um campo amplo o suficiente para punir distrações e recompensar controle.",
+        "Sublocais e pontos de interesse": "A seguir, os sublocais aparecem como entradas de compendium. Cada uma descreve atmosfera, função prática e detalhes sensoriais — úteis para orientar exploração, encontros e cenas."
+      },
+      "sublocais": [
+        {
+          "name": "NPCs associados (informações públicas)",
+          "text": "Alfonso\n\nIdade: 38\n\nLocal de Nascimento: Ga'Al\n\nPokémons conhecidos: Vaporeon, Toxapex, Slowking, Gyarados.\n\nOcupação atual: Líder de ginásio em Turquesa. Assumiu o posto ainda muito novo e foi treinado por Mike Aqua para se especializar no tipo Água, mas não teve o resultado que a Elite esperava; por isso, permanece como líder de ginásio e não está entre os mais fortes. Foi rival de Stenio por muito tempo (na arqueologia e em batalhas) e chegou a se dedicar ao tipo Água para derrotá-lo, sem sucesso. Também ajudou o caçador a esconder alguns Pokémon roubados. Durante a chuva ácida, salvou a cidade com uma bolha que impedia a entrada do ácido e, após a tempestade, moradores juram tê-lo visto nas costas de Lugia.\n\nPesquisa: Reversão de polaridade e como se aproveitar da mesma.\n\nEstado atual: Em Turquesa.\n\nObjetivos: ???\n\nPontos: 2\n\nLarissa\n\nIdade: 26\n\nLocal de Nascimento: Ga'Al\n\nPokémons conhecidos: Miolotic, Peliper, Seismtoad, Corsola.\n\nOcupação atual: Vice-líder no ginásio de Turquesa. Como Alfonso está ocupado na maior parte do tempo, é ela quem costuma receber os desafiantes; por isso, em algumas batalhas se apresenta como líder, o que alimenta intrigas. Há rumores de que ela vem pedindo à Associação de Batalhas para receber oficialmente o cargo de líder.\n\nEstado atual: Em Turquesa.\n\nObjetivos: ???\n\nEstratégia de batalha do ginásio: aproveitar as grandes dimensões da arena e o fato de ser mar aberto para desestabilizar os Pokémon inimigos."
+        },
+        {
+          "name": "Recife de Corais",
+          "text": "Recife artificial criado em volta da cidade, responsável por manter as boias flutuantes protegidas das ondas. Onde antes havia diversidade de Pokémon, hoje restam espaços mais vazios: a coleta predatória de treinadores empurrou muitos deles para o mar aberto, deixando apenas o som constante da água batendo e a sensação de que algo foi levado embora.\n\nDe perto, o recife revela cicatrizes: estruturas reparadas, trechos mais ‘lisos’ de tanto toque e retirada, e espaços que deveriam estar cheios de vida. É um lugar onde a cidade parece respirar junto do mar — e onde qualquer coisa fora do lugar se nota rápido (uma bóia desviada, um brilho estranho sob a água, uma sombra grande demais)."
+        },
+        {
+          "name": "Kraby Cascudo",
+          "text": "Restaurante gourmet construído ao lado do recife. Do salão e das varandas, a vista alcança Turquesa por inteiro — inclusive o contraste duro da sua parte mais pobre. Cheiro de sal, pratos caros e conversas baixas dividem o mesmo horizonte com palafitas e luzes tremulantes.\n\nO restaurante funciona como vitrine social. Reuniões discretas acontecem em mesas com vista para o contraste entre a bolha e as palafitas — e muita informação nasce aqui, em meia frase e risada baixa. É o tipo de lugar onde um treinador pode conseguir patrocínio, inimigos, ou ambos, dependendo de como se comporta."
+        },
+        {
+          "name": "Aquário Municipal",
+          "text": "No Subúrbio Continental, ao lado do ginásio, fica o maior aquário marinho do mundo, com enorme diversidade de peixes. Os corredores têm luz filtrada e ruído abafado de bombas d’água; para muitos moradores, é o único lugar onde o mar parece “domado”.\n\nAlém de passeio, o aquário é ‘refúgio’ para famílias e crianças do Subúrbio Continental. A iluminação fria e o som abafado das bombas d’água dão uma sensação de calma artificial. Em termos de cena, é perfeito para conversas que precisam de privacidade sem parecer suspeitas."
+        },
+        {
+          "name": "Aeroporto Regional",
+          "text": "Pequeno aeroporto criado para suprir a falta do trem. Fica no Subúrbio Continental, mas afastado o suficiente para não ser afetado por ele. O cheiro de querosene e a poeira da pista se misturam ao ar úmido vindo das palafitas.\n\nO aeroporto é pequeno, mas importante: é por ali que chegam técnicos, professores, investidores e treinadores que não querem depender do porto. Em dias úmidos, a pista fica com cheiro de borracha e querosene. O controle varia — às vezes burocrático; às vezes, surpreendentemente rígido."
+        },
+        {
+          "name": "Porto Marinho",
+          "text": "Um porto pequeno que, há pouco tempo, começou a receber visitas de outros continentes. Cordas estalam, cascos raspam e rumores chegam junto com as cargas: em Turquesa, notícia costuma viajar de barco.\n\nO porto é onde as notícias chegam primeiro. Tripulações trocam histórias como moeda e, em Turquesa, um rumor repetido por duas embarcações diferentes já vira ‘quase verdade’. Se você quer contratar passagem, ouvir boatos ou encontrar alguém que ‘conhece alguém’, começa aqui."
+        },
+        {
+          "name": "Indústrias Químicas Rockfeller",
+          "text": "Complexo industrial construído na orla, despeja diariamente toneladas de químicos no mar. A empresa não demonstra preocupação: alega que 95% das impurezas podem ser filtradas pela tecnologia de Alfonso — e a cidade aprende a conviver com um brilho estranho sobre a água em certos dias.\n\nEm certos dias, a água ganha um brilho que ninguém gosta de nomear. O complexo industrial também define humor político: há quem dependa do emprego e defenda a empresa, e há quem veja ali a origem de doenças e enchentes agravadas. Para mesa, é um cenário ótimo de tensão moral — e de consequências ambientais visíveis."
+        },
+        {
+          "name": "PokeTec",
+          "text": "Escola Pokémon destinada à elite da cidade. O ensino é rigoroso; estudantes saem sabendo mais do que o básico para seguir carreiras associadas a Pokémon (joys, bombeiros, janes, treinadores, cientistas, engenheiros). Salas frias, horários severos e um senso constante de pressão.\n\nO campus tem um clima de pressão constante: horários rígidos, corredores frios e competição velada. O prestígio da escola cria hierarquia social dentro da própria cidade; alguns estudantes tratam o Subúrbio como ‘fora do mapa’. É um ponto excelente para NPCs ambiciosos, rivalidades e acesso a recursos técnicos."
+        },
+        {
+          "name": "Teatro Submarino",
+          "text": "Teatro construído embaixo d’água, palco de óperas. O ambiente tem acústica peculiar, como se cada nota atravessasse camadas de água antes de chegar ao público. Até mesmo as Irmãs Sereiassacionais já se apresentaram aqui.\n\nO teatro é belo de um jeito desconfortável: luzes filtradas pela água, vibração diferente no peito e a sensação de estar ‘sob’ algo enorme. Mesmo quem não gosta de ópera admite que o lugar deixa memória. Bastidores e corredores de manutenção rendem encontros discretos e cenas de suspense."
+        },
+        {
+          "name": "Pedalinho Swanna",
+          "text": "Pedalinho na orla e ponto turístico. Em dias calmos, o rangido das estruturas e o respingo ritmado dos remos viram trilha sonora para quem quer ver a cidade sem pressa.\n\nEm tarde calma, é lazer; em tarde tensa, é observatório. De lá dá para ver patrulhas, movimento no porto e a borda do Subúrbio. É um ponto simples que vira útil quando personagens precisam ‘olhar sem parecer que estão olhando’."
+        }
+      ]
+    },
+    "Borgonha": {
+      "region": "Terras Fluviais",
+      "sections": {
+        "Visão geral": "Borgonha nasceu de um segredo: nos anos 80, ladrões conhecidos como Minutens usavam uma gruta no Baixo Plessi como esconderijo e posto avançado. Do lado de fora, parecia apenas uma pedra oval no trecho mais caldoso do rio; por dentro, era oco, com um amplo bolsão de ar acessível por mergulhadores — como uma bacia invertida sobre as águas.\n\nQuando um grupo de Janes localizou o esconderijo, temendo uma invasão por baixo d’água, destruíram o teto da caverna e soterraram os Minutens. A gruta ficou abandonada até pescadores começarem a usá-la como depósito; pouco a pouco vieram pousadas, mercearias e enfermarias, e o eco úmido da pedra virou casa para uma pequena vila de pescadores.\n\nBorgonha carrega um tipo de silêncio úmido: pedra guardando história. A vila cresceu em cima de um passado enterrado e, por isso, tem regras sociais implícitas sobre o que se comenta em público. Quem chega aprende rápido que, ali, ‘lembrar’ pode ser perigoso — e esquecer também.",
+        "Como é viver aqui": "A vida cotidiana é moldada por água, rotas e humor do céu. O mesmo trajeto pode ser fácil numa manhã de maré baixa e virar atraso quando pontes fecham, balsas lotam ou o vento muda. Quem mora aqui aprende a ler cheiros (lodo, sal, diesel), sons (cordas estalando, motores, água batendo em casco) e o movimento das pessoas para entender se o dia será tranquilo — ou se algo está fora do normal.",
+        "Treinadores, reputação e trânsito": "Treinadores são bem-vindos quando trazem dinheiro, soluções ou prestígio — e malvistos quando parecem caçar, explorar ou complicar a rotina local. Em Terras Fluviais, reputação viaja rápido: boatos correm de barco, chegam com cargas e se espalham em mercados, portos e filas. Se você quer passar despercebido, aprende cedo que ‘ser discreto’ é tão importante quanto ser forte.",
+        "Ginásio": "Ginásio Local\n\nLíder: Eneias\n\nA presença do ginásio em Borgonha carrega memória e metal. O marco mais famoso é o Ginásio Escaravelho — uma estrutura itinerante montada nas costas de um escaravelho robótico — enquanto o “novo” campo de Eneias é simples e direto, à margem do rio, do lado de fora da gruta. Entre os dois, a vila aprendeu a receber desafiantes sem perder o cheiro de madeira molhada e rede de pesca.",
+        "Sublocais e pontos de interesse": "A seguir, os sublocais aparecem como entradas de compendium. Cada uma descreve atmosfera, função prática e detalhes sensoriais — úteis para orientar exploração, encontros e cenas."
+      },
+      "sublocais": [
+        {
+          "name": "NPCs associados (informações públicas)",
+          "text": "Eneias\n\nIdade: 36\n\nLocal de Nascimento: Kalos.\n\nPokémons conhecidos: Yamma, Beedrill, Scolipede.\n\nOcupação atual: Líder de ginásio em Borgonha. Na adolescência era apaixonado por insetos e colecionava exoesqueletos; publicava vídeos com curiosidades sobre o tipo, o que chamou a atenção de Viola, que o convidou para ser assistente em seu ginásio. Subiu de patente até virar vice-líder.\n\nQuando os convites para vir a Ga'Al foram enviados, pediu autorização a Viola para um intercâmbio no ginásio de Less. Não chegou a conhecê-la: membros da Team Keneze a assassinaram. Com a vaga vazia, articulou seu objetivo e, graças ao contato com Viola, recebeu o posto de líder por recomendação da própria Associação de Batalhas. Ainda não possui vice.\n\nEstado atual: Em Borgonha.\n\nPesquisa: inspirado na mentora, foca na utilização de insetos na construção civil.\n\nPontos: 1"
+        },
+        {
+          "name": "Ginásio Escaravelho",
+          "text": "O ginásio não nasceu da vila: Less, antiga e falecida líder, montou seu ginásio nas costas de um escaravelho robótico — uma estrutura de metal do tamanho de meio estádio de futebol. Quando o inseto abre as asas, um campo de batalha se revela, com direito a pequenas árvores. A sala de comandos fica na cabeça do animal. Less veio a Borgonha para testar sistemas de natação; a máquina atravessou o Plessi, escalou a lateral da gruta e entrou pela abertura superior, instalando-se no atracadouro. Eneias manteve o ginásio parado dentro da vila, como respeito à líder e para que permanecesse junto do corpo dela. Hoje, virou ponto turístico; o novo ginásio de Eneias é um campo de terra batida à margem do rio, do lado de fora da gruta.\n\nO metal do escaravelho guarda marcas de uso e chuva, e o cheiro é uma mistura de ferrugem, óleo e madeira úmida do atracadouro. Mesmo parado, ele impõe presença — como se a vila tivesse um monumento ambulante estacionado no quintal. É fácil imaginar porque virou atração: ele é assombro e orgulho ao mesmo tempo."
+        },
+        {
+          "name": "Pesque e Pague",
+          "text": "Ao redor de um pequeno lago, é o ponto de encontro do fim de tarde. Som de água parada, risadas baixas e varas batendo no cais; para a vila, é descanso e negócio ao mesmo tempo.\n\nO lugar parece simples, mas é onde a vila conversa com ela mesma: notícias, brigas pequenas, reconciliações e negociações. Ao cair da tarde, mosquitos aparecem, a água reflete luz laranja e o som de risadas vira ‘muro’ contra a lembrança do que ocorreu na gruta."
+        },
+        {
+          "name": "Velho Atracadouro",
+          "text": "Píer de madeira do lado de fora da gruta, construído pelos Minutens para atracar pequenas embarcações. Foi parcialmente destruído no ataque das Janes, mas segue em operação: tábuas gastas, cordas úmidas e o rangido que denuncia cada passo.\n\nO rangido das tábuas é quase linguagem. Quem conhece a vila sabe distinguir passo de morador e passo de forasteiro só pelo som. Em noites de neblina, o atracadouro vira palco perfeito para encontros discretos, entregas e ‘coincidências’ que não deveriam acontecer."
+        },
+        {
+          "name": "Museu dos Minutens",
+          "text": "Uma casa antiga que sobreviveu à invasão das Janes. Hoje, moradores a mantêm como pequeno museu, contando histórias dos Minutens e de seus atos de resistência. O ar tem cheiro de madeira velha e papel guardado.\n\nAs histórias do museu são contadas com orgulho local — e com lacunas. Alguns detalhes são romantizados, outros omitidos. O cheiro de papel guardado e madeira velha cria uma sensação de ‘tempo preso’. Para mesa, é um ótimo lugar para pistas, mapas e versões conflitantes do passado."
+        },
+        {
+          "name": "Pesca Subaquática",
+          "text": "Evento único: uma corrida no fundo do rio em busca de um pequeno baú do tesouro. O primeiro a encontrar recebe o prêmio. Para quem assiste da margem, só se vê bolhas, sombras e o brilho breve de algo se movendo sob a superfície.\n\nPara quem observa, é um espetáculo de bolhas, sombras e reflexos. Para quem participa, é tensão: visibilidade ruim, correnteza e a sensação de que algo mais pode se mover ali embaixo. Mesmo quando é só brincadeira, o evento lembra que o Plessi nunca é totalmente ‘seguro’."
+        }
+      ]
+    },
+    "Cardo": {
+      "region": "Terras Fluviais",
+      "sections": {
+        "Visão geral": "Cardo foi construída entre dois braços do Rio Plessi, ficando isolada do resto da região — com exceção da passagem hidroviária. No século passado, os Minutens saqueavam a vila com frequência, chegando pelos rios e fugindo antes da polícia. Em resposta, os moradores ergueram duas barragens (ao norte e ao sul), passando a controlar a travessia por água. O acesso por terra ocorre por duas pontes suspensas, a leste e a oeste.\n\nA vila se sustenta com agricultura familiar e pesca, além das fazendas de Wooloo’s que abastecem a região. Em contrapartida, Cardo é tecnologicamente modesta: não possui nem mesmo Centro Pokémon. Em vez disso, a rotina se apoia em artigos naturais e no conhecimento local — cheiro de ervas secas, fumaça de fogões e o som constante do rio batendo nas comportas.\n\nIsolada entre braços do Plessi, Cardo parece pequena — até você tentar sair dela com pressa. A cidade funciona como um nó: agricultura, pesca e pequenos serviços sustentam o básico, enquanto travessias e barragens definem o que chega e o que falta. O resultado é uma comunidade prática, que valoriza quem ajuda e desconfia de quem ‘complica’.",
+        "Como é viver aqui": "A vida cotidiana é moldada por água, rotas e humor do céu. O mesmo trajeto pode ser fácil numa manhã de maré baixa e virar atraso quando pontes fecham, balsas lotam ou o vento muda. Quem mora aqui aprende a ler cheiros (lodo, sal, diesel), sons (cordas estalando, motores, água batendo em casco) e o movimento das pessoas para entender se o dia será tranquilo — ou se algo está fora do normal.",
+        "Treinadores, reputação e trânsito": "Treinadores são bem-vindos quando trazem dinheiro, soluções ou prestígio — e malvistos quando parecem caçar, explorar ou complicar a rotina local. Em Terras Fluviais, reputação viaja rápido: boatos correm de barco, chegam com cargas e se espalham em mercados, portos e filas. Se você quer passar despercebido, aprende cedo que ‘ser discreto’ é tão importante quanto ser forte.",
+        "Sublocais e pontos de interesse": "A seguir, os sublocais aparecem como entradas de compendium. Cada uma descreve atmosfera, função prática e detalhes sensoriais — úteis para orientar exploração, encontros e cenas."
+      },
+      "sublocais": [
+        {
+          "name": "Artigos Naturais",
+          "text": "Loja e ponto de referência para quem busca alternativas a medicamentos farmacêuticos. Vende itens naturais (de raízes a ervas) que substituem quase perfeitamente remédios comuns. O balcão costuma cheirar a folhas amassadas e resina.\n\nA loja é quase um consultório informal: gente chega para pedir conselho, não só produto. Em Cardo, onde o acesso a serviços pode depender de travessias, esse balcão vira ‘primeira linha’ para pequenos problemas — e para boatos, porque todo mundo passa por aqui."
+        },
+        {
+          "name": "Fazenda Wooloo",
+          "text": "Campos onde treinadores podem trabalhar: os fazendeiros pagam 50 Pokedollar por dia de serviço. As tarefas vão de tosa a guiar Wooloo pelo pasto e afastar Pokémon selvagens. Barulho de lã sendo cortada, mugidos e poeira no fim da tarde.\n\nO trabalho é tranquilo, mas exige atenção: Wooloo se perde fácil, e Pokémon selvagens aparecem quando sentem comida e movimento. O fim de tarde levanta poeira dourada e o som de tosas e balidos enche o campo. É um sublocal perfeito para cenas de rotina, contratação e pequenos incidentes."
+        },
+        {
+          "name": "Casa de Simon",
+          "text": "Após a criação das barragens, alguns Minutens tentaram invadir Cardo por terra e foram parados por Simon — treinador de região longínqua que utilizava um Pokémon com uma enorme montanha nas costas. A casa virou ponto turístico e conversa recorrente nas noites da vila.\n\nA casa funciona como memória coletiva: cada morador conta a história com uma ênfase diferente. Alguns falam do heroísmo; outros, do medo. Como ponto de interesse, é ideal para introduzir ‘lendas locais’ sem afirmar tudo como fato — e para mostrar como Cardo se protegeu quando ninguém esperava."
+        },
+        {
+          "name": "Escavação de Fósseis",
+          "text": "Pagando 10.000, é possível passar um dia escavando fósseis. Pode-se encontrar fósseis completos, âmbar e algumas pedras evolutivas. Terra úmida, ferramentas batendo e a expectativa de desenterrar algo antigo com as próprias mãos.\n\nÉ turismo e esperança ao mesmo tempo. O som de ferramenta batendo e a terra úmida grudando nas luvas cria uma sensação quase ritualística. Mesmo quando ninguém encontra nada raro, a experiência reforça a ideia de que Cardo vive em cima de camadas antigas — e que o passado ainda pode aparecer nas mãos de alguém."
+        },
+        {
+          "name": "Centro Meteorológico",
+          "text": "Instituto responsável pelas previsões do tempo na região de Ga'Al. Em uma terra onde a água dita o caminho, a previsão do céu vale quase tanto quanto um mapa.\n\nO instituto é respeitado porque ‘acerta o suficiente’ para salvar colheitas e travessias. Quando ele emite alerta, o humor da vila muda. Em termos de cena, é perfeito para avisos, presságios climáticos e para dar peso a decisões de viagem."
+        }
+      ]
+    },
+    "Visão geral": {
+      "region": "Coração Verde",
+      "sections": {
+        "_sem_secao": "O Coração Verde é um recorte úmido e pesado de Ga'Al: uma bacia tomada por mata, brejo e estruturas antigas que sobreviveram ao fim do mundo só o suficiente para virar ruína. O lago central, outrora 'verdejante', apodreceu e escureceu; o que era água virou caldo marrom, fétido, e a vida ao redor se adaptou ao lixo, à ferrugem e a uma economia de sobrevivência.\n\nÉ também uma região de contrastes verticais: as Gêmeas erguem-se como obelisco sobre a podridão do lago, separando classes por altura, cheiro e luz. O alto respira vento e privilégio; o baixo respira esgoto e guerra."
+      },
+      "sublocais": []
+    },
+    "Localidades": {
+      "region": "Coração Verde",
+      "sections": {
+        "Gêmeas": "No centro do Coração Verde, duas cidades-torres irmãs se erguem acima do lago como um monumento que se recusa a cair — mesmo depois de já ter caído uma vez. As Gêmeas foram projetadas por andares: círculos radiais largos, com moradias e serviços no miolo metálico e passagens de manutenção nos anéis externos. A parte inferior dos pisos é feita de LED branco; de dia, ilumina o andar abaixo; à noite, apaga e cede lugar a uma luz amarelada fraca, como se a própria cidade economizasse esperança.\n\nO térreo (e tudo abaixo dele) não é uma 'camada' — é uma fronteira. Do lado de fora, uma massa de pobres e desabrigados se amontoa sem acesso a serviços, vivendo de sobras, favores e risco. Ali, a 'pesca de lixo' virou rotina: Trubbish são pescados na esperança de que carreguem restos de comida, roupas ou itens básicos. Garbodor rondam como caminhões de lixo vivos, territoriais e imprevisíveis.",
+        "Safari Pokémon": "O Safari do Coração Verde é anunciado como o maior do mundo. Espécies de diversos continentes foram introduzidas e mantidas por cercas, barreiras naturais e tecnologia de contenção. Reabrir o parque foi um gesto político: provar que a região ainda tem futuro. Mas, no fundo, é também um negócio e um laboratório vivo.",
+        "Ruínas de Zibrênia": "O que sobrou da primeira cidade de Ga'Al, perdida em algum lugar do Coração Verde.\n\nZibrênia é citada como a primeira cidade de Ga'Al — ou ao menos o primeiro 'projeto de megalópole'. Do alto das Gêmeas, ainda se veem trechos de muros antigos engolidos pela mata. A sede, porém, jamais foi encontrada; alguns dizem que afundou, outros que foi 'apagada'.",
+        "ArteBalls": "A ArteBalls cresceu na borda do caos: onde Pokébolas são recursos, identidade e, às vezes, contrabando. A oficina vende modelos personalizados (pintura, gravação, acabamento) e faz reparos em cascas danificadas. Em dias de pouco movimento, a loja parece um ateliê; em dias de crise, parece um posto de guerra."
+      },
+      "sublocais": [
+        {
+          "name": "Situação atual",
+          "text": "A Queda das Gêmeas partiu a cidade ao meio. Uma das torres foi implodida de dentro para fora quando a Team Keneze tentou transformar o topo do obelisco em um mecanismo de abertura de portal — alimentado por 'passagens' entre vivos e mortos. A destruição espalhou destroços no lago e quebrou rotas internas. Desde então, Gêmeas vive entre três estados ao mesmo tempo: ruína, ocupação e reconstrução."
+        },
+        {
+          "name": "Ginásio de Gêmeas",
+          "text": "Antes, desafiar o ginásio era 'subir' a cidade: cada etapa testava mobilidade, vento e resistência, como se a própria arquitetura fosse um oponente. Hoje, a Jaula é símbolo de duas coisas: do auge (quando Gêmeas era vitrine) e da queda (quando o topo virou alvo de guerra)."
+        },
+        {
+          "name": "Sublocais e pontos de interesse",
+          "text": "Lago Verdejante (atual Lago Marrom)\n\nO antigo lago 'verde' tornou-se marrom, denso e fétido. A superfície parece calma, mas bolhas de gás sobem como suspiros. Trubbish e Garbodor são comuns; toxinas se acumulam nas margens.\n\nPesca de Lixo\n\nDocas improvisadas onde moradores pescam Trubbish e arrastam lixo em redes, procurando comida, roupa e itens reaproveitáveis.\n\nEsgotos\n\nA base da cidade ficava no esgoto: um acesso guardado por 07 chaves. Hoje, é rota vital da resistência e o único labirinto que a ocupação nunca controlou por completo.\n\nOficina de Próteses e Reparo\n\nUm conjunto de bancadas e impressoras/forjas improvisadas onde próteses, muletas, armas de sucata e peças estruturais são consertadas.\n\nMemorial do Andar Caído\n\nUm corredor com nomes gravados em placas reaproveitadas. Alguns nomes têm marcas de bala; outros, apenas espaço vazio."
+        }
+      ]
+    },
+    "Como ler por código": {
+      "region": "Ginásios de Ga'Al",
+      "sections": {
+        "_sem_secao": "Cada entrada de ginásio possui um bloco\n\ncom pares chave:valor em uma tabela de uma célula (ideal para extração). O texto narrativo abaixo do bloco é opcional para o parser."
+      },
+      "sublocais": []
+    },
+    "Ginásios abertos": {
+      "region": "Ginásios de Ga'Al",
+      "sections": {
+        "Ginásio de Borgonha": "O ginásio de Borgonha carrega uma memória pesada: a antiga líder Less foi assassinada pela Team Keneze, e o Ginásio Escaravelho - uma estrutura móvel montada sobre um escaravelho robótico - ficou como marco e ponto turístico.\n\nEneias conduz o “novo” campo como um desafio direto e prático, com foco em leitura de campo e pressão constante do tipo Inseto. A ausência de vice-líder é um ponto de vulnerabilidade política - e uma oportunidade narrativa.",
+        "Ginásio de Turquesa": "Turquesa faz do próprio mar parte da luta: espaço amplo, instabilidade e horizonte como elemento de pressão. A bolha tornou-se símbolo da cidade desde a época da chuva ácida, e as boias mantêm a “geografia” da arena estável.\n\nLarissa frequentemente recebe desafiantes e, na prática, atua como rosto do ginásio quando Alfonso está ausente.",
+        "Ginásio de Grená": "Em Grená, o ginásio é uma âncora social: um lugar de encontro e de teste de força em uma cidade cansada.\n\nAnastácia usa um estilo agressivo e de antecipação; o dojo reforça disciplina e impacto - para humanos e Pokémon.",
+        "Ginásio de Kobicha": "O ginásio de Kobicha é simples por fora e corrosivo por dentro: a identidade vem do jeito de lutar, não da fachada.\n\nAs placas solares no topo viraram detalhe icônico da cidade - utilitário, mas fácil de reconhecer à distância.",
+        "Ginásio de Obsidian": "O ginásio é um corte de rocha e concreto: corredores frios, pó mineral e ecos longos, como uma pedreira viva.\n\nA figura de Stênio - antigo líder local - ainda aparece em histórias sobre o Monte Pedra, e a exploração profunda continua sendo tema sensível.",
+        "Ginásio de Dainise": "Dainise se mistura com a natureza: passarelas nas copas, madeira viva e bioluminescência à noite.\n\nO desafio do ginásio costuma parecer ambiental - umidade, odores de resina e a sensação de que a floresta observa.",
+        "Ginásio de Sinoper": "Clementina conduz um ginásio sem espetáculo: resistência, uso de itens, controle de status e disciplina de longo prazo.\n\nApós a queda de Erick (ex-líder), Sinoper tenta reconstruir confiança sem perder a cautela.",
+        "Ginásio de Malva": "Vitória trata cada batalha como aula: anuncia intenções, observa decisões e entrega feedback direto ao final.\n\nO endividamento da cidade com a Associação de Batalha pressiona o cargo - e Draco só será vice “oficial” quando derrotá-la.",
+        "Ginásio de Mikado": "O ginásio foi concebido como peça de infraestrutura energética (uma ambição termoelétrica) e hoje é uma fortaleza de calor controlado.\n\nCom Salete fora do tabuleiro, Falco segura o posto como líder interino - e a cidade vive entre ciência, fé no progresso e ressentimentos.",
+        "Ginásio de Liberty": "Vittorio transformou o ginásio em espetáculo e aposta: desafio como reality show, com oponente pressionado a “apostar” algo antes da luta.\n\nO ginásio virou parte do ecossistema financeiro e criminal da cidade - uma arena onde humilhar é tão importante quanto vencer.",
+        "Ginásio de Gamborre": "O ginásio de Gamborre é parte do projeto de reconstrução: um farol de atividade em meio às ruínas.\n\nPixie usa o desafio como prova pública de que a cidade pode voltar a ser grande; Lancelot mantém disciplina rígida e fama de não perdoar erros táticos."
+      },
+      "sublocais": []
+    },
+    "Ginásios fechados (registro histórico)": {
+      "region": "Ginásios de Ga'Al",
+      "sections": {
+        "_sem_secao": "Esta seção reúne ginásios que tiveram liderança removida, troca de controle, morte ou desaparecimento. Mantê-los aqui ajuda a narrativa (memória, política, boatos) e também a lógica de código (status=fechado).",
+        "Jade (instalação criogênica)": "A instalação do ginásio funciona como mausoléu gelado: ciência, luto e rumores de preservação de corpos.\n\nMesmo quando a porta está fisicamente lá, socialmente é ‘fechada’: ninguém quer ser o responsável por reabrir esse frio.",
+        "Borgonha (ciclo de Less)": "O Ginásio Escaravelho permanece como marco e lembrança: metal, turismo e luto misturados.",
+        "Mikado (ciclo de Salete)": "O ginásio segue operando sob Falco como interino; esta entrada registra o ciclo anterior.",
+        "Liberty (registro de Hoops)": "Mantido como referência histórica e para ganchos ligados a documentos/insígnias antigas.",
+        "Obsidian (ciclo de Stênio)": "O nome de Stênio ainda assombra conversas sobre exploração no Monte Pedra.",
+        "Sinoper (ciclo de Erick)": "Entrada breve para preservar o histórico citado nos documentos e nos relatos.",
+        "Ginásio das Gêmeas (Andy & Dany)": "Registro mínimo: útil para hooks e cronologia. Detalhes de local/tipo podem ser preenchidos quando definidos.",
+        "Arthur (registro citado)": "Placeholder proposital para não perder referência; preencher quando houver material."
+      },
+      "sublocais": []
+    }
+  }
+}
