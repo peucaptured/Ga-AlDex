@@ -6161,25 +6161,30 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
 
 
 # ==============================================================================
-# 📚 COMPENDIUM FINAL (INTEGRAÇÃO TOTAL: VISUAL + LÓGICA + SPRITES)
+# 📚 COMPENDIUM NOVO (JSON + DARK SOULS) - CORRIGIDO
 # ==============================================================================
 def render_compendium_page() -> None:
     """
-    Compendium de Ga'Al
-    - Carregamento Robusto de JSON (User Original)
-    - Visual Dark Souls Polido (Sidebar Oculta, Menu de Botões)
-    - Grid de NPCs com tamanho fixo e etiqueta
-    - Detalhes com Retrato, História e SPRITES (Lógica recuperada)
-    - Aba de Locais implementada
+    Compendium de Ga'Al (estilo Dark Souls)
+    - Home screen (tela exclusiva) com tabs NPCs/Ginásios/Locais
+    - Cursor ">" + highlight forte
+    - "PRESS ANY BUTTON" piscando
+    - Submenu NPCs com:
+        - lista à esquerda (imagem pequena + nome)
+        - busca que filtra por texto na História
+        - painel à direita com retrato grande, nome (estilo Dark Souls), idade, sprites dos pokémons e História
+    Observação: Streamlit não oferece captura global de teclado por JS sem componente externo.
+    Portanto:
+      • setas funcionam ao focar o radio (tabs) / botões (comportamento padrão do navegador)
+      • Enter funciona nos botões quando focados (padrão)
     """
     import os
     import json
     import base64
     import re
-    import streamlit as st
 
     # ----------------------------
-    # 1. FUNÇÕES UTILITÁRIAS & CARREGAMENTO (Do seu código robusto)
+    # Paths (robusto p/ local + deploy)
     # ----------------------------
     try:
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -6203,7 +6208,8 @@ def render_compendium_page() -> None:
 
     def _load_json(filename: str) -> dict:
         p = _find_file(filename)
-        if not p: return {}
+        if not p:
+            return {}
         try:
             with open(p, "r", encoding="utf-8") as f:
                 obj = json.load(f)
@@ -6212,23 +6218,14 @@ def render_compendium_page() -> None:
             st.error(f"Erro ao ler '{filename}': {e}")
             return {}
 
-    # Função unificada de busca de imagem
-    def comp_find_image(nome):
-        if not nome: return None
-        candidates = [nome, nome.replace(" ", "_"), nome.replace(" ", ""), nome.lower()]
-        base_paths = ["", "assets/", "data/", "images/"] 
-        exts = [".png", ".jpg", ".jpeg", ".webp"]
-        
-        for base in base_paths:
-            for cand in candidates:
-                for ext in exts:
-                    fpath = os.path.join(base, cand + ext)
-                    if os.path.exists(fpath): return fpath
-                    fpath_direct = _find_file(cand + ext) 
-                    if fpath_direct: return fpath_direct
-        return None
+    required = ["gaal_locais.json", "gaal_ginasios.json", "gaal_npcs_vivos.json", "gaal_npcs_mortos.json"]
+    missing = [f for f in required if not _find_file(f)]
+    if missing:
+        st.error("⚠️ Compendium indisponível: faltam arquivos JSON no deploy.")
+        st.code("Arquivos faltando:\n- " + "\n- ".join(missing))
+        st.code("Locais verificados:\n" + "\n".join("  • " + p for f in missing for p in _candidates(f)))
+        return
 
-    # Carregamento de Dados
     data_locais = _load_json("gaal_locais.json")
     data_ginasios = _load_json("gaal_ginasios.json")
     data_vivos = _load_json("gaal_npcs_vivos.json")
@@ -6236,150 +6233,377 @@ def render_compendium_page() -> None:
 
     regions = data_locais.get("regions", {}) or {}
     cities = data_locais.get("cities", {}) or {}
+
+    lideres = data_ginasios.get("npcs", {}) or {}
+    if not lideres and isinstance(data_ginasios, dict):
+        lideres = data_ginasios or {}
+
     npcs_gerais: dict = {}
     npcs_gerais.update((data_vivos.get("npcs", {}) or {}))
     npcs_gerais.update((data_mortos.get("npcs", {}) or {}))
 
     # ----------------------------
-    # 2. CSS DARK SOULS (POLIDO)
+    # Font injection (TTF opcional)
     # ----------------------------
     def _inject_font_face_if_exists(ttf_path: str, font_family: str) -> str:
         try:
-            if not os.path.exists(ttf_path): return ""
+            if not os.path.exists(ttf_path):
+                return ""
             with open(ttf_path, "rb") as f:
                 b64 = base64.b64encode(f.read()).decode("utf-8")
-            return f"""@font-face {{ font-family: '{font_family}'; src: url(data:font/ttf;base64,{b64}) format('truetype'); }}"""
-        except: return ""
+            return f"""
+            @font-face {{
+                font-family: '{font_family}';
+                src: url(data:font/ttf;base64,{b64}) format('truetype');
+                font-weight: 400;
+                font-style: normal;
+            }}
+            """
+        except Exception:
+            return ""
 
     font_css = (
         _inject_font_face_if_exists(os.path.join(BASE_DIR, "assets", "fonts", "DarkSouls.ttf"), "GaAL_DS")
         or _inject_font_face_if_exists(os.path.join(BASE_DIR, "assets", "fonts", "darksouls.ttf"), "GaAL_DS")
     )
+
     ds_font = "GaAL_DS" if font_css.strip() else "Cinzel"
 
+    # ----------------------------
+    # CSS (força preto + branco + dourado)
+    # ----------------------------
     st.markdown(
         f"""
         <style>
-        /* IMPORTS E FONTES */
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
+        /* Oculta header/toolbar/footer padrão */
+        [data-testid="stHeader"] {{ visibility: hidden; }}
+        [data-testid="stToolbar"] {{ visibility: hidden; height: 0px; }}
+        footer {{ visibility: hidden; }}
+
+        /* Fallback parecido */
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
+
         {font_css}
 
-        /* VARIAVEIS */
         :root {{
             --ds-font: {ds_font};
-            --ds-gold: #d4af37;
-            --ds-gold-dim: rgba(212, 175, 55, 0.5);
+            --ds-white: rgba(255,255,255,0.96);
+            --ds-dim: rgba(255,255,255,0.80);
+            --ds-faint: rgba(255,255,255,0.58);
+            --ds-line: rgba(255,255,255,0.12);
             --ds-black: #050505;
-            --ds-panel: rgba(10,10,10, 0.95);
+            --ds-black-2: #000000;
+            --ds-gold: rgba(176,143,60,0.92);
+            --ds-gold-dim: rgba(176,143,60,0.50);
         }}
 
-        /* 1. HACK SIDEBAR E HEADER */
-        [data-testid="stHeader"], [data-testid="stToolbar"], footer {{ visibility: hidden; height: 0px; }}
-        section[data-testid="stSidebar"] {{ display: none; }} 
-
-        /* 2. BACKGROUND E FONTE GLOBAL */
-        [data-testid="stAppViewContainer"], .stApp {{
-            background-color: var(--ds-black);
-            background-image: radial-gradient(circle at 50% 30%, rgba(50,50,50,0.1) 0%, rgba(0,0,0,0) 70%);
-            color: #e0e0e0;
-            font-family: var(--ds-font), 'Cinzel', serif !important;
+        /* FORÇA: fundo preto, não importa o tema global */
+        [data-testid="stAppViewContainer"],
+        .stApp {{
+            background: radial-gradient(900px 520px at 50% 30%, rgba(255,255,255,0.05), rgba(0,0,0,0) 60%),
+                        linear-gradient(180deg, var(--ds-black), var(--ds-black-2)) !important;
+            color: var(--ds-white) !important;
         }}
-        h1, h2, h3, p, div, button {{ font-family: var(--ds-font), 'Cinzel', serif !important; }}
 
-        /* 3. MENU LIMPO (HOME) */
-        div.stButton.ds-menu-btn > button {{
-            background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(20,20,20,0.8) 50%, rgba(0,0,0,0) 100%);
-            border: none;
-            border-top: 1px solid #333;
-            border-bottom: 1px solid #333;
-            color: #888;
-            font-size: 24px;
+        /* Aplica fonte DS em TODA a aba do compendium */
+        html, body, .stApp, .stApp *, [data-testid="stAppViewContainer"] *, [data-testid="stSidebar"] * {{
+            font-family: var(--ds-font), "Cinzel", "Times New Roman", serif !important;
+        }}
+        a, a:visited {{ color: var(--ds-white) !important; }}
+
+        /* Container central */
+        [data-testid="stMainBlockContainer"] {{
+            max-width: 1200px;
+            padding-top: 0.6rem;
+            padding-bottom: 2.4rem;
+        }}
+
+        /* Linhas douradas (como UI do jogo) */
+        .ds-gold-top, .ds-gold-bottom {{
+            position: fixed;
+            left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--ds-gold), transparent);
+            z-index: 9999;
+            pointer-events: none;
+            opacity: 0.95;
+        }}
+        .ds-gold-top {{ top: 0; }}
+        .ds-gold-bottom {{ bottom: 0; }}
+
+        /* Home: título */
+        .ds-home {{
+            min-height: 74vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 22px;
+            padding: 10px 0 0 0;
+        }}
+        .ds-title {{
+            text-align: center;
+            color: var(--ds-white);
+            font-size: 56px;
+            letter-spacing: 0.28em;
             text-transform: uppercase;
-            width: 100%;
-            padding: 20px 0;
-            transition: all 0.3s ease;
+            margin: 0;
         }}
-        div.stButton.ds-menu-btn > button:hover {{
-            color: var(--ds-gold);
-            background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(50,40,10,0.8) 50%, rgba(0,0,0,0) 100%);
-            border-color: var(--ds-gold);
-            text-shadow: 0 0 8px var(--ds-gold);
-            transform: scale(1.05);
-        }}
-
-        /* BOTÃO SAIR */
-        div.stButton.ds-exit-btn > button {{
-            color: #ff4b4b; border: 1px solid rgba(255, 75, 75, 0.3); background: transparent; margin-top: 40px;
-        }}
-        div.stButton.ds-exit-btn > button:hover {{ background: rgba(255, 75, 75, 0.1); border-color: #ff4b4b; }}
-
-        /* 4. GRID DE NPCS (ALINHAMENTO PERFEITO) */
-        .npc-thumb {{
-            width: 100%;
-            height: 200px !important; 
-            object-fit: cover;        
-            object-position: top;     
-            border: 1px solid #333;
-            border-bottom: none;
-            border-radius: 4px 4px 0 0;
-            opacity: 0.85;
-            transition: opacity 0.3s;
-            display: block;
-        }}
-        .npc-thumb:hover {{ opacity: 1.0; border-color: var(--ds-gold); }}
-        .npc-thumb-ph {{ height: 200px; background: #111; border: 1px solid #333; border-radius: 4px 4px 0 0; }}
-
-        /* BOTÃO ETIQUETA (EMBAIXO DA FOTO) */
-        div.stButton.ds-name-btn > button {{
-            width: 100%;
-            background-color: #0a0a0a;
-            border: 1px solid var(--ds-gold);
-            border-top: none;
-            border-radius: 0 0 4px 4px;
-            color: var(--ds-gold);
+        .ds-press {{
+            text-align: center;
+            color: var(--ds-faint);
             font-size: 14px;
+            letter-spacing: 0.34em;
             text-transform: uppercase;
-            padding: 6px 0;
-            margin-top: -5px; 
-            box-shadow: none;
+            margin: 0;
         }}
-        div.stButton.ds-name-btn > button:hover {{
-            background-color: var(--ds-gold);
-            color: #000;
-            font-weight: bold;
+        @keyframes dsBlink {{
+            0%, 48% {{ opacity: 0.10; }}
+            60%, 100% {{ opacity: 0.88; }}
+        }}
+        .ds-blink {{
+            animation: dsBlink 1.05s ease-in-out infinite;
         }}
 
-        /* 5. PAINEL DE DETALHES (COMMON) */
+        /* Tabs (radio horizontal) no rodapé */
+        /* Move o radio para o fundo, estilo menu */
+        div[data-testid="stRadio"] {{
+            position: fixed !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            bottom: 36px !important;
+            z-index: 10000 !important;
+            padding: 10px 18px !important;
+            width: max-content !important;
+            margin: 0 !important;
+            background: rgba(0,0,0,0.0) !important;
+        }}
+        div[data-testid="stRadio"] > label {{
+            display: none !important;
+        }}
+        /* Linha dourada fina acima dos tabs */
+        div[data-testid="stRadio"]::before {{
+            content: "";
+            display: block;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--ds-gold-dim), transparent);
+            margin-bottom: 10px;
+        }}
+
+        /* Estilo das opções (cursor + sombra forte) */
+        div[role="radiogroup"] {{
+            display: flex !important;
+            gap: 58px !important;
+            justify-content: center !important;
+            align-items: center !important;
+        }}
+        div[role="radiogroup"] > label {{
+            position: relative !important;
+            padding: 8px 14px 10px 26px !important;
+            border-radius: 10px !important;
+            border: 1px solid rgba(176,143,60,0.22) !important;
+            background: rgba(176,143,60,0.08) !important;
+            transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+        }}
+        div[role="radiogroup"] > label:hover {{
+            background: rgba(176,143,60,0.14) !important;
+            border-color: rgba(176,143,60,0.38) !important;
+        }}
+        div[role="radiogroup"] input {{
+            display: none !important;
+        }}
+        /* Cursor “>” */
+        div[role="radiogroup"] > label::before {{
+            content: ">";
+            position: absolute;
+            left: 8px;
+            top: 8px;
+            color: rgba(255,255,255,0.0);
+            font-size: 14px;
+            transition: color 160ms ease;
+        }}
+        /* Underline animado */
+        div[role="radiogroup"] > label::after {{
+            content: "";
+            position: absolute;
+            left: 26px;
+            right: 14px;
+            bottom: 5px;
+            height: 1px;
+            background: rgba(255,255,255,0.0);
+            transform: scaleX(0.2);
+            transform-origin: left;
+            transition: transform 180ms ease, background 180ms ease;
+        }}
+
+        /* Texto */
+        div[role="radiogroup"] p {{
+            margin: 0 !important;
+            color: rgba(255,255,255,0.45) !important;
+            letter-spacing: 0.18em !important;
+            text-transform: uppercase !important;
+            font-size: 12px !important;
+        }}
+        /* Selecionado (sombra mais forte) */
+        div[role="radiogroup"] > label:has(input:checked) {{
+            background: rgba(176,143,60,0.22) !important;
+            border-color: rgba(176,143,60,0.45) !important;
+            box-shadow: 0 0 26px rgba(0,0,0,0.85), 0 0 18px rgba(176,143,60,0.16) !important;
+            transform: translateY(-1px);
+        }}
+        div[role="radiogroup"] > label:has(input:checked)::before {{
+            color: rgba(255,255,255,0.92) !important;
+        }}
+        div[role="radiogroup"] > label:has(input:checked) p {{
+            color: rgba(255,255,255,0.92) !important;
+        }}
+        div[role="radiogroup"] > label:has(input:checked)::after {{
+            background: var(--ds-gold) !important;
+            transform: scaleX(1);
+        }}
+
+        /* Botões (NPC grid) com cara de item */
+        .stButton>button {{
+            width: 100%;
+            background: linear-gradient(180deg, rgba(176,143,60,0.55), rgba(176,143,60,0.22)) !important;
+            color: var(--ds-white) !important;
+            border: 1px solid rgba(176,143,60,0.55) !important;
+            border-radius: 10px !important;
+            padding: 10px 10px !important;
+            letter-spacing: 0.12em !important;
+            text-transform: uppercase !important;
+            transition: box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
+        }}
+        .stButton>button:hover {{
+            background: rgba(255,255,255,0.06) !important;
+            border-color: rgba(176,143,60,0.30) !important;
+            box-shadow: 0 0 18px rgba(176,143,60,0.14);
+        }}
+
+
+        /* Moldura dourada para retratos na lista (NPCs) */
+        .ds-thumb-frame{{
+            border: 2px solid rgba(176,143,60,0.70);
+            border-radius: 16px;
+            padding: 8px;
+            background: rgba(0,0,0,0.55);
+            box-shadow: 0 0 28px rgba(0,0,0,0.85), 0 0 16px rgba(176,143,60,0.12);
+            position: relative;
+            overflow: hidden;
+            max-width: 170px;
+        }}
+        .ds-thumb-frame::after{{
+            content:"";
+            position:absolute;
+            inset:10px;
+            border:1px solid rgba(255,255,255,0.10);
+            border-radius: 12px;
+            pointer-events:none;
+        }}
+        .ds-thumb-img{{
+            width: 100%;
+            display:block;
+            border-radius: 12px;
+            filter: saturate(0.92) contrast(1.02);
+        }}
+        .ds-thumb-ph{{
+            width: 100%;
+            aspect-ratio: 1/1;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.03);
+        }}
+
+        /* Painel de detalhes (frame dourado) */
         .ds-frame {{
-            border: 2px solid #333;
-            border-image: linear-gradient(to bottom, var(--ds-gold), #333) 1;
-            background: var(--ds-panel);
-            padding: 20px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.8);
-            margin-bottom: 20px;
+            background: rgba(0,0,0,0.55);
+            border: 2px solid rgba(176,143,60,0.55);
+            box-shadow: 0 0 45px rgba(0,0,0,0.9);
+            border-radius: 12px;
+            padding: 26px 26px 18px 26px;
+            position: relative;
         }}
-        .ds-name {{ font-size: 32px; color: var(--ds-gold); border-bottom: 1px solid #444; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 2px; }}
-        .ds-meta {{ font-size: 14px; color: #888; font-style: italic; margin-bottom: 20px; }}
-        .ds-history {{ font-family: 'Garamond', serif; font-size: 18px; line-height: 1.6; color: #ccc; text-align: justify; margin-top: 15px; }}
-        .ds-mark {{ background: rgba(176,143,60,0.3); color: #fff; padding: 0 4px; border-radius: 2px; }}
-        
-        /* SPRITES */
-        .ds-sprites {{ display: flex; flex-wrap: wrap; gap: 8px; margin: 15px 0; border-bottom: 1px solid #333; padding-bottom: 15px; }}
-        .ds-sprites img {{ width: 56px; height: 56px; background: rgba(0,0,0,0.3); border: 1px solid #444; border-radius: 8px; padding: 4px; }}
-        
-        /* 6. LOCAIS (PANORAMICAS) */
-        .ds-landscape img {{
-            width: 100%; max-height: 250px; object-fit: cover;
-            border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.8); margin-bottom: 15px;
+        .ds-frame::after {{
+            content: "";
+            position: absolute;
+            top: 10px; left: 10px; right: 10px; bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 10px;
+            pointer-events: none;
         }}
-        .ds-subloc-card {{ background: rgba(255,255,255,0.03); border-left: 2px solid var(--ds-gold); padding: 10px; margin-bottom: 8px; }}
-        .ds-subloc-title {{ color: var(--ds-gold); font-size: 14px; font-weight: bold; text-transform: uppercase; }}
-        .ds-section-title {{ color: var(--ds-gold); font-size: 16px; text-transform: uppercase; border-bottom: 1px solid #333; margin-top: 15px; }}
+        .ds-name {{
+            font-size: 52px;
+            text-transform: uppercase;
+            letter-spacing: 0.22em;
+            text-align: center;
+            margin: 0 0 10px 0;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.10);
+        }}
+        .ds-meta {{
+            text-align: center;
+            color: var(--ds-faint);
+            letter-spacing: 0.20em;
+            text-transform: uppercase;
+            font-size: 13px;
+            margin-bottom: 18px;
+        }}
+        .ds-portrait {{
+            display: flex;
+            justify-content: center;
+            margin: 12px 0 10px 0;
+        }}
+        .ds-portrait img {{
+            max-width: 300px;
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow: 0 0 26px rgba(0,0,0,0.75);
+        }}
+        .ds-sprites {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin: 10px 0 12px 0;
+        }}
+        .ds-sprites img {{
+            width: 56px;
+            height: 56px;
+            image-rendering: pixelated;
+            background: rgba(0,0,0,0.35);
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 10px;
+            padding: 2px;
+        }}
+        .ds-section-title {{
+            margin-top: 14px;
+            margin-bottom: 10px;
+            color: var(--ds-faint);
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding-bottom: 8px;
+            text-align: center;
+        }}
+        .ds-history p {{
+            color: rgba(255,255,255,0.88);
+            font-size: 18px;
+            line-height: 1.68;
+            text-align: justify;
+            margin: 0 0 14px 0;
+        }}
+        .ds-mark {{
+            background: rgba(176,143,60,0.25);
+            padding: 0 4px;
+            border-radius: 4px;
+        }}
 
-        .ds-gold-top, .ds-gold-bottom {{ position: fixed; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--ds-gold), transparent); z-index: 9999; pointer-events: none; opacity: 0.8; }}
-        .ds-gold-top {{ top: 0; }} .ds-gold-bottom {{ bottom: 0; }}
+        /* Corrige labels padrão do Streamlit */
+        .stTextInput label, .stSelectbox label {{
+            color: rgba(255,255,255,0.72) !important;
+        }}
         </style>
-        
         <div class="ds-gold-top"></div>
         <div class="ds-gold-bottom"></div>
         """,
@@ -6387,286 +6611,234 @@ def render_compendium_page() -> None:
     )
 
     # ----------------------------
-    # 3. CONTROLE DE ESTADO
+    # Estado do Compendium
     # ----------------------------
-    if "comp_view" not in st.session_state:
-        st.session_state["comp_view"] = "home"
-    if "comp_selected_npc" not in st.session_state:
-        st.session_state["comp_selected_npc"] = None
-    
-    # Estados para Locais
-    st.session_state.setdefault("ds_loc_region", None)
-    st.session_state.setdefault("ds_loc_city", None)
-    if not st.session_state["ds_loc_region"] and regions:
-        st.session_state["ds_loc_region"] = sorted(list(regions.keys()))[0]
+    st.session_state.setdefault("comp_view", "home")
+    st.session_state.setdefault("comp_selected_npc", None)
 
-    # Título Fixo
-    st.markdown("<h1 style='text-align: center; cursor:pointer;'>GA'AL - O COMPÊNDIO</h1>", unsafe_allow_html=True)
-    st.markdown("---")
-
-    # =====================================================================
-    # VIEW: HOME (MENU)
-    # =====================================================================
+    # ----------------------------
+    # HOME (tela exclusiva)
+    # ----------------------------
     if st.session_state["comp_view"] == "home":
-        st.markdown("<div style='text-align: center; margin-bottom: 40px; color: #666; font-style: italic;'>Selecione um tomo para consultar</div>", unsafe_allow_html=True)
-        
-        c1, c2, c3 = st.columns([1,1,1])
-        with c1:
-            st.markdown('<div class="ds-menu-btn">', unsafe_allow_html=True)
-            if st.button("LOCAIS", key="btn_home_locais"):
-                st.session_state["comp_view"] = "locais"
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-        with c2:
-            st.markdown('<div class="ds-menu-btn">', unsafe_allow_html=True)
-            if st.button("PERSONAGENS", key="btn_home_npcs"):
-                st.session_state["comp_view"] = "npcs"
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-        with c3:
-            st.markdown('<div class="ds-menu-btn">', unsafe_allow_html=True)
-            if st.button("GINÁSIOS", key="btn_home_gym"):
-                st.session_state["comp_view"] = "ginasios"
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown(
+            """
+            <div class="ds-home">
+                <div class="ds-title">BEM VINDO A GA'AL</div>
+                <div class="ds-press ds-blink">PRESS ANY BUTTON</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-        st.markdown("<br><br><br>", unsafe_allow_html=True)
-        col_exit_1, col_exit_2, col_exit_3 = st.columns([1,2,1])
-        with col_exit_2:
-             st.markdown('<div class="ds-exit-btn">', unsafe_allow_html=True)
-             if st.button("Sair de Ga'Al (Voltar à Pokedex)", key="btn_exit_gaal"):
-                 if "page_mode" in st.session_state:
-                     st.session_state["page_mode"] = "pokedex"
-                 if "current_page" in st.session_state:
-                     st.session_state["current_page"] = "pokedex"
-                 st.rerun()
-             st.markdown('</div>', unsafe_allow_html=True)
+        # Tabs (radio) no rodapé
+        tab = st.radio(
+            "Compendium Tabs",
+            ["NPCs", "Ginásios", "Locais"],
+            index=0,
+            horizontal=True,
+            label_visibility="collapsed",
+            key="ds_home_tabs",
+        )
+        # Entra ao selecionar um tomo diferente
+        st.session_state.setdefault("ds_home_last", tab)
+        if tab != st.session_state.get("ds_home_last"):
+            st.session_state["ds_home_last"] = tab
+            st.session_state["comp_view"] = tab.lower()
+            st.rerun()
+        return
 
     # =====================================================================
-    # VIEW: NPCs (COM SPRITES RESTAURADOS)
+    # SUBMENU: NPCs (layout pedido)
     # =====================================================================
-    elif st.session_state["comp_view"] == "npcs":
-        top_c1, top_c2 = st.columns([1, 5])
-        with top_c1:
-            if st.button("<< MENU", key="ds_back_home_n"):
-                st.session_state["comp_view"] = "home"
-                st.session_state["comp_selected_npc"] = None
-                st.rerun()
-        
-        left_col, right_col = st.columns([1.5, 2], gap="large")
-
-        # --- Coluna Esquerda: Lista ---
-        with left_col:
-            search = st.text_input("Buscar", key="ds_npc_search", placeholder="Nome ou história...").strip().lower()
-            
-            items = []
-            for nome, obj in npcs_gerais.items():
-                historia = ""
-                secs = obj.get("sections", {})
-                if isinstance(secs, dict):
-                    historia = str(secs.get("História") or secs.get("Historia") or "").lower()
-                if not search or search in nome.lower() or search in historia:
-                    items.append(nome)
-            items.sort()
-            
-            if not items:
-                st.info("Ninguém encontrado.")
-            else:
-                cols = st.columns(3)
-                for idx, name in enumerate(items):
-                    col = cols[idx % 3]
-                    with col:
-                        img_path = comp_find_image(name)
-                        img_html = '<div class="npc-thumb-ph"></div>'
-                        if img_path:
-                            try:
-                                with open(img_path, "rb") as f:
-                                    b64 = base64.b64encode(f.read()).decode()
-                                img_html = f'<img src="data:image/png;base64,{b64}" class="npc-thumb">'
-                            except: pass
-                        
-                        st.markdown(img_html, unsafe_allow_html=True)
-                        st.markdown('<div class="ds-name-btn">', unsafe_allow_html=True)
-                        if st.button(name, key=f"btn_npc_{name}_{idx}"):
-                            st.session_state["comp_selected_npc"] = name
-                            st.rerun()
-                        st.markdown('</div>', unsafe_allow_html=True)
-                        st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
-
-        # --- Coluna Direita: Detalhes + SPRITES ---
-        with right_col:
-            selected = st.session_state["comp_selected_npc"]
-            if selected:
-                data = npcs_gerais.get(selected, {})
-                
-                # 1. Imagem Principal
-                p_path = comp_find_image(selected)
-                if p_path:
-                    st.image(p_path, use_column_width=True)
-                
-                # 2. SPRITES (Recuperado do seu código original)
-                sprites_html = ""
-                pokemons = data.get("pokemons") or data.get("pokemons_conhecidos") or []
-                if isinstance(pokemons, list) and pokemons:
-                    # Tenta usar as funções globais se existirem
-                    try:
-                        # Assume que get_official_pokemon_map e get_pokemon_image_url estão no escopo global (app.py)
-                        # Se não estiverem, esse bloco falha silenciosamente sem quebrar o app
-                        name_map = get_official_pokemon_map() if 'get_official_pokemon_map' in globals() else {}
-                        sprite_imgs = []
-                        for pkm in pokemons:
-                            if 'get_pokemon_image_url' in globals():
-                                url = get_pokemon_image_url(str(pkm), name_map, mode="sprite", shiny=False)
-                                if url: sprite_imgs.append(url)
-                        
-                        if sprite_imgs:
-                            sprites_html = "<div class='ds-sprites'>" + "".join(f"<img src='{u}'>" for u in sprite_imgs) + "</div>"
-                    except:
-                        pass # Ignora erros de sprite para não travar a tela
-                
-                # 3. História com Highlight
-                historia = ""
-                secs = data.get("sections", {})
-                if isinstance(secs, dict):
-                    historia = secs.get("História") or secs.get("Historia") or ""
-                
-                h_html = ""
-                if historia:
-                    q = st.session_state.get("ds_npc_search", "").strip()
-                    for para in [p.strip() for p in historia.split("\n\n") if p.strip()]:
-                        if q:
-                            pattern = re.compile(re.escape(q), re.IGNORECASE)
-                            para = pattern.sub(lambda m: f"<span class='ds-mark'>{m.group(0)}</span>", para)
-                        h_html += f"<p>{para}</p>"
-                else:
-                    h_html = "<p>(Sem registro)</p>"
-
-                st.markdown(
-                    f"""
-                    <div class="ds-frame">
-                        <div class="ds-name">{selected}</div>
-                        <div class="ds-meta">{data.get("ocupacao", "Desconhecido")} | {data.get("status", "")}</div>
-                        {sprites_html}
-                        <div class="ds-section-title">História</div>
-                        <div class="ds-history">{h_html}</div>
-                    </div>
-                    """, 
-                    unsafe_allow_html=True
-                )
-            else:
-                st.markdown("<div style='height:400px; display:flex; align-items:center; justify-content:center; border:1px dashed #444; color:#666;'>Selecione um personagem</div>", unsafe_allow_html=True)
-
-    # =====================================================================
-    # VIEW: LOCAIS
-    # =====================================================================
-    elif st.session_state["comp_view"] == "locais":
+    if st.session_state["comp_view"] == "npcs":
         top = st.columns([1, 6])
         with top[0]:
-            if st.button("<< MENU", key="ds_back_home_loc"):
+            if st.button("<< MENU", key="ds_back_home"):
                 st.session_state["comp_view"] = "home"
                 st.rerun()
-        
-        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+        with top[1]:
+            st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+
         left, right = st.columns([1.25, 2.15], gap="large")
-        
-        regions_list = sorted(list(regions.keys()))
-        curr_reg = st.session_state["ds_loc_region"]
 
+        # ---- filtro / lista ----
         with left:
-            st.markdown(f"<div class='ds-section-title' style='text-align:left'>Mappa Mundi</div>", unsafe_allow_html=True)
-            sel_reg = st.selectbox("Região", regions_list, 
-                                   index=regions_list.index(curr_reg) if curr_reg in regions_list else 0,
-                                   key="ds_reg_sel")
-            if sel_reg != curr_reg:
-                st.session_state["ds_loc_region"] = sel_reg
-                st.session_state["ds_loc_city"] = None
-                st.rerun()
+            search = st.text_input(
+                "Buscar personagem (nome ou texto na História)",
+                key="ds_npc_search",
+                placeholder="Digite aqui...",
+            ).strip()
 
-            st.markdown("---")
-            if st.button(f"🗺️ Visão Regional", key=f"btn_reg_view_{sel_reg}"):
-                st.session_state["ds_loc_city"] = None
-                st.rerun()
+            # normaliza p/ busca
+            def _norm(s: str) -> str:
+                if not isinstance(s, str):
+                    return ""
+                return re.sub(r"\s+", " ", s).strip().lower()
 
-            reg_obj = regions.get(sel_reg, {})
-            city_list = reg_obj.get("cities", [])
-            st.markdown(f"<div style='margin-bottom:10px; color:#888; font-size:12px; margin-top:15px;'>LOCAIS</div>", unsafe_allow_html=True)
+            q = _norm(search)
 
-            for city_name in city_list:
-                is_active = (st.session_state["ds_loc_city"] == city_name)
-                label = f"➤ {city_name}" if is_active else f"📍 {city_name}"
-                if st.button(label, key=f"ds_btn_city_{city_name}"):
-                    st.session_state["ds_loc_city"] = city_name
-                    st.rerun()
+            items: list[tuple[str, dict]] = []
+            for nome, obj in (npcs_gerais or {}).items():
+                if not isinstance(obj, dict):
+                    continue
+                historia = ""
+                secs = obj.get("sections") or {}
+                if isinstance(secs, dict):
+                    historia = secs.get("História") or secs.get("Historia") or ""
+                hay = _norm(nome) + " " + _norm(historia)
+                if not q or q in hay:
+                    items.append((nome, obj))
 
-        with right:
-            current_city = st.session_state["ds_loc_city"]
-            if current_city:
-                c_data = cities.get(current_city, {})
-                img_path = comp_find_image(current_city) or comp_find_image(curr_reg)
-                img_html = ""
-                if img_path:
-                    try:
-                        with open(img_path, "rb") as f:
-                            b64 = base64.b64encode(f.read()).decode()
-                        img_html = f"<div class='ds-landscape'><img src='data:image/png;base64,{b64}' /></div>"
-                    except: pass
-                
-                sections = c_data.get("sections", {})
-                content_html = ""
-                for k, v in sections.items():
-                    content_html += f"<div class='ds-section-title'>{k}</div><div class='ds-history'><p>{v}</p></div>"
-                
-                sublocs_html = ""
-                if c_data.get("sublocais"):
-                    sublocs_html += "<div class='ds-section-title' style='margin-top:30px;'>Pontos de Interesse</div>"
-                    for sub in c_data["sublocais"]:
-                        sublocs_html += f"<div class='ds-subloc-card'><div class='ds-subloc-title'>{sub['name']}</div><div class='ds-history' style='font-size:14px'><p>{sub['text']}</p></div></div>"
+            items.sort(key=lambda x: x[0])
 
-                st.markdown(
-                    f"""
-                    <div class="ds-frame">
-                        <div class="ds-name">{current_city}</div>
-                        <div class="ds-meta">{curr_reg}</div>
-                        {img_html}
-                        {content_html}
-                        {sublocs_html}
-                    </div>
-                    """, unsafe_allow_html=True
-                )
+            if not items:
+                st.info("Nenhum NPC encontrado com esse filtro.")
             else:
-                r_data = regions.get(curr_reg, {})
-                img_path = comp_find_image(curr_reg)
-                img_html = ""
-                if img_path:
-                    try:
-                        with open(img_path, "rb") as f:
-                            b64 = base64.b64encode(f.read()).decode()
-                        img_html = f"<div class='ds-landscape'><img src='data:image/png;base64,{b64}' /></div>"
-                    except: pass
-                
-                intro = r_data.get("intro", "")
-                st.markdown(
-                    f"""
-                    <div class="ds-frame">
-                        <div class="ds-name">{curr_reg}</div>
-                        <div class="ds-meta">REGIÃO</div>
-                        {img_html}
-                        <div class="ds-section-title">Sobre</div>
-                        <div class="ds-history"><p>{intro}</p></div>
-                    </div>
-                    """, unsafe_allow_html=True
-                )
+                # grid simples (2 colunas) com imagem pequena + nome
+                grid_cols = st.columns(2, gap="small")
+                for i, (nome, obj) in enumerate(items):
+                    with grid_cols[i % 2]:
+                        img_path = None
+                        try:
+                            img_path = comp_find_image(nome)
+                        except Exception:
+                            img_path = None
 
-    # =====================================================================
-    # VIEW: GINÁSIOS
-    # =====================================================================
-    elif st.session_state["comp_view"] == "ginasios":
-         top = st.columns([1, 6])
-         with top[0]:
-            if st.button("<< MENU", key="ds_back_home_gym"):
-                st.session_state["comp_view"] = "home"
-                st.rerun()
-         st.info("🚧 Em breve.")
+                        thumb_html = ""
+                        if img_path and os.path.exists(img_path):
+                            try:
+                                with open(img_path, "rb") as f:
+                                    b64 = base64.b64encode(f.read()).decode("utf-8")
+                                ext = os.path.splitext(img_path)[1].lower().replace(".", "")
+                                if ext not in ("png", "jpg", "jpeg", "webp"):
+                                    ext = "png"
+                                thumb_html = f"<img class='ds-thumb-img' src='data:image/{ext};base64,{b64}'/>"
+                            except Exception:
+                                thumb_html = ""
+
+                        if thumb_html:
+                            st.markdown(f"""<div class='ds-thumb-frame'>{thumb_html}</div>""", unsafe_allow_html=True)
+                        else:
+                            st.markdown("""<div class='ds-thumb-frame'><div class='ds-thumb-ph'></div></div>""", unsafe_allow_html=True)
+
+                        # clique (abre no painel direito)
+                        if st.button(nome, key=f"ds_pick_npc_{i}"):
+                            st.session_state["comp_selected_npc"] = nome
+                            st.rerun()
+
+        # ---- painel de detalhes ----
+        with right:
+            sel = st.session_state.get("comp_selected_npc")
+            if not sel:
+                st.markdown(
+                    "<div class='ds-frame'><div class='ds-name' style='font-size:30px;'>SELECIONE UM NPC</div><div class='ds-meta'>clique em um retrato à esquerda</div></div>",
+                    unsafe_allow_html=True,
+                )
+                return
+
+            npc = npcs_gerais.get(sel, {}) or {}
+            ocupacao = npc.get("ocupacao", "")
+            idade = npc.get("idade", "")
+            status = npc.get("status", "")
+
+            # retrato grande (base64 p/ garantir)
+            portrait_b64 = ""
+            portrait_path = None
+            try:
+                portrait_path = comp_find_image(sel)
+            except Exception:
+                portrait_path = None
+
+            if portrait_path and os.path.exists(portrait_path):
+                try:
+                    with open(portrait_path, "rb") as f:
+                        portrait_b64 = base64.b64encode(f.read()).decode("utf-8")
+                    # detect ext
+                    ext = os.path.splitext(portrait_path)[1].lower().replace(".", "")
+                    if ext not in ("png", "jpg", "jpeg", "webp"):
+                        ext = "png"
+                except Exception:
+                    portrait_b64 = ""
+                    ext = "png"
+            else:
+                ext = "png"
+
+            # sprites dos pokemons (usa mapa oficial)
+            pokemons = npc.get("pokemons") or npc.get("pokemons_conhecidos") or []
+            if not isinstance(pokemons, list):
+                pokemons = []
+
+            name_map = {}
+            try:
+                name_map = get_official_pokemon_map() or {}
+            except Exception:
+                name_map = {}
+
+            sprite_imgs = []
+            for pkm in pokemons:
+                try:
+                    url = get_pokemon_image_url(str(pkm), name_map, mode="sprite", shiny=False)
+                except Exception:
+                    url = ""
+                if url:
+                    sprite_imgs.append(url)
+
+            # história
+            historia = ""
+            secs = npc.get("sections") or {}
+            if isinstance(secs, dict):
+                historia = secs.get("História") or secs.get("Historia") or ""
+
+            # highlight busca na história
+            q = st.session_state.get("ds_npc_search", "").strip()
+            h_html = ""
+            if isinstance(historia, str) and historia.strip():
+                paragraphs = [p.strip() for p in historia.split("\n\n") if p.strip()]
+                for para in paragraphs:
+                    safe = para.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                    if q:
+                        # highlight case-insensitive (simples)
+                        pattern = re.compile(re.escape(q), re.IGNORECASE)
+                        safe = pattern.sub(lambda m: f"<span class='ds-mark'>{m.group(0)}</span>", safe)
+                    h_html += f"<p>{safe}</p>"
+            else:
+                h_html = "<p>(Sem história cadastrada)</p>"
+
+            # monta HTML do painel
+            meta_parts = []
+            if ocupacao:
+                meta_parts.append(str(ocupacao))
+            if status:
+                meta_parts.append(f"STATUS: {status}")
+            if idade:
+                meta_parts.append(f"IDADE: {idade}")
+            meta_line = " | ".join(meta_parts) if meta_parts else ""
+
+            portrait_html = ""
+            if portrait_b64:
+                portrait_html = f"<div class='ds-portrait'><img src='data:image/{ext};base64,{portrait_b64}' /></div>"
+
+            sprites_html = ""
+            if sprite_imgs:
+                sprites_html = "<div class='ds-sprites'>" + "".join(
+                    f"<img src='{u}' alt='sprite'/>" for u in sprite_imgs
+                ) + "</div>"
+
+            st.markdown(
+                f"""
+                <div class="ds-frame">
+                    <div class="ds-name">{sel}</div>
+                    <div class="ds-meta">{meta_line}</div>
+                    {portrait_html}
+                    {sprites_html}
+                    <div class="ds-section-title">História</div>
+                    <div class="ds-history">{h_html}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        return
+
     # =====================================================================
     # SUBMENU: Ginásios / Locais (por enquanto, volta ao menu antigo)
     # =====================================================================
@@ -6687,8 +6859,6 @@ def _tentar_achar_imagem_compendium(nome):
             if os.path.exists(tentativa + ext): return tentativa + ext
             if os.path.exists("assets/" + tentativa + ext): return "assets/" + tentativa + ext
     return None
-
-
 # ==============================================================================
 # PÁGINA 1: POKEDEX (VISÃO DE FOCO + CARROSSEL INFERIOR)
 # ==============================================================================
