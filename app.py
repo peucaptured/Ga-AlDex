@@ -7048,6 +7048,44 @@ def render_compendium_page() -> None:
         )
         return
     
+    # ... (código existente acima: if st.session_state["comp_view"] == "locais": ...)
+
+    # =========================================================
+    # VIEW: HOME (O CÓDIGO QUE ESTAVA FALTANDO)
+    # =========================================================
+    if st.session_state["comp_view"] == "home":
+        # Importação segura (caso não esteja no topo)
+        try:
+            from st_click_detector import click_detector
+        except ImportError:
+            st.error("Biblioteca st-click-detector não encontrada.")
+            return
+
+        # HTML usando as classes .ds-home, .ds-title, etc. que você já definiu no CSS
+        html_home = """
+        <div class="ds-home">
+            <div class="ds-title ds-blink">BEM VINDO A GA'AL</div>
+            <div class="ds-home-menu">
+                <a href="#" id="npcs" class="ds-menu-item">› NPCs</a>
+                <a href="#" id="ginasios" class="ds-menu-item">› Ginásios</a>
+                <a href="#" id="locais" class="ds-menu-item">› Locais</a>
+                <a href="#" id="sair" class="ds-menu-item">› Sair</a>
+            </div>
+        </div>
+        """
+        
+        # Renderiza e captura o clique
+        selected = click_detector(html_home)
+        
+        if selected:
+            if selected == "sair":
+                # Redireciona para outra aba do Streamlit
+                st.session_state["nav_to"] = "Pokédex (Busca)" 
+                st.rerun()
+            else:
+                # Navega para as sub-seções (npcs, ginasios, locais)
+                _go(selected)
+    
     
     def _tentar_achar_imagem_compendium(nome):
         if not nome:
