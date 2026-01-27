@@ -6607,7 +6607,7 @@ def render_compendium_page() -> None:
 
         left, right = st.columns([1.25, 2.15], gap="large")
 
-with left:
+    with left:
             search = st.text_input(
                 "Buscar personagem (nome ou texto na História)",
                 key="ds_npc_search",
