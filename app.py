@@ -6653,6 +6653,30 @@ def render_compendium_page() -> None:
             text-align: justify;
             margin: 0 0 14px 0;
         }}
+        /* TOP NAV — texto puro */
+        .ds-tab div[data-testid="stButton"] > button {{
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+          color: rgba(255,255,255,0.72) !important;
+        }}
+        
+        /* Hover dourado */
+        .ds-tab div[data-testid="stButton"] > button:hover {{
+          color: rgba(255,215,0,0.95) !important;
+          text-shadow: 0 0 14px rgba(255,215,0,0.35) !important;
+        }}
+        
+        /* Selecionado = dourado sempre */
+        .ds-tab.selected div[data-testid="stButton"] > button {{
+          color: rgba(255,215,0,0.98) !important;
+          text-shadow: 0 0 18px rgba(255,215,0,0.45) !important;
+        }}
+        
+        /* Remove outline padrão */
+        .ds-tab div[data-testid="stButton"] > button:focus {{
+          outline: none !important;
+        }}
         </style>
         <div class="ds-gold-top"></div>
         """,
@@ -6668,6 +6692,9 @@ def render_compendium_page() -> None:
     # ----------------------------
     # Navegação (sempre no topo)
     # ----------------------------
+    # ----------------------------
+    # Navegação (HOME embaixo / outras páginas em cima e sticky)
+    # ----------------------------
     def _go(view: str):
         st.session_state["comp_view"] = view
         if view != "npcs":
@@ -6679,11 +6706,7 @@ def render_compendium_page() -> None:
         position: "top" ou "bottom"
         top = sticky
         """
-        if position == "top":
-            wrapper_class = "ds-nav ds-nav-sticky"
-        else:
-            wrapper_class = "ds-nav ds-nav-bottom"
-    
+        wrapper_class = "ds-nav ds-nav-sticky" if position == "top" else "ds-nav ds-nav-bottom"
         st.markdown(f"<div class='{wrapper_class}'>", unsafe_allow_html=True)
     
         cols = st.columns([1, 1, 1, 1, 1], gap="small")
@@ -6711,19 +6734,17 @@ def render_compendium_page() -> None:
     
         st.markdown("</div>", unsafe_allow_html=True)
     
-        # respiro pra não colar no conteúdo
+        # respiro pra não colar no conteúdo quando estiver sticky no topo
         if position == "top":
             st.markdown("<div class='ds-after-nav-space'></div>", unsafe_allow_html=True)
-
-
+    
     
     # >>> MENU NO TOPO APENAS QUANDO NÃO FOR HOME
     if st.session_state["comp_view"] != "home":
         render_top_nav(st.session_state["comp_view"], position="top")
-        st.markdown("<br>", unsafe_allow_html=True)
     
     # ----------------------------
-    # HOME
+    # HOME (menu embaixo)
     # ----------------------------
     if st.session_state["comp_view"] == "home":
         st.markdown(
@@ -6735,28 +6756,11 @@ def render_compendium_page() -> None:
             """,
             unsafe_allow_html=True,
         )
-    
-        # >>> MENU EMBAIXO NO HOME
         render_top_nav("home", position="bottom")
         return
 
     
-    # ----------------------------
-    # HOME
-    # ----------------------------
-    if st.session_state["comp_view"] == "home":
-        st.markdown(
-            """
-            <div class="ds-home">
-                <div class="ds-title">BEM VINDO A GA'AL</div>
-                <div class="ds-press ds-blink">PRESS ANY BUTTON</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.markdown("<div class='ds-meta' style='text-align:center;'>Use o menu acima.</div>", unsafe_allow_html=True)
-        return
-    
+      
     # =====================================================================
     # NPCs (VERSÃO CORRIGIDA - SAFE IDs)
     # =====================================================================
