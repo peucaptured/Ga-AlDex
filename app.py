@@ -6593,27 +6593,26 @@ def render_compendium_page() -> None:
                 st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
         return
-# =====================================================================
-    # NPCs
+    # =====================================================================
+    # NPCs (VERSÃO CORRIGIDA - SAFE IDs)
     # =====================================================================
     if st.session_state["comp_view"] == "npcs":
-        # Importação (se não estiver no topo do arquivo)
         try:
             from st_click_detector import click_detector
         except ImportError:
-            st.error("Biblioteca 'st-click-detector' não encontrada. Instale com `pip install st-click-detector`.")
+            st.error("Biblioteca não instalada. Adicione 'st-click-detector' ao requirements.txt e reinicie o app.")
             return
 
         render_top_nav("npcs")
 
         left, right = st.columns([1.25, 2.15], gap="large")
 
-        # --- COLUNA ESQUERDA (GRID DE IMAGENS CLICÁVEIS) ---
+        # --- COLUNA ESQUERDA ---
         with left:
             search = st.text_input(
-                "Buscar personagem (nome ou texto na História)",
+                "Buscar personagem",
                 key="ds_npc_search",
-                placeholder="Digite aqui...",
+                placeholder="Nome ou história...",
             ).strip()
 
             def _norm(s: str) -> str:
@@ -6622,22 +6621,24 @@ def render_compendium_page() -> None:
 
             q = _norm(search)
 
-            items: list[tuple[str, dict]] = []
+            # Preparar lista
+            items = []
             for nome, obj in (npcs_gerais or {}).items():
                 if not isinstance(obj, dict): continue
                 historia = ""
                 secs = obj.get("sections") or {}
                 if isinstance(secs, dict):
                     historia = secs.get("História") or secs.get("Historia") or ""
+                
                 hay = _norm(nome) + " " + _norm(historia)
                 if not q or q in hay:
                     items.append((nome, obj))
-
+            
             items.sort(key=lambda x: x[0])
 
-            # Função de Cache para Thumbnails
+            # Cache de imagens
             @st.cache_data(show_spinner=False)
-            def _thumb_data_uri(path: str, max_w: int = 360, max_h: int = 520) -> str:
+            def _thumb_data_uri(path: str, max_w: int=360, max_h: int=520) -> str:
                 try:
                     from PIL import Image
                     import io, base64, os
@@ -6645,96 +6646,77 @@ def render_compendium_page() -> None:
                     img = Image.open(path).convert("RGB")
                     img.thumbnail((max_w, max_h))
                     buf = io.BytesIO()
-                    img.save(buf, format="JPEG", quality=72, optimize=True)
+                    img.save(buf, format="JPEG", quality=70)
                     b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
                     return f"data:image/jpeg;base64,{b64}"
-                except Exception:
-                    return ""
+                except: return ""
 
             if not items:
-                st.info("Nenhum NPC encontrado com esse filtro.")
+                st.info("Nenhum NPC encontrado.")
             else:
-                # 1. Definimos o CSS e o Container
+                # CSS do Grid
                 content_html = """
                 <style>
-                    .ds-grid-container {
-                        display: grid;
-                        grid-template-columns: repeat(4, 1fr);
-                        gap: 10px;
-                        width: 100%;
+                    .ds-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
+                    .ds-card { 
+                        position: relative; aspect-ratio: 3/4; 
+                        border: 2px solid #554422; border-radius: 8px; 
+                        overflow: hidden; cursor: pointer; transition: transform 0.1s;
                     }
-                    .ds-npc-card { display: block; width: 100%; }
-                    .ds-thumb-frame {
-                        border: 2px solid rgba(176,143,60,0.70);
-                        border-radius: 12px;
-                        padding: 6px;
-                        background: rgba(0,0,0,0.55);
-                        position: relative;
-                        overflow: hidden;
-                        aspect-ratio: 3/4;
-                        transition: all 0.2s ease;
-                        cursor: pointer;
+                    .ds-card:hover { border-color: #FFD700; transform: scale(1.02); }
+                    .ds-card img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.8); }
+                    .ds-name-tag {
+                        position: absolute; bottom: 0; left: 0; right: 0;
+                        background: rgba(0,0,0,0.85); color: #ddd;
+                        font-size: 10px; text-align: center; padding: 4px;
+                        font-family: sans-serif; font-weight: bold; text-transform: uppercase;
                     }
-                    .ds-thumb-img {
-                        width: 100%; height: 100%; display:block;
-                        border-radius: 8px; object-fit: cover;
-                        filter: saturate(0.92) contrast(1.02);
-                    }
-                    .ds-thumb-name {
-                        position: absolute; left: 6px; right: 6px; bottom: 6px;
-                        padding: 6px 4px; text-align: center;
-                        text-transform: uppercase; font-size: 10px; font-weight: bold;
-                        color: rgba(255,255,255,0.95);
-                        background: linear-gradient(180deg, rgba(0,0,0,0.00), rgba(0,0,0,0.85));
-                        border-top: 1px solid rgba(176,143,60,0.25);
-                        border-radius: 0 0 8px 8px;
-                        font-family: sans-serif;
-                    }
-                    .ds-thumb-frame:hover {
-                        border-color: #FFD700;
-                        transform: scale(1.03);
-                        box-shadow: 0 0 15px rgba(176,143,60,0.4);
-                    }
-                    a { text-decoration: none; color: inherit; }
+                    a { text-decoration: none; display: block; }
                 </style>
-                <div class="ds-grid-container">
+                <div class='ds-grid'>
                 """
 
-                # 2. Geramos o HTML de cada card
-                for i, (nome, obj) in enumerate(items):
-                    img_path = None
-                    try: 
-                        img_path = comp_find_image(nome)
-                    except: 
-                        img_path = None
-                    
-                    datauri = _thumb_data_uri(img_path) if img_path else ""
-                    
-                    if datauri:
-                        img_tag = f"<img class='ds-thumb-img' src='{datauri}'/>"
-                    else:
-                        img_tag = "<div style='width:100%;height:100%;background:rgba(255,255,255,0.1);'></div>"
+                # Dicionário para mapear ID numérico -> Nome Real
+                id_map = {}
 
-                    # Importante: O ID do link é o que o Python recebe
+                for idx, (nome, obj) in enumerate(items):
+                    # Criamos um ID seguro (apenas números)
+                    safe_id = str(idx)
+                    id_map[safe_id] = nome
+
+                    img_path = None
+                    try: img_path = comp_find_image(nome)
+                    except: pass
+                    
+                    src = _thumb_data_uri(img_path) if img_path else ""
+                    img_html = f"<img src='{src}' />" if src else "<div style='width:100%;height:100%;background:#222;'></div>"
+
+                    # O 'id' no link <a> é o safe_id (ex: "0", "1")
                     content_html += f"""
-                    <a href='#' id='{nome}'>
-                        <div class="ds-npc-card">
-                            <div class="ds-thumb-frame">
-                                {img_tag}
-                                <div class="ds-thumb-name">{nome}</div>
-                            </div>
+                    <a href='#' id='{safe_id}'>
+                        <div class="ds-card">
+                            {img_html}
+                            <div class="ds-name-tag">{nome}</div>
                         </div>
                     </a>
                     """
                 
                 content_html += "</div>"
 
-                # 3. Renderiza o detector de cliques
-                clicked_npc = click_detector(content_html)
+                # Renderiza detector
+                clicked_safe_id = click_detector(content_html)
 
-                if clicked_npc:
-                    st.session_state["comp_selected_npc"] = clicked_npc
-                    st.rerun()
+                # Lógica de seleção
+                if clicked_safe_id is not None:
+                    # Traduz o ID numérico de volta para o nome
+                    nome_selecionado = id_map.get(str(clicked_safe_id))
+                    
+                    if nome_selecionado:
+                        # Só roda o rerun se mudou a seleção para evitar loop
+                        if nome_selecionado != st.session_state.get("comp_selected_npc"):
+                            st.session_state["comp_selected_npc"] = nome_selecionado
+                            st.rerun()
+
 
         # --- COLUNA DIREITA (DETALHES DO NPC) ---
         with right:
