@@ -4891,7 +4891,7 @@ def load_compendium_data(
     data["npcs"] = {**vivos, **mortos}
 
     
-return data
+    return data
 
 
 # ----------------------------
