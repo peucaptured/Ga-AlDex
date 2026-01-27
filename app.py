@@ -5134,21 +5134,6 @@ def comp_load() -> dict:
                 dst.setdefault("sections", {})
                 if not dst["sections"].get(sec):
                     dst["sections"][sec] = obj["sections"][sec]
-
-def comp_load() -> dict:
-    loc_p = _resolve_asset_path(COMP_DOC_LOCAIS)
-    npc_v_p = _resolve_asset_path(COMP_DOC_NPCS_VIVOS)
-    npc_m_p = _resolve_asset_path(COMP_DOC_NPCS_MORTOS)
-    gym_p = _resolve_asset_path(COMP_DOC_GINASIOS)
-
-    data = load_compendium_data(
-        loc_p, _comp_mtime(loc_p),
-        npc_v_p, _comp_mtime(npc_v_p),
-        npc_m_p, _comp_mtime(npc_m_p),
-    )
-
-    # anexa ginásios (por cidade)
-    data["gyms"] = parse_ginasios_docx(gym_p, known_cities=list((data.get("cities") or {}).keys()))
     return data
 
 
@@ -5759,160 +5744,67 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
                         st.image(spr, width=56)
                     st.caption(pnm)
 
-def _render_gyms_axis(gyms: dict, cities: dict) -> None:
-    st.markdown("## 🏅 Ginásios")
+    # ----------------------------
+    # 🏅 Referências de Ginásio
+    # ----------------------------
+    gyms = gyms or {}
+    gym_refs = []
+    for city, g in gyms.items():
+        meta = g.get("meta") or {}
+        lider = (meta.get("lider") or (g.get("staff") or {}).get("lider") or "").strip()
+        vice = (meta.get("vice_lider") or meta.get("vice-lider") or (g.get("staff") or {}).get("vice_lider") or "").strip()
+        if _norm(lider) == _norm(nm):
+            gym_refs.append(("🏅 Líder", city, meta.get("tipo",""), meta.get("status","")))
+        if _norm(vice) == _norm(nm):
+            gym_refs.append(("🥈 Vice", city, meta.get("tipo",""), meta.get("status","")))
 
-    if not gyms:
-        st.info("Nenhum dado de ginásio encontrado. Verifique se `ginasios.docx` está na pasta certa.")
-        return
+    if gym_refs:
+        st.markdown("### 🏅 Ginásio")
+        for role, city, tipo, status in gym_refs:
+            line = f"**{role}** em **{city}**"
+            meta_bits = []
+            if tipo:
+                meta_bits.append(f"Tipo: {tipo}")
+            if status:
+                meta_bits.append(f"Status: {status}")
+            if meta_bits:
+                line += " — " + " • ".join(meta_bits)
+            st.markdown(line)
+            if city in cities:
+                if st.button(f"Abrir cidade: {city}", key=f"npc_open_city_{_stem_key(nm)}_{_stem_key(city)}"):
+                    st.session_state["comp_axis"] = "🌍 Locais"
+                    st.session_state["comp_region"] = cities[city].get("region")
+                    st.session_state["comp_city"] = city
+                    _touch_recent("comp_recent_cities", city)
+                    st.rerun()
 
-    gym_cities = [c for c in gyms.keys() if not c.startswith("__")]
+    # Cross-links: cidades e NPCs citados
+    city_names = list(cities.keys())
+    npc_names = list(npcs.keys())
+    cm = npc_mentions_cities(npc, city_names)
+    nm_hits = npc_mentions_npcs(npc, npc_names, nm)
+    if cm:
+        st.markdown("**Cidades citadas:**")
+        cols = st.columns(3)
+        for i, cn in enumerate(cm[:9]):
+            with cols[i % 3]:
+                if st.button(f"🏙️ {cn}", key=f"npc_city_{_stem_key(nm)}_{_stem_key(cn)}"):
+                    st.session_state["comp_axis"] = "🌍 Locais"
+                    # tenta inferir região
+                    st.session_state["comp_region"] = cities.get(cn, {}).get("region")
+                    st.session_state["comp_city"] = cn
+                    _touch_recent("comp_recent_cities", cn)
+                    st.rerun()
 
-    q = st.text_input("🔍 Buscar cidade (ginásio)", key="comp_gym_q")
-    qn = _norm(q)
-    filtered = [c for c in gym_cities if (not qn) or (qn in _norm(c))]
-
-    if not filtered:
-        st.caption("Nada encontrado.")
-        return
-
-    left, right = st.columns([1.0, 1.6], gap="large")
-    with left:
-        sel = st.radio("Cidades com ginásio", filtered, key="comp_gym_city_sel")
-
-    with right:
-        g = gyms.get(sel) or {}
-        st.markdown(f"### 🏟️ {sel}")
-
-        def render_person(p, prefix=""):
-            nm = p.get("name", "")
-            fields = p.get("fields", {}) or {}
-            pokes = p.get("pokemons") or []
-
-            st.markdown(f"**{prefix}{nm}**")
-            if fields.get("Idade"):
-                st.caption(f"Idade: {fields.get('Idade')}")
-            if fields.get("Local de Nascimento"):
-                st.caption(f"Nascimento: {fields.get('Local de Nascimento')}")
-            if fields.get("Ocupação atual"):
-                st.caption(fields.get("Ocupação atual"))
-
-            if pokes:
-                cols = st.columns(min(6, len(pokes)))
-                for i, pk in enumerate(pokes[:12]):
-                    with cols[i % len(cols)]:
-                        spr = _poke_sprite_url(pk)
-                        if spr:
-                            st.image(spr, width=48)
-                        st.caption(pk)
-
-            if p.get("text"):
-                with st.expander("Lore"):
-                    st.markdown(p["text"])
-
-        if g.get("leaders"):
-            st.markdown("#### 👑 Líder(es)")
-            for p in g["leaders"]:
-                render_person(p, "👑 ")
-                st.markdown("---")
-
-        if g.get("vices"):
-            st.markdown("#### 🛡️ Vice-líder(es)")
-            for p in g["vices"]:
-                render_person(p, "🛡️ ")
-                st.markdown("---")
-
-        if sel in cities:
-            if st.button("📄 Abrir Dossiê da Cidade", key=f"goto_city_{_stem_key(sel)}"):
-                st.session_state["comp_axis"] = "🌍 Locais"
-                st.session_state["comp_region"] = cities[sel]["region"]
-                st.session_state["comp_city"] = sel
-                st.rerun()
-
-    hist = gyms.get("__REGISTRO_HISTORICO__", {})
-    items = hist.get("history") or []
-    if items:
-        st.markdown("## 📜 Registro Histórico")
-        for it in items:
-            with st.expander(it.get("title", "Item")):
-                f = it.get("fields", {}) or {}
-                for k, v in f.items():
-                    st.markdown(f"**{k}:** {v}")
-
-                pokes = it.get("pokemons") or []
-                if pokes:
-                    cols = st.columns(min(6, len(pokes)))
-                    for i, pk in enumerate(pokes[:12]):
-                        with cols[i % len(cols)]:
-                            spr = _poke_sprite_url(pk)
-                            if spr:
-                                st.image(spr, width=48)
-                            st.caption(pk)
-
-                if it.get("text"):
-                    st.markdown(it["text"])
-
-
-
-        # ----------------------------
-        # 🏅 Referências de Ginásio
-        # ----------------------------
-        gyms = gyms or {}
-        gym_refs = []
-        for city, g in gyms.items():
-            meta = g.get("meta") or {}
-            lider = (meta.get("lider") or (g.get("staff") or {}).get("lider") or "").strip()
-            vice = (meta.get("vice_lider") or meta.get("vice-lider") or (g.get("staff") or {}).get("vice_lider") or "").strip()
-            if _norm(lider) == _norm(nm):
-                gym_refs.append(("🏅 Líder", city, meta.get("tipo",""), meta.get("status","")))
-            if _norm(vice) == _norm(nm):
-                gym_refs.append(("🥈 Vice", city, meta.get("tipo",""), meta.get("status","")))
-
-        if gym_refs:
-            st.markdown("### 🏅 Ginásio")
-            for role, city, tipo, status in gym_refs:
-                line = f"**{role}** em **{city}**"
-                meta_bits = []
-                if tipo: meta_bits.append(f"Tipo: {tipo}")
-                if status: meta_bits.append(f"Status: {status}")
-                if meta_bits:
-                    line += " — " + " • ".join(meta_bits)
-                st.markdown(line)
-                if city in cities:
-                    if st.button(f"Abrir cidade: {city}", key=f"npc_open_city_{_stem_key(nm)}_{_stem_key(city)}"):
-                        st.session_state["comp_axis"] = "🌍 Locais"
-                        st.session_state["comp_region"] = cities[city].get("region")
-                        st.session_state["comp_city"] = city
-                        _touch_recent("comp_recent_cities", city)
-                        st.rerun()
-
-        # Cross-links: cidades e NPCs citados
-        city_names = list(cities.keys())
-        npc_names = list(npcs.keys())
-        cm = npc_mentions_cities(npc, city_names)
-        nm_hits = npc_mentions_npcs(npc, npc_names, nm)
-        if cm:
-            st.markdown("**Cidades citadas:**")
-            cols = st.columns(3)
-            for i, cn in enumerate(cm[:9]):
-                with cols[i % 3]:
-                    if st.button(f"🏙️ {cn}", key=f"npc_city_{_stem_key(nm)}_{_stem_key(cn)}"):
-                        st.session_state["comp_axis"] = "🌍 Locais"
-                        # tenta inferir região
-                        st.session_state["comp_region"] = cities.get(cn, {}).get("region")
-                        st.session_state["comp_city"] = cn
-                        _touch_recent("comp_recent_cities", cn)
-                        st.rerun()
-
-        if nm_hits:
-            st.markdown("**Outros NPCs citados:**")
-            cols = st.columns(3)
-            for i, other in enumerate(nm_hits[:9]):
-                with cols[i % 3]:
-                    if st.button(f"🧑 {other}", key=f"npc_npc_{_stem_key(nm)}_{_stem_key(other)}"):
-                        st.session_state["comp_npc_selected"] = other
-                        _touch_recent("comp_recent_npcs", other)
-                        st.rerun()
+    if nm_hits:
+        st.markdown("**Outros NPCs citados:**")
+        cols = st.columns(3)
+        for i, other in enumerate(nm_hits[:9]):
+            with cols[i % 3]:
+                if st.button(f"🧑 {other}", key=f"npc_npc_{_stem_key(nm)}_{_stem_key(other)}"):
+                    st.session_state["comp_npc_selected"] = other
+                    _touch_recent("comp_recent_npcs", other)
+                    st.rerun()
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -5942,6 +5834,7 @@ def _render_gyms_axis(gyms: dict, cities: dict) -> None:
             live.setdefault("npcs", {})[nm] = new_tags
             st.session_state["comp_live_overrides"] = live
             st.rerun()
+
 
         merged = _load_comp_tags_overrides()
         merged_live = _get_live_overrides()
@@ -10295,8 +10188,6 @@ elif page == "Mochila":
     
     
     
-
-
 
 
 
