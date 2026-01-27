@@ -6748,6 +6748,34 @@ def render_compendium_page() -> None:
     
         
       
+    render_top_nav(st.session_state["comp_view"], position="top")
+    
+    if st.session_state["comp_view"] == "home":
+        st.markdown(
+            """
+            <div class='ds-frame'>
+                <div class='ds-name'>COMPENDIUM DE GA'AL</div>
+                <div class='ds-meta'>Escolha um caminho para explorar o mundo.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            if st.button("NPCs"):
+                _go("npcs")
+        with c2:
+            if st.button("Ginásios"):
+                _go("ginasios")
+        with c3:
+            if st.button("Locais"):
+                _go("locais")
+    
+        st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+        st.caption("Use o menu acima para navegar rapidamente entre as seções.")
+        return
+    
     # =====================================================================
     # NPCs (VERSÃO CORRIGIDA - SAFE IDs)
     # =====================================================================
