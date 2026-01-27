@@ -6431,24 +6431,59 @@ def render_compendium_page() -> None:
             padding-bottom: 12px;
             border-bottom: 1px solid rgba(176,143,60,0.25);
         }}
+        /* variação: menu embaixo no HOME */
+        .ds-nav-bottom {{
+            margin-top: 24px !important;
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+            border-bottom: none !important;
+            border-top: 1px solid rgba(176,143,60,0.25);
+            padding-top: 12px;
+        }}
+
     
+        /* TOP NAV (tabs) — texto puro, transparente */
         .ds-tab div[data-testid="stButton"] > button {{
-            background: rgba(0,0,0,0.35) !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        
             color: rgba(255,255,255,0.72) !important;
-            border: 1px solid rgba(176,143,60,0.30) !important;
-            border-radius: 10px !important;
-            padding: 10px 18px !important;
+            padding: 6px 10px !important;
+        
             letter-spacing: 0.28em !important;
             text-transform: uppercase !important;
-            box-shadow: 0 0 22px rgba(0,0,0,0.85) !important;
-            width: 100% !important;
+        
+            transition: transform 0.15s ease, color 0.15s ease, text-shadow 0.15s ease !important;
         }}
+        
+        /* Hover dourado */
+        .ds-tab div[data-testid="stButton"] > button:hover {{
+            color: rgba(255,215,0,0.95) !important;
+            text-shadow: 0 0 14px rgba(255,215,0,0.35) !important;
+            transform: translateY(-1px) !important;
+        }}
+        
+        /* Clique (active/focus) dourado */
+        .ds-tab div[data-testid="stButton"] > button:active,
+        .ds-tab div[data-testid="stButton"] > button:focus {{
+            color: rgba(255,215,0,0.98) !important;
+            text-shadow: 0 0 18px rgba(255,215,0,0.45) !important;
+            outline: none !important;
+        }}
+        
+        /* Selecionado (aba atual) dourado persistente */
         .ds-tab.selected div[data-testid="stButton"] > button {{
-            background: rgba(176,143,60,0.22) !important;
-            color: rgba(255,255,255,0.92) !important;
-            border-color: rgba(176,143,60,0.85) !important;
-            box-shadow: 0 0 26px rgba(0,0,0,0.9), 0 0 12px rgba(176,143,60,0.15) !important;
+            color: rgba(255,215,0,0.98) !important;
+            text-shadow: 0 0 16px rgba(255,215,0,0.40) !important;
         }}
+        
+        /* Indicador > na aba selecionada */
+        .ds-tab.selected div[data-testid="stButton"] > button::before {{
+            content: "> ";
+            color: rgba(255,215,0,0.98) !important;
+        }}
+
         .ds-tab.selected div[data-testid="stButton"] > button::before {{
             content: "> ";
             color: rgba(255,255,255,0.92);
@@ -6621,8 +6656,14 @@ def render_compendium_page() -> None:
             st.session_state["comp_selected_npc"] = None
         st.rerun()
     
-    def render_top_nav(selected: str):
-        # Agora com HOME no menu (para existir "todas as páginas" de fato)
+    def render_top_nav(selected: str, position: str = "top"):
+        """
+        position: "top" ou "bottom"
+        """
+        wrapper_class = "ds-nav" if position == "top" else "ds-nav ds-nav-bottom"
+    
+        st.markdown(f"<div class='{wrapper_class}'>", unsafe_allow_html=True)
+    
         cols = st.columns([1, 1, 1, 1, 1], gap="small")
         labels = [
             ("home", "Menu"),
@@ -6637,19 +6678,41 @@ def render_compendium_page() -> None:
             with cols[i]:
                 st.markdown(f"<div class='{cls}'>", unsafe_allow_html=True)
     
-                if st.button(lab, key=f"ds_nav_{v}", use_container_width=True):
+                if st.button(lab, key=f"ds_nav_{position}_{v}", use_container_width=True):
                     if v == "sair":
-                        # mantenho sua lógica (ajuste aqui se seu app usa outro "router")
                         st.session_state["nav_to"] = "Pokédex (Busca)"
                         st.rerun()
                     else:
                         _go(v)
     
                 st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
     
-    # >>> MENU FIXO NO TOPO (SEMPRE)
-    render_top_nav(st.session_state["comp_view"])
-    st.markdown("<br>", unsafe_allow_html=True)
+    # >>> MENU NO TOPO APENAS QUANDO NÃO FOR HOME
+    if st.session_state["comp_view"] != "home":
+        render_top_nav(st.session_state["comp_view"], position="top")
+        st.markdown("<br>", unsafe_allow_html=True)
+    
+    # ----------------------------
+    # HOME
+    # ----------------------------
+    if st.session_state["comp_view"] == "home":
+        st.markdown(
+            """
+            <div class="ds-home">
+                <div class="ds-title">BEM VINDO A GA'AL</div>
+                <div class="ds-press ds-blink">PRESS ANY BUTTON</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    
+        # >>> MENU EMBAIXO NO HOME
+        render_top_nav("home", position="bottom")
+        return
+
     
     # ----------------------------
     # HOME
