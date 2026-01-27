@@ -6165,482 +6165,242 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
 # ==============================================================================
 def render_compendium_page() -> None:
     import json
-    import os
-    import base64
+    import os    # 1) ARQUIVOS DE DADOS (JSON) — busca robusta
+    # Em Streamlit Cloud / Render / etc, o CWD nem sempre é o mesmo do arquivo.
+    # Então procuramos os JSON em alguns diretórios comuns.
+    REQUIRED_FILES = ["gaal_locais.json", "gaal_ginasios.json", "gaal_npcs_vivos.json", "gaal_npcs_mortos.json"]
 
-    # ----------------------------
-    # Paths (mais robusto)
-    # ----------------------------
     try:
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     except Exception:
         BASE_DIR = os.getcwd()
 
-    def _p(*parts: str) -> str:
-        return os.path.join(BASE_DIR, *parts)
+    CANDIDATE_DIRS = [
+        BASE_DIR,
+        os.getcwd(),
+        os.path.join(BASE_DIR, "data"),
+        os.path.join(os.getcwd(), "data"),
+        os.path.join(BASE_DIR, "assets", "data"),
+        os.path.join(os.getcwd(), "assets", "data"),
+    ]
 
-    # 1) VERIFICAÇÃO DE SEGURANÇA (FALLBACK)
-    arquivos_necessarios = ["gaal_locais.json", "gaal_ginasios.json", "gaal_npcs_vivos.json", "gaal_npcs_mortos.json"]
-    if not all(os.path.exists(_p(f)) for f in arquivos_necessarios):
-        st.warning("⚠️ Arquivos JSON não encontrados. Usando versão antiga (DOCX).")
-        render_compendium_legacy_docx()
-        return
+    def _find_file(fname: str):
+        for d in CANDIDATE_DIRS:
+            pth = os.path.join(d, fname)
+            if os.path.exists(pth):
+                return pth
+        return None
+
+    found_paths = {f: _find_file(f) for f in REQUIRED_FILES}
+    missing = [f for f, pth in found_paths.items() if not pth]
+
+    if missing:
+        st.error("❌ Não encontrei os arquivos JSON necessários para abrir o Compendium.")
+        st.write("Arquivos faltando:", ", ".join(missing))
+        with st.expander("Onde eu procurei?"):
+            for d in CANDIDATE_DIRS:
+                st.write("-", d)
+        st.info("✅ Solução: coloque esses JSON na mesma pasta do app.py, ou em uma pasta /data do seu projeto (e faça commit/deploy).")
+        st.stop()
 
     # ---------------------------------------------------------
+    # 2. CARREGAMENTO DOS DADOS
+    # ---------------------------------------------------------
+        # ---------------------------------------------------------
     # 2) CARREGAMENTO DOS DADOS
     # ---------------------------------------------------------
-    def load_json(path_):
-        if not os.path.exists(path_):
+    def load_json(path_: str):
+        if not path_ or not os.path.exists(path_):
             return {}
         try:
-            with open(path_, "r", encoding="utf-8") as f:
-                return json.load(f)
+            with open(path_, "r", encoding="utf-8") as fp:
+                return json.load(fp)
         except Exception as e:
             st.error(f"Erro ao ler '{os.path.basename(path_)}': {e}")
             return {}
 
-    data_locais = load_json(_p("gaal_locais.json"))
-    data_ginasios = load_json(_p("gaal_ginasios.json"))
-    data_vivos = load_json(_p("gaal_npcs_vivos.json"))
-    data_mortos = load_json(_p("gaal_npcs_mortos.json"))
+    # Carrega tudo (com paths encontrados)
+    data_locais = load_json(found_paths["gaal_locais.json"])
+    data_ginasios = load_json(found_paths["gaal_ginasios.json"])
+    data_vivos = load_json(found_paths["gaal_npcs_vivos.json"])
+    data_mortos = load_json(found_paths["gaal_npcs_mortos.json"])
 
-    regions = data_locais.get("regions", {}) or {}
-    cities = data_locais.get("cities", {}) or {}
-
-    lideres = data_ginasios.get("npcs", {}) or {}
-    if not lideres and isinstance(data_ginasios, dict):
-        lideres = data_ginasios or {}
-
+# Organização dos dados (com proteções contra chaves inexistentes)
+    regions = data_locais.get("regions", {})
+    cities = data_locais.get("cities", {})
+    
+    # Ginásios: Verifica se a chave 'npcs' existe, senão tenta pegar a raiz
+    lideres = data_ginasios.get("npcs", {})
+    if not lideres and data_ginasios: 
+        # Fallback: Se o JSON não tiver a chave "npcs" mas tiver dados direto na raiz
+        lideres = data_ginasios 
+        
+    # NPCs Gerais: Junta Vivos e Mortos
     npcs_gerais = {}
-    npcs_gerais.update((data_vivos.get("npcs", {}) or {}))
-    npcs_gerais.update((data_mortos.get("npcs", {}) or {}))
+    npcs_gerais.update(data_vivos.get("npcs", {}))
+    npcs_gerais.update(data_mortos.get("npcs", {}))
 
     # ---------------------------------------------------------
-    # 3) ESTILO VISUAL "DARK SOULS MENU"
+    # 3. ESTILO VISUAL "GRIMÓRIO DARK SOULS"
     # ---------------------------------------------------------
-    def _inject_font_face_if_exists(ttf_path: str, font_family: str) -> str:
-        """
-        Se existir um TTF no caminho, injeta via @font-face (base64) e retorna o nome da família.
-        Caso contrário, retorna string vazia.
-        """
-        try:
-            if not os.path.exists(ttf_path):
-                return ""
-            with open(ttf_path, "rb") as f:
-                b64 = base64.b64encode(f.read()).decode("utf-8")
-            return f"""
-            @font-face {{
-                font-family: '{font_family}';
-                src: url(data:font/ttf;base64,{b64}) format('truetype');
-                font-weight: 400;
-                font-style: normal;
-            }}
-            """
-        except Exception:
-            return ""
-
-    # Você pode colocar uma fonte TTF legalmente obtida aqui (fallback é Cinzel)
-    font_css = _inject_font_face_if_exists(_p("assets", "fonts", "DarkSouls.ttf"), "GaAL_DS") \
-        or _inject_font_face_if_exists(_p("assets", "fonts", "darksouls.ttf"), "GaAL_DS")
-
-    st.markdown(f"""
+    st.markdown("""
     <style>
-        /* Some o header padrão */
-        [data-testid="stHeader"] {{ visibility: hidden; }}
-        [data-testid="stToolbar"] {{ visibility: hidden; height: 0px; }}
-        footer {{ visibility: hidden; }}
-
-        /* Import fallback (parecido com vibe Dark Souls) */
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
-
-        {font_css}
-
-        :root {{
-            --ds-font: {'GaAL_DS' if font_css.strip() else 'Cinzel'};
-            --ds-white: rgba(255,255,255,0.94);
-            --ds-dim: rgba(255,255,255,0.70);
-            --ds-faint: rgba(255,255,255,0.45);
-            --ds-line: rgba(255,255,255,0.12);
-            --ds-panel: rgba(0,0,0,0.38);
-            --ds-panel-2: rgba(0,0,0,0.52);
-        }}
-
-        /* Fundo (preto com vinheta, lembrando tela de título) */
-        [data-testid="stAppViewContainer"] {{
-            background:
-                radial-gradient(1100px 600px at 50% 22%, rgba(255,255,255,0.06), rgba(0,0,0,0.0) 60%),
-                radial-gradient(900px 500px at 50% 85%, rgba(255,255,255,0.04), rgba(0,0,0,0.0) 60%),
-                linear-gradient(180deg, #040404, #000000);
-        }}
-        [data-testid="stMainBlockContainer"] {{
-            padding-top: 1.25rem;
-            padding-bottom: 2.25rem;
-            max-width: 1280px;
-        }}
-
-        /* Tipografia geral */
-        html, body, [class*="css"] {{
-            color: var(--ds-white);
-            font-family: var(--ds-font), "Cinzel", "Times New Roman", serif !important;
-        }}
-
-        /* Título estilo Dark Souls */
-        .ds-title {{
-            text-align: center;
-            font-family: var(--ds-font), "Cinzel", serif;
-            color: var(--ds-white);
-            font-size: 54px;
-            letter-spacing: 0.28em;
-            text-transform: uppercase;
-            margin: 4px 0 10px 0;
-        }}
-        .ds-subtitle {{
-            text-align: center;
-            font-family: var(--ds-font), "Cinzel", serif;
-            color: var(--ds-faint);
-            font-size: 14px;
-            letter-spacing: 0.34em;
-            text-transform: uppercase;
-            margin-bottom: 22px;
-        }}
-
-        /* Painéis do menu (colunas) */
-        .ds-panel {{
-            background: var(--ds-panel);
-            border: 1px solid var(--ds-line);
-            border-radius: 10px;
-            padding: 14px 14px 10px 14px;
-            box-shadow: 0 0 38px rgba(0,0,0,0.75);
-        }}
-        .ds-panel h3 {{
-            margin: 0 0 10px 0 !important;
-            padding: 0 !important;
-            font-size: 14px !important;
-            letter-spacing: 0.22em !important;
-            text-transform: uppercase !important;
-            color: var(--ds-faint) !important;
-        }}
-
-        /* Estiliza selectbox por dentro */
-        div[data-baseweb="select"] > div {{
-            background: rgba(0,0,0,0.55) !important;
-            border: 1px solid var(--ds-line) !important;
-            border-radius: 8px !important;
-            color: var(--ds-white) !important;
-        }}
-        div[data-baseweb="select"] span {{
-            color: var(--ds-white) !important;
-        }}
-
-        /* Radio como lista (menu DS) */
-        div[role="radiogroup"] > label {{
-            padding: 10px 12px !important;
-            border: 1px solid transparent !important;
-            border-left: 3px solid transparent !important;
-            border-radius: 8px !important;
-            margin-bottom: 6px !important;
-            background: rgba(0,0,0,0.0) !important;
-        }}
-        div[role="radiogroup"] > label:hover {{
-            background: rgba(255,255,255,0.06) !important;
-            border-color: var(--ds-line) !important;
-        }}
-        div[role="radiogroup"] input {{
-            display: none !important;
-        }}
-        div[role="radiogroup"] > label:has(input:checked) {{
-            background: rgba(255,255,255,0.07) !important;
-            border-color: var(--ds-line) !important;
-            border-left-color: rgba(255,255,255,0.85) !important;
-            box-shadow: 0 0 18px rgba(255,255,255,0.06) !important;
-        }}
-        div[role="radiogroup"] p {{
-            font-family: var(--ds-font), "Cinzel", serif !important;
-            letter-spacing: 0.08em !important;
-            text-transform: uppercase !important;
-            color: var(--ds-white) !important;
-            font-size: 13px !important;
-        }}
-
-        /* Card do conteúdo (mantém o grimório, mas mais DS) */
-        .lore-card {{
-            background-color: var(--ds-panel-2);
-            border: 1px solid var(--ds-line);
-            border-radius: 10px;
-            padding: 36px;
-            box-shadow: 0 0 55px rgba(0,0,0,0.92);
-            margin: 22px auto;
-            max-width: 980px;
-            color: var(--ds-dim);
+        [data-testid="stHeader"] { visibility: hidden; }
+        
+        .lore-card {
+            background-color: #141414;
+            border: 2px solid #6b5c38;
+            border-radius: 4px;
+            padding: 40px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.95);
+            margin: 20px auto;
+            max-width: 900px;
+            color: #b0b0b0;
             position: relative;
-        }}
-        .lore-card::after {{
-            content: "";
-            position: absolute;
-            top: 8px; left: 8px; right: 8px; bottom: 8px;
-            border: 1px solid rgba(255,255,255,0.08);
-            pointer-events: none;
-            border-radius: 8px;
-        }}
-        .lore-title {{
-            font-family: var(--ds-font), "Cinzel", serif;
-            font-size: 44px;
-            color: var(--ds-white);
-            text-transform: uppercase;
-            letter-spacing: 0.18em;
-            text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.10);
-            padding-bottom: 14px;
-            margin-bottom: 10px;
-        }}
-        .lore-meta {{
-            font-family: var(--ds-font), "Cinzel", serif;
-            font-size: 13px;
-            color: var(--ds-faint);
-            text-align: center;
-            text-transform: uppercase;
-            letter-spacing: 0.22em;
-            margin-bottom: 26px;
-        }}
-        .lore-section {{
-            font-family: var(--ds-font), "Cinzel", serif;
-            font-size: 16px;
-            color: var(--ds-dim);
-            margin-top: 22px;
-            margin-bottom: 8px;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-            letter-spacing: 0.10em;
-            text-transform: uppercase;
-        }}
-        .lore-text {{
-            font-family: "Georgia", serif;
-            font-size: 18px;
-            line-height: 1.72;
-            color: rgba(255,255,255,0.86);
-            text-align: justify;
-            margin-top: 18px;
-            padding: 0 10px;
-        }}
-        .lore-stats-box {{
-            background: rgba(0,0,0,0.35);
-            border: 1px solid rgba(255,255,255,0.10);
-            padding: 14px;
-            margin-bottom: 18px;
-            font-family: var(--ds-font), "Cinzel", serif;
-            font-size: 12px;
-            color: rgba(255,255,255,0.78);
-            text-align: center;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-        }}
-
-        /* Labels */
-        .stSelectbox > label, .stRadio > label {{
-            color: rgba(255,255,255,0.72) !important;
-        }}
+        }
+        .lore-card::after {
+            content: ""; position: absolute;
+            top: 6px; left: 6px; right: 6px; bottom: 6px;
+            border: 1px solid #3d342b; pointer-events: none;
+        }
+        .lore-title {
+            font-family: 'Garamond', serif; font-size: 42px;
+            color: #dcb158; text-transform: uppercase; letter-spacing: 3px;
+            text-align: center; border-bottom: 1px solid #5c4d3c;
+            padding-bottom: 15px; margin-bottom: 10px;
+        }
+        .lore-meta {
+            font-family: 'Courier New', monospace; font-size: 14px;
+            color: #888; text-align: center; text-transform: uppercase;
+            letter-spacing: 2px; margin-bottom: 30px;
+        }
+        .lore-text {
+            font-family: 'Georgia', serif; font-size: 18px; line-height: 1.7;
+            color: #cfcfcf; text-align: justify; margin-top: 25px; padding: 0 15px;
+        }
+        .lore-section {
+            font-family: 'Garamond', serif; font-size: 24px; color: #a89f91;
+            margin-top: 35px; margin-bottom: 10px; border-bottom: 1px solid #333;
+        }
+        .lore-stats-box {
+            background: rgba(30, 30, 30, 0.5); border: 1px solid #444;
+            padding: 15px; margin-bottom: 20px; font-family: 'Courier New', monospace;
+            font-size: 14px; color: #aaa; text-align: center;
+        }
+        /* Ajuste inputs */
+        .stRadio > label, .stSelectbox > label {
+            color: #dcb158 !important; font-family: 'Garamond', serif !important; font-size: 20px !important;
+        }
     </style>
     """, unsafe_allow_html=True)
 
-    # ---------------------------------------------------------
-    # 4) CABEÇALHO "TÍTULO"
-    # ---------------------------------------------------------
-    st.markdown("<div class='ds-title'>BEM-VINDO A GA'AL</div>", unsafe_allow_html=True)
-    st.markdown("<div class='ds-subtitle'>Pressione qualquer botão... ou escolha um tomo abaixo</div>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #555; font-family: Garamond; font-size: 24px; letter-spacing: 5px; margin-bottom: 30px;'>— ARQUIVOS DE GA'AL —</h1>", unsafe_allow_html=True)
 
     # ---------------------------------------------------------
-    # 5) NAVEGAÇÃO (MENUS EM COLUNAS, ESTILO GAME)
+    # 4. NAVEGAÇÃO (3 ABAS SEPARADAS)
     # ---------------------------------------------------------
-    # Estado persistente do "tomo"
-    st.session_state.setdefault("ds_tomo", "Locais")
-    st.session_state.setdefault("ds_regiao", None)
-    st.session_state.setdefault("ds_local", None)
-    st.session_state.setdefault("ds_sublocal", "📖 Visão geral")
-
-    st.session_state.setdefault("ds_lider", None)
-    st.session_state.setdefault("ds_npc", None)
-
-    colA, colB, colC = st.columns([1.1, 1.6, 1.6], gap="large")
-
-    with colA:
-        st.markdown("<div class='ds-panel'><h3>TOMO</h3></div>", unsafe_allow_html=True)
-        tomo = st.radio(
-            "Tomo",
-            ["Locais", "Ginásios", "NPCs"],
-            key="ds_tomo_radio",
-            label_visibility="collapsed",
-        )
-        st.session_state["ds_tomo"] = tomo
+    categorias = ["🗺️ Locais & Cidades", "⚔️ Ginásios (Líderes)", "👤 Personagens (NPCs)"]
+    col_nav, _ = st.columns([2, 1])
+    with col_nav:
+        aba = st.selectbox("Selecione o Tomo:", categorias, label_visibility="collapsed")
 
     # Dicionário que vai guardar o conteúdo final para renderizar
     conteudo = {"titulo": "", "subtitulo": "", "stats": [], "html": "", "img_busca": None}
 
-    # === TOMO: LOCAIS ===
-    if tomo == "Locais":
-        with colB:
-            st.markdown("<div class='ds-panel'><h3>REGIÃO</h3></div>", unsafe_allow_html=True)
-            regioes = sorted(list(regions.keys()))
-            if not regioes:
-                st.error("Nenhuma região encontrada em gaal_locais.json (chave 'regions').")
-                return
-            regiao_sel = st.selectbox("Região", regioes, key="ds_sel_regiao", label_visibility="collapsed")
-            st.session_state["ds_regiao"] = regiao_sel
+    # === ABA 1: LOCAIS ===
+    if aba == "🗺️ Locais & Cidades":
+        c1, c2 = st.columns(2)
+        with c1:
+            # ADICIONADO KEY ÚNICA PARA EVITAR CONFLITO
+            regiao_sel = st.selectbox("Região", sorted(list(regions.keys())), key="sel_regiao_locais")
+        with c2:
+            opcoes = ["📖 Sobre a Região"] + sorted(regions[regiao_sel].get("cities", []))
+            # ADICIONADO KEY ÚNICA
+            local_sel = st.selectbox("Local", opcoes, key="sel_cidade_locais")
+            conteudo["img_busca"] = local_sel if local_sel != "📖 Sobre a Região" else regiao_sel
 
-        with colC:
-            st.markdown("<div class='ds-panel'><h3>LOCAL MAIOR</h3></div>", unsafe_allow_html=True)
-            opcoes_locais = sorted((regions.get(regiao_sel, {}) or {}).get("cities", []) or [])
-            opcoes_locais = ["📖 Sobre a Região"] + opcoes_locais
-            local_sel = st.selectbox("Local maior", opcoes_locais, key="ds_sel_local", label_visibility="collapsed")
-            st.session_state["ds_local"] = local_sel
-            conteudo["img_busca"] = regiao_sel if local_sel == "📖 Sobre a Região" else local_sel
-
-        # Terceiro nível: sublocal (só quando selecionar uma cidade)
-        sublocal_sel = None
-        if local_sel != "📖 Sobre a Região":
-            d_city = cities.get(local_sel, {}) or {}
-            sublocais = d_city.get("sublocais", []) or []
-            sub_opts = ["📖 Visão geral"] + [s.get("name", "") for s in sublocais if s.get("name")]
-            # mostra abaixo, ocupando toda a largura (menu 2ª linha)
-            st.markdown("<br>", unsafe_allow_html=True)
-            colS1, colS2, colS3 = st.columns([1.1, 1.6, 1.6], gap="large")
-            with colS2:
-                st.markdown("<div class='ds-panel'><h3>SUB-LOCAL</h3></div>", unsafe_allow_html=True)
-                sublocal_sel = st.selectbox("Sub-local", sub_opts, key="ds_sel_sublocal", label_visibility="collapsed")
-                st.session_state["ds_sublocal"] = sublocal_sel
-
-        # Conteúdo:
         if local_sel == "📖 Sobre a Região":
-            d = regions.get(regiao_sel, {}) or {}
+            d = regions[regiao_sel]
             conteudo["titulo"] = regiao_sel
             conteudo["subtitulo"] = "TERRITÓRIO DE GA'AL"
-            conteudo["html"] = f"<p>{(d.get('intro','') or '').strip()}</p>"
-            for k, v in (d.get("sections", {}) or {}).items():
-                if str(v or "").strip():
-                    conteudo["html"] += f"<div class='lore-section'>{k}</div><p>{v}</p>"
+            conteudo["html"] = f"<p>{d.get('intro','')}</p>"
+            for k, v in d.get("sections", {}).items():
+                if v.strip(): conteudo["html"] += f"<div class='lore-section'>{k}</div><p>{v}</p>"
         else:
-            d = cities.get(local_sel, {}) or {}
+            d = cities.get(local_sel, {})
             conteudo["titulo"] = local_sel
             conteudo["subtitulo"] = f"LOCALIZADO EM: {regiao_sel}"
-
-            # Visão geral
-            vis = (d.get("sections", {}) or {}).get("Visão geral", "")
-            if vis:
-                conteudo["html"] += f"<p>{vis}</p>"
-
-            # Seções (exceto visão geral e privadas)
-            for k, v in (d.get("sections", {}) or {}).items():
-                if k == "Visão geral":
-                    continue
-                if str(k).startswith("_"):
-                    continue
-                if str(v or "").strip():
+            vis = d.get("sections", {}).get("Visão geral", "")
+            if vis: conteudo["html"] += f"<p>{vis}</p>"
+            for k, v in d.get("sections", {}).items():
+                if k != "Visão geral" and v.strip() and not k.startswith("_"):
                     conteudo["html"] += f"<div class='lore-section'>{k}</div><p>{v}</p>"
+            for sub in d.get("sublocais", []):
+                conteudo["html"] += f"<br><strong>📍 {sub['name']}</strong>: {sub['text']}<br>"
 
-            # Sub-locais: se escolher um específico, mostra só ele
-            sublocais = d.get("sublocais", []) or []
-            if sublocal_sel and sublocal_sel != "📖 Visão geral":
-                alvo = next((s for s in sublocais if s.get("name") == sublocal_sel), None)
-                if alvo:
-                    conteudo["html"] += f"<div class='lore-section'>📍 {alvo.get('name')}</div><p>{alvo.get('text','')}</p>"
-            else:
-                # Lista compacta no final (igual antes, mas mais limpo)
-                if sublocais:
-                    conteudo["html"] += f"<div class='lore-section'>Sub-locais</div>"
-                    for sub in sublocais:
-                        nome = sub.get("name", "")
-                        texto = sub.get("text", "")
-                        if nome and texto:
-                            conteudo["html"] += f"<p><b>📍 {nome}</b><br>{texto}</p>"
+    # === ABA 2: GINÁSIOS ===
+    elif aba == "⚔️ Ginásios (Líderes)":
+        lista_gyms = sorted(list(lideres.keys()))
+        
+        if not lista_gyms:
+            st.error("⚠️ Nenhum líder encontrado no arquivo 'gaal_ginasios.json'. Verifique se o JSON tem a chave 'npcs'.")
+        else:
+            # ADICIONADO KEY ÚNICA
+            lider_sel = st.selectbox("Selecione o Líder:", lista_gyms, key="sel_lider_gym")
+            
+            if lider_sel:
+                d = lideres[lider_sel]
+                conteudo["img_busca"] = lider_sel
+                conteudo["titulo"] = lider_sel
+                conteudo["subtitulo"] = d.get("ocupacao", "Líder de Ginásio")
+                
+                # Stats Box
+                if d.get("idade"): conteudo["stats"].append(f"<b>IDADE:</b> {d['idade']}")
+                if d.get("origem"): conteudo["stats"].append(f"<b>ORIGEM:</b> {d['origem']}")
+                if d.get("pokemons"): conteudo["stats"].append(f"<b>POKÉMONS:</b> {', '.join(d['pokemons'])}")
+                
+                # Texto
+                for k, v in d.get("sections", {}).items():
+                    if v.strip():
+                        if k in ["História", "Histórico", "Lore"]: conteudo["html"] += f"<p>{v}</p>"
+                        else: conteudo["html"] += f"<div class='lore-section'>{k}</div><p>{v}</p>"
 
-    # === TOMO: GINÁSIOS ===
-    elif tomo == "Ginásios":
-        with colB:
-            st.markdown("<div class='ds-panel'><h3>LÍDER</h3></div>", unsafe_allow_html=True)
-            lista_gyms = sorted(list(lideres.keys()))
-            if not lista_gyms:
-                st.error("⚠️ Nenhum líder encontrado em 'gaal_ginasios.json'. Verifique a chave 'npcs'.")
-                return
-            lider_sel = st.selectbox("Selecione o líder", lista_gyms, key="ds_sel_lider", label_visibility="collapsed")
-            st.session_state["ds_lider"] = lider_sel
-
-        # colC fica como "info rápida" (placeholder) — mas mantém colunas
-        with colC:
-            st.markdown("<div class='ds-panel'><h3>DETALHES</h3></div>", unsafe_allow_html=True)
-            st.markdown("<div style='color:rgba(255,255,255,0.55); font-size:12px; letter-spacing:0.18em; text-transform:uppercase;'>Selecione um líder para abrir o registro.</div>", unsafe_allow_html=True)
-
-        if lider_sel:
-            d = lideres.get(lider_sel, {}) or {}
-            conteudo["img_busca"] = lider_sel
-            conteudo["titulo"] = lider_sel
-            conteudo["subtitulo"] = d.get("ocupacao", "Líder de Ginásio") or "Líder de Ginásio"
-
-            if d.get("idade"):
-                conteudo["stats"].append(f"<b>IDADE:</b> {d['idade']}")
-            if d.get("origem"):
-                conteudo["stats"].append(f"<b>ORIGEM:</b> {d['origem']}")
-            if d.get("pokemons"):
-                try:
-                    conteudo["stats"].append(f"<b>POKÉMONS:</b> {', '.join(d['pokemons'])}")
-                except Exception:
-                    pass
-
-            for k, v in (d.get("sections", {}) or {}).items():
-                if str(v or "").strip():
-                    if k in ["História", "Histórico", "Lore"]:
-                        conteudo["html"] += f"<p>{v}</p>"
-                    else:
-                        conteudo["html"] += f"<div class='lore-section'>{k}</div><p>{v}</p>"
-
-    # === TOMO: NPCs ===
-    elif tomo == "NPCs":
-        with colB:
-            st.markdown("<div class='ds-panel'><h3>PERSONAGEM</h3></div>", unsafe_allow_html=True)
-            lista_npcs = sorted(list(npcs_gerais.keys()))
-            if not lista_npcs:
-                st.error("Nenhum NPC encontrado (gaal_npcs_vivos/mortos).")
-                return
-            npc_sel = st.selectbox("Selecione o personagem", lista_npcs, key="ds_sel_npc", label_visibility="collapsed")
-            st.session_state["ds_npc"] = npc_sel
-
-        with colC:
-            st.markdown("<div class='ds-panel'><h3>DETALHES</h3></div>", unsafe_allow_html=True)
-            st.markdown("<div style='color:rgba(255,255,255,0.55); font-size:12px; letter-spacing:0.18em; text-transform:uppercase;'>Selecione um NPC para abrir o registro.</div>", unsafe_allow_html=True)
-
+    # === ABA 3: PERSONAGENS (NPCs) ===
+    elif aba == "👤 Personagens (NPCs)":
+        lista_npcs = sorted(list(npcs_gerais.keys()))
+        # ADICIONADO KEY ÚNICA
+        npc_sel = st.selectbox("Selecione o Personagem:", lista_npcs, key="sel_npc_geral")
+        
         if npc_sel:
-            d = npcs_gerais.get(npc_sel, {}) or {}
+            d = npcs_gerais[npc_sel]
             conteudo["img_busca"] = npc_sel
             conteudo["titulo"] = npc_sel
-
+            
             p = []
-            if d.get("ocupacao"):
-                p.append(d["ocupacao"])
+            if d.get("ocupacao"): p.append(d["ocupacao"])
             p.append(f"STATUS: {d.get('status', 'Desconhecido')}")
             conteudo["subtitulo"] = " | ".join(p)
-
-            if d.get("idade"):
-                conteudo["stats"].append(f"<b>IDADE:</b> {d['idade']}")
-            if d.get("pokemons"):
-                try:
-                    conteudo["stats"].append(f"<b>POKÉMONS:</b> {', '.join(d['pokemons'])}")
-                except Exception:
-                    pass
-
-            for k, v in (d.get("sections", {}) or {}).items():
-                if str(v or "").strip():
-                    if k in ["História", "Lore"]:
-                        conteudo["html"] += f"<p>{v}</p>"
-                    else:
-                        conteudo["html"] += f"<div class='lore-section'>{k}</div><p>{v}</p>"
+            
+            # Stats Box
+            if d.get("idade"): conteudo["stats"].append(f"<b>IDADE:</b> {d['idade']}")
+            if d.get("pokemons"): conteudo["stats"].append(f"<b>POKÉMONS:</b> {', '.join(d['pokemons'])}")
+            
+            # Texto
+            for k, v in d.get("sections", {}).items():
+                if v.strip():
+                    if k in ["História", "Lore"]: conteudo["html"] += f"<p>{v}</p>"
+                    else: conteudo["html"] += f"<div class='lore-section'>{k}</div><p>{v}</p>"
 
     # ---------------------------------------------------------
-    # 6) RENDERIZAÇÃO FINAL (Card)
+    # 5. RENDERIZAÇÃO FINAL (O Card)
     # ---------------------------------------------------------
-    img_path = _tentar_achar_imagem_compendium(conteudo.get("img_busca"))
-
+    img_path = _tentar_achar_imagem_compendium(conteudo["img_busca"])
+    
     col_l, col_main, col_r = st.columns([1, 6, 1])
     with col_main:
         st.markdown(f"""
         <div class="lore-card">
-            <div class="lore-title">{conteudo['titulo'] or "ARQUIVOS DE GA'AL"}</div>
+            <div class="lore-title">{conteudo['titulo']}</div>
             <div class="lore-meta">{conteudo['subtitulo']}</div>
         """, unsafe_allow_html=True)
 
@@ -6648,24 +6408,15 @@ def render_compendium_page() -> None:
             st.image(img_path, use_container_width=True)
         else:
             st.markdown("<br>", unsafe_allow_html=True)
-
+        
         if conteudo["stats"]:
-            st.markdown(
-                f"<div class='lore-stats-box'>{' &nbsp;|&nbsp; '.join(conteudo['stats'])}</div>",
-                unsafe_allow_html=True
-            )
+            st.markdown(f"<div class='lore-stats-box'>{' &nbsp;|&nbsp; '.join(conteudo['stats'])}</div>", unsafe_allow_html=True)
 
-        if conteudo["html"]:
-            st.markdown(
-                f"<div class='lore-text'>{conteudo['html'].replace(chr(10), '<br>')}</div><br></div>",
-                unsafe_allow_html=True
-            )
+        if conteudo['html']:
+            st.markdown(f"<div class='lore-text'>{conteudo['html'].replace(chr(10), '<br>')}</div><br></div>", unsafe_allow_html=True)
         else:
-            st.markdown(
-                "<div class='lore-text' style='text-align:center;'>Selecione um registro nos menus acima.</div><br></div>",
-                unsafe_allow_html=True
-            )
-
+            # Caso nenhum item tenha sido selecionado ainda
+            st.markdown("<div class='lore-text' style='text-align: center;'>Selecione um registro nos menus acima.</div><br></div>", unsafe_allow_html=True)
 
 # Função auxiliar
 def _tentar_achar_imagem_compendium(nome):
