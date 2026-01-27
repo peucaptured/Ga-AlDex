@@ -16,3 +16,4 @@ reportlab
 PyPDF2
 python-docx
 
+st-click-detector
