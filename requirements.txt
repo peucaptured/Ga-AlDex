@@ -11,5 +11,8 @@ streamlit-autorefresh
 Pillow
 streamlit-image-coordinates
 scikit-learn
+
 reportlab
 PyPDF2
+python-docx
+
