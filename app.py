@@ -248,19 +248,20 @@ class Move:
     def pp_cost(self, rank: int) -> Tuple[Optional[float], str]:
         """
         Retorna (pp_cost, explicacao). Aqui "PP" = Power Points do M&M.
-
+    
         - Se existir coluna PP_Custo no Excel, usa direto.
         - Caso contrário, usa um estimador simples (você pode trocar depois pela sua tabela oficial).
-        Regra base do M&M: custo final por graduação = custo básico + extras - falhas. :contentReference[oaicite:3]{index=3}
+        Regra base do M&M: custo final por graduação = custo básico + extras - falhas.
         """
-                # (A0) Novo: "PP por Rank" vindo do Excel -> PP total = (pp_por_rank * rank)
+    
+        # (A0) Novo: "PP por Rank" vindo do Excel -> PP total = (pp_por_rank * rank)
         if "PP por Rank" in self.raw and _safe_str(self.raw.get("PP por Rank")):
             try:
                 ppr = float(str(self.raw["PP por Rank"]).replace(",", "."))
                 return ppr * float(rank), 'PP total = ("PP por Rank" do Excel) × rank.'
             except Exception:
                 pass
-
+    
         # (A) override do Excel
         for key in ("PP_Custo", "PP", "Custo_PP"):
             if key in self.raw and _safe_str(self.raw.get(key)):
@@ -269,6 +270,7 @@ class Move:
                     return val, f"PP_Custo vindo do Excel ({key})."
                 except Exception:
                     pass
+
 
         # (B) estimador bem simples (trocável!)
         # Ideia: golpes que têm Damage tendem a escalar mais caro; Linked/Área etc aumentam.
