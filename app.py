@@ -6421,7 +6421,10 @@ def render_compendium_page() -> None:
         }}
         .ds-blink {{ animation: dsBlink 1.05s ease-in-out infinite; }}
     
-        /* TOP NAV (tabs) */
+        /* =======================
+           TOP NAV (MENU)
+           ======================= */
+        
         .ds-nav {{
             display:flex;
             align-items:center;
@@ -6431,6 +6434,7 @@ def render_compendium_page() -> None:
             padding-bottom: 12px;
             border-bottom: 1px solid rgba(176,143,60,0.25);
         }}
+        
         /* variação: menu embaixo no HOME */
         .ds-nav-bottom {{
             margin-top: 24px !important;
@@ -6440,11 +6444,12 @@ def render_compendium_page() -> None:
             border-top: 1px solid rgba(176,143,60,0.25);
             padding-top: 12px;
         }}
-        /* NAV sticky (só quando for no topo) */
+        
+        /* NAV sticky (quando no topo) */
         .ds-nav-sticky {{
             position: sticky;
-            top: 10px;                 /* distância do topo */
-            z-index: 9998;             /* acima do conteúdo */
+            top: 10px;
+            z-index: 9998;
             background: rgba(0,0,0,0.55);
             backdrop-filter: blur(6px);
             -webkit-backdrop-filter: blur(6px);
@@ -6454,24 +6459,23 @@ def render_compendium_page() -> None:
             box-shadow: 0 0 28px rgba(0,0,0,0.85);
         }}
         
-        /* dá um respiro entre sticky e o conteúdo */
+        /* espaçamento abaixo do sticky */
         .ds-after-nav-space {{
             height: 10px;
         }}
-
-    
-        /* TOP NAV (tabs) — texto puro, transparente */
+        
+        /* =======================
+           BOTÕES DO MENU (TEXTO PURO)
+           ======================= */
+        
         .ds-tab div[data-testid="stButton"] > button {{
             background: transparent !important;
             border: none !important;
             box-shadow: none !important;
-        
             color: rgba(255,255,255,0.72) !important;
             padding: 6px 10px !important;
-        
             letter-spacing: 0.28em !important;
             text-transform: uppercase !important;
-        
             transition: transform 0.15s ease, color 0.15s ease, text-shadow 0.15s ease !important;
         }}
         
@@ -6482,7 +6486,7 @@ def render_compendium_page() -> None:
             transform: translateY(-1px) !important;
         }}
         
-        /* Clique (active/focus) dourado */
+        /* Clique / foco dourado */
         .ds-tab div[data-testid="stButton"] > button:active,
         .ds-tab div[data-testid="stButton"] > button:focus {{
             color: rgba(255,215,0,0.98) !important;
@@ -6490,17 +6494,18 @@ def render_compendium_page() -> None:
             outline: none !important;
         }}
         
-        /* Selecionado (aba atual) dourado persistente */
+        /* Aba selecionada (dourado fixo) */
         .ds-tab.selected div[data-testid="stButton"] > button {{
             color: rgba(255,215,0,0.98) !important;
             text-shadow: 0 0 16px rgba(255,215,0,0.40) !important;
         }}
         
-        /* Indicador > na aba selecionada */
+        /* Indicador ">" da aba ativa */
         .ds-tab.selected div[data-testid="stButton"] > button::before {{
             content: "> ";
             color: rgba(255,215,0,0.98) !important;
         }}
+
    
         /* GRID NPC (4 colunas) */
         .ds-grid {{
