@@ -4150,12 +4150,18 @@ except Exception:
 # ----------------------------
 # CONFIG
 # ----------------------------
+# (Preferência atual) Compendium em JSON
+COMP_JSON_LOCAIS = "gaal_locais.json"
+COMP_JSON_GINASIOS = "gaal_ginasios.json"          # opcional (detalhes/staff via NPCs)
+COMP_JSON_NPCS_VIVOS = "gaal_npcs_vivos.json"
+COMP_JSON_NPCS_MORTOS = "gaal_npcs_mortos.json"    # opcional
+
+# (Fallback legado) Compendium em DOCX
 COMP_DOC_LOCAIS = "GAAL_Banco_de_Dados_Locais_Unificado_v2.docx"
 COMP_DOC_NPCS_VIVOS = "Npcs_Pokemon_vivos_profundo_v2.docx"
 COMP_DOC_NPCS_MORTOS = "Npcs_Pokemon_mortos.docx"  # opcional
-COMP_DOC_GINASIOS = "ginasios.docx"  # opcional (detalhes extras de ginásios)
+COMP_DOC_GINASIOS = "ginasios.docx"                # opcional (detalhes extras de ginásios)
 COMP_DEFAULT_MAP = "GaAl_2.jpg"  # mapa geral (fallback)
-COMP_DOC_GINASIOS = "ginasios.docx"
 
 
 COMP_REGIOES_PRINCIPAIS = [
@@ -4884,7 +4890,170 @@ def load_compendium_data(
     mortos = parse_npcs(npcs_mortos_path, fallback_status="Morto(a)") if os.path.exists(npcs_mortos_path) else {}
     data["npcs"] = {**vivos, **mortos}
 
+    
+return data
+
+
+# ----------------------------
+# JSON loaders (NOVO)
+# ----------------------------
+def _json_read(path: str) -> dict:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f) or {}
+    except Exception:
+        return {}
+
+
+@st.cache_data(show_spinner=False)
+def load_compendium_json_data(
+    locais_path: str,
+    locais_mtime: float,
+    npcs_vivos_path: str,
+    npcs_vivos_mtime: float,
+    npcs_mortos_path: str,
+    npcs_mortos_mtime: float,
+) -> dict:
+    """
+    Carrega Compendium em JSON mantendo o MESMO contrato do loader legado (DOCX):
+    {
+      "regions": {...},
+      "cities": {...},
+      "npcs": {...},
+    }
+    """
+    data = {"regions": {}, "cities": {}, "npcs": {}}
+
+    # LOCAIS (obrigatório para a aba de Locais)
+    if locais_path and os.path.exists(locais_path):
+        j = _json_read(locais_path)
+        data["regions"] = (j.get("regions") or {})
+        data["cities"] = (j.get("cities") or {})
+
+    # NPCs (vivos + mortos)
+    npcs_all: dict = {}
+    if npcs_vivos_path and os.path.exists(npcs_vivos_path):
+        jv = _json_read(npcs_vivos_path)
+        npcs_all.update(jv.get("npcs") or {})
+    if npcs_mortos_path and os.path.exists(npcs_mortos_path):
+        jm = _json_read(npcs_mortos_path)
+        # se tiver colisão de nome, mortos não sobrescrevem vivos
+        for k, v in (jm.get("npcs") or {}).items():
+            npcs_all.setdefault(k, v)
+    data["npcs"] = npcs_all
     return data
+
+
+def _extract_gym_meta_from_text(t: str) -> dict:
+    """
+    Extrai metadados do ginásio a partir do texto do 'Ginásio de <Cidade>' no JSON de locais.
+    Aceita variações do padrão: 'Líder: X | Tipo: Y | Localização: Z'
+    """
+    out: dict = {}
+    if not t:
+        return out
+    # Linha principal com pipes
+    m = re.search(r"L[íi]der\s*:\s*([^|\n]+)\|\s*Tipo\s*:\s*([^|\n]+)(?:\|\s*Localiza[cç][aã]o\s*:\s*([^\n]+))?", t, flags=re.IGNORECASE)
+    if m:
+        out["lider"] = (m.group(1) or "").strip()
+        out["tipo"] = (m.group(2) or "").strip()
+        if m.group(3):
+            out["localizacao"] = (m.group(3) or "").strip()
+        return out
+
+    # Alternativo: linhas soltas
+    m1 = re.search(r"L[íi]der\s*:\s*(.+)", t, flags=re.IGNORECASE)
+    if m1:
+        out["lider"] = (m1.group(1) or "").strip()
+    m2 = re.search(r"Tipo\s*:\s*(.+)", t, flags=re.IGNORECASE)
+    if m2:
+        out["tipo"] = (m2.group(1) or "").strip()
+    m3 = re.search(r"Localiza[cç][aã]o\s*:\s*(.+)", t, flags=re.IGNORECASE)
+    if m3:
+        out["localizacao"] = (m3.group(1) or "").strip()
+    return out
+
+
+@st.cache_data(show_spinner=False)
+def load_compendium_gym_data_json(
+    locais_path: str,
+    locais_mtime: float,
+    ginasios_path: str,
+    ginasios_mtime: float,
+) -> dict:
+    """
+    Constrói bundle do ginásio no mesmo formato do legado:
+      {"gyms": {city: {"meta":{}, "staff":{}, "staff_npcs":{}, "narrative": ""}},
+       "npcs_extra": {name: npc_obj}}
+    - 'meta' vem do texto 'Ginásio de <Cidade>' no JSON de locais.
+    - 'staff_npcs' e 'npcs_extra' vêm do JSON de ginasios (que é uma coleção de NPCs).
+    """
+    gyms: dict[str, dict] = {}
+    npcs_extra: dict[str, dict] = {}
+
+    # 1) Meta + narrativa via locais.json
+    if locais_path and os.path.exists(locais_path):
+        jl = _json_read(locais_path)
+        cities = (jl.get("cities") or {})
+        for city, cobj in cities.items():
+            sec = (cobj.get("sections") or {})
+            # tenta chave exata "Ginásio de {city}" (normal)
+            key = None
+            for k in sec.keys():
+                if _norm(k).startswith(_norm("Ginásio de " + str(city))):
+                    key = k
+                    break
+            txt_gym = (sec.get(key) if key else "") or ""
+            meta = _extract_gym_meta_from_text(txt_gym)
+            narrative = txt_gym.strip()
+            if meta or narrative:
+                gyms[city] = {"meta": meta, "staff": {}, "staff_npcs": {}, "narrative": narrative}
+
+    # 2) Staff via ginasios.json (NPCs)
+    if ginasios_path and os.path.exists(ginasios_path):
+        jg = _json_read(ginasios_path)
+        for nm, npc in (jg.get("npcs") or {}).items():
+            if not isinstance(npc, dict):
+                continue
+            npcs_extra[nm] = npc
+
+            # tenta vincular a um ginásio/cidade pelo texto de ocupação
+            occ = _norm(npc.get("ocupacao") or "")
+            # procura "ginasio de X"
+            m = re.search(r"ginasio\s+de\s+([a-z0-9\s\'\-]+)", occ)
+            if not m:
+                continue
+            city_guess = (m.group(1) or "").strip()
+            # best match com nomes de cidades
+            city_hit = None
+            if gyms:
+                for c in gyms.keys():
+                    if _norm(c) == _norm(city_guess):
+                        city_hit = c
+                        break
+            # se ainda não achou, tenta comparar com cidades do locais
+            if not city_hit and locais_path and os.path.exists(locais_path):
+                cities = _json_read(locais_path).get("cities") or {}
+                for c in cities.keys():
+                    if _norm(c) == _norm(city_guess):
+                        city_hit = c
+                        break
+
+            if not city_hit:
+                continue
+
+            g = gyms.setdefault(city_hit, {"meta": {}, "staff": {}, "staff_npcs": {}, "narrative": ""})
+            role = "staff"
+            if "vice" in occ:
+                role = "vice"
+            elif "lider" in occ or "líder" in occ:
+                role = "lider"
+            g.setdefault("staff", {})
+            g["staff"][role] = nm
+            g.setdefault("staff_npcs", {})
+            g["staff_npcs"][nm] = npc
+
+    return {"gyms": gyms, "npcs_extra": npcs_extra}
 
 
 def _comp_mtime(p: str) -> float:
@@ -5162,33 +5331,63 @@ def load_compendium_gym_data(
 
 
 def comp_load() -> dict:
-    loc_p = _resolve_asset_path(COMP_DOC_LOCAIS)
-    npc_v_p = _resolve_asset_path(COMP_DOC_NPCS_VIVOS)
-    npc_m_p = _resolve_asset_path(COMP_DOC_NPCS_MORTOS)
-    gin_p = _resolve_asset_path(COMP_DOC_GINASIOS)
+    # ----------------------------
+    # Preferência: JSON
+    # ----------------------------
+    loc_j = _resolve_asset_path(COMP_JSON_LOCAIS)
+    npc_v_j = _resolve_asset_path(COMP_JSON_NPCS_VIVOS)
+    npc_m_j = _resolve_asset_path(COMP_JSON_NPCS_MORTOS)
+    gin_j = _resolve_asset_path(COMP_JSON_GINASIOS)
 
-    data = load_compendium_data(
-        loc_p, _comp_mtime(loc_p),
-        npc_v_p, _comp_mtime(npc_v_p),
-        npc_m_p, _comp_mtime(npc_m_p),
-    )
+    use_json = bool(loc_j and os.path.exists(loc_j))
 
-    # integra ginásios (meta + staff), sem quebrar se o arquivo não existir
-    bundle = load_compendium_gym_data(
-        loc_p, _comp_mtime(loc_p),
-        gin_p, _comp_mtime(gin_p),
-    ) if (loc_p or gin_p) else {"gyms": {}, "npcs_extra": {}}
+    if use_json:
+        data = load_compendium_json_data(
+            loc_j, _comp_mtime(loc_j),
+            npc_v_j, _comp_mtime(npc_v_j),
+            npc_m_j, _comp_mtime(npc_m_j),
+        )
 
+        bundle = load_compendium_gym_data_json(
+            loc_j, _comp_mtime(loc_j),
+            gin_j, _comp_mtime(gin_j),
+        ) if (loc_j or gin_j) else {"gyms": {}, "npcs_extra": {}}
+
+    else:
+        # ----------------------------
+        # Fallback legado: DOCX
+        # ----------------------------
+        loc_p = _resolve_asset_path(COMP_DOC_LOCAIS)
+        npc_v_p = _resolve_asset_path(COMP_DOC_NPCS_VIVOS)
+        npc_m_p = _resolve_asset_path(COMP_DOC_NPCS_MORTOS)
+        gin_p = _resolve_asset_path(COMP_DOC_GINASIOS)
+
+        data = load_compendium_data(
+            loc_p, _comp_mtime(loc_p),
+            npc_v_p, _comp_mtime(npc_v_p),
+            npc_m_p, _comp_mtime(npc_m_p),
+        )
+
+        # integra ginásios (meta + staff), sem quebrar se o arquivo não existir
+        bundle = load_compendium_gym_data(
+            loc_p, _comp_mtime(loc_p),
+            gin_p, _comp_mtime(gin_p),
+        ) if (loc_p or gin_p) else {"gyms": {}, "npcs_extra": {}}
+
+    # ----------------------------
+    # Merge: gyms + NPCs extras
+    # ----------------------------
     gyms = (bundle.get("gyms") or {})
     if gyms:
         data["gyms"] = gyms
     else:
         data.setdefault("gyms", {})
 
-    # adiciona NPCs extras (líder/vice que não existam no doc de NPCs)
+    # adiciona NPCs extras (líder/vice que não existam no JSON/DOCX de NPCs)
     extra = bundle.get("npcs_extra") or {}
     for nm, obj in extra.items():
         if nm not in data.get("npcs", {}):
+            data.setdefault("npcs", {})
             data["npcs"][nm] = obj
         else:
             # preenche só o que está vazio
@@ -5204,6 +5403,7 @@ def comp_load() -> dict:
                 dst.setdefault("sections", {})
                 if not dst["sections"].get(sec):
                     dst["sections"][sec] = obj["sections"][sec]
+
     return data
 
 
@@ -6027,13 +6227,29 @@ def render_compendium_page() -> None:
         st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    loc_p = _resolve_asset_path(COMP_DOC_LOCAIS)
-    npc_p = _resolve_asset_path(COMP_DOC_NPCS_VIVOS)
+    # Checagem de arquivos do Compendium (preferência: JSON; fallback: DOCX)
+    loc_p = _resolve_asset_path(COMP_JSON_LOCAIS)
     if not os.path.exists(loc_p):
-        st.error(f"Não encontrei o DOCX de locais: {COMP_DOC_LOCAIS} (coloque em ./, ./assets ou ./data).")
-        st.stop()
+        loc_doc = _resolve_asset_path(COMP_DOC_LOCAIS)
+        if os.path.exists(loc_doc):
+            loc_p = loc_doc
+        else:
+            st.error(
+                f"Não encontrei o arquivo de locais: {COMP_JSON_LOCAIS} (JSON) "
+                f"nem o fallback {COMP_DOC_LOCAIS} (DOCX). Coloque em ./, ./assets ou ./data."
+            )
+            st.stop()
+
+    npc_p = _resolve_asset_path(COMP_JSON_NPCS_VIVOS)
     if not os.path.exists(npc_p):
-        st.warning(f"Não encontrei o DOCX de NPCs vivos: {COMP_DOC_NPCS_VIVOS} (a aba de NPCs ficará vazia).")
+        npc_doc = _resolve_asset_path(COMP_DOC_NPCS_VIVOS)
+        if os.path.exists(npc_doc):
+            npc_p = npc_doc
+        else:
+            st.warning(
+                f"Não encontrei o arquivo de NPCs vivos: {COMP_JSON_NPCS_VIVOS} (JSON) "
+                f"nem o fallback {COMP_DOC_NPCS_VIVOS} (DOCX). A aba de NPCs ficará vazia."
+            )
 
     # eixo (rádio horizontal) — permite trocar programaticamente via busca/cross-link
     st.markdown('<div class="comp-panel">', unsafe_allow_html=True)
