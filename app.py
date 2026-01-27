@@ -4154,6 +4154,8 @@ COMP_DOC_NPCS_VIVOS = "Npcs_Pokemon_vivos_profundo_v2.docx"
 COMP_DOC_NPCS_MORTOS = "Npcs_Pokemon_mortos.docx"  # opcional
 COMP_DOC_GINASIOS = "ginasios.docx"  # opcional (detalhes extras de ginásios)
 COMP_DEFAULT_MAP = "GaAl_2.jpg"  # mapa geral (fallback)
+COMP_DOC_GINASIOS = "ginasios.docx"
+
 
 COMP_REGIOES_PRINCIPAIS = [
     "Baía Morta",
@@ -4432,6 +4434,152 @@ def _h2_city_from_pattern(h2: str) -> str | None:
         left = re.split(r"[—-]", s, maxsplit=1)[0].strip()
         return left
     return None
+
+def _is_city_line(line: str, known_cities: set[str]) -> bool:
+    t = (line or "").strip()
+    if not t:
+        return False
+    if ":" in t:
+        return False
+    if len(t) > 40:
+        return False
+    if _norm(t) in {_norm(x) for x in known_cities}:
+        return True
+    if re.fullmatch(r"[A-Za-zÀ-ÿ'’\- ]+", t) and t[0].isupper():
+        return True
+    return False
+
+
+@st.cache_data(show_spinner=False)
+def parse_ginasios_docx(doc_path: str, known_cities: list[str]) -> dict:
+    gyms: dict[str, dict] = {}
+    if Document is None or not os.path.exists(doc_path):
+        return gyms
+
+    known = set([c for c in known_cities if c])
+    doc = Document(doc_path)
+
+    cur_city: str | None = None
+    cur_person: dict | None = None
+    mode = "normal"  # "history"
+    history_item: dict | None = None
+
+    def ensure_city(city: str):
+        gyms.setdefault(city, {"leaders": [], "vices": [], "people": [], "history": []})
+
+    def flush_person():
+        nonlocal cur_person
+        if not cur_city or not cur_person:
+            cur_person = None
+            return
+        ensure_city(cur_city)
+
+        occ = _norm(cur_person.get("fields", {}).get("Ocupação atual", ""))
+
+        if "líder" in occ or "lider" in occ:
+            gyms[cur_city]["leaders"].append(cur_person)
+        elif "vice" in occ:
+            gyms[cur_city]["vices"].append(cur_person)
+        else:
+            gyms[cur_city]["people"].append(cur_person)
+
+        cur_person = None
+
+    def flush_history():
+        nonlocal history_item
+        if not cur_city or not history_item:
+            history_item = None
+            return
+        ensure_city(cur_city)
+        gyms[cur_city]["history"].append(history_item)
+        history_item = None
+
+    def new_person(name: str):
+        return {"name": name.strip(), "fields": {}, "pokemons": [], "text": ""}
+
+    def add_text(obj: dict, txt: str):
+        txt = (txt or "").strip()
+        if not txt:
+            return
+        obj["text"] = (obj["text"] + "\n\n" + txt).strip()
+
+    for p in doc.paragraphs:
+        t = (p.text or "").strip()
+        if not t:
+            continue
+
+        if "registro histórico" in _norm(t):
+            mode = "history"
+            flush_person()
+            continue
+
+        if mode == "normal" and _is_city_line(t, known):
+            flush_person()
+            cur_city = _clean_title(t)
+            ensure_city(cur_city)
+            continue
+
+        if mode == "history" and cur_city is None:
+            cur_city = "__REGISTRO_HISTORICO__"
+            ensure_city(cur_city)
+
+        if mode == "history" and re.match(r"^\d+\.\s", t):
+            flush_history()
+            history_item = {"title": t.strip(), "fields": {}, "pokemons": [], "text": ""}
+            continue
+
+        if mode == "normal":
+            if cur_city and cur_person is None and ":" not in t and len(t) <= 40:
+                cur_person = new_person(t)
+                continue
+
+        if ":" in t:
+            k, v = t.split(":", 1)
+            kN = _norm(k)
+            v = v.strip()
+
+            if "pokemon" in kN:
+                pokes = [x.strip() for x in re.split(r",|;|/|\|", v) if x.strip()]
+                if mode == "history" and history_item is not None:
+                    history_item["pokemons"].extend(pokes)
+                elif cur_person is not None:
+                    cur_person["pokemons"].extend(pokes)
+                continue
+
+            if mode == "history" and history_item is not None:
+                history_item["fields"][k.strip()] = v
+            elif cur_person is not None:
+                cur_person["fields"][k.strip()] = v
+            else:
+                if cur_city:
+                    ensure_city(cur_city)
+                    gyms[cur_city].setdefault("notes", [])
+                    gyms[cur_city]["notes"].append({k.strip(): v})
+            continue
+
+        if mode == "history":
+            if history_item is not None:
+                add_text(history_item, t)
+            else:
+                ensure_city(cur_city or "__REGISTRO_HISTORICO__")
+                gyms[cur_city or "__REGISTRO_HISTORICO__"].setdefault("history_text", "")
+                gyms[cur_city or "__REGISTRO_HISTORICO__"]["history_text"] = (
+                    gyms[cur_city or "__REGISTRO_HISTORICO__"]["history_text"] + "\n\n" + t
+                ).strip()
+        else:
+            if cur_person is not None:
+                add_text(cur_person, t)
+            else:
+                ensure_city(cur_city or "__SEM_CIDADE__")
+                gyms[cur_city or "__SEM_CIDADE__"].setdefault("city_text", "")
+                gyms[cur_city or "__SEM_CIDADE__"]["city_text"] = (
+                    gyms[cur_city or "__SEM_CIDADE__"]["city_text"] + "\n\n" + t
+                ).strip()
+
+    flush_person()
+    flush_history()
+    return gyms
+
 
 
 @st.cache_data(show_spinner=False)
@@ -4987,6 +5135,20 @@ def comp_load() -> dict:
                 if not dst["sections"].get(sec):
                     dst["sections"][sec] = obj["sections"][sec]
 
+def comp_load() -> dict:
+    loc_p = _resolve_asset_path(COMP_DOC_LOCAIS)
+    npc_v_p = _resolve_asset_path(COMP_DOC_NPCS_VIVOS)
+    npc_m_p = _resolve_asset_path(COMP_DOC_NPCS_MORTOS)
+    gym_p = _resolve_asset_path(COMP_DOC_GINASIOS)
+
+    data = load_compendium_data(
+        loc_p, _comp_mtime(loc_p),
+        npc_v_p, _comp_mtime(npc_v_p),
+        npc_m_p, _comp_mtime(npc_m_p),
+    )
+
+    # anexa ginásios (por cidade)
+    data["gyms"] = parse_ginasios_docx(gym_p, known_cities=list((data.get("cities") or {}).keys()))
     return data
 
 
@@ -5597,6 +5759,100 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
                         st.image(spr, width=56)
                     st.caption(pnm)
 
+def _render_gyms_axis(gyms: dict, cities: dict) -> None:
+    st.markdown("## 🏅 Ginásios")
+
+    if not gyms:
+        st.info("Nenhum dado de ginásio encontrado. Verifique se `ginasios.docx` está na pasta certa.")
+        return
+
+    gym_cities = [c for c in gyms.keys() if not c.startswith("__")]
+
+    q = st.text_input("🔍 Buscar cidade (ginásio)", key="comp_gym_q")
+    qn = _norm(q)
+    filtered = [c for c in gym_cities if (not qn) or (qn in _norm(c))]
+
+    if not filtered:
+        st.caption("Nada encontrado.")
+        return
+
+    left, right = st.columns([1.0, 1.6], gap="large")
+    with left:
+        sel = st.radio("Cidades com ginásio", filtered, key="comp_gym_city_sel")
+
+    with right:
+        g = gyms.get(sel) or {}
+        st.markdown(f"### 🏟️ {sel}")
+
+        def render_person(p, prefix=""):
+            nm = p.get("name", "")
+            fields = p.get("fields", {}) or {}
+            pokes = p.get("pokemons") or []
+
+            st.markdown(f"**{prefix}{nm}**")
+            if fields.get("Idade"):
+                st.caption(f"Idade: {fields.get('Idade')}")
+            if fields.get("Local de Nascimento"):
+                st.caption(f"Nascimento: {fields.get('Local de Nascimento')}")
+            if fields.get("Ocupação atual"):
+                st.caption(fields.get("Ocupação atual"))
+
+            if pokes:
+                cols = st.columns(min(6, len(pokes)))
+                for i, pk in enumerate(pokes[:12]):
+                    with cols[i % len(cols)]:
+                        spr = _poke_sprite_url(pk)
+                        if spr:
+                            st.image(spr, width=48)
+                        st.caption(pk)
+
+            if p.get("text"):
+                with st.expander("Lore"):
+                    st.markdown(p["text"])
+
+        if g.get("leaders"):
+            st.markdown("#### 👑 Líder(es)")
+            for p in g["leaders"]:
+                render_person(p, "👑 ")
+                st.markdown("---")
+
+        if g.get("vices"):
+            st.markdown("#### 🛡️ Vice-líder(es)")
+            for p in g["vices"]:
+                render_person(p, "🛡️ ")
+                st.markdown("---")
+
+        if sel in cities:
+            if st.button("📄 Abrir Dossiê da Cidade", key=f"goto_city_{_stem_key(sel)}"):
+                st.session_state["comp_axis"] = "🌍 Locais"
+                st.session_state["comp_region"] = cities[sel]["region"]
+                st.session_state["comp_city"] = sel
+                st.rerun()
+
+    hist = gyms.get("__REGISTRO_HISTORICO__", {})
+    items = hist.get("history") or []
+    if items:
+        st.markdown("## 📜 Registro Histórico")
+        for it in items:
+            with st.expander(it.get("title", "Item")):
+                f = it.get("fields", {}) or {}
+                for k, v in f.items():
+                    st.markdown(f"**{k}:** {v}")
+
+                pokes = it.get("pokemons") or []
+                if pokes:
+                    cols = st.columns(min(6, len(pokes)))
+                    for i, pk in enumerate(pokes[:12]):
+                        with cols[i % len(cols)]:
+                            spr = _poke_sprite_url(pk)
+                            if spr:
+                                st.image(spr, width=48)
+                            st.caption(pk)
+
+                if it.get("text"):
+                    st.markdown(it["text"])
+
+
 
         # ----------------------------
         # 🏅 Referências de Ginásio
@@ -5917,7 +6173,7 @@ def render_compendium_page() -> None:
             else:
                 _render_region_panel(st.session_state["comp_region"], region_obj)
 
-        return
+        
 
     # ----------------------------
     # 🧑‍🤝‍🧑 NPCs (SPLIT VIEW)
