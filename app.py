@@ -6244,6 +6244,61 @@ def render_compendium_page() -> None:
         gap: 14px;
         margin-top: 10px;
     }}
+    /* Painel central do menu inicial */
+    .ds-home-panel {{
+        width: min(900px, 92vw);
+        background: rgba(10, 14, 18, 0.55);
+        border: 1px solid rgba(255,215,0,0.14);
+        box-shadow: 0 0 60px rgba(0,0,0,0.75);
+        padding: 46px 56px 40px 56px;
+        border-radius: 10px;
+        backdrop-filter: blur(2px);
+        text-align: center;
+    }}
+    
+    .ds-home-panel .ds-title {{
+        color: rgba(255,215,0,0.92);
+        text-shadow: 0 0 22px rgba(255,215,0,0.18), 0 0 60px rgba(0,0,0,0.9);
+        letter-spacing: 0.16em;
+        font-size: 44px;
+        margin-bottom: 28px;
+    }}
+    
+    .ds-home-btns {{
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        align-items: center;
+    }}
+    
+    /* Override dos botões APENAS dentro do painel da home */
+    .ds-home-panel [data-testid="stButton"] {{ 
+        display: flex; 
+        justify-content: center; 
+    }}
+    
+    .ds-home-panel [data-testid="stButton"] > button {{
+        width: 420px;
+        max-width: 78vw;
+        background: rgba(0,0,0,0.25) !important;
+        border: 1px solid rgba(255,255,255,0.10) !important;
+        border-radius: 6px !important;
+        padding: 12px 18px !important;
+        letter-spacing: 0.22em !important;
+        font-size: 18px !important;
+        text-transform: uppercase !important;
+        color: rgba(230,230,230,0.85) !important;
+        transition: all 120ms ease !important;
+    }}
+    
+    .ds-home-panel [data-testid="stButton"] > button:hover {{
+        color: #FFD700 !important;
+        text-shadow: 0 0 12px rgba(255,215,0,0.55) !important;
+        border-color: rgba(255,215,0,0.45) !important;
+        transform: scale(1.03);
+        background: linear-gradient(90deg, transparent, rgba(255,215,0,0.08), transparent) !important;
+    }}
+
     .ds-menu-item {{
         display: inline-block;
         text-decoration: none !important;
@@ -7057,93 +7112,30 @@ def render_compendium_page() -> None:
     # VIEW: HOME (Compendium Dark Souls Style)
     # =========================================================
     if st.session_state["comp_view"] == "home":
-        try:
-            from st_click_detector import click_detector
-        except ImportError:
-            st.error("Instale o componente: pip install st-click-detector")
-            return
+        # Tela inicial: painel + botões (sem ENTER e sem click-detector)
+        st.markdown("<div class='ds-home'><div class='ds-home-panel'>", unsafe_allow_html=True)
+        st.markdown("<div class='ds-title'>BEM VINDO A GA'AL</div>", unsafe_allow_html=True)
+        st.markdown("<div class='ds-home-btns'>", unsafe_allow_html=True)
+    
+        if st.button("❖  NPCs  ❖", key="ds_home_npcs"):
+            st.session_state["comp_view"] = "npcs"
+            st.rerun()
+    
+        if st.button("❖  Ginásios  ❖", key="ds_home_ginasios"):
+            st.session_state["comp_view"] = "ginasios"
+            st.rerun()
+    
+        if st.button("❖  Locais  ❖", key="ds_home_locais"):
+            st.session_state["comp_view"] = "locais"
+            st.rerun()
+    
+        if st.button("❖  Sair  ❖", key="ds_home_sair"):
+            st.session_state["nav_to"] = "Pokédex (Busca)"
+            st.rerun()
+    
+        st.markdown("</div></div></div>", unsafe_allow_html=True)
+        return
 
-        # HTML + CSS COMPLETO E ISOLADO
-        html_home = """
-        <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
-        
-        <style>
-            body {
-                background-color: transparent; /* Usa o fundo preto do app */
-                font-family: 'Cinzel', serif;
-                text-align: center;
-                margin: 0;
-                padding: 60px 0; /* Espaço vertical */
-            }
-            
-            .ds-title {
-                font-size: 48px;
-                font-weight: 700;
-                color: #FFE66D; /* Dourado */
-                text-transform: uppercase;
-                letter-spacing: 6px;
-                margin-bottom: 60px;
-                text-shadow: 0 0 15px rgba(212, 175, 55, 0.6);
-                animation: soul-pulse 3s infinite alternate;
-            }
-
-            .ds-menu-container {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 25px;
-            }
-
-            .ds-menu-item {
-                display: inline-block;
-                font-size: 22px;
-                color: #BBBBBB; /* Prata envelhecida */
-                text-decoration: none;
-                padding: 12px 40px;
-                border: 1px solid transparent;
-                transition: all 0.3s ease;
-                letter-spacing: 3px;
-                background: rgba(0,0,0,0.3); /* Fundo sutil */
-            }
-
-            .ds-menu-item:hover {
-                color: #FFFFFF;
-                text-shadow: 0 0 10px #FFFFFF, 0 0 20px #FFD700;
-                transform: scale(1.1);
-                border-top: 1px solid rgba(255, 215, 0, 0.5);
-                border-bottom: 1px solid rgba(255, 215, 0, 0.5);
-                background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
-            }
-
-            @keyframes soul-pulse {
-                0% { opacity: 0.85; text-shadow: 0 0 10px rgba(212, 175, 55, 0.3); }
-                100% { opacity: 1; text-shadow: 0 0 25px rgba(212, 175, 55, 0.8); }
-            }
-        </style>
-
-        <div class="ds-home">
-            <div class="ds-title">BEM VINDO A GA'AL</div>
-            <div class="ds-menu-container">
-                <a href="#" id="npcs" class="ds-menu-item">❖  NPCs  ❖</a>
-                <a href="#" id="ginasios" class="ds-menu-item">❖  Ginásios  ❖</a>
-                <a href="#" id="locais" class="ds-menu-item">❖  Locais  ❖</a>
-                <a href="#" id="sair" class="ds-menu-item">❖  Sair  ❖</a>
-            </div>
-        </div>
-        """
-        
-        # Renderiza
-        selected = click_detector(html_home)
-        
-        # Lógica do clique (Sem depender de função externa)
-        if selected:
-            if selected == "sair":
-                st.session_state["nav_to"] = "Pokédex (Busca)" 
-                st.rerun()
-            else:
-                # Troca a view e recarrega
-                st.session_state["comp_view"] = selected
-                st.rerun()
     
     
     def _tentar_achar_imagem_compendium(nome):
