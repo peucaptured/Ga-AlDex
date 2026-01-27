@@ -6501,12 +6501,7 @@ def render_compendium_page() -> None:
             content: "> ";
             color: rgba(255,215,0,0.98) !important;
         }}
-
-        .ds-tab.selected div[data-testid="stButton"] > button::before {{
-            content: "> ";
-            color: rgba(255,255,255,0.92);
-        }}
-    
+   
         /* GRID NPC (4 colunas) */
         .ds-grid {{
             display:grid;
