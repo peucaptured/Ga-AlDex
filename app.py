@@ -6835,6 +6835,8 @@ div[data-testid="stRadio"] {{
                     position: relative;
                     aspect-ratio: 3/4;
                     border: 2px solid #554422;
+                    background: #000 !important;   /* <- ISSO remove o “cinza” */
+
                     border-radius: 8px;
                     overflow: hidden;
                     cursor: pointer;
@@ -6849,6 +6851,8 @@ div[data-testid="stRadio"] {{
                     object-fit: cover;
                     filter: brightness(0.8);
                     display: block;
+                    background: #000 !important;   /* reforço (se o browser/iframe insistir) */
+
                   }
                 
                   .ds-name-tag {
