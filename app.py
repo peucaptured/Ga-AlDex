@@ -453,7 +453,7 @@ def render_bgm(track_path: str, volume: float = 0.35) -> None:
     src = _audio_data_uri(track_path)
     vol = max(0.0, min(1.0, float(volume)))
 
-    st.markdown(
+    components.html(
         """
 <div style="height:0; overflow:hidden;">
   <audio id="ds-bgm" preload="auto" playsinline></audio>
@@ -486,12 +486,13 @@ def render_bgm(track_path: str, volume: float = 0.35) -> None:
     } catch (e) {
       if (a.dataset.clickHooked === "1") return;
       a.dataset.clickHooked = "1";
+      const parentDoc = window.parent && window.parent.document ? window.parent.document : document;
       const handler = async () => {
-        document.removeEventListener("click", handler, true);
-        try { await a.play(); } catch(e2) {}
+        parentDoc.removeEventListener("click", handler, true);
+        try { await a.play(); } catch (e2) {}
         localStorage.setItem("ds_bgm_unlocked", "1");
       };
-      document.addEventListener("click", handler, true);
+      parentDoc.addEventListener("click", handler, true);
     }
   }
 
@@ -499,7 +500,10 @@ def render_bgm(track_path: str, volume: float = 0.35) -> None:
 })();
 </script>
         """.replace("__SRC__", json.dumps(src)).replace("__VOL__", str(vol)),
-        unsafe_allow_html=True,
+        height=0,
+        width=0,
+        scrolling=False,
+        key="bgm-player",
     )
 
 # --- PLANO B: VIGIA DE SINCRONIZAÇÃO ---
