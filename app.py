@@ -6614,21 +6614,19 @@ div[role="radiogroup"] input {{ display: none !important; }}
     
             # Preparar lista
             items = []
-            npcs_gerais = (data.get("npcs") or {})
-            for nome, obj in npcs_gerais.items():
             for nome, obj in (npcs_gerais or {}).items():
                 if not isinstance(obj, dict):
                     continue
-    
+            
                 historia = ""
                 secs = obj.get("sections") or {}
                 if isinstance(secs, dict):
                     historia = secs.get("História") or secs.get("Historia") or ""
-    
+            
                 hay = _norm(nome) + " " + _norm(historia)
                 if not q or q in hay:
                     items.append((nome, obj))
-    
+            
             items.sort(key=lambda x: x[0])
     
             # Cache de imagens
