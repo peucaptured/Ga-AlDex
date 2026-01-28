@@ -439,6 +439,68 @@ class MoveDB:
 
         return tags
 
+@st.cache_data(show_spinner=False)
+def _audio_data_uri(path_str: str) -> str:
+    p = Path(path_str)
+    data = p.read_bytes()
+    mime, _ = mimetypes.guess_type(str(p))
+    if not mime:
+        mime = "audio/mpeg"
+    b64 = base64.b64encode(data).decode("utf-8")
+    return f"data:{mime};base64,{b64}"
+
+def render_bgm(track_path: str, volume: float = 0.35) -> None:
+    src = _audio_data_uri(track_path)
+    vol = max(0.0, min(1.0, float(volume)))
+
+    st.markdown(
+        """
+<div style="height:0; overflow:hidden;">
+  <audio id="ds-bgm" preload="auto" playsinline></audio>
+</div>
+
+<script>
+(function () {
+  const SRC = __SRC__;
+  const VOL = __VOL__;
+
+  const a = document.getElementById("ds-bgm");
+  if (!a) return;
+
+  a.loop = true;
+  a.volume = VOL;
+
+  if (a.dataset.src !== SRC) {
+    a.dataset.src = SRC;
+    a.innerHTML = "";
+    const s = document.createElement("source");
+    s.src = SRC;
+    a.appendChild(s);
+    a.load();
+  }
+
+  async function tryPlay() {
+    try {
+      await a.play();
+      localStorage.setItem("ds_bgm_unlocked", "1");
+    } catch (e) {
+      if (a.dataset.clickHooked === "1") return;
+      a.dataset.clickHooked = "1";
+      const handler = async () => {
+        document.removeEventListener("click", handler, true);
+        try { await a.play(); } catch(e2) {}
+        localStorage.setItem("ds_bgm_unlocked", "1");
+      };
+      document.addEventListener("click", handler, true);
+    }
+  }
+
+  tryPlay();
+})();
+</script>
+        """.replace("__SRC__", json.dumps(src)).replace("__VOL__", str(vol)),
+        unsafe_allow_html=True,
+    )
 
 # --- PLANO B: VIGIA DE SINCRONIZAÇÃO ---
 @st.fragment(run_every=2) # Roda esta função sozinha a cada 2 segundos
@@ -473,63 +535,11 @@ def sync_watchdog(db, rid):
     except Exception:
         pass # Se der erro de conexão, ignora e tenta na próxima
         
-import streamlit as st  # reimport seguro
 
 try:
     from move_interpreter import interpret_effects_to_build
 except Exception:
     interpret_effects_to_build = None
-
-import base64, mimetypes
-from pathlib import Path
-
-@st.cache_data(show_spinner=False)
-def _audio_data_uri(path_str: str) -> str:
-    p = Path(path_str)
-    data = p.read_bytes()
-    mime, _ = mimetypes.guess_type(str(p))
-    if not mime:
-        mime = "audio/mpeg"
-    b64 = base64.b64encode(data).decode("utf-8")
-    return f"data:{mime};base64,{b64}"
-
-def render_bgm(track_path: str, volume: float = 0.35) -> None:
-    src = _audio_data_uri(track_path)
-    vol = max(0.0, min(1.0, float(volume)))
-
-    st.markdown(
-        """
-<div style="height:0; overflow:hidden;">
-  <audio id="ds-bgm" preload="auto"></audio>
-</div>
-
-<script>
-(function () {
-  const SRC = __SRC__;
-  const VOL = __VOL__;
-
-  const a = document.getElementById("ds-bgm");
-  if (!a) return;
-
-  a.loop = true;
-  a.volume = VOL;
-
-  if (a.dataset.src !== SRC) {
-    a.dataset.src = SRC;
-    a.innerHTML = "";
-    const s = document.createElement("source");
-    s.src = SRC;
-    a.appendChild(s);
-  }
-
-  const p = a.play();
-  if (p) p.catch(() => {});
-})();
-</script>
-        """.replace("__SRC__", json.dumps(src)).replace("__VOL__", str(vol)),
-        unsafe_allow_html=True,
-    )
-
 
 @st.cache_resource
 def load_move_db(excel_path: str) -> "MoveDB":
@@ -5730,7 +5740,7 @@ def _poke_sprite_cached(poke_name: str) -> str | None:
 # BUSCA GLOBAL (full-text)
 # ----------------------------
 def _norm_tokens(q: str) -> list[str]:
-    qn = _norm(q)
+    qn = _norm_loc(q)
     toks = [t for t in re.split(r"\s+", qn) if t]
     # remove tokens muito curtos
     toks = [t for t in toks if len(t) >= 2]
@@ -7174,6 +7184,13 @@ div[data-testid="stRadio"] {{
         # ----------------------------
         # Helpers locais
         # ----------------------------
+        import re, os
+
+        def _norm_loc(s: str) -> str:
+            if not isinstance(s, str):
+                return ""
+            return re.sub(r"\s+", " ", s).strip().lower()
+
         def _region_order(regs: list[str]) -> list[str]:
             ordered = []
             for r in (COMP_REGIOES_PRINCIPAIS or []):
@@ -7345,7 +7362,7 @@ div[data-testid="stRadio"] {{
                 placeholder="Cidade ou sublocal...",
                 label_visibility="collapsed",
             ).strip()
-            qn = _norm(q)
+            qn = _norm_loc(q)
 
             region_cities = by_region.get(region, []) or []
             # Se região não tem cidades mapeadas, tenta mostrar todas (fallback)
