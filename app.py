@@ -6683,7 +6683,7 @@ div[role="radiogroup"] input {{ display: none !important; }}
                 st.session_state["comp_view"] = key
             st.rerun()
 
-   if st.session_state["comp_view"] != "home":
+    if st.session_state["comp_view"] != "home":
         render_ds_tools_nav(st.session_state["comp_view"]) 
 
     # =====================================================================
