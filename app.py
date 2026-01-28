@@ -2447,7 +2447,13 @@ def render_compendium_page() -> None:
     if "comp_view" not in st.session_state:
         st.session_state["comp_view"] = "home"
 
-    # topo só fora da home
+    # garante view inicial
+    st.session_state.setdefault("comp_view", "home")
+    
+    # nav: aparece em TODAS as views do compendium, exceto home
+    if st.session_state["comp_view"] != "home":
+        render_ds_tools_nav(st.session_state["comp_view"])
+
 
     if st.session_state["comp_view"] == "home":
         render_compendium_home()
@@ -7175,13 +7181,12 @@ div[data-testid="stRadio"] {{
         # =====================================================================
     if st.session_state["comp_view"] == "locais":
         # (se o seu fluxo já desenha o topo antes, não tem problema manter)
-        render_ds_tools_nav(st.session_state["comp_view"])
 
         cities: dict = (comp_data.get("cities") or {})
         regions_meta: dict = (comp_data.get("regions") or {})
 
         if not isinstance(cities, dict) or not cities:
-            st.error("Não encontrei cidades no gaal_locais.json (chave raiz: cities).")
+            st.error("Não encontrei cidades em Ga'Al.")
             return
 
         # ----------------------------
