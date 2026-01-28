@@ -5083,51 +5083,6 @@ def load_compendium_json_data(
         data["cities"] = (j.get("cities") or {})
 
 
-    # =====================================================================
-    # HOME (Menu inicial) — estava faltando, por isso a tela ficava vazia
-    # =====================================================================
-    if st.session_state.get("comp_view") in (None, "home", "menu"):
-        st.markdown("<div class='ds-home'>", unsafe_allow_html=True)
-        st.markdown("<div class='ds-title'>BEM VINDO A GA'AL</div>", unsafe_allow_html=True)
-        st.markdown("<div class='ds-press ds-blink'>SELECIONE UMA OPÇÃO</div>", unsafe_allow_html=True)
-
-        tabs = ["__home__", "npcs", "ginasios", "locais", "sair"]
-        labels = {
-            "__home__": "Menu",
-            "npcs": "NPCs",
-            "ginasios": "Ginásios",
-            "locais": "Locais",
-            "sair": "Sair",
-        }
-
-        prev = st.session_state.get("ds_home_tabs_prev", "__home__")
-        if prev not in tabs:
-            prev = "__home__"
-
-        choice = st.radio(
-            "",
-            options=tabs,
-            index=tabs.index(prev),
-            key="ds_home_tabs",
-            label_visibility="collapsed",
-            format_func=lambda v: labels.get(v, v),
-        )
-        st.session_state["ds_home_tabs_prev"] = choice
-
-        # Ao escolher algo, navega e reseta o radio para não “prender” seleção
-        if choice != "__home__":
-            if choice == "sair":
-                st.session_state["nav_to"] = "Pokédex (Busca)"
-            else:
-                st.session_state["comp_view"] = choice
-
-            st.session_state["ds_home_tabs"] = "__home__"
-            st.session_state["ds_home_tabs_prev"] = "__home__"
-            st.rerun()
-
-        st.markdown("</div>", unsafe_allow_html=True)
-        return
-
 
     # NPCs (vivos + mortos)
     npcs_all: dict = {}
@@ -7594,7 +7549,66 @@ div[data-testid="stRadio"] {{
         st.markdown("</div>", unsafe_allow_html=True)  # ds-loc-shell
         return
 
+    # =========================================================
+    # VIEW: HOME (estilo do app 35 — sem clicker e sem ENTER)
+    # =========================================================
+    if st.session_state["comp_view"] == "home":
+        st.markdown(
+            """
+            <div class="ds-home">
+                <div class="ds-title">BEM VINDO A GA'AL</div>
+                <div class="ds-press ds-blink">PRESS ANY BUTTON</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        tab_key = st.radio(
+            "Compendium Tabs",
+            ["__home__", "npcs", "ginasios", "locais", "sair"],  # <-- placeholder
+            index=0,
+            horizontal=True,
+            label_visibility="collapsed",
+            key="ds_home_tabs",
+            format_func=lambda v: {
+                "__home__": "",      # não mostra texto
+                "npcs": "NPCs",
+                "ginasios": "Ginásios",
+                "locais": "Locais",
+                "sair": "Sair",
+            }[v],
+        )
+
+        # esconde visualmente o primeiro item (placeholder)
+        st.markdown(
+            """
+            <style>
+              /* some o 1º item do radio (placeholder) */
+              div[data-testid="stRadio"] label:first-child { display:none !important; }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
         
+        # Evita rerun em loop na primeira renderização
+        if "ds_home_tabs_prev" not in st.session_state:
+            st.session_state["ds_home_tabs_prev"] = tab_key
+            return
+        
+        if st.session_state["ds_home_tabs_prev"] != tab_key:
+            st.session_state["ds_home_tabs_prev"] = tab_key
+        
+            if tab_key == "__home__":
+                return
+        
+            if tab_key == "sair":
+                st.session_state["nav_to"] = "Pokédex (Busca)"
+            else:
+                st.session_state["comp_view"] = tab_key  # <-- já vem sem acento
+        
+            st.rerun()
+        
+        return
            
     
     def _tentar_achar_imagem_compendium(nome):
