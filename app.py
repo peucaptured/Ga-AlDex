@@ -6675,7 +6675,9 @@ div[data-testid="stRadio"] {{
             border: 1px solid rgba(255,215,0,0.55);
             box-shadow: 0 0 18px rgba(255,215,0,0.22);
           }
-        
+          .ds-toolwrap * { pointer-events: none; }  /* tudo dentro NÃO recebe clique */
+          .ds-toolwrap { pointer-events: auto; }   /* o wrapper (com id nav-xxx) recebe */
+       
           .ds-toollabel{
             margin-top: 6px;
             font-size: 12px;
@@ -6710,6 +6712,7 @@ div[data-testid="stRadio"] {{
             """
         html += "</div>"
         clicked = click_detector(html, key=f"ds_tools_nav_{selected}")
+        st.write("clicked:", clicked)
         if clicked and clicked.startswith("nav-"):
             key = clicked.replace("nav-", "")
             if key == "menu":
@@ -6775,9 +6778,9 @@ div[data-testid="stRadio"] {{
           .ds-npc-panel{
             background-repeat:no-repeat;
             background-position:center;
-            background-size:contain;   /* <- NÃO distorce */
+            background-size:100% 100%;   /* <- NÃO distorce */
             padding: 34px 34px 28px 34px;
-            min-height: 560px;         /* <- segura o aspect */
+            min-height: clamp(780px, 75vh, 1100px);         /* <- segura o aspect */
           }
           .ds-npc-panel.left  { background-image: url("LEFT_BG"); }
           .ds-npc-panel.right { background-image: url("RIGHT_BG"); padding: 38px 44px 32px 44px; }
@@ -6856,6 +6859,8 @@ div[data-testid="stRadio"] {{
                 content_html = """
                 <style>
                     .ds-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
+                    .ds-cardwrap{ display:block; cursor:pointer; } /* NOVO */
+                    .ds-cardwrap *{ pointer-events:none; }
                     .ds-card {
                         position: relative; aspect-ratio: 3/4;
                         border: 2px solid #554422; border-radius: 8px;
@@ -6890,12 +6895,12 @@ div[data-testid="stRadio"] {{
                     img_html = f"<img src='{src}' />" if src else "<div style='width:100%;height:100%;background:#222;'></div>"
     
                     content_html += f"""
-                    <a href='#' id='{safe_id}'>
+                    <div class="ds-cardwrap" id="{safe_id}">
                         <div class="ds-card">
                             {img_html}
                             <div class="ds-name-tag">{nome}</div>
                         </div>
-                    </a>
+                    </div>
                     """
     
                 content_html += "</div>"
