@@ -612,41 +612,25 @@ def render_move_creator(
         
         st.code(build, language="text")
         
+        # --- FIX: sempre inicializa antes de ramificar ---
+        pp_final = None
+        pp_auto = None
+        why_auto = ""
+        why = ""
+        
         # ✅ PP: se customizou, usa o manual; se não, usa o Excel
         if sub_ranks:
-            pp = int(manual_pp or 0)
+            pp_final = int(manual_pp or 0)
             why = "PP informado manualmente (porque você escolheu ranks por sub-efeito)."
         else:
-            # =========================
-            # PP (auto ou obrigatório manual)
-            # =========================
-            
             tmp = mv.pp_cost(rank)
             if tmp is None:
                 pp_auto, why_auto = None, "pp_cost() retornou None (erro interno)."
             else:
-                pp_auto, why_auto = tmp
-             # pode ser None
-                        
-            need_manual_pp = False
-            
-            # 1) Se customizou sub-ranks → PP obrigatório
-            if sub_ranks:
-                need_manual_pp = True
-                pp_auto = None
-                why = "PP manual obrigatório (ranks por sub-efeito)."
-            
-            # 2) Se o banco não tem PP → PP obrigatório
-            elif pp_auto is None:
-                need_manual_pp = True
-                why = "PP manual obrigatório (não definido no banco)."
-            
-            else:
-                why = why_auto
-            
-            pp_final = pp_auto
-            
-            if need_manual_pp:
+                pp_auto, why_auto = tmp  # pode ser None
+        
+            if pp_auto is None:
+                # PP obrigatório manual (não definido no banco)
                 pp_manual = st.number_input(
                     "PP total do golpe (obrigatório)",
                     min_value=1,
@@ -655,8 +639,13 @@ def render_move_creator(
                     key=f"{state_key_prefix}_pp_required_{mv.name}_{rank}"
                 )
                 pp_final = int(pp_manual)
-            
-            st.info(f"PP: **{pp_final}** — {why}")
+                why = "PP manual obrigatório (não definido no banco)."
+            else:
+                pp_final = pp_auto
+                why = why_auto
+        
+        st.info(f"PP: **{pp_final}** — {why}")
+
 
         # define o PP final a ser exibido
         if pp_final is not None:
@@ -6200,6 +6189,7 @@ def get_font_base64(font_path):
 # ==============================================================================
 
 def render_compendium_page() -> None:
+    
     # --- INÍCIO DA INSERÇÃO ---
     font_b64 = get_font_base64("fonts/DarkSouls.ttf")
     font_css = f"@font-face {{ font-family: 'DarkSouls'; src: url('data:font/ttf;base64,{font_b64}') format('truetype'); }}" if font_b64 else ""
