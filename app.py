@@ -2333,12 +2333,13 @@ def render_ds_tools_nav(selected_view: str):
       /* o texto do radio no Streamlit geralmente fica em p */
       div[data-testid="stRadio"] label p{
         position: relative;
-        padding-left: 34px;
+        padding-left: 26px;
         margin: 0 !important;
         user-select: none;
         font-family: "DarkSouls", serif;
-        font-size: 28px;
-        letter-spacing: 1px;
+        font-size: 20px;
+        letter-spacing: 0.6px;
+        line-height: 1;
         color: rgba(220,220,220,0.92);
       }
 
@@ -2354,8 +2355,8 @@ def render_ds_tools_nav(selected_view: str):
         left: 0;
         top: 50%;
         transform: translateY(-50%);
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
         border-radius: 999px;
         border: 2px solid rgba(255,215,0,0.28);
         background: rgba(255,215,0,0.08);
@@ -2371,6 +2372,18 @@ def render_ds_tools_nav(selected_view: str):
         border-color: rgba(255,215,0,0.72);
         background: rgba(255,215,0,0.34);
         box-shadow: 0 0 14px rgba(255,215,0,0.18);
+      }
+      div[data-testid="stRadio"] label:has(input:checked) p::after{
+        content:"";
+        position:absolute;
+        left: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255,215,0,0.92);
+        box-shadow: 0 0 8px rgba(255,215,0,0.55);
       }
     </style>
     """, unsafe_allow_html=True)
