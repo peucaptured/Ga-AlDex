@@ -2327,7 +2327,7 @@ def render_ds_tools_nav(selected_view: str):
       div[data-testid="stRadio"] [role="radiogroup"] > label{
         position: relative;
         margin: 0 !important;
-        padding: 0 !important;
+        padding: 0 0 0 26px !important;
         cursor: pointer !important;
         display: flex !important;
         align-items: center !important;
@@ -2374,6 +2374,18 @@ def render_ds_tools_nav(selected_view: str):
         border-radius: 999px;
         background: #ff4d4d;
         box-shadow: 0 0 10px rgba(255,77,77,0.7);
+      }
+      div[data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked)::after{
+        content:"";
+        position:absolute;
+        left: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255,215,0,0.92);
+        box-shadow: 0 0 8px rgba(255,215,0,0.55);
       }
     </style>
     """, unsafe_allow_html=True)
