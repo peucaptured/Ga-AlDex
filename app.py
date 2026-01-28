@@ -5082,6 +5082,53 @@ def load_compendium_json_data(
         data["regions"] = (j.get("regions") or {})
         data["cities"] = (j.get("cities") or {})
 
+
+    # =====================================================================
+    # HOME (Menu inicial) — estava faltando, por isso a tela ficava vazia
+    # =====================================================================
+    if st.session_state.get("comp_view") in (None, "home", "menu"):
+        st.markdown("<div class='ds-home'>", unsafe_allow_html=True)
+        st.markdown("<div class='ds-title'>BEM VINDO A GA'AL</div>", unsafe_allow_html=True)
+        st.markdown("<div class='ds-press ds-blink'>SELECIONE UMA OPÇÃO</div>", unsafe_allow_html=True)
+
+        tabs = ["__home__", "npcs", "ginasios", "locais", "sair"]
+        labels = {
+            "__home__": "Menu",
+            "npcs": "NPCs",
+            "ginasios": "Ginásios",
+            "locais": "Locais",
+            "sair": "Sair",
+        }
+
+        prev = st.session_state.get("ds_home_tabs_prev", "__home__")
+        if prev not in tabs:
+            prev = "__home__"
+
+        choice = st.radio(
+            "",
+            options=tabs,
+            index=tabs.index(prev),
+            key="ds_home_tabs",
+            label_visibility="collapsed",
+            format_func=lambda v: labels.get(v, v),
+        )
+        st.session_state["ds_home_tabs_prev"] = choice
+
+        # Ao escolher algo, navega e reseta o radio para não “prender” seleção
+        if choice != "__home__":
+            if choice == "sair":
+                st.session_state["nav_to"] = "Pokédex (Busca)"
+            else:
+                st.session_state["comp_view"] = choice
+
+            st.session_state["ds_home_tabs"] = "__home__"
+            st.session_state["ds_home_tabs_prev"] = "__home__"
+            st.rerun()
+
+        st.markdown("</div>", unsafe_allow_html=True)
+        return
+
+
     # NPCs (vivos + mortos)
     npcs_all: dict = {}
     if npcs_vivos_path and os.path.exists(npcs_vivos_path):
