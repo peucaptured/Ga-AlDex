@@ -2267,6 +2267,39 @@ def stop_pvp_sync_listener():
         event_queue.put({"tag": "stop"})
     st.session_state.pop("pvp_sync_listener", None)
 
+
+
+def render_ds_tools_nav(selected: str):
+    labels = [
+        ("home", "MENU"),
+        ("npcs", "NPCS"),
+        ("ginasios", "GINÁSIOS"),
+        ("locais", "LOCAIS"),
+        ("sair", "SAIR"),
+    ]
+
+    st.markdown("<div class='ds-toolsbar'>", unsafe_allow_html=True)
+    cols = st.columns([1, 1, 1, 1, 1], gap="small")
+
+    for i, (key, lab) in enumerate(labels):
+        with cols[i]:
+            cls = "ds-tab selected" if selected == key else "ds-tab"
+            st.markdown(f"<div class='{cls}'>", unsafe_allow_html=True)
+
+            if st.button(lab, key=f"topnav_btn_{key}"):
+                if key == "sair":
+                    st.session_state["nav_to"] = "Pokédex (Busca)"
+                else:
+                    st.session_state["comp_view"] = key
+                    if key != "npcs":
+                        st.session_state["comp_selected_npc"] = None
+                st.rerun()
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
 def ensure_pvp_sync_listener(db, rid):
     """
     Inicia listeners do Firestore (Real-Time) para sincronizar o jogo 
@@ -6578,33 +6611,7 @@ div[data-testid="stRadio"] {{
         if view != "npcs":
             st.session_state["comp_selected_npc"] = None
         st.rerun()
-    def render_ds_tools_nav(selected: str):
-        labels = [
-            ("home", "MENU"),
-            ("npcs", "NPCS"),
-            ("ginasios", "GINÁSIOS"),
-            ("locais", "LOCAIS"),
-            ("sair", "SAIR"),
-        ]
     
-        st.markdown("<div class='ds-toolsbar'>", unsafe_allow_html=True)
-        cols = st.columns([1, 1, 1, 1, 1], gap="small")
-    
-        for i, (key, lab) in enumerate(labels):
-            with cols[i]:
-                cls = "ds-tab selected" if selected == key else "ds-tab"
-                st.markdown(f"<div class='{cls}'>", unsafe_allow_html=True)
-    
-                if st.button(lab, key=f"topnav_btn_{key}"):
-                    if key == "sair":
-                        st.session_state["nav_to"] = "Pokédex (Busca)"
-                    else:
-                        st.session_state["comp_view"] = key
-                        if key != "npcs":
-                            st.session_state["comp_selected_npc"] = None
-                    st.rerun()
-    
-                st.markdown("</div>", unsafe_allow_html=True)
     
         st.markdown("</div>", unsafe_allow_html=True)
 
