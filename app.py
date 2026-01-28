@@ -2269,35 +2269,112 @@ def stop_pvp_sync_listener():
 
 
 
-def render_ds_tools_nav(selected: str):
-    labels = [
-        ("home", "MENU"),
-        ("npcs", "NPCS"),
-        ("ginasios", "GINÁSIOS"),
-        ("locais", "LOCAIS"),
-        ("sair", "SAIR"),
-    ]
+def render_ds_tools_nav(selected_view: str):
+    # opções (texto que aparece)
+    opts = ["Menu", "NPCs", "Ginásios", "Locais", "Sair"]
 
-    st.markdown("<div class='ds-toolsbar'>", unsafe_allow_html=True)
-    cols = st.columns([1, 1, 1, 1, 1], gap="small")
+    to_view = {
+        "Menu": "home",
+        "NPCs": "npcs",
+        "Ginásios": "ginasios",
+        "Locais": "locais",
+        "Sair": "sair",
+    }
+    from_view = {v: k for k, v in to_view.items()}
 
-    for i, (key, lab) in enumerate(labels):
-        with cols[i]:
-            cls = "ds-tab selected" if selected == key else "ds-tab"
-            st.markdown(f"<div class='{cls}'>", unsafe_allow_html=True)
+    # index padrão baseado na view atual
+    default_label = from_view.get(selected_view, "NPCs")
+    idx = opts.index(default_label)
 
-            if st.button(lab, key=f"topnav_btn_{key}"):
-                if key == "sair":
-                    st.session_state["nav_to"] = "Pokédex (Busca)"
-                else:
-                    st.session_state["comp_view"] = key
-                    if key != "npcs":
-                        st.session_state["comp_selected_npc"] = None
-                st.rerun()
+    # --- CSS do estilo DS (bolinha + dourado no selecionado) ---
+    st.markdown("""
+    <style>
+      /* barra no topo (sticky) */
+      div[data-testid="stRadio"]{
+        position: sticky;
+        top: 0;
+        z-index: 9999;
+        padding: 26px 0 14px 0;
+        background: rgba(0,0,0,0.0);
+      }
 
-            st.markdown("</div>", unsafe_allow_html=True)
+      /* alinha no centro e espaça */
+      div[data-testid="stRadio"] > div{
+        display: flex;
+        justify-content: center;
+        gap: 34px;
+      }
 
-    st.markdown("</div>", unsafe_allow_html=True)
+      /* cada opção */
+      div[data-testid="stRadio"] label{
+        position: relative;
+        padding-left: 34px;
+        cursor: pointer;
+        user-select: none;
+        font-family: "DarkSouls", serif;
+        font-size: 28px;
+        letter-spacing: 1px;
+        color: rgba(220,220,220,0.92);
+      }
+
+      /* esconde o rádio “padrão” */
+      div[data-testid="stRadio"] input[type="radio"]{
+        display: none !important;
+      }
+
+      /* bolinha */
+      div[data-testid="stRadio"] label::before{
+        content:"";
+        position:absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        border: 2px solid rgba(255,215,0,0.28);
+        background: rgba(255,215,0,0.08);
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.55) inset;
+      }
+
+      /* selecionado (Chrome suporta :has) */
+      div[data-testid="stRadio"] label:has(input:checked){
+        color: rgba(255,232,170,0.98);
+        text-shadow: 0 0 10px rgba(255,215,0,0.25);
+      }
+      div[data-testid="stRadio"] label:has(input:checked)::before{
+        border-color: rgba(255,215,0,0.72);
+        background: rgba(255,215,0,0.34);
+        box-shadow: 0 0 14px rgba(255,215,0,0.18);
+      }
+    </style>
+    """, unsafe_allow_html=True)
+
+    choice = st.radio(
+        "",
+        opts,
+        index=idx,
+        horizontal=True,
+        key="comp_topnav_radio",
+        label_visibility="collapsed",
+    )
+
+    new_view = to_view[choice]
+
+    if new_view == "sair":
+        st.session_state["nav_to"] = "Pokédex (Busca)"
+        st.rerun()
+    
+    elif new_view == "home":
+        st.session_state["comp_view"] = "home"
+        st.rerun()
+    
+    elif st.session_state.get("comp_view") != new_view:
+        st.session_state["comp_view"] = new_view
+        if new_view != "npcs":
+            st.session_state["comp_selected_npc"] = None
+        st.rerun()
+
 
 def render_compendium_page() -> None:
     if "comp_view" not in st.session_state:
@@ -2307,7 +2384,6 @@ def render_compendium_page() -> None:
     if st.session_state["comp_view"] != "home":
         render_ds_tools_nav(st.session_state["comp_view"])
 
-    # ---- ROTEAMENTO ----
     if st.session_state["comp_view"] == "home":
         render_compendium_home()
         return
@@ -2323,6 +2399,7 @@ def render_compendium_page() -> None:
     if st.session_state["comp_view"] == "locais":
         render_compendium_locais()
         return
+
 
 
 
