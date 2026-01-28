@@ -6521,7 +6521,6 @@ div[data-testid="stRadio"] {{
         unsafe_allow_html=True,
     )
         
-    components.html("<div class='ds-gold-top'></div>", height=10)
 
     # 4️⃣ Menu
    
@@ -6628,40 +6627,63 @@ div[data-testid="stRadio"] {{
     
         st.markdown("""
         <style>
+          /* barra horizontal no topo */
           .ds-toolsbar{
-            display:flex; align-items:center; gap:14px;
-            padding: 8px 0 10px 0;
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            gap: 18px;
+            padding: 10px 0 14px 0;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(3px);
+            border-bottom: 1px solid rgba(255,215,0,0.14);
           }
+        
+          .ds-toolwrap{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            cursor:pointer;
+            user-select:none;
+          }
+        
           .ds-tool{
-            width:66px; height:66px;
+            width:58px; height:58px;
             border-radius: 6px;
             border: 1px solid rgba(160,140,80,0.35);
             background: rgba(0,0,0,0.35);
-            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35);
             display:flex; align-items:center; justify-content:center;
-            cursor:pointer;
-            transition: transform .08s ease, filter .12s ease, box-shadow .12s ease;
-            user-select:none;
+            transition: transform .08s ease, box-shadow .12s ease, border .12s ease;
           }
-          .ds-tool img{ image-rendering:auto; opacity:.85; filter: grayscale(.35) contrast(1.05); }
-          .ds-tool:hover{
+        
+          .ds-tool img{
+            width:50px; height:50px;
+            opacity:.9;
+            pointer-events:none; /* garante clique no wrapper */
+            filter: grayscale(.35) contrast(1.05);
+          }
+        
+          .ds-toolwrap:hover .ds-tool{
             transform: translateY(-1px);
-            box-shadow: 0 0 14px rgba(255,215,0,0.12), inset 0 0 0 1px rgba(255,215,0,0.18);
+            box-shadow: 0 0 14px rgba(255,215,0,0.12);
           }
-          .ds-tool.selected{
+        
+          .ds-toolwrap.selected .ds-tool{
             border: 1px solid rgba(255,215,0,0.55);
-            box-shadow: 0 0 18px rgba(255,215,0,0.22), inset 0 0 0 1px rgba(255,215,0,0.22);
+            box-shadow: 0 0 18px rgba(255,215,0,0.22);
           }
-          .ds-tool.selected img{ opacity:1; filter: grayscale(0) contrast(1.1); }
-    
+        
           .ds-toollabel{
             margin-top: 6px;
             font-size: 12px;
-            letter-spacing: .08em;
-            opacity: .75;
+            letter-spacing: .10em;
+            opacity: .85;
             text-align:center;
+            text-transform: uppercase;
           }
-          .ds-toolwrap{ display:flex; flex-direction:column; align-items:center; }
         </style>
         """, unsafe_allow_html=True)
     
@@ -6676,18 +6698,18 @@ div[data-testid="stRadio"] {{
         # monta HTML (sem <a>, sem href)
         html = "<div class='ds-toolsbar'>"
         for key in ["menu","npcs","ginasios","locais","sair"]:
-            b64 = _icon_b64(SHEET_PATH, ICON_BOXES[key], size=48)
-            cls = "ds-tool selected" if selected == key else "ds-tool"
+            b64 = _icon_b64(SHEET_PATH, ICON_BOXES[key], size=52)
+            wrap_cls = "ds-toolwrap selected" if selected == key else "ds-toolwrap"
             html += f"""
-              <div class='ds-toolwrap' id='wrap-{key}'>
-                <div class='{cls}' id='nav-{key}'>
+              <div class='{wrap_cls}' id='nav-{key}'>
+                <div class='ds-tool'>
                   <img src="data:image/png;base64,{b64}" />
                 </div>
                 <div class='ds-toollabel'>{labels[key]}</div>
               </div>
             """
         html += "</div>"
-    
+        
         clicked = click_detector(html)
         if clicked and clicked.startswith("nav-"):
             key = clicked.replace("nav-", "")
@@ -6698,6 +6720,7 @@ div[data-testid="stRadio"] {{
             else:
                 st.session_state["comp_view"] = key
             st.rerun()
+
 
     if st.session_state["comp_view"] != "home":
         # esconde qualquer radio residual
@@ -6753,29 +6776,19 @@ div[data-testid="stRadio"] {{
           .ds-npc-panel{
             background-repeat:no-repeat;
             background-position:center;
-            background-size:100% 100%;
-            padding: 28px 28px 26px 28px;
-            min-height: 0px;     /* deixa crescer pelo conteúdo */
+            background-size:contain;   /* <- NÃO distorce */
+            padding: 34px 34px 28px 34px;
+            min-height: 560px;         /* <- segura o aspect */
           }
-          .ds-npc-panel.left{
-            background-image:url("LEFT_BG");
-            padding: 26px 26px 26px 26px;
-          }
-          .ds-npc-panel.right{
-            background-image:url("RIGHT_BG");
-            padding: 30px 34px 30px 34px;
-          }
+          .ds-npc-panel.left  { background-image: url("LEFT_BG"); }
+          .ds-npc-panel.right { background-image: url("RIGHT_BG"); padding: 38px 44px 32px 44px; }
         
-          /* grid automático */
           .ds-grid{
             display:grid;
-            grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
             gap: 10px;
-            width:100%;
+            width: 100%;
           }
-        
-          /* evita qualquer camada bloquear cliques */
-          .ds-npc-panel, .ds-npc-panel * { pointer-events:auto; }
         </style>
         """
 
