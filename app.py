@@ -6690,6 +6690,7 @@ div[data-testid="stRadio"] {{
           .ds-npc-panel.left{
               background: transparent !important;
               background-image: none !important;
+              border: none !important;
               box-shadow: none !important;
         }
           .ds-npc-panel.right{
@@ -6720,8 +6721,8 @@ div[data-testid="stRadio"] {{
             box-shadow: none !important;
           }
           .ds-npc-panel .stTextInput input{
-            background: rgba(0,0,0,0.7) !important;
-            border: 1px solid #000 !important;
+            background: rgba(0,0,0,0.8) !important;
+            border: none !important;
             box-shadow: none !important;
           }
         
@@ -6746,6 +6747,7 @@ div[data-testid="stRadio"] {{
           .ds-npc-panel.left{
             background: transparent !important;
             background-image: none !important;
+            border: none !important;
             box-shadow: none !important;
           }
         </style>
