@@ -6688,63 +6688,38 @@ div[data-testid="stRadio"] {{
             min-height: 0px;     /* deixa crescer pelo conteúdo */
           }
           .ds-npc-panel.left{
-              background: transparent !important;
-              background-image: none !important;
-              border: none !important;
-              box-shadow: none !important;
-        }
-          .ds-npc-panel.right{
-            background: #000 !important;
-            background-image: none !important;
-            box-shadow: none !important;
-            padding: 30px 34px 30px 34px;
-          }
-          .ds-npc-panel.right .ds-frame{
-            background: #000 !important;
-            box-shadow: none !important;
-          }
-          .ds-npc-panel.left div[data-testid="stElementContainer"],
-          .ds-npc-panel.left div[data-testid="stMarkdownContainer"],
-          .ds-npc-panel.left [data-testid="stComponentFrame"],
-          .ds-npc-panel.left iframe{
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-          }
-          /* remove a “caixa” do componente HTML/iframe (click_detector) */
-        .ds-npc-panel.left div[data-testid="stIFrame"],
-        .ds-npc-panel.left div[data-testid="stHtml"]{
           background: transparent !important;
+          background-image: none !important;
           border: none !important;
           box-shadow: none !important;
-          padding: 0 !important;
         }
         
-        .ds-npc-panel.left div[data-testid="stIFrame"] iframe,
-        .ds-npc-panel.left div[data-testid="stHtml"] iframe{
+        /* limpa wrappers do Streamlit dentro do painel esquerdo */
+        .ds-npc-panel.left div[data-testid="stElementContainer"],
+        .ds-npc-panel.left div[data-testid="stMarkdownContainer"],
+        .ds-npc-panel.left div[data-testid="stComponentFrame"],
+        .ds-npc-panel.left div[data-testid="stIFrame"],
+        .ds-npc-panel.left div[data-testid="stHtml"],
+        .ds-npc-panel.left iframe{
           background: transparent !important;
           border: none !important;
           box-shadow: none !important;
         }
-
-          .ds-npc-panel .stTextInput,
-          .ds-npc-panel .stTextInput > div,
-          .ds-npc-panel .stTextInput > div > div,
-          .ds-npc-panel div[data-testid="stTextInput"] > div,
-          .ds-npc-panel div[data-testid="stTextInput"] > div > div,
-          .ds-npc-panel .stTextInput div[data-baseweb="input"],
-          .ds-npc-panel .stTextInput div[data-baseweb="input"] > div,
-          .ds-npc-panel .stTextInput div[data-baseweb="base-input"],
-          .ds-npc-panel .stTextInput div[data-baseweb="base-input"] > div{
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-          }
-          .ds-npc-panel .stTextInput input{
-            background: rgba(0,0,0,0.8) !important;
-            border: none !important;
-            box-shadow: none !important;
-          }
+        
+        /* remove padding/margem que às vezes vira “caixa” */
+        .ds-npc-panel.left div[data-testid="stElementContainer"]{
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+        
+        /* garante que o iframe não pinte fundo */
+        .ds-npc-panel.left div[data-testid="stIFrame"] iframe,
+        .ds-npc-panel.left div[data-testid="stHtml"] iframe,
+        .ds-npc-panel.left div[data-testid="stComponentFrame"] iframe{
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+        }
        
         
           /* grid automático */
