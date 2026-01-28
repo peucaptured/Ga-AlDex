@@ -6758,9 +6758,10 @@ div[data-testid="stRadio"] {{
             min-height: 0px;     /* deixa crescer pelo conteúdo */
           }
           .ds-npc-panel.left{
-            background-image:url("LEFT_BG");
-            padding: 26px 26px 26px 26px;
-          }
+          background: transparent !important;
+          background-image: none !important;
+          box-shadow: none !important;
+        }
           .ds-npc-panel.right{
             background-image:url("RIGHT_BG");
             padding: 30px 34px 30px 34px;
