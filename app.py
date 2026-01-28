@@ -2868,11 +2868,12 @@ def render_login_menu(trainer_name: str, user_data: dict):
         unsafe_allow_html=True,
     )
 
-    params = st.experimental_get_query_params()
-    if params.get("continue") == ["1"]:
+    params = st.query_params
+    continue_param = params.get("continue")
+    if continue_param == "1" or continue_param == ["1"]:
         st.session_state["show_login_menu"] = False
         st.session_state["nav_to"] = "Pokédex (Busca)"
-        st.experimental_set_query_params()
+        st.query_params.clear()
         st.rerun()
 
     st.markdown("<div class='fr-login-wrap'><div class='fr-login-layout'>", unsafe_allow_html=True)
@@ -6844,26 +6845,16 @@ div[data-testid="stRadio"] {{
     # Navegação via query params (?cv=...) — evita click-detector na HOME e no TOP NAV
     # ----------------------------
     def _qp_get(key: str):
-        try:
-            qp = st.query_params
-            v = qp.get(key)
-            if v is None:
-                return None
-            if isinstance(v, list):
-                return v[0] if v else None
-            return str(v)
-        except Exception:
-            qp = st.experimental_get_query_params()
-            v = qp.get(key)
-            if not v:
-                return None
-            return v[0]
+        qp = st.query_params
+        v = qp.get(key)
+        if v is None:
+            return None
+        if isinstance(v, list):
+            return v[0] if v else None
+        return str(v)
     
     def _clear_qp():
-        try:
-            st.query_params.clear()
-        except Exception:
-            st.experimental_set_query_params()
+        st.query_params.clear()
     
     
     
