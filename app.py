@@ -6863,8 +6863,8 @@ div[data-testid="stRadio"] {{
                     if nome_selecionado and nome_selecionado != st.session_state.get("comp_selected_npc"):
                         st.session_state["comp_selected_npc"] = nome_selecionado
                         st.rerun()
-                        st.markdown("</div>", unsafe_allow_html=True)
-    
+            st.markdown("</div>", unsafe_allow_html=True)
+            
         # --- COLUNA DIREITA ---
         # --- COLUNA DIREITA ---
         with right:
