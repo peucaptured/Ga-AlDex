@@ -6778,6 +6778,10 @@ div[data-testid="stRadio"] {{
             background-image:url("RIGHT_BG");
             padding: 30px 34px 30px 34px;
           }
+          .ds-npc-panel.right .ds-frame{
+            background: transparent !important;
+            box-shadow: none !important;
+          }
         
           /* grid automático */
           .ds-grid{
