@@ -7286,7 +7286,11 @@ div[data-testid="stRadio"] {{
         st.markdown(
             """
             <style>
-              .ds-loc-shell{ margin-top: 6px; }
+              .ds-loc-shell{
+                margin-top: 6px;
+                padding: 0 24px 12px 24px;
+                box-sizing: border-box;
+              }
               /* Faz a moldura abraçar os widgets e não ficar "vazia" */
                 .ds-frame.ds-loc-left{
                   padding: 18px 18px 16px 18px !important;
@@ -7401,11 +7405,15 @@ div[data-testid="stRadio"] {{
             /* frame da lore */
             .ds-lore-frame{
               padding: 18px 18px 14px 18px !important;
+              display: flex !important;
+              flex-direction: column !important;
+              height: 78vh;
+              box-sizing: border-box;
             }
             
             /* área rolável da lore (não explode o frame) */
             .ds-lore-scroll{
-              max-height: 72vh;
+              flex: 1 1 auto;
               overflow-y: auto;
               padding-right: 8px;
             }
