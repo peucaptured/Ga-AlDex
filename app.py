@@ -6216,7 +6216,7 @@ def render_compendium_page() -> None:
     npcs_gerais = data.get("npcs") or {}
     font_b64 = get_font_base64("fonts/DarkSouls.ttf")
     font_css = f"@font-face {{ font-family: 'DarkSouls'; src: url('data:font/ttf;base64,{font_b64}') format('truetype'); }}" if font_b64 else ""
-    apply_ds_css()
+    apply_compendium_theme()
     st.session_state.setdefault("comp_view", "home")
     if st.session_state["comp_view"] == "home":
         render_compendium_home()  # seu "BEM VINDO A GA'AL" + radio
