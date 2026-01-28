@@ -480,6 +480,57 @@ try:
 except Exception:
     interpret_effects_to_build = None
 
+import base64, mimetypes
+from pathlib import Path
+
+@st.cache_data(show_spinner=False)
+def _audio_data_uri(path_str: str) -> str:
+    p = Path(path_str)
+    data = p.read_bytes()
+    mime, _ = mimetypes.guess_type(str(p))
+    if not mime:
+        mime = "audio/mpeg"
+    b64 = base64.b64encode(data).decode("utf-8")
+    return f"data:{mime};base64,{b64}"
+
+def render_bgm(track_path: str, volume: float = 0.35) -> None:
+    src = _audio_data_uri(track_path)
+    vol = max(0.0, min(1.0, float(volume)))
+
+    st.markdown(
+        """
+<div style="height:0; overflow:hidden;">
+  <audio id="ds-bgm" preload="auto"></audio>
+</div>
+
+<script>
+(function () {
+  const SRC = __SRC__;
+  const VOL = __VOL__;
+
+  const a = document.getElementById("ds-bgm");
+  if (!a) return;
+
+  a.loop = true;
+  a.volume = VOL;
+
+  if (a.dataset.src !== SRC) {
+    a.dataset.src = SRC;
+    a.innerHTML = "";
+    const s = document.createElement("source");
+    s.src = SRC;
+    a.appendChild(s);
+  }
+
+  const p = a.play();
+  if (p) p.catch(() => {});
+})();
+</script>
+        """.replace("__SRC__", json.dumps(src)).replace("__VOL__", str(vol)),
+        unsafe_allow_html=True,
+    )
+
+
 @st.cache_resource
 def load_move_db(excel_path: str) -> "MoveDB":
     return MoveDB.from_excel(excel_path, sheet_name="Golpes_MM")
@@ -2678,6 +2729,7 @@ def save_data_cloud(trainer_name, data):
 
 # --- TELA DE LOGIN ---
 if 'trainer_name' not in st.session_state:
+    render_bgm("login", volume=0.25)
     st.title("Bem-vindo(a) ao Ga'Al")
     
     tab_login, tab_register = st.tabs(["🔑 Acessar", "📝 Cadastrar"])
@@ -4174,6 +4226,14 @@ page = st.sidebar.radio(
     ],
     key="page",
 )
+# 👇 COLE AQUI (uma linha abaixo do radio)
+track = "geral"
+if page == "Compendium de Ga'Al":
+    track = "compendium"
+elif page == "PvP – Arena Tática":
+    track = "pvp" if st.session_state.get("pvp_view", "lobby") == "battle" else "geral"
+
+render_bgm(track, volume=0.25)
 
 if page != "PvP – Arena Tática":
     stop_pvp_sync_listener()
