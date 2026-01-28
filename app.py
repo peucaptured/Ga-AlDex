@@ -6509,6 +6509,39 @@ div[role="radiogroup"] input {{ display: none !important; }}
     # ----------------------------
     # Navegação via query params (?cv=...) — evita click-detector na HOME e no TOP NAV
     # ----------------------------
+    
+    def render_compendium_home() -> None:
+    st.markdown("<div class='ds-home'>", unsafe_allow_html=True)
+
+    st.markdown("<h1 class='ds-title'>BEM VINDO A GA'AL</h1>", unsafe_allow_html=True)
+    st.markdown("<p class='ds-press ds-blink'>PRESS ANY BUTTON</p>", unsafe_allow_html=True)
+
+    # Menu de entrada (radio)
+    choice = st.radio(
+        "Ir para:",
+        ["NPCs", "Ginásios", "Locais", "Sair"],
+        horizontal=True,
+        label_visibility="collapsed",
+        key="comp_home_radio",
+    )
+
+    mapping = {
+        "NPCs": "npcs",
+        "Ginásios": "ginasios",
+        "Locais": "locais",
+        "Sair": "sair",
+    }
+    target = mapping.get(choice, "home")
+
+    if target == "sair":
+        st.session_state["page"] = "Home"  # ajuste se sua home tiver outro nome
+    else:
+        st.session_state["comp_view"] = target
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    
+    
     def _consume_comp_qp():
         cv = None
         try:
