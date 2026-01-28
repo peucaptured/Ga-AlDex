@@ -6711,8 +6711,11 @@ div[data-testid="stRadio"] {{
           border: none !important;
           box-shadow: none !important;
         }
-
         
+
+        div[data-testid="stElementContainer"]:has(iframe[title^="st_click_detector"]) > div {
+          padding: 0 !important;
+        }
         /* remove padding/margem que às vezes vira “caixa” */
         .ds-npc-panel.left div[data-testid="stElementContainer"]{
           padding: 0 !important;
@@ -6817,7 +6820,7 @@ div[data-testid="stRadio"] {{
                 content_html = """
                 <style>
                   html, body {
-                    background: transparent !important;
+                    background: #000 !important;
                     margin: 0 !important;
                     padding: 0 !important;
                   }
@@ -6827,7 +6830,7 @@ div[data-testid="stRadio"] {{
                     grid-template-columns:repeat(4, 1fr);
                     gap: 10px;
                     width:100%;
-                    background: transparent !important;
+                    background: #000 !important;
                   }
                                 
                   .ds-card {
