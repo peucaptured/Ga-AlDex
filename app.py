@@ -11,7 +11,7 @@ import requests
 import unicodedata
 import os
 import io
-
+import html
 import re
 import difflib
 import uuid
@@ -6939,15 +6939,17 @@ div[data-testid="stRadio"] {{
                     src = _thumb_data_uri(img_path) if img_path else ""
                     img_html = f"<img src='{src}' />" if src else "<div style='width:100%;height:100%;background:#222;'></div>"
     
-                    content_html += f"""
-                    <a href="javascript:void(0)" id="{safe_id}">
-                        <div class="ds-card">
-                            {img_html}
-                            <div class="ds-name-tag">{nome}</div>
-                        </div>
-                    </a>
-                    """
-    
+                    safe_name = html.escape(str(nome), quote=True)
+
+                    content_html += (
+                        f'<a href="javascript:void(0)" id="{safe_id}">'
+                        f'  <div class="ds-card">'
+                        f'    {img_html}'  # img_html já é seu <img ...> ou <div ...>
+                        f'    <div class="ds-name-tag">{safe_name}</div>'
+                        f'  </div>'
+                        f'</a>'
+                    )
+                        
                 content_html += "</div>"
                 clicked_safe_id = click_detector(content_html)
     
@@ -7089,10 +7091,389 @@ div[data-testid="stRadio"] {{
     
     if st.session_state["comp_view"] == "locais":
         render_ds_tools_nav(st.session_state["comp_view"])
-        st.markdown(
-            "<div class='ds-frame'><div class='ds-name'>LOCAIS</div><div class='ds-meta'>EM CONSTRUÇÃO</div></div>",
-            unsafe_allow_html=True,
-        )
+            # =====================================================================
+        # VIEW: LOCAIS (Dark Souls-like + sublocais em menu)
+        # =====================================================================
+        if st.session_state["comp_view"] == "locais":
+            # (se o seu fluxo já desenha o topo antes, não tem problema manter)
+            render_ds_tools_nav(st.session_state["comp_view"])
+    
+            cities: dict = (comp_data.get("cities") or {})
+            regions_meta: dict = (comp_data.get("regions") or {})
+    
+            if not isinstance(cities, dict) or not cities:
+                st.error("Não encontrei cidades no gaal_locais.json (chave raiz: cities).")
+                return
+    
+            # ----------------------------
+            # Helpers locais
+            # ----------------------------
+            def _region_order(regs: list[str]) -> list[str]:
+                ordered = []
+                for r in (COMP_REGIOES_PRINCIPAIS or []):
+                    if r in regs and r not in ordered:
+                        ordered.append(r)
+                for r in sorted(regs):
+                    if r and r not in ordered:
+                        ordered.append(r)
+                return ordered
+    
+            def _cities_by_region() -> dict[str, list[str]]:
+                by: dict[str, list[str]] = {}
+                for cname, cobj in (cities or {}).items():
+                    if not isinstance(cobj, dict):
+                        continue
+                    reg = (cobj.get("region") or "").strip() or "Sem região"
+                    by.setdefault(reg, []).append(cname)
+                for r in by:
+                    by[r] = sorted(by[r])
+                return by
+    
+            def _pick(d: dict, *keys: str) -> str:
+                for k in keys:
+                    v = d.get(k)
+                    if isinstance(v, str) and v.strip():
+                        return v.strip()
+                return ""
+    
+            @st.cache_data(show_spinner=False)
+            def _img_data_uri(path: str, max_w: int = 1280) -> str:
+                try:
+                    import base64, io, os
+                    from PIL import Image
+                    if not path or not os.path.exists(path):
+                        return ""
+                    img = Image.open(path).convert("RGB")
+                    img.thumbnail((max_w, 2000))
+                    buf = io.BytesIO()
+                    img.save(buf, format="JPEG", quality=80)
+                    b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+                    return f"data:image/jpeg;base64,{b64}"
+                except Exception:
+                    return ""
+    
+            def _map_path() -> str | None:
+                # prioridade: GaAl_2.jpg na raiz/pastas -> resolve -> find_image
+                p = None
+                try:
+                    p = _resolve_asset_path(COMP_DEFAULT_MAP)
+                except Exception:
+                    p = COMP_DEFAULT_MAP
+                if p and os.path.exists(p):
+                    return p
+    
+                # fallback: tenta achar por index
+                p2 = comp_find_image("GaAl_2") or comp_find_image("GaAl_2.jpg") or comp_find_image("GaAl")
+                if p2 and os.path.exists(p2):
+                    return p2
+                return None
+    
+            def _city_image_path(city_name: str) -> str | None:
+                p = comp_find_image(city_name)
+                if p and os.path.exists(p):
+                    return p
+                # tenta variantes
+                for v in [f"{city_name}.png", f"{city_name}.jpg", f"{city_name}.jpeg", f"{city_name}.webp"]:
+                    pv = comp_find_image(v)
+                    if pv and os.path.exists(pv):
+                        return pv
+                return None
+    
+            by_region = _cities_by_region()
+            all_regions = _region_order(list(set(list(by_region.keys()) + list((regions_meta or {}).keys()))))
+    
+            st.session_state.setdefault("comp_loc_region", all_regions[0] if all_regions else "Sem região")
+            st.session_state.setdefault("comp_loc_city", None)
+            st.session_state.setdefault("comp_loc_sublocal", "__visao__")  # "__visao__" = visão geral da cidade
+            st.session_state.setdefault("comp_loc_search", "")
+    
+            # CSS (escopado) — menu DS para Locais
+            st.markdown(
+                """
+                <style>
+                  .ds-loc-shell{ margin-top: 6px; }
+                  .ds-loc-left .stTextInput input{
+                    background: rgba(0,0,0,0.35) !important;
+                    border: 1px solid rgba(176,143,60,0.35) !important;
+                    color: rgba(255,255,255,0.88) !important;
+                  }
+    
+                  /* Radio vertical DS */
+                  .ds-loc-menu div[data-testid="stRadio"] [role="radiogroup"]{
+                    gap: 8px !important;
+                  }
+                  .ds-loc-menu div[data-testid="stRadio"] label{
+                    border: 1px solid rgba(255,255,255,0.10) !important;
+                    background: rgba(0,0,0,0.25) !important;
+                    border-radius: 10px !important;
+                    padding: 10px 12px !important;
+                    margin: 0 !important;
+                    transition: all 120ms ease !important;
+                  }
+                  .ds-loc-menu div[data-testid="stRadio"] label:hover{
+                    border-color: rgba(255,215,0,0.35) !important;
+                    box-shadow: 0 0 18px rgba(255,215,0,0.10) !important;
+                  }
+                  .ds-loc-menu div[data-testid="stRadio"] label p{
+                    font-family: "DarkSouls", serif !important;
+                    letter-spacing: 0.20em !important;
+                    text-transform: uppercase !important;
+                    font-size: 12px !important;
+                    margin: 0 !important;
+                    color: rgba(255,255,255,0.72) !important;
+                  }
+                  .ds-loc-menu div[data-testid="stRadio"] label[data-checked="true"]{
+                    border-color: rgba(255,215,0,0.55) !important;
+                    box-shadow: 0 0 26px rgba(255,215,0,0.14) !important;
+                    background: rgba(25,18,6,0.35) !important;
+                  }
+                  .ds-loc-menu div[data-testid="stRadio"] label[data-checked="true"] p{
+                    color: #FFD700 !important;
+                    text-shadow: 0 0 12px rgba(255,215,0,0.55) !important;
+                  }
+                  .ds-loc-menu div[data-testid="stRadio"] input{ display:none !important; }
+    
+                  .ds-loc-hint{
+                    font-family: "DarkSouls", serif;
+                    letter-spacing: 0.18em;
+                    text-transform: uppercase;
+                    font-size: 11px;
+                    color: rgba(255,255,255,0.55);
+                  }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
+    
+            # ----------------------------
+            # Layout (split)
+            # ----------------------------
+            st.markdown("<div class='ds-loc-shell'>", unsafe_allow_html=True)
+            left, right = st.columns([1.05, 2.15], gap="large")
+    
+            with left:
+                st.markdown("<div class='ds-frame ds-loc-left'>", unsafe_allow_html=True)
+                st.markdown("<div class='ds-meta'>REGIÃO</div>", unsafe_allow_html=True)
+    
+                # Região (selectbox por usabilidade)
+                prev_reg = st.session_state.get("comp_loc_region")
+                region = st.selectbox(
+                    "Região",
+                    options=all_regions,
+                    index=all_regions.index(prev_reg) if prev_reg in all_regions else 0,
+                    key="comp_loc_region_sel",
+                    label_visibility="collapsed",
+                )
+                if region != st.session_state.get("comp_loc_region"):
+                    st.session_state["comp_loc_region"] = region
+                    st.session_state["comp_loc_city"] = None
+                    st.session_state["comp_loc_sublocal"] = "__visao__"
+                    st.rerun()
+    
+                st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+    
+                # Busca (filtra cidades e sublocais)
+                q = st.text_input(
+                    "Buscar em Locais",
+                    key="comp_loc_search",
+                    placeholder="Cidade ou sublocal...",
+                    label_visibility="collapsed",
+                ).strip()
+                qn = _norm(q)
+    
+                region_cities = by_region.get(region, []) or []
+                # Se região não tem cidades mapeadas, tenta mostrar todas (fallback)
+                if not region_cities:
+                    region_cities = sorted(list(cities.keys()))
+    
+                # Filtra cidades por busca
+                if qn:
+                    filtered = []
+                    for cname in region_cities:
+                        cobj = cities.get(cname) or {}
+                        blob = _norm(cname + " " + " ".join(list((cobj.get("sections") or {}).values())))
+                        # inclui sublocais no blob
+                        for sl in (cobj.get("sublocais") or []):
+                            blob += " " + _norm((sl.get("name") or "") + " " + (sl.get("text") or ""))
+                        if qn in blob:
+                            filtered.append(cname)
+                    region_cities = filtered
+    
+                # Menu de cidades (radio DS)
+                st.markdown("<div class='ds-meta'>CIDADES</div>", unsafe_allow_html=True)
+                if not region_cities:
+                    st.markdown("<div class='ds-loc-hint'>Nenhum resultado.</div>", unsafe_allow_html=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
+                    return
+    
+                current_city = st.session_state.get("comp_loc_city")
+                if current_city not in region_cities:
+                    current_city = region_cities[0]
+                    st.session_state["comp_loc_city"] = current_city
+    
+                city = st.radio(
+                    "Cidades",
+                    options=region_cities,
+                    index=region_cities.index(current_city) if current_city in region_cities else 0,
+                    key="comp_loc_city_radio",
+                    label_visibility="collapsed",
+                    help=None,
+                )
+                # aplica classe de menu DS no radio (escopo)
+                st.markdown("<div class='ds-loc-menu'></div>", unsafe_allow_html=True)
+    
+                if city != st.session_state.get("comp_loc_city"):
+                    st.session_state["comp_loc_city"] = city
+                    st.session_state["comp_loc_sublocal"] = "__visao__"
+                    st.rerun()
+    
+                # Sublocais como menu (radio DS)
+                cobj = cities.get(city) or {}
+                sublocais = (cobj.get("sublocais") or [])
+                sub_names = ["__visao__"] + [
+                    (sl.get("name") or "").strip() for sl in sublocais if (sl.get("name") or "").strip()
+                ]
+                # remove duplicados preservando ordem
+                seen = set()
+                sub_names = [x for x in sub_names if (x not in seen and not seen.add(x))]
+    
+                st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+                st.markdown("<div class='ds-meta'>SUBLOCAIS</div>", unsafe_allow_html=True)
+    
+                def _fmt_sublocal(v: str) -> str:
+                    return "Visão geral" if v == "__visao__" else v
+    
+                # Se não tem sublocais, mantém só visão geral
+                if len(sub_names) <= 1:
+                    st.markdown("<div class='ds-loc-hint'>Sem sublocais cadastrados.</div>", unsafe_allow_html=True)
+                    st.session_state["comp_loc_sublocal"] = "__visao__"
+                else:
+                    cur_sl = st.session_state.get("comp_loc_sublocal", "__visao__")
+                    if cur_sl not in sub_names:
+                        cur_sl = "__visao__"
+                        st.session_state["comp_loc_sublocal"] = "__visao__"
+    
+                    sl_choice = st.radio(
+                        "Sublocais",
+                        options=sub_names,
+                        index=sub_names.index(cur_sl),
+                        key="comp_loc_sublocal_radio",
+                        label_visibility="collapsed",
+                        format_func=_fmt_sublocal,
+                    )
+                    # aplica classe de menu DS no radio (escopo)
+                    st.markdown("<div class='ds-loc-menu'></div>", unsafe_allow_html=True)
+    
+                    if sl_choice != st.session_state.get("comp_loc_sublocal"):
+                        st.session_state["comp_loc_sublocal"] = sl_choice
+                        st.rerun()
+    
+                st.markdown("</div>", unsafe_allow_html=True)  # ds-frame (left)
+    
+            with right:
+                # Breadcrumb
+                reg_now = st.session_state.get("comp_loc_region") or ""
+                city_now = st.session_state.get("comp_loc_city") or ""
+                sl_now = st.session_state.get("comp_loc_sublocal") or "__visao__"
+                crumb = f"{reg_now}  —  {city_now}"
+                if sl_now and sl_now != "__visao__":
+                    crumb += f"  —  {sl_now}"
+    
+                st.markdown("<div class='ds-frame'>", unsafe_allow_html=True)
+                st.markdown(f"<div class='ds-name'>LOCAIS</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='ds-meta'>{crumb}</div>", unsafe_allow_html=True)
+    
+                # Imagem da cidade + mapa (quando útil)
+                city_img = _city_image_path(city_now)
+                map_img = _map_path()
+    
+                img_uri = _img_data_uri(city_img, max_w=1400) if city_img else ""
+                if img_uri:
+                    st.markdown(f"<img class='comp-map' src='{img_uri}'/>", unsafe_allow_html=True)
+                    st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+    
+                # Conteúdo
+                cobj = cities.get(city_now) or {}
+                secs = (cobj.get("sections") or {}) if isinstance(cobj.get("sections"), dict) else {}
+    
+                # Tags (se você quiser que apareça “Industrial/Portuária/etc”)
+                try:
+                    inferred = infer_city_tags(cobj)
+                    tags = _merge_tags("cities", city_now, inferred)
+                except Exception:
+                    tags = []
+    
+                if tags:
+                    chips = " ".join([f"<span class='comp-chip'>{t}</span>" for t in tags])
+                    st.markdown(f"<div style='text-align:center'>{chips}</div>", unsafe_allow_html=True)
+                    st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+    
+                # Se estiver em “Visão geral”: mostra seções da cidade
+                if sl_now == "__visao__":
+                    # Seções principais (ordem “bonita”)
+                    prefer = [
+                        "Visão geral",
+                        "Como é viver em " + city_now,
+                        "Como é viver em " + _clean_title(city_now),
+                        "Treinadores, estrangeiros e controle",
+                        "Ginásio de " + city_now,
+                        "Sublocais e pontos de interesse",
+                    ]
+                    used = set()
+    
+                    # Primeiro: preferidas
+                    for k in prefer:
+                        if k in secs and k not in used and (secs.get(k) or "").strip():
+                            used.add(k)
+                            st.markdown(f"<div class='ds-subtitle'>{k}</div>", unsafe_allow_html=True)
+                            st.markdown(f"<div class='ds-history'>{(secs.get(k) or '').replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
+                            st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+    
+                    # Depois: resto
+                    for k, v in secs.items():
+                        if k in used:
+                            continue
+                        if not isinstance(v, str) or not v.strip():
+                            continue
+                        st.markdown(f"<div class='ds-subtitle'>{k}</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div class='ds-history'>{v.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
+                        st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+    
+                    # Se não tiver imagem de cidade, tenta mostrar o mapa geral por último
+                    if (not img_uri) and map_img:
+                        m_uri = _img_data_uri(map_img, max_w=1600)
+                        if m_uri:
+                            st.markdown("<div class='ds-subtitle'>Mapa da região</div>", unsafe_allow_html=True)
+                            st.markdown(f"<img class='comp-map' src='{m_uri}'/>", unsafe_allow_html=True)
+    
+                else:
+                    # Sublocal selecionado: mostra texto daquele sublocal
+                    sl_obj = None
+                    for sl in (cobj.get("sublocais") or []):
+                        if (sl.get("name") or "").strip() == sl_now:
+                            sl_obj = sl
+                            break
+    
+                    if not sl_obj:
+                        st.markdown("<div class='ds-history'>Sublocal não encontrado.</div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<div class='ds-subtitle'>{sl_now}</div>", unsafe_allow_html=True)
+                        txt = (sl_obj.get("text") or "").strip()
+                        st.markdown(f"<div class='ds-history'>{txt.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
+    
+                        # mini-mapa (se existir) embaixo do sublocal
+                        if map_img:
+                            m_uri = _img_data_uri(map_img, max_w=1600)
+                            if m_uri:
+                                st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+                                st.markdown("<div class='ds-subtitle'>Mapa</div>", unsafe_allow_html=True)
+                                st.markdown(f"<img class='comp-map' src='{m_uri}'/>", unsafe_allow_html=True)
+    
+                st.markdown("</div>", unsafe_allow_html=True)  # ds-frame (right)
+    
+            st.markdown("</div>", unsafe_allow_html=True)  # ds-loc-shell
+            return
+
         return
     
     # ... (código existente acima: if st.session_state["comp_view"] == "locais": ...)
