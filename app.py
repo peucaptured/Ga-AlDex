@@ -6709,10 +6709,7 @@ div[data-testid="stRadio"] {{
               </div>
             """
         html += "</div>"
-        
-        clicked = click_detector(html)
-        
-        clicked = click_detector(html)
+        clicked = click_detector(html, key=f"ds_tools_nav_{selected}")
         if clicked and clicked.startswith("nav-"):
             key = clicked.replace("nav-", "")
             if key == "menu":
@@ -6903,7 +6900,7 @@ div[data-testid="stRadio"] {{
     
                 content_html += "</div>"
     
-                clicked_safe_id = click_detector(content_html)
+                clicked_safe_id = click_detector(content_html, key="ds_npc_grid")
     
                 if clicked_safe_id is not None:
                     nome_selecionado = id_map.get(str(clicked_safe_id))
