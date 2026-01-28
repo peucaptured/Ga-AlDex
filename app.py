@@ -6178,7 +6178,7 @@ def get_font_base64(font_path):
 
 def render_compendium_page() -> None:
     # --- INÍCIO DA INSERÇÃO ---
-    font_b64 = get_font_base64("DarkSouls.ttf")
+    font_b64 = get_font_base64("fonts/DarkSouls.ttf")
     font_css = f"@font-face {{ font-family: 'DarkSouls'; src: url('data:font/ttf;base64,{font_b64}') format('truetype'); }}" if font_b64 else ""
 
     st.markdown(f"""
@@ -6197,7 +6197,6 @@ def render_compendium_page() -> None:
             font-family: 'DarkSouls', serif !important;
             text-transform: uppercase;
             transition: transform 0.2s, color 0.2s;
-        }}
         }}
         .stButton > button:hover {{
             color: #FFD700 !important; text-shadow: 0 0 10px #FFD700; transform: scale(1.1);
