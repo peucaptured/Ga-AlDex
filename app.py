@@ -6653,6 +6653,33 @@ div[data-testid="stRadio"] {{
         # CSS das molduras (não interfere no click)
         css = """
         <style>
+          .ds-npc-banner{
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 12000;
+            text-align: center;
+            background: rgba(0,0,0,0.85);
+            border-bottom: 1px solid rgba(176,143,60,0.6);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+            padding: 14px 12px 12px 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.25em;
+          }
+          .ds-npc-banner-title{
+            font-size: 20px;
+            color: rgba(255,255,255,0.95);
+            margin: 0 0 6px 0;
+          }
+          .ds-npc-banner-sub{
+            font-size: 11px;
+            color: rgba(255,255,255,0.65);
+            margin: 0;
+          }
+          .ds-npc-banner-spacer{
+            height: 64px;
+          }
           .ds-npc-panel{
             background-repeat:no-repeat;
             background-position:center;
@@ -6701,6 +6728,14 @@ div[data-testid="stRadio"] {{
           }
         </style>
         """, unsafe_allow_html=True)
+        st.markdown(
+            "<div class='ds-npc-banner'>"
+            "<div class='ds-npc-banner-title'>Selecione um NPC</div>"
+            "<div class='ds-npc-banner-sub'>Clique em um retrato à esquerda</div>"
+            "</div>"
+            "<div class='ds-npc-banner-spacer'></div>",
+            unsafe_allow_html=True,
+        )
 
 
         # --- LAYOUT PRINCIPAL (SEM INDENTAÇÃO ERRADA) ---
