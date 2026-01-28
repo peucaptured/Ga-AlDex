@@ -6702,6 +6702,14 @@ div[data-testid="stRadio"] {{
             background: #000 !important;
             box-shadow: none !important;
           }
+          .ds-npc-panel.left div[data-testid="stElementContainer"],
+          .ds-npc-panel.left div[data-testid="stMarkdownContainer"],
+          .ds-npc-panel.left [data-testid="stComponentFrame"],
+          .ds-npc-panel.left iframe{
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
           .ds-npc-panel .stTextInput,
           .ds-npc-panel .stTextInput > div,
           .ds-npc-panel .stTextInput > div > div,
