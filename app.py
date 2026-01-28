@@ -503,7 +503,6 @@ def render_bgm(track_path: str, volume: float = 0.35) -> None:
         height=0,
         width=0,
         scrolling=False,
-        key="bgm-player",
     )
 
 # --- PLANO B: VIGIA DE SINCRONIZAÇÃO ---
