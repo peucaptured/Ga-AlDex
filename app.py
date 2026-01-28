@@ -6585,37 +6585,7 @@ div[role="radiogroup"] input {{ display: none !important; }}
             st.session_state["comp_selected_npc"] = None
         st.rerun()
     
-    def render_top_nav(selected: str, position: str = "top"):
-        """
-        position: "top" ou "bottom"
-        top = sticky
-        """
-        wrapper_class = "ds-nav ds-nav-sticky" if position == "top" else "ds-nav ds-nav-bottom"
-
-        labels = [
-            ("home", "Menu"),
-            ("npcs", "NPCs"),
-            ("ginasios", "Ginásios"),
-            ("locais", "Locais"),
-            ("sair", "Sair"),
-        ]
-
-        # Sem click-detector: usamos links com query params (?cv=...)
-        html = f"<div class='{wrapper_class}'>"
-        for v, lab in labels:
-            cls = "ds-nav-item selected" if selected == v else "ds-nav-item"
-            html += f"<a href='?cv={v}' class='{cls}' target='_self'>{lab}</a>"
-        html += "</div>"
-
-        st.markdown(html, unsafe_allow_html=True)
-
-        # respiro pra não colar no conteúdo quando estiver sticky no topo
-        if position == "top":
-            st.markdown("<div class='ds-after-nav-space'></div>", unsafe_allow_html=True)
-
-    # Mostra o top-nav em todas as páginas do compendium, exceto HOME
-    if st.session_state["comp_view"] != "home":
-        render_top_nav(st.session_state["comp_view"], position="top")
+    
 
     # =====================================================================
 
