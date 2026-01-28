@@ -6728,36 +6728,7 @@ div[data-testid="stRadio"] {{
 
         render_ds_tools_nav(st.session_state["comp_view"])
     
-        # --- UI FRAME (NPCs) usando o asset MENU_DetailStatus_Base2.PNG ---
-        NPC_FRAME_PATH = "Assets/ui/icons/MENU_DetailStatus_Base2.PNG"
-        
-        # Coordenadas do seu PNG (2048x1024):
-        # - Painel esquerdo: 0..1183
-        # - Gap preto no meio: 1183..1199
-        # - Painel direito: 1199..1867
-        LEFT_PANEL_BOX  = (0, 0, 1183, 1024)
-        RIGHT_PANEL_BOX = (1199, 0, 1867, 1024)
-        
-        @st.cache_data(show_spinner=False)
-        def _crop_panel_data_uri(path: str, box: tuple[int,int,int,int], max_w: int = 920) -> str:
-            import os, io, base64
-            from PIL import Image
-            if not os.path.exists(path):
-                return ""
-            img = Image.open(path).convert("RGBA").crop(box)
-        
-            # redimensiona mantendo proporção (responsivo)
-            w, h = img.size
-            if w > max_w:
-                new_h = int(h * (max_w / w))
-                img = img.resize((max_w, new_h), Image.Resampling.LANCZOS)
-        
-            buf = io.BytesIO()
-            img.save(buf, format="PNG", optimize=True)
-            b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
-            return f"data:image/png;base64,{b64}"
-        
-        right_bg = _crop_panel_data_uri(NPC_FRAME_PATH, RIGHT_PANEL_BOX, max_w=820)
+
         
         # CSS das molduras (não interfere no click)
         css = """
@@ -6776,6 +6747,9 @@ div[data-testid="stRadio"] {{
         }
           .ds-npc-panel.right{
             background-image:url("RIGHT_BG");
+            background: transparent !important;
+            background-image: none !important;
+            box-shadow: none !important;
             padding: 30px 34px 30px 34px;
           }
           .ds-npc-panel.right .ds-frame{
@@ -6797,7 +6771,6 @@ div[data-testid="stRadio"] {{
         """
 
         
-        css = css.replace("RIGHT_BG", right_bg or "")
         st.markdown(css, unsafe_allow_html=True)
         st.markdown("""
         <style>
