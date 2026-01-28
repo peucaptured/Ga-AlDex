@@ -6826,6 +6826,15 @@ div[data-testid="stRadio"] {{
             else:
                 content_html = """
                 <style>
+                  html, body {
+                    background: transparent !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                  }
+                  /* (opcional) garante que nada crie “caixa” */
+                  .ds-grid { background: transparent !important; }
+                </style>
+                <div class='ds-grid'>
                     .ds-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
                     .ds-card {
                         position: relative; aspect-ratio: 3/4;
