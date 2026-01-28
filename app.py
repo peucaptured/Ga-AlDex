@@ -7082,7 +7082,6 @@ div[data-testid="stRadio"] {{
     # Ginásios / Locais (placeholder)
     # =====================================================================
     if st.session_state["comp_view"] == "ginasios":
-        render_ds_tools_nav(st.session_state["comp_view"])
         st.markdown(
             "<div class='ds-frame'><div class='ds-name'>GINÁSIOS</div><div class='ds-meta'>EM CONSTRUÇÃO</div></div>",
             unsafe_allow_html=True,
