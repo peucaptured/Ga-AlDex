@@ -6184,8 +6184,18 @@ def render_compendium_page() -> None:
     st.markdown(f"""
     <style>
         {font_css}
-        /* Aplica a fonte em tudo */
-        .block-container {{ font-family: 'DarkSouls', serif !important; }}
+        :root {{
+            --ds-font: 'DarkSouls', serif;
+        }}
+        /* Fundo preto no compendium */
+        html, body, .stApp, [data-testid="stAppViewContainer"] {{
+            background: #000 !important;
+            color: #f8fafc;
+        }}
+        /* Aplica a fonte em tudo na aba compendium */
+        [data-testid="stAppViewContainer"], [data-testid="stAppViewContainer"] * {{
+            font-family: var(--ds-font) !important;
+        }}
         /* ESTILO DOS BOTÕES (O que você gostou) */
         /* Remove a caixa/borda padrão e deixa só o texto */
         .stButton > button {{
@@ -6591,7 +6601,7 @@ div[role="radiogroup"] input {{ display: none !important; }}
                         position: absolute; bottom: 0; left: 0; right: 0;
                         background: rgba(0,0,0,0.85); color: #ddd;
                         font-size: 10px; text-align: center; padding: 4px;
-                        font-family: sans-serif; font-weight: bold; text-transform: uppercase;
+                        font-weight: bold; text-transform: uppercase;
                     }
                     a { text-decoration: none; display: block; }
                 </style>
