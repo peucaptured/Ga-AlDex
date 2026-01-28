@@ -7370,17 +7370,31 @@ div[data-testid="stRadio"] {{
                 region_cities = sorted(list(cities.keys()))
 
             # Filtra cidades por busca
+            # Filtra cidades por busca
             if qn:
                 filtered = []
                 for cname in region_cities:
                     cobj = cities.get(cname) or {}
-                    blob = _norm(cname + " " + " ".join(list((cobj.get("sections") or {}).values())))
+            
+                    # texto das seções (garante string)
+                    secs = cobj.get("sections") or {}
+                    if not isinstance(secs, dict):
+                        secs = {}
+                    sec_text = " ".join([str(v) for v in secs.values() if v is not None])
+            
+                    blob = _norm_loc(cname + " " + sec_text)
+            
                     # inclui sublocais no blob
                     for sl in (cobj.get("sublocais") or []):
-                        blob += " " + _norm((sl.get("name") or "") + " " + (sl.get("text") or ""))
+                        if not isinstance(sl, dict):
+                            continue
+                        blob += " " + _norm_loc((sl.get("name") or "") + " " + (sl.get("text") or ""))
+            
                     if qn in blob:
                         filtered.append(cname)
+            
                 region_cities = filtered
+
 
             # Menu de cidades (radio DS)
             st.markdown("<div class='ds-meta'>CIDADES</div>", unsafe_allow_html=True)
