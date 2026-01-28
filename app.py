@@ -2766,9 +2766,9 @@ def render_login_menu(trainer_name: str, user_data: dict):
         }
         .fr-login-card {
             flex: 1;
-            border: 4px solid #1f2937;
+            border: 4px solid #3f3f8f;
             border-radius: 14px;
-            background: linear-gradient(180deg, #f9fbff 0%, #f4f6fb 100%);
+            background: linear-gradient(180deg, #f5f5f5 0%, #e9e9e9 100%);
             padding: 14px 16px;
             box-shadow: 0 6px 0 rgba(0,0,0,0.35);
         }
@@ -2776,25 +2776,25 @@ def render_login_menu(trainer_name: str, user_data: dict):
             text-transform: uppercase;
             font-size: 12px;
             letter-spacing: 1px;
-            color: #1f2937;
+            color: #1e3a8a;
             margin-bottom: 10px;
         }
         .fr-login-info {
-            border: 3px solid #1f2937;
+            border: 3px solid #6b7280;
             border-radius: 10px;
-            background: #ffffff;
+            background: #f8fafc;
             padding: 10px 12px;
-            box-shadow: inset 0 0 0 2px #e2e8f0;
+            box-shadow: inset 0 0 0 2px #cbd5f5;
         }
         .fr-login-grid {
             display: grid;
             grid-template-columns: 1.1fr 1fr;
             gap: 8px 20px;
             font-size: 11px;
-            color: #1f2937;
+            color: #1e3a8a;
         }
         .fr-login-label {
-            color: #334155;
+            color: #1e40af;
             font-weight: 700;
         }
         .fr-login-value {
@@ -2810,19 +2810,19 @@ def render_login_menu(trainer_name: str, user_data: dict):
             width: 80px;
             height: 80px;
             border-radius: 50%;
-            border: 4px solid #111827;
+            border: 4px solid #374151;
             padding: 0;
             font-weight: 700;
             text-transform: uppercase;
             font-size: 10px;
-            color: #ffffff;
+            color: #1f2937;
             box-shadow: 0 6px 0 rgba(0,0,0,0.35), inset 0 -4px 0 rgba(0,0,0,0.2);
         }
         .fr-login-actions [data-testid="stButton"]:nth-child(1) button {
-            background: radial-gradient(circle at 30% 30%, #86efac 0%, #22c55e 55%, #15803d 100%);
+            background: linear-gradient(180deg, #e5e7eb 0%, #cbd5e1 100%);
         }
         .fr-login-actions [data-testid="stButton"]:nth-child(2) button {
-            background: radial-gradient(circle at 30% 30%, #7dd3fc 0%, #38bdf8 55%, #0ea5e9 100%);
+            background: linear-gradient(180deg, #d1d5db 0%, #b9c0ca 100%);
         }
         </style>
         """,
