@@ -6478,6 +6478,13 @@ div[role="radiogroup"] input {{ display: none !important; }}
     # ----------------------------
     st.session_state.setdefault("comp_view", "home")
     st.session_state.setdefault("comp_selected_npc", None)
+    try:
+        comp_data = comp_load()  # retorna {"regions","cities","npcs","gyms",...}
+    except Exception as e:
+        st.error(f"Falha ao carregar Compendium: {e}")
+        return
+    
+    npcs_gerais = comp_data.get("npcs", {}) or {}
     # ----------------------------
     # Navegação via query params (?cv=...) — evita click-detector na HOME e no TOP NAV
     # ----------------------------
