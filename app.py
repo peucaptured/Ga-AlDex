@@ -6186,27 +6186,6 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
         st.markdown(v)
 
 
-from PIL import Image
-
-SHEET_PATH = "Assets/ui/icons/MENU_Top.PNG" # <-- ajuste se necessário
-
-# caixas (x1, y1, x2, y2) dos 5 ícones que aparecem no topo do seu sheet
-ICON_BOXES = {
-    "menu":     (3,   3,  96,  96),
-    "npcs":     (103, 3,  196, 96),
-    "ginasios": (203, 3,  296, 96),
-    "locais":   (303, 3,  396, 96),
-    "sair":     (403, 3,  496, 96),
-}
-
-@st.cache_data
-def _icon_b64(sheet_path: str, box: tuple[int,int,int,int], size: int = 56) -> str:
-    img = Image.open(sheet_path).convert("RGBA").crop(box)
-    img = img.resize((size, size), Image.Resampling.LANCZOS)
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return base64.b64encode(buf.getvalue()).decode("utf-8")
-
 @st.cache_data
 def get_font_base64(font_path):
     """Lê o arquivo de fonte e converte para base64 para uso no CSS."""
@@ -6562,33 +6541,12 @@ div[data-testid="stRadio"] {{
         except Exception:
             st.experimental_set_query_params()
     
+    
+    
+
+    
     def _consume_comp_qp():
-        # NOVO: suporte ao formato antigo do botoes.py
-        gv = _qp_get("gaal_view")   # home / npcs / ginasios / locais
-        gn = _qp_get("gaal_npc")    # nome do npc
-    
-        # Seu formato novo
-        cv = _qp_get("cv")          # home / npcs / ginasios / locais / sair
-    
-        # 1) Se veio NPC específico, isso tem prioridade
-        if gn:
-            st.session_state["comp_view"] = "npcs"
-            st.session_state["comp_selected_npc"] = gn
-            _clear_qp()
-            st.rerun()
-    
-        # 2) Se veio view antiga (gaal_view)
-        if gv in {"home", "npcs", "ginasios", "locais"}:
-            st.session_state["comp_view"] = gv
-            if gv == "home":
-                st.session_state["ds_home_tabs"] = "__home__"
-                st.session_state["ds_home_tabs_prev"] = "__home__"
-            if gv != "npcs":
-                st.session_state["comp_selected_npc"] = None
-            _clear_qp()
-            st.rerun()
-    
-        # 3) Se veio view nova (cv)
+        cv = _qp_get("cv")  # home / npcs / ginasios / locais / sair
         if not cv:
             return
     
@@ -6596,17 +6554,24 @@ div[data-testid="stRadio"] {{
             st.session_state["nav_to"] = "Pokédex (Busca)"
         else:
             st.session_state["comp_view"] = cv
-        
-            # ✅ AQUI: se voltou pro HOME, reseta o radio do rodapé
+    
+            # se voltou pro HOME, reseta o radio do rodapé
             if cv == "home":
                 st.session_state["ds_home_tabs"] = "__home__"
                 st.session_state["ds_home_tabs_prev"] = "__home__"
-        
+    
             if cv != "npcs":
                 st.session_state["comp_selected_npc"] = None
-        
+    
         _clear_qp()
         st.rerun()
+    
+    _consume_comp_qp()
+    
+    if st.session_state["comp_view"] != "home":
+        render_ds_tools_nav(st.session_state["comp_view"])
+
+
             
     # ----------------------------
     # Navegação (sempre no topo)
@@ -6620,72 +6585,74 @@ div[data-testid="stRadio"] {{
             st.session_state["comp_selected_npc"] = None
         st.rerun()
     def render_ds_tools_nav(selected: str):
+        """Menu do Compendium (texto, estilo Dark Souls) — sem ícones."""
         try:
             from st_click_detector import click_detector
         except ImportError:
             st.error("Instale 'st-click-detector' no requirements.txt e reinicie o app.")
             return
     
-        st.markdown("""
-        <style>
-          .ds-toolsbar{
-            display:flex; align-items:center; gap:14px;
-            padding: 8px 0 10px 0;
-          }
-          .ds-tool{
-            width:66px; height:66px;
-            border-radius: 6px;
-            border: 1px solid rgba(160,140,80,0.35);
-            background: rgba(0,0,0,0.35);
-            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35);
-            display:flex; align-items:center; justify-content:center;
-            cursor:pointer;
-            transition: transform .08s ease, filter .12s ease, box-shadow .12s ease;
-            user-select:none;
-          }
-          .ds-tool img{ image-rendering:auto; opacity:.85; filter: grayscale(.35) contrast(1.05); }
-          .ds-tool:hover{
-            transform: translateY(-1px);
-            box-shadow: 0 0 14px rgba(255,215,0,0.12), inset 0 0 0 1px rgba(255,215,0,0.18);
-          }
-          .ds-tool.selected{
-            border: 1px solid rgba(255,215,0,0.55);
-            box-shadow: 0 0 18px rgba(255,215,0,0.22), inset 0 0 0 1px rgba(255,215,0,0.22);
-          }
-          .ds-tool.selected img{ opacity:1; filter: grayscale(0) contrast(1.1); }
-    
-          .ds-toollabel{
-            margin-top: 6px;
-            font-size: 12px;
-            letter-spacing: .08em;
-            opacity: .75;
-            text-align:center;
-          }
-          .ds-toolwrap{ display:flex; flex-direction:column; align-items:center; }
-        </style>
-        """, unsafe_allow_html=True)
-    
-        labels = {
-            "menu": "MENU",
-            "npcs": "NPCs",
-            "ginasios": "GINÁSIOS",
-            "locais": "LOCAIS",
-            "sair": "SAIR",
-        }
-    
-        # monta HTML (sem <a>, sem href)
-        html = "<div class='ds-toolsbar'>"
-        for key in ["menu","npcs","ginasios","locais","sair"]:
-            b64 = _icon_b64(SHEET_PATH, ICON_BOXES[key], size=48)
-            cls = "ds-tool selected" if selected == key else "ds-tool"
-            html += f"""
-              <div class='ds-toolwrap' id='wrap-{key}'>
-                <div class='{cls}' id='nav-{key}'>
-                  <img src="data:image/png;base64,{b64}" />
-                </div>
-                <div class='ds-toollabel'>{labels[key]}</div>
-              </div>
+        st.markdown(
             """
+            <style>
+              .ds-topnav{
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                gap: 26px;
+                padding: 10px 0 14px 0;
+                margin: 0 0 10px 0;
+                background: rgba(0,0,0,0.35);
+                border-bottom: 1px solid rgba(255,215,0,0.18);
+              }
+              .ds-topnav .ds-item{
+                cursor:pointer;
+                user-select:none;
+                font-size: 22px;
+                letter-spacing: .14em;
+                text-transform: uppercase;
+                color: rgba(235,235,235,0.55);
+                padding: 6px 10px;
+                position: relative;
+                transition: color .12s ease, text-shadow .12s ease, transform .08s ease;
+              }
+              .ds-topnav .ds-item:hover{
+                color: rgba(255,215,0,0.92);
+                text-shadow: 0 0 12px rgba(255,215,0,0.28);
+                transform: translateY(-1px);
+              }
+              .ds-topnav .ds-item.selected{
+                color: rgba(255,215,0,0.98);
+                text-shadow: 0 0 14px rgba(255,215,0,0.34);
+              }
+              .ds-topnav .ds-item::after{
+                content:"";
+                position:absolute;
+                left: 0;
+                right: 0;
+                bottom: -7px;
+                height: 1px;
+                background: rgba(255,215,0,0.28);
+                opacity: 0;
+              }
+              .ds-topnav .ds-item.selected::after{ opacity: 1; }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+    
+        labels = [
+            ("menu", "MENU"),
+            ("npcs", "NPCs"),
+            ("ginasios", "GINÁSIOS"),
+            ("locais", "LOCAIS"),
+            ("sair", "SAIR"),
+        ]
+    
+        html = "<div class='ds-topnav'>"
+        for key, lab in labels:
+            cls = "ds-item selected" if selected == key else "ds-item"
+            html += f"<div class='{cls}' id='nav-{key}'>{lab}</div>"
         html += "</div>"
     
         clicked = click_detector(html)
@@ -6699,10 +6666,6 @@ div[data-testid="stRadio"] {{
                 st.session_state["comp_view"] = key
             st.rerun()
 
-    if st.session_state["comp_view"] != "home":
-        # esconde qualquer radio residual
-        st.markdown("<style>div[data-testid='stRadio']{display:none !important;}</style>", unsafe_allow_html=True)
-        render_ds_tools_nav(st.session_state["comp_view"]) 
 
     # =====================================================================
 
