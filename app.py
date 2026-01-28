@@ -2727,7 +2727,8 @@ def save_data_cloud(trainer_name, data):
 
 # --- TELA DE LOGIN ---
 if 'trainer_name' not in st.session_state:
-    render_bgm("login", volume=0.25)
+    render_bgm("music/login.mp3", volume=0.25)
+
     st.title("Bem-vindo(a) ao Ga'Al")
     
     tab_login, tab_register = st.tabs(["🔑 Acessar", "📝 Cadastrar"])
@@ -4225,16 +4226,22 @@ page = st.sidebar.radio(
     key="page",
 )
 # 👇 COLE AQUI (uma linha abaixo do radio)
-track = "geral"
-if page == "Compendium de Ga'Al":
-    track = "compendium"
-elif page == "PvP – Arena Tática":
-    track = "pvp" if st.session_state.get("pvp_view", "lobby") == "battle" else "geral"
+track_path = "music/geral.mp3"
 
-render_bgm(track, volume=0.25)
+if page == "Compendium de Ga'Al":
+    track_path = "music/compendium.mp3"
+
+elif page == "PvP – Arena Tática":
+    if st.session_state.get("pvp_view", "lobby") == "battle":
+        track_path = "music/pvp.mp3"
+    else:
+        track_path = "music/geral.mp3"
+
+render_bgm(track_path, volume=0.25)
 
 if page != "PvP – Arena Tática":
     stop_pvp_sync_listener()
+
 
 
 # ==============================================================================
