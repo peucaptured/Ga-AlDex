@@ -7182,7 +7182,7 @@ div[data-testid="stRadio"] {{
      
         # =====================================================================
     if st.session_state["comp_view"] == "locais":
-        # (se o seu fluxo já desenha o topo antes, não tem problema manter)
+        render_ds_tools_nav(st.session_state["comp_view"])
 
         cities: dict = (comp_data.get("cities") or {})
         regions_meta: dict = (comp_data.get("regions") or {})
@@ -7280,6 +7280,8 @@ div[data-testid="stRadio"] {{
         st.session_state.setdefault("comp_loc_sublocal", "__visao__")  # "__visao__" = visão geral da cidade
         st.session_state.setdefault("comp_loc_search", "")
 
+        
+            
         # CSS (escopado) — menu DS para Locais
         st.markdown(
             """
@@ -7289,6 +7291,17 @@ div[data-testid="stRadio"] {{
                 background: rgba(0,0,0,0.35) !important;
                 border: 1px solid rgba(176,143,60,0.35) !important;
                 color: rgba(255,255,255,0.88) !important;
+              }
+              .ds-loc-left div[data-testid="stSelectbox"] > div{
+                background: rgba(0,0,0,0.25) !important;
+                border: 1px solid rgba(176,143,60,0.35) !important;
+                border-radius: 12px !important;
+              }
+              .ds-loc-left div[data-testid="stSelectbox"] *{
+                font-family: "DarkSouls", serif !important;
+                letter-spacing: 0.18em !important;
+                text-transform: uppercase !important;
+                color: rgba(255,255,255,0.82) !important;
               }
 
               /* Radio vertical DS */
@@ -7388,7 +7401,7 @@ div[data-testid="stRadio"] {{
                 cur_city = region_cities[0]
                 st.session_state["comp_loc_city"] = cur_city
 
-            city = st.radio(
+            city = st.selectbox(
                 "Cidades",
                 options=region_cities,
                 index=region_cities.index(cur_city),
@@ -7430,16 +7443,15 @@ div[data-testid="stRadio"] {{
                     cur_sl = "__visao__"
                     st.session_state["comp_loc_sublocal"] = "__visao__"
 
-                sl_choice = st.radio(
-                    "Sublocais",
+                sl_choice = st.selectbox(
+                    "Sublocal",
                     options=sub_names,
                     index=sub_names.index(cur_sl),
-                    key="comp_loc_sublocal_radio",
+                    key="comp_loc_sublocal_sel",
                     label_visibility="collapsed",
                     format_func=_fmt_sublocal,
                 )
-                st.markdown("<div class='ds-loc-menu'></div>", unsafe_allow_html=True)
-
+                
                 if sl_choice != st.session_state.get("comp_loc_sublocal"):
                     st.session_state["comp_loc_sublocal"] = sl_choice
                     st.rerun()
