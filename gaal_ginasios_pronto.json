@@ -1,0 +1,311 @@
+{
+  "npcs": {
+    "Eneias": {
+      "ocupacao": "Vice Líder do ginásio de Borgonha",
+      "idade": "36 anos",
+      "origem": "Kalos",
+      "pokemons": [
+        "Yamma",
+        "Beedrill",
+        "Scolipede"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "Pesquisa": "Insetos na Construção Civil",
+        "Ginásio": "Líder de ginásio em  Borgonha, durante sua adolescência sempre foi apaixonado por insetos, e tinha o costume de colecionar Exoesqueletos, por vezes postava vídeos sobre sua coleção, bem como falando curiosidades sobre o tipo. Foi justamente em um desses vídeos que chamou a atenção de Viola, ela o chamou para ser assistente em seu ginásio e pouco a pouco foi subindo de patente, chegando até o posto de Vice Líder.\n\nQuando os convites para vir a Ga'Al foram enviados, ele pediu autorização a Viola para realizar um intercâmbio no ginásio de Less, infelizmente, ele nunca chegou a conhecê-la, já que membros da team Keneze a assassinaram.\n\nEntretanto, com a vaga de líder vazia, começou a articular como poderia alcançar seu objetivo, graças a seu contato com Viola, conseguiu receber o posto de líder através de uma recomendação da própria Associação de Batalhas. Infelizmente não tem um Vice ainda."
+      }
+    },
+    "Alfonso": {
+      "ocupacao": "Líder de Ginásio de Turquesa",
+      "idade": "38 anos",
+      "origem": "Ga'Al",
+      "pokemons": [
+        "Vaporeon",
+        "Toxapex",
+        "Slowking",
+        "Gyarados"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "Pesquisa": "Reversão de polaridade e como se aproveitar da mesma",
+        "Ginásio": "Líder de ginásio em Turquesa, assumiu o posto ainda muito novo, foi treinado pelo Mike Aqua para atingir a especialidade no tipo água, entretanto não teve resultados tão bom quanto o Elite esperava, razão pela qual atualmente é \"apenas\" líder de ginásio, e nem é dos mais fortes. Foi durante muito tempo rival de Stenio, tanto na arqueologia, quanto em batalhas, tendo inclusive se dedicado ao tipo água para poder derrotá-lo, contudo isso nunca ocorreu. Chegou a ajudar o caçador a esconder alguns pokémon roubados. Durante a chuva ácida conseguiu salvar sua cidade graças a uma bolha que impedia a entrada do ácido."
+      }
+    },
+    "Larissa": {
+      "ocupacao": "Vice Líder no ginásio de Turquesa. Devido as altas ocupações de Alfonso na maior parte do tempo quem está recebendo os desafiantes é ela, por conta disso se auto intitula em algumas batalhas como Líder de Turquesa, o que gera intrigas com Alfonso. Existe um rumor que ela está pedindo para a associação de batalha para dá a ela o cargo de líder.",
+      "idade": "26 anos",
+      "origem": "Ga'Al",
+      "pokemons": [
+        "Milotic",
+        "Pelipper",
+        "Seismitoad",
+        "Corsola"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "Ginásio": "Vice Líder no ginásio de Turquesa. Devido as altas ocupações de Alfonso na maior parte do tempo quem está recebendo os desafiantes é ela, por conta disso se auto intitula em algumas batalhas como Líder de Turquesa, o que gera intrigas com Alfonso. Existe um rumor que ela está pedindo para a associação de batalha para dá a ela o cargo de líder.\nOrigem: Ga'Al"
+      }
+    },
+    "Salete": {
+      "ocupacao": "Vice Líder do ginásio de Mikado",
+      "idade": "41 anos",
+      "origem": "Ga'Al",
+      "pokemons": [
+        "Camerupt",
+        "Emboar",
+        "Talonflame"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Portanto os habitantes da vila de Mikado não a respeitavam, por mais que ela fizesse obras de bem feitorias na cidade, nunca era reconhecida, graças a ela os rios em volta de Mikado se tornaram permanentes, não precisando mais das chuvas, uma pequena faixa de terra na montanha foi transformada em campos agrícolas, e tudo que obteve foi desprezo.\n\nSua ultima tentativa foi apresentar uma defesa do porquê não se deveriam se chamar novos treinadores para a região, que foi veementemente negada.\n\nApós a Team Keneeze perder sua base de energia solar nas Terras Fluviais eles precisavam de uma nova fonte de energia, e foram em Mikado, surpreendentemente Salete estava disposta a oferecer seus geradores em troca de paz para ela e sua família.",
+        "Pesquisa": "Energia termonuclear",
+        "Ginásio": "Líder na vila de Mikado. Quando mais nova era considerada por muitos como a maior cientista da região de Hoenn, sua tese de doutorado que descreve sua invenção capaz de extrair energia através de pokémons de fogo é no mínimo revolucionária, já tendo sido citada enumeras vezes.\n\nQuando se fala sobre a Salete muitos se esquecem que é treinadora tão boa quanto acadêmica, apresentando uma enorme variedade de feitos notáveis em batalhas. Tudo isso cominou em receber o convite para se instaurar como líder na vila de Mikado.\n\nO ginásio de Mikado foi construído sobre medida levando em conta os cálculos que ela havia realizado no seu doutorado, o objetivo era constuir uma enorme usina termoelétrica.\n\nFoi somente quando o ginásio estava pronto e ela recebeu o cargo de líder que percebeu  um grande problema logístico que teria na região, ela não era nativa de Ga'Al.\n\nBem, ela nasceu em Ga'Al, mas seus pais eram turistas, vindos da região de Hoen, que estavam passando as ferias em Liberty, e casou dela nascer antes da hora. Só veio retornar a Ga'Al aos 30 anos para uma reunião com Isac Umbra, antigo campeão da região, para a instalação do ginásio em Mikado.\n\nCondição que foi aceita, durante a permanência da Team Keneze, ninguém de sua família foi ferido ou machucado, com tudo, quando a equipe foi expulsa de Ga'Al na batalha das Gemeas, seu Vice-Líder tomou o controle do ginásio e a baniu da vila.\n\nAtualmente está em Lilac, solicitou uma auditoria com a Felicia para saber os rumos do seu ginásio, nem sabe se ainda irá continuar como líder, ou só retornar a Hoen e seguir os seus estudos."
+      }
+    },
+    "Falco": {
+      "ocupacao": "Vice Líder do ginásio de Mikado",
+      "idade": "35 anos",
+      "origem": "Ga'Al",
+      "pokemons": [
+        "Flareon",
+        "Magmortar",
+        "Torkoal",
+        "Volcarona"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "História": "Quando a Team Keneze chegou foi a gota d'agua, Falco clamou para ela reagir a invasão, lutar, proteger o povo, contudo não obteve  resposta.\n\nFoi então que organizou o levante....",
+        "Ginásio": "Falco conseguiu uns papeis que provam que ela tentou por vezes trocar a cidadania Ga'Alense para tentar se candidatar a líder em Hoen. Isso o levou a acreditar que o único motivo de ter vindo a Ga'Al foi a oportunidade de construir seu maquinário.\n\nVíce-Líder na vila de Mikado. Falco é um morador nativo da vila de Mikado que se responsabilizou em apresentar a cultura de Mikado e Ga'Al para Salete contudo ela nunca se importou com isso. Estava mais preocupada em transforar Mikado em uma nova Lavaridge cidade de seu país de  origem ela realmente irrigou os desertos mas para recriar as piscinas termais de Lavaridge ela realmente transformou parte do terreno montanhoso em terra fértil para plantar as flores que nascem em Lavaridge ela até mesmo chamou um padeiro de Hoen só para recriar os Lava Cookies"
+      }
+    },
+    "Anastácia": {
+      "ocupacao": "Líder do ginásio de Grená",
+      "idade": "38 anos",
+      "origem": "Kalos",
+      "pokemons": [
+        "Pangoro",
+        "Mega Heracross",
+        "Machamp",
+        "Infernape",
+        "Medicham"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "Pesquisa": "realiza pesquisa em artes marciais e estilos de combate para humanos",
+        "Ginásio": "Gynn da cidade de Grena. Conhecida pela sua alta agressividade em lutas, não demonstrando nenhuma compaixão, é uma mulher muito racional, não costuma ser receptiva com treinadores novatos. Já se relacionou afetivamente com o Ash.\nOrigem: Kalos\nPesquisa/tema: realiza pesquisa em artes marciais e estilos de combate para humanos",
+        "Ocupação (original)": "Gynn da cidade de Grena. Conhecida pela sua alta agressividade em lutas, não demonstrando nenhuma compaixão, é uma mulher muito racional, não costuma ser receptiva com treinadores novatos. Já se relacionou afetivamente com o Ash."
+      }
+    },
+    "Soko": {
+      "ocupacao": "Vice Líder do ginásio de Grena",
+      "idade": "44 anos",
+      "origem": "",
+      "pokemons": [
+        "Hitmonchan",
+        "Hariyama",
+        "Fearow Shiny"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "Ginásio": "Vice Líder na cidade de Grena por conta da Anastácia ser aficionada em batalhas ele não precisa realizar sua função de vice ficando bem livre para viajar. Treinadora muito agressiva ela foca áreas frágeis nos pokémons para que possa torná-los incapazes de prosseguir a luta costuma ariscar bastante tentando sempre antecipar movimentos dos seus oponentes"
+      }
+    },
+    "Roxie": {
+      "ocupacao": "Líder de Ginásio de Kobicha",
+      "idade": "",
+      "origem": "",
+      "pokemons": [
+        "Toxicroak",
+        "Garbodor",
+        "Gastly",
+        "Whirlipede",
+        "Dustox"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "Ginásio": "Roxie sempre teve duas paixões: a música e as batalhas Pokémon. Aos 21 anos, ela se tornou Líder de Ginásio em Unova, mas também continuou sua carreira de Pop-Star. Ela nunca soube equilibrar bem as duas atividades, e acabou se dedicando mais à música do que às batalhas. Por isso, aos 30 anos, ela perdeu seu cargo de Líder de Ginásio. Esse foi um golpe duro para Roxie, que se afundou em vícios e depressão. Ela passou por um longo processo de recuperação, e conseguiu se livrar das drogas. Agora, aos 51 anos, ela decidiu recomeçar sua vida em Ga’Al, uma região onde há uma vila parecida com sua terra natal."
+      }
+    },
+    "Condessa Pixie de Laverre": {
+      "ocupacao": "Líder de Ginásio de Gamborre",
+      "idade": "38 anos",
+      "origem": "Kalos",
+      "pokemons": [
+        "Sylveon",
+        "Meganium",
+        "Comfey"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "Pesquisa": "Focada em paisagismo e urbanismo, busca mesclar estilo medievo com o contemporâneo",
+        "História": "Tal qual Ga'Al títulos de nobreza em Kalos são disputados pelas famílias através da força de seus treinadores Pixie filha da ex- condessa Valerie dedicou sua vida a subir a hierarquia da sua família. Seus esforços foram recompensados a dois anos quando conseguiu o título de Duquesa infelizmente sua mãe morreu três meses antes vítima do câncer. Pixie veio para Ga'Al com o objetivo de fortalecer ela e seus pokémons para que possa continuar seu objetivo pessoal e alcançar o título de Grande Duquesa. Chegou em Ga'Al a pouco tempo tendo se estabelecido na região de Gamborre antiga cidade dominada pela Team Keneze a maior parte da população da cidade tinha envolvimento com terrorismo então atualmente ela se encontra bem deserta. Perdeu o título de Duquesa para Carlos Magnus"
+      }
+    },
+    "Lancelot": {
+      "ocupacao": "Vice Líder do ginásio de Gamborre",
+      "idade": "65 anos",
+      "origem": "",
+      "pokemons": [
+        "Sirfetch'd",
+        "Escavalier",
+        "Pyroar",
+        "Noivern",
+        "Decidueye",
+        "Grimmsnarl"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "Ginásio": "Na sua juventude participou da liga de Galar tendo obtido um resultado sem precedentes para um novato chegando nas finais foi tão brilhante que  a Marquesa Valerie o convidou para trabalhar como seu cavaleiro pessoal Lancelot rejeitou o pedido pois tinha certeza que poderia ser o campeão da região. Contudo na véspera da última rodada a polícia de Galar teve uma série de documentos particulares levados até a mídia entre eles estava uma condenação que Lancet havia tido por tráfico de pokémons foi levantada e do dia para a noite o treinador promissor teve sua licença de treinador suspensa por tempo indeterminada não podendo participar de nenhum outro evento oficial. Desesperado Lancelot procurou a Marquesa que reiterou sua proposta o treinador serviu Valerie até a sua morte e se comprometeu a proteger a sua filha a onde quer que ela fosse",
+        "Ocupação (original)": "Více Líder de Ginásio em Gamborre"
+      }
+    },
+    "Victória": {
+      "ocupacao": "Líder de Ginásio de Malva",
+      "idade": "41 anos",
+      "origem": "Ga'Al",
+      "pokemons": [
+        "Drampa",
+        "Hydreigon",
+        "Dragonite"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "Pesquisa": "Nichos ecológicos e sobre como eles se desenvolvem",
+        "Ginásio": "Seu ginásio é focado no ensinamento isso que ela repete em cada batalha todo treinador que chega no seu ginásio ela faz questão de gerar um relatorio pessoal sobre  os erros estratégicos do seu oponente. Durante a luta muitas vezes anuncia sem medo o seu próximo movimento para entender como seu oponente pode reagir a isso. E justamente por isso não usa todo seu potencial nas lutas. Victória tem o desejo de ser um referêncial para a região Ga'Al com esperança entusiasmo tais quais Cinthia sempre ofereceu a região de Sinnoh e a própria Victória Durante a ocupação da Team Keneze na região do Baixo Deserto junto com Janes locais para localizar possíveis membros da team Keneze foi a responsável de criar o ultimo método em localização e identificação da equipe. Ao encontrar pessoas marcadas ela os levava para uma zona isolada da cidade e lá oferecia a eles água, comida, tratamento médico, água comida tratamento médico escola e acompanhamento psicológico e psiquiátrico de maneira gratuita foi obrigada a pegar vários empréstimos com a Associação de Batalha. Para manteresse padrão de vida elevado em uma cidade que gerava pouca receita foi obrigada a pegar vários empréstimos com a Associação de Batalha atualmente vê seu cargo de Líder ameaçado por conta do endividamento da sua cidade foi treinada por Isac Umbra tendo sido uma proeminente pupila dele contudo durante a liga enfrentou a Felícia nas primeiras rodadas o que acarretou na sua eliminação contudo por ser endossada pelo campeão conseguiu facilmente um posto como líder de ginásio e abandonou os torneios. Durante os ataques da team Keneze a sua cidade seu Hdreigon dado a ela pelo seu antigo mentor foi assassinado e ironicamente uma marca surgiu nela com o fim da Team Keneze é provável que isso não signifique grande ameaça"
+      }
+    },
+    "Draco": {
+      "ocupacao": "Líder de Ginásio de Malva",
+      "idade": "21 anos",
+      "origem": "",
+      "pokemons": [
+        "Noivern",
+        "Drampa",
+        "Zweilous"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "Ginásio": "Não deixe sua idade lhe enganar Draco deu seu melhor para chegar a onde está agora foi um dos que foram salvos por Victória desde então ela se tornou seu ídolo uma imagem de salvadora. Desde que se entende por gente coleciona matérias de jornais com o rosto ou nome da Victória sempre se inspirou nela para moldar seu caráter e trajetória como treinador. Logo que a Victória assumiu ele pediu para ser seu Vice a treinadora concordou que somente quando o mais novo conseguisse derrotá-la em uma batalha oficial poderia  ter o título de Vice"
+      }
+    },
+    "Clementina \"Vovó\" Joy": {
+      "ocupacao": "Líder de Ginásio de Sinoper",
+      "idade": "68 anos",
+      "origem": "",
+      "pokemons": [
+        "Wigglytuff",
+        "Bibarel",
+        "Miltank",
+        "Kangaskhan"
+      ],
+      "status": "Ativo",
+      "sections": {
+        "Ginásio": "O ginásio dela não é um estádio tecnológico; é um Celeiro Reformado no centro da vila. Ela aceitou a posição de Líder não para acumular poder mas para educar os novos treinadores (\"novatos\") que passam por ali a caminho de desafios maiores. Dizem que ela financiou a construção do Ginásio de Nova Jade com o dinheiro da venda de leite Moomoo e lã apenas para tentar ajudar a vizinhança pobre. Durante a batalha ela oferece biscoitos e chá aos desafiantes (e aos Pokémons deles). Não se engane: a gentileza dela esconde uma estratégia irritante de cura constante em batalha Em vez de continuar na linha de frente médica era garantindo que as pessoas tivessem o que comer e onde dormir. Ela foi uma das fundadoras da Fazenda Comum de Sinoper. Diferente de Salete (em Mikado) ou dos magnatas de Liberty O ginásio dela não é um estádio tecnológico; é um Celeiro Reformado no centro da vila. Ela aceitou a posição de Líder não para acumular poder mas para educar os novos treinadores (\"novatos\") que passam por ali a caminho de desafios maiores. Ela ensina o básico: como cuidar do seu Pokémon como usar itens e a importância de não desistir. Dizem que ela financiou a construção do Ginásio de Nova Jade com o dinheiro da venda de leite Moomoo e lã é encontrada cuidando da horta comunitária ou ensinando jovens aspirantes a Joy na universidade local. Durante a batalha ela oferece biscoitos e chá aos desafiantes (e aos Pokémons deles). Não se engane: a gentileza dela esconde uma estratégia irritante de cura constante em batalha",
+        "História": "Clementina é uma antiga Enfermeira Joy (ex-oficial) que se aposentou do serviço ativo há décadas. Em vez de continuar na linha de frente médica ela percebeu que a melhor forma de curar o mundo pós-apocalíptico de Ga'Al era garantindo que as pessoas tivessem o que comer e onde dormir. Ela foi uma das fundadoras da Fazenda Comum de Sinoper. Diferente de Salete (em Mikado) ou dos magnatas de Liberty Clementina acredita na partilha. Ela ensina o básico: como cuidar do seu Pokémon como usar itens e a importância de não desistir. Geralmente é encontrada cuidando da horta comunitária ou ensinando jovens aspirantes a Joy na universidade local."
+      }
+    },
+    "Vittorio \"Ace\" Moretti": {
+      "ocupacao": "Líder de Ginásio de Liberty",
+      "idade": "",
+      "origem": "",
+      "pokemons": [],
+      "status": "Ativo",
+      "sections": {
+        "História": "45 anos\n\nGholdengo\n\nHonchkrow\n\nMachoke\n\nZoroark\n\nDrapion\n\nNascido não nas coberturas brilhantes, mas nas lonas sujas do \"Fumacê\" (a base da cidade), Vittorio aprendeu cedo que em Liberty, a vida não vale nada se você não tiver fichas na mesa. Quando jovem, era um mero \"olheiro\" para a gangue Ñóm, mas sua habilidade natural de ler pessoas e manipular probabilidades o fez subir rápido.",
+        "Ginásio": "Ele não ganhou sua fortuna batalhando honestamente; ele a ganhou apostando contra si mesmo em lutas arranjadas nos subterrâneos da Última Ladeira. Com o dinheiro sujo, comprou sua entrada no Gran Catino e, numa noite lendária de pôquer contra um antigo chefe do Sindicato, ganhou a escritura do Ginásio local (que estava abandonado e ocupado por sem-tetos, como consta nos arquivos amarelados do ginásio).\n\nVittorio reformou o Ginásio transformando-o em um espetáculo televisionado. Ele vende a narrativa do \"Self-Made Man\", o garoto da favela que virou rei, para manter a população pobre iludida com a esperança de ascensão. No entanto, é um segredo aberto que ele serve como o \"Banqueiro\" do Sindicato Paramilitar, lavando o dinheiro das operações ilegais através das apostas do Ginásio.\n\nReside na cobertura do Gran Catino. Diferente de outros líderes que buscam o crescimento do desafiante, Vittorio luta para humilhar. Ele transformou a batalha de ginásio em um Reality Show. Antes da luta, ele força o desafiante a fazer uma \"aposta\" (pode ser dinheiro, um Pokémon ou um favor futuro). Dizem que ele está cansado da coleira do Sindicato e procura secretamente um treinador forte o suficiente para quebrar a banca e causar um caos que o permita fugir com sua fortuna acumulada."
+      }
+    },
+    "Kevin": {
+      "ocupacao": "Ex-Líder de Ginásio de Nova Jade",
+      "idade": "",
+      "origem": "",
+      "pokemons": [
+        "Froslass",
+        "Abomasnow",
+        "Cloyster"
+      ],
+      "status": "Inativo",
+      "sections": {
+        "Histórico": "Filho da Elite 4 Lorelei, Kevin veio a Ga'Al tentando superar o legado da mãe. Durante a tragédia da Avalanche Vermelha, não lutou para salvar os habitantes; usou seu conhecimento em criogenia para se refugiar. O ginásio, mantido a -50ºC, tornou-se um mausoléu frio. Kevin desapareceu após a queda da Team Keneze e o local virou um tabu na região .",
+        "Ginásio": "Ex-Líder de Ginásio de Nova Jade"
+      }
+    },
+    "Andy e Dany": {
+      "ocupacao": "Ex-Líder de Ginásio de Torres Gêmeas",
+      "idade": "",
+      "origem": "",
+      "pokemons": [],
+      "status": "Inativo",
+      "sections": {
+        "Histórico": "O ginásio operava no topo da megalópole vertical. Durante a \"Queda das Gêmeas\", a Team Keneze tentou transformar o obelisco em um portal, resultando na implosão de uma das torres. Dany é lembrada como uma figura lendária que atuou durante a queda. Atualmente, a área é zona de guerra e reconstrução liderada por Daniela (ex-vice), e o ginásio está inoperante .",
+        "Ginásio": "Ex-Líder de Ginásio de Torres Gêmeas"
+      }
+    },
+    "Arthur": {
+      "ocupacao": "Ex-Líder de Ginásio de Desconhecida",
+      "idade": "",
+      "origem": "",
+      "pokemons": [
+        "Bisharp",
+        "Honchkrow",
+        "Pangoro"
+      ],
+      "status": "Inativo",
+      "sections": {
+        "Histórico": "Arthur tentou salvar Gamborre através de um pacto com Rockfeller, criando a \"Cidade Colmeia\" industrial que eventualmente colapsou. Após o êxodo da população, trancou-se no ginásio. Investigações revelaram uma câmara de tortura subterrânea conectada ao prédio. Desapareceu deixando seu Pangoro para trás em condições deploráveis .",
+        "Ginásio": "Ex-Líder de Ginásio de Desconhecida"
+      }
+    },
+    "Erick": {
+      "ocupacao": "Ex-Líder de Ginásio de Desconhecida",
+      "idade": "",
+      "origem": "",
+      "pokemons": [
+        "Kangaskhan",
+        "Sawsbuck"
+      ],
+      "status": "Inativo",
+      "sections": {
+        "Histórico": "Após a morte de sua neta, Erick tornou-se xenofóbico e isolacionista, culpando treinadores estrangeiros pelo declínio de Ga'Al. Tentou realizar um \"expurgo\" violento em Sinoper, expulsando forasteiros. Foi deposto e substituído por Clementina (Vovó Joy), que tenta restaurar a hospitalidade da vila .",
+        "Ginásio": "Ex-Líder de Ginásio de Desconhecida"
+      }
+    },
+    "Hoops": {
+      "ocupacao": "Ex-Líder de Ginásio de Desconhecida",
+      "idade": "",
+      "origem": "",
+      "pokemons": [
+        "Poliwhirl",
+        "Sawk",
+        "Quilladin"
+      ],
+      "status": "Inativo",
+      "sections": {
+        "Histórico": "Um atleta profissional de Touchdown que nunca teve vocação para a burocracia ou proteção civil. Abandonou o cargo para focar na carreira esportiva. Sua negligência permitiu que o Sindicato Paramilitar tomasse conta da segurança da cidade, abrindo caminho para a gestão corrupta de Vittorio \"Ace\" Moretti .",
+        "Ginásio": "Ex-Líder de Ginásio de Desconhecida"
+      }
+    },
+    "Less": {
+      "ocupacao": "Ex-Líder de Ginásio de Desconhecida",
+      "idade": "",
+      "origem": "",
+      "pokemons": [],
+      "status": "Falecido",
+      "sections": {
+        "Histórico": "Less foi assassinada por membros da Team Keneze. Seu ginásio, construído nas costas de um enorme escaravelho mecânico, permanece imobilizado em Borgonha como ponto turístico e memorial, enquanto o atual líder Eneias opera em um campo tradicional .",
+        "Ginásio": "Ex-Líder de Ginásio de Desconhecida"
+      }
+    },
+    "Stênio": {
+      "ocupacao": "Ex-Líder de Ginásio de Desconhecida",
+      "idade": "",
+      "origem": "",
+      "pokemons": [],
+      "status": "Inativo",
+      "sections": {
+        "Histórico": "Antes de se tornar membro da Elite dos 4, Stênio era o temido líder de Obsidian. Conhecido por restringir o acesso ao Monte Pedra para proteger suas descobertas arqueológicas (e segredos sobre criaturas antigas). Sua saída abriu vaga para a liderança atual (Marlon), mas sua sombra ainda paira sobre a cidade .",
+        "Ginásio": "Ex-Líder de Ginásio de Desconhecida"
+      }
+    }
+  }
+}
