@@ -6711,6 +6711,22 @@ div[data-testid="stRadio"] {{
             border: none !important;
             box-shadow: none !important;
           }
+          /* remove a “caixa” do componente HTML/iframe (click_detector) */
+        .ds-npc-panel.left div[data-testid="stIFrame"],
+        .ds-npc-panel.left div[data-testid="stHtml"]{
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+          padding: 0 !important;
+        }
+        
+        .ds-npc-panel.left div[data-testid="stIFrame"] iframe,
+        .ds-npc-panel.left div[data-testid="stHtml"] iframe{
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+        }
+
           .ds-npc-panel .stTextInput,
           .ds-npc-panel .stTextInput > div,
           .ds-npc-panel .stTextInput > div > div,
@@ -6831,29 +6847,54 @@ div[data-testid="stRadio"] {{
                     margin: 0 !important;
                     padding: 0 !important;
                   }
-                  /* (opcional) garante que nada crie “caixa” */
-                  .ds-grid { background: transparent !important; }
+                                
+                  .ds-npc-grid{
+                    display:grid;
+                    grid-template-columns:repeat(4, 1fr);
+                    gap: 10px;
+                    width:100%;
+                    background: transparent !important;
+                  }
+                                
+                  .ds-card {
+                    position: relative;
+                    aspect-ratio: 3/4;
+                    border: 2px solid #554422;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    cursor: pointer;
+                    transition: transform 0.1s;
+                  }
+                
+                  .ds-card:hover { border-color: #FFD700; transform: scale(1.02); }
+                
+                  .ds-card img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    filter: brightness(0.8);
+                    display: block;
+                  }
+                
+                  .ds-name-tag {
+                    position: absolute;
+                    bottom: 0; left: 0; right: 0;
+                    background: rgba(0,0,0,0.85);
+                    color: #ddd;
+                    font-size: 10px;
+                    text-align: center;
+                    padding: 4px;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                  }
+                
+                  a { text-decoration: none; display: block; }
                 </style>
-                <div class='ds-grid'>
-                    .ds-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
-                    .ds-card {
-                        position: relative; aspect-ratio: 3/4;
-                        border: 2px solid #554422; border-radius: 8px;
-                        overflow: hidden; cursor: pointer; transition: transform 0.1s;
-                    }
-                    .ds-card:hover { border-color: #FFD700; transform: scale(1.02); }
-                    .ds-card img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.8); }
-                    .ds-name-tag {
-                        position: absolute; bottom: 0; left: 0; right: 0;
-                        background: rgba(0,0,0,0.85); color: #ddd;
-                        font-size: 10px; text-align: center; padding: 4px;
-                        font-weight: bold; text-transform: uppercase;
-                    }
-                    a { text-decoration: none; display: block; }
-                </style>
-                <div class='ds-grid'>
+                
+                <div class="ds-npc-grid">
+
                 """
-    
+   
                 id_map = {}
     
                 for idx, (nome, obj) in enumerate(items):
