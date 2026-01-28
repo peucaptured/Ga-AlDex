@@ -6521,6 +6521,7 @@ div[data-testid="stRadio"] {{
         unsafe_allow_html=True,
     )
         
+    components.html("<div class='ds-gold-top'></div>", height=10)
 
     # 4️⃣ Menu
    
@@ -6625,6 +6626,45 @@ div[data-testid="stRadio"] {{
             st.error("Instale 'st-click-detector' no requirements.txt e reinicie o app.")
             return
     
+        st.markdown("""
+        <style>
+          .ds-toolsbar{
+            display:flex; align-items:center; gap:14px;
+            padding: 8px 0 10px 0;
+          }
+          .ds-tool{
+            width:66px; height:66px;
+            border-radius: 6px;
+            border: 1px solid rgba(160,140,80,0.35);
+            background: rgba(0,0,0,0.35);
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35);
+            display:flex; align-items:center; justify-content:center;
+            cursor:pointer;
+            transition: transform .08s ease, filter .12s ease, box-shadow .12s ease;
+            user-select:none;
+          }
+          .ds-tool img{ image-rendering:auto; opacity:.85; filter: grayscale(.35) contrast(1.05); }
+          .ds-tool:hover{
+            transform: translateY(-1px);
+            box-shadow: 0 0 14px rgba(255,215,0,0.12), inset 0 0 0 1px rgba(255,215,0,0.18);
+          }
+          .ds-tool.selected{
+            border: 1px solid rgba(255,215,0,0.55);
+            box-shadow: 0 0 18px rgba(255,215,0,0.22), inset 0 0 0 1px rgba(255,215,0,0.22);
+          }
+          .ds-tool.selected img{ opacity:1; filter: grayscale(0) contrast(1.1); }
+    
+          .ds-toollabel{
+            margin-top: 6px;
+            font-size: 12px;
+            letter-spacing: .08em;
+            opacity: .75;
+            text-align:center;
+          }
+          .ds-toolwrap{ display:flex; flex-direction:column; align-items:center; }
+        </style>
+        """, unsafe_allow_html=True)
+    
         labels = {
             "menu": "MENU",
             "npcs": "NPCs",
@@ -6633,88 +6673,36 @@ div[data-testid="stRadio"] {{
             "sair": "SAIR",
         }
     
-        # CSS DENTRO do HTML do click_detector (fica no mesmo iframe)
-        css_in = """
-        <style>
-          .ds-toolsbar{
-            position: sticky;
-            top: 0;
-            z-index: 9999;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            gap: 18px;
-            padding: 10px 0 14px 0;
-            background: rgba(0,0,0,0.55);
-            backdrop-filter: blur(3px);
-            border-bottom: 1px solid rgba(255,215,0,0.14);
-          }
-          .ds-toolwrap{
-            display:flex;
-            flex-direction:column;
-            align-items:center;
-            cursor:pointer;
-            user-select:none;
-          }
-    
-          /* CRÍTICO: só o wrapper (que tem id) recebe clique */
-          .ds-toolwrap *{ pointer-events:none; }
-    
-          .ds-tool{
-            width:58px; height:58px;
-            border-radius: 6px;
-            border: 1px solid rgba(160,140,80,0.35);
-            background: rgba(0,0,0,0.35);
-            display:flex; align-items:center; justify-content:center;
-          }
-          .ds-tool img{
-            width:50px; height:50px;
-            opacity:.9;
-            filter: grayscale(.35) contrast(1.05);
-          }
-          .ds-toolwrap.selected .ds-tool{
-            border: 1px solid rgba(255,215,0,0.55);
-            box-shadow: 0 0 18px rgba(255,215,0,0.22);
-          }
-          .ds-toollabel{
-            margin-top: 6px;
-            font-size: 12px;
-            letter-spacing: .10em;
-            opacity: .85;
-            text-align:center;
-            text-transform: uppercase;
-            color: rgba(255,255,255,0.85);
-          }
-        </style>
-        """
-    
-        html = css_in + "<div class='ds-toolsbar'>"
-        for k in ["menu", "npcs", "ginasios", "locais", "sair"]:
-            b64 = _icon_b64(SHEET_PATH, ICON_BOXES[k], size=52)
-            wrap_cls = "ds-toolwrap selected" if selected == k else "ds-toolwrap"
+        # monta HTML (sem <a>, sem href)
+        html = "<div class='ds-toolsbar'>"
+        for key in ["menu","npcs","ginasios","locais","sair"]:
+            b64 = _icon_b64(SHEET_PATH, ICON_BOXES[key], size=48)
+            cls = "ds-tool selected" if selected == key else "ds-tool"
             html += f"""
-              <div class='{wrap_cls}' id='nav-{k}'>
-                <div class='ds-tool'>
+              <div class='ds-toolwrap' id='wrap-{key}'>
+                <div class='{cls}' id='nav-{key}'>
                   <img src="data:image/png;base64,{b64}" />
                 </div>
-                <div class='ds-toollabel'>{labels[k]}</div>
+                <div class='ds-toollabel'>{labels[key]}</div>
               </div>
             """
         html += "</div>"
     
-        clicked = click_detector(html, key="ds_tools_nav")  # KEY FIXO
-        st.write("clicked:", clicked)
-    
+        clicked = click_detector(html)
         if clicked and clicked.startswith("nav-"):
-            k = clicked.replace("nav-", "")
-            if k == "menu":
+            key = clicked.replace("nav-", "")
+            if key == "menu":
                 st.session_state["comp_view"] = "home"
-            elif k == "sair":
+            elif key == "sair":
                 st.session_state["nav_to"] = "Pokédex (Busca)"
             else:
-                st.session_state["comp_view"] = k
+                st.session_state["comp_view"] = key
             st.rerun()
-     
+
+    if st.session_state["comp_view"] != "home":
+        # esconde qualquer radio residual
+        st.markdown("<style>div[data-testid='stRadio']{display:none !important;}</style>", unsafe_allow_html=True)
+        render_ds_tools_nav(st.session_state["comp_view"]) 
 
     # =====================================================================
 
@@ -6765,19 +6753,29 @@ div[data-testid="stRadio"] {{
           .ds-npc-panel{
             background-repeat:no-repeat;
             background-position:center;
-            background-size:100% 100%;   /* <- NÃO distorce */
-            padding: 34px 34px 28px 34px;
-            min-height: clamp(780px, 75vh, 1100px);         /* <- segura o aspect */
+            background-size:100% 100%;
+            padding: 28px 28px 26px 28px;
+            min-height: 0px;     /* deixa crescer pelo conteúdo */
           }
-          .ds-npc-panel.left  { background-image: url("LEFT_BG"); }
-          .ds-npc-panel.right { background-image: url("RIGHT_BG"); padding: 38px 44px 32px 44px; }
+          .ds-npc-panel.left{
+            background-image:url("LEFT_BG");
+            padding: 26px 26px 26px 26px;
+          }
+          .ds-npc-panel.right{
+            background-image:url("RIGHT_BG");
+            padding: 30px 34px 30px 34px;
+          }
         
+          /* grid automático */
           .ds-grid{
             display:grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
             gap: 10px;
-            width: 100%;
+            width:100%;
           }
+        
+          /* evita qualquer camada bloquear cliques */
+          .ds-npc-panel, .ds-npc-panel * { pointer-events:auto; }
         </style>
         """
 
@@ -6846,8 +6844,6 @@ div[data-testid="stRadio"] {{
                 content_html = """
                 <style>
                     .ds-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
-                    .ds-cardwrap{ display:block; cursor:pointer; } /* NOVO */
-                    .ds-cardwrap *{ pointer-events:none; }
                     .ds-card {
                         position: relative; aspect-ratio: 3/4;
                         border: 2px solid #554422; border-radius: 8px;
@@ -6861,7 +6857,7 @@ div[data-testid="stRadio"] {{
                         font-size: 10px; text-align: center; padding: 4px;
                         font-weight: bold; text-transform: uppercase;
                     }
-
+                    a { text-decoration: none; display: block; }
                 </style>
                 <div class='ds-grid'>
                 """
@@ -6882,24 +6878,24 @@ div[data-testid="stRadio"] {{
                     img_html = f"<img src='{src}' />" if src else "<div style='width:100%;height:100%;background:#222;'></div>"
     
                     content_html += f"""
-                    <div class="ds-cardwrap" id="{safe_id}">
+                    <a href='#' id='{safe_id}'>
                         <div class="ds-card">
                             {img_html}
                             <div class="ds-name-tag">{nome}</div>
                         </div>
-                    </div>
+                    </a>
                     """
     
                 content_html += "</div>"
     
-                clicked_safe_id = click_detector(content_html, key="ds_npc_grid")
+                clicked_safe_id = click_detector(content_html)
     
                 if clicked_safe_id is not None:
                     nome_selecionado = id_map.get(str(clicked_safe_id))
                     if nome_selecionado and nome_selecionado != st.session_state.get("comp_selected_npc"):
                         st.session_state["comp_selected_npc"] = nome_selecionado
                         st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
+                        st.markdown("</div>", unsafe_allow_html=True)
     
         # --- COLUNA DIREITA ---
         # --- COLUNA DIREITA ---
