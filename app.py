@@ -6583,35 +6583,54 @@ div[data-testid="stRadio"] {{
             """
             <style>
               .ds-topnav{
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                gap: 26px;
+                display:flex !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                align-items:center !important;
+                justify-content:center !important;
+                gap: 26px !important;
+        
                 padding: 10px 0 14px 0;
                 margin: 0 0 10px 0;
                 background: rgba(0,0,0,0.35);
                 border-bottom: 1px solid rgba(255,215,0,0.18);
+        
+                position: sticky !important;
+                top: 0 !important;
+                z-index: 999999 !important;
               }
+        
               .ds-topnav .ds-item{
-                cursor:pointer;
-                user-select:none;
+                display:inline-flex !important;
+                align-items:center !important;
+                justify-content:center !important;
+                white-space: nowrap !important;
+        
+                cursor:pointer !important;
+                user-select:none !important;
+                pointer-events: auto !important;
+        
                 font-size: 22px;
                 letter-spacing: .14em;
                 text-transform: uppercase;
                 color: rgba(235,235,235,0.55);
                 padding: 6px 10px;
                 position: relative;
+        
                 transition: color .12s ease, text-shadow .12s ease, transform .08s ease;
               }
+        
               .ds-topnav .ds-item:hover{
                 color: rgba(255,215,0,0.92);
                 text-shadow: 0 0 12px rgba(255,215,0,0.28);
                 transform: translateY(-1px);
               }
+        
               .ds-topnav .ds-item.selected{
                 color: rgba(255,215,0,0.98);
                 text-shadow: 0 0 14px rgba(255,215,0,0.34);
               }
+        
               .ds-topnav .ds-item::after{
                 content:"";
                 position:absolute;
@@ -6740,6 +6759,17 @@ div[data-testid="stRadio"] {{
         css = css.replace("LEFT_BG", left_bg or "")
         css = css.replace("RIGHT_BG", right_bg or "")
         st.markdown(css, unsafe_allow_html=True)
+        st.markdown("""
+        <style>
+          .ds-npc-panel{ background: transparent !important; }
+          .ds-npc-panel.left{
+            background: transparent !important;
+            background-image: none !important;
+            box-shadow: none !important;
+          }
+        </style>
+        """, unsafe_allow_html=True)
+
 
         # --- LAYOUT PRINCIPAL (SEM INDENTAÇÃO ERRADA) ---
         left, right = st.columns([1.25, 2.15], gap="large")
