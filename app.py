@@ -6861,17 +6861,29 @@ div[role="radiogroup"] input {{ display: none !important; }}
 
         tab_key = st.radio(
             "Compendium Tabs",
-            ["npcs", "ginasios", "locais", "sair"],
+            ["__home__", "npcs", "ginasios", "locais", "sair"],  # <-- placeholder
             index=0,
             horizontal=True,
             label_visibility="collapsed",
             key="ds_home_tabs",
             format_func=lambda v: {
+                "__home__": "",      # não mostra texto
                 "npcs": "NPCs",
                 "ginasios": "Ginásios",
                 "locais": "Locais",
                 "sair": "Sair",
             }[v],
+        )
+        
+        # esconde visualmente o primeiro item (placeholder)
+        st.markdown(
+            """
+            <style>
+              /* some o 1º item do radio (placeholder) */
+              div[data-testid="stRadio"] label:first-child { display:none !important; }
+            </style>
+            """,
+            unsafe_allow_html=True,
         )
         
         # Evita rerun em loop na primeira renderização
@@ -6881,10 +6893,15 @@ div[role="radiogroup"] input {{ display: none !important; }}
         
         if st.session_state["ds_home_tabs_prev"] != tab_key:
             st.session_state["ds_home_tabs_prev"] = tab_key
+        
+            if tab_key == "__home__":
+                return
+        
             if tab_key == "sair":
                 st.session_state["nav_to"] = "Pokédex (Busca)"
             else:
-                st.session_state["comp_view"] = tab_key
+                st.session_state["comp_view"] = tab_key  # <-- já vem sem acento
+        
             st.rerun()
         
         return
