@@ -6315,9 +6315,20 @@ div[data-testid="stRadio"] {{
     padding: 10px 18px !important;
     background: rgba(0,0,0,0.0) !important;
 }}
-div[data-testid="stRadio"] > label {{ display: none !important; }}
+/* Tabs (radio horizontal) no rodapé — SOMENTE NA HOME */
+.ds-home div[data-testid="stRadio"] {{
+    position: fixed !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    bottom: 48px !important;
+    z-index: 10000 !important;
+    padding: 10px 18px !important;
+    background: rgba(0,0,0,0.0) !important;
+}}
+.ds-home div[data-testid="stRadio"] > label {{ display: none !important; }}
+
 /* Linha dourada fina acima dos tabs */
-div[data-testid="stRadio"]::before {{
+.ds-home div[data-testid="stRadio"]::before {{
     content: "";
     display: block;
     height: 1px;
@@ -6326,13 +6337,13 @@ div[data-testid="stRadio"]::before {{
 }}
 
 /* Estilo das opções */
-div[role="radiogroup"] {{
+.ds-home div[role="radiogroup"] {{
     display: flex !important;
     gap: 58px !important;
     justify-content: center !important;
     align-items: center !important;
 }}
-div[role="radiogroup"] > label {{
+.ds-home div[role="radiogroup"] > label {{
     position: relative !important;
     padding: 6px 10px !important;
     cursor: pointer !important;
@@ -6343,16 +6354,17 @@ div[role="radiogroup"] > label {{
     user-select: none !important;
     transition: all 120ms ease !important;
 }}
-div[role="radiogroup"] > label:hover {{
+.ds-home div[role="radiogroup"] > label:hover {{
     color: #FFD700 !important;
     text-shadow: 0 0 10px rgba(255,215,0,0.65) !important;
 }}
-div[role="radiogroup"] > label[data-checked="true"] {{
+.ds-home div[role="radiogroup"] > label[data-checked="true"] {{
     color: #FFD700 !important;
     text-shadow: 0 0 10px rgba(255,215,0,0.65) !important;
 }}
 /* Esconde o bolinha padrão do radio */
-div[role="radiogroup"] input {{ display: none !important; }}
+.ds-home div[role="radiogroup"] input {{ display: none !important; }}
+
 
 
 .ds-frame {{
@@ -6499,6 +6511,10 @@ div[role="radiogroup"] input {{ display: none !important; }}
         /* Remove outline padrão */
         .ds-tab div[data-testid="stButton"] > button:focus {{
           outline: none !important;
+        }}
+        /* GARANTIA: fora da HOME, qualquer radio do compendium some */
+        body:not(:has(.ds-home)) div[data-testid="stRadio"] {{
+          display: none !important;
         }}
         </style>
         """,
@@ -6686,6 +6702,8 @@ div[role="radiogroup"] input {{ display: none !important; }}
             st.rerun()
 
     if st.session_state["comp_view"] != "home":
+        # esconde qualquer radio residual
+        st.markdown("<style>div[data-testid='stRadio']{display:none !important;}</style>", unsafe_allow_html=True)
         render_ds_tools_nav(st.session_state["comp_view"]) 
 
     # =====================================================================
@@ -6734,26 +6752,35 @@ div[role="radiogroup"] input {{ display: none !important; }}
         # CSS das molduras (não interfere no click)
         css = """
         <style>
-          .ds-npc-panel {
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: 100% 100%;
-            padding: 42px 34px 34px 34px;
-            min-height: 520px;
+          .ds-npc-panel{
+            background-repeat:no-repeat;
+            background-position:center;
+            background-size:100% 100%;
+            padding: 28px 28px 26px 28px;
+            min-height: 0px;     /* deixa crescer pelo conteúdo */
           }
-          .ds-npc-panel.left  { background-image: url("LEFT_BG"); }
-          .ds-npc-panel.right { background-image: url("RIGHT_BG"); padding: 46px 40px 40px 40px; }
+          .ds-npc-panel.left{
+            background-image:url("LEFT_BG");
+            padding: 26px 26px 26px 26px;
+          }
+          .ds-npc-panel.right{
+            background-image:url("RIGHT_BG");
+            padding: 30px 34px 30px 34px;
+          }
         
           /* grid automático */
-          .ds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px; width: 100%; }
-      
-          /* garante que a moldura não "coma" cliques */
-          .ds-npc-panel * {
-            position: relative;
-            z-index: 2;
+          .ds-grid{
+            display:grid;
+            grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            width:100%;
           }
+        
+          /* evita qualquer camada bloquear cliques */
+          .ds-npc-panel, .ds-npc-panel * { pointer-events:auto; }
         </style>
         """
+
         
         css = css.replace("LEFT_BG", left_bg or "")
         css = css.replace("RIGHT_BG", right_bg or "")
