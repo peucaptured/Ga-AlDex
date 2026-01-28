@@ -6703,7 +6703,7 @@ div[data-testid="stRadio"] {{
             margin: 0;
           }
           .ds-npc-banner-spacer{
-            height: 36px;
+            height: 14px;
           }
           .ds-npc-panel{
             background-repeat:no-repeat;
