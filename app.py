@@ -6678,7 +6678,7 @@ div[data-testid="stRadio"] {{
         css = """
         <style>
           .ds-npc-banner{
-            position: fixed;
+            position: sticky;
             top: 0;
             left: 0;
             right: 0;
@@ -6702,7 +6702,7 @@ div[data-testid="stRadio"] {{
             margin: 0;
           }
           .ds-npc-banner-spacer{
-            height: 64px;
+            height: 0px;
           }
           .ds-npc-panel{
             background-repeat:no-repeat;
@@ -6716,6 +6716,8 @@ div[data-testid="stRadio"] {{
           background-image: none !important;
           border: none !important;
           box-shadow: none !important;
+            padding-top: 6px !important;   /* bem pequeno */
+
         }
         
 
@@ -6784,11 +6786,11 @@ div[data-testid="stRadio"] {{
         </style>
         """, unsafe_allow_html=True)
         st.markdown(
+        st.markdown(
             "<div class='ds-npc-banner'>"
             "<div class='ds-npc-banner-title'>Selecione um NPC</div>"
             "<div class='ds-npc-banner-sub'>Clique em um retrato à esquerda</div>"
-            "</div>"
-            "<div class='ds-npc-banner-spacer'></div>",
+            "</div>",
             unsafe_allow_html=True,
         )
 
