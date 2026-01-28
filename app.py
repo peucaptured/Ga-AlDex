@@ -6572,80 +6572,11 @@ div[data-testid="stRadio"] {{
             st.session_state["comp_selected_npc"] = None
         st.rerun()
     def render_ds_tools_nav(selected: str):
-        """Menu do Compendium (texto, estilo Dark Souls) — sem ícones."""
         try:
             from st_click_detector import click_detector
         except ImportError:
             st.error("Instale 'st-click-detector' no requirements.txt e reinicie o app.")
             return
-    
-        st.markdown(
-            """
-            <style>
-              .ds-topnav{
-                display:flex !important;
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-                align-items:center !important;
-                justify-content:center !important;
-                gap: 26px !important;
-        
-                padding: 10px 0 14px 0;
-                margin: 0 0 10px 0;
-                background: rgba(0,0,0,0.35);
-                border-bottom: 1px solid rgba(255,215,0,0.18);
-        
-                position: sticky !important;
-                top: 0 !important;
-                z-index: 999999 !important;
-              }
-        
-              .ds-topnav .ds-item{
-                display:inline-flex !important;
-                align-items:center !important;
-                justify-content:center !important;
-                white-space: nowrap !important;
-        
-                cursor:pointer !important;
-                user-select:none !important;
-                pointer-events: auto !important;
-        
-                font-size: 22px;
-                letter-spacing: .14em;
-                text-transform: uppercase;
-                color: rgba(235,235,235,0.55);
-                padding: 6px 10px;
-                position: relative;
-        
-                transition: color .12s ease, text-shadow .12s ease, transform .08s ease;
-              }
-        
-              .ds-topnav .ds-item:hover{
-                color: rgba(255,215,0,0.92);
-                text-shadow: 0 0 12px rgba(255,215,0,0.28);
-                transform: translateY(-1px);
-              }
-        
-              .ds-topnav .ds-item.selected{
-                color: rgba(255,215,0,0.98);
-                text-shadow: 0 0 14px rgba(255,215,0,0.34);
-              }
-        
-              .ds-topnav .ds-item::after{
-                content:"";
-                position:absolute;
-                left: 0;
-                right: 0;
-                bottom: -7px;
-                height: 1px;
-                background: rgba(255,215,0,0.28);
-                opacity: 0;
-              }
-              .ds-topnav .ds-item.selected::after{ opacity: 1; }
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
     
         labels = [
             ("menu", "MENU"),
@@ -6655,22 +6586,80 @@ div[data-testid="stRadio"] {{
             ("sair", "SAIR"),
         ]
     
-        html = "<div class='ds-topnav'>"
+        html = """
+        <style>
+          .ds-topnav{
+            display:flex;
+            flex-direction:row;
+            flex-wrap:nowrap;
+            align-items:center;
+            justify-content:flex-start;
+            gap: 26px;
+    
+            padding: 14px 18px;
+            background: rgba(20,20,20,0.55);
+            border: 1px solid rgba(255,215,0,0.12);
+            border-radius: 10px;
+    
+            position: sticky;
+            top: 0;
+            z-index: 99999;
+          }
+    
+          .ds-item{
+            cursor:pointer;
+            user-select:none;
+            white-space:nowrap;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            font-size: 18px;
+            color: rgba(235,235,235,0.65);
+            padding: 6px 10px;
+            position: relative;
+          }
+    
+          .ds-item:hover{
+            color: rgba(255,215,0,0.95);
+            text-shadow: 0 0 12px rgba(255,215,0,0.25);
+          }
+    
+          .ds-item.selected{
+            color: rgba(255,215,0,0.98);
+            text-shadow: 0 0 14px rgba(255,215,0,0.30);
+          }
+    
+          .ds-item.selected::after{
+            content:"";
+            position:absolute;
+            left: 0;
+            right: 0;
+            bottom: -6px;
+            height: 1px;
+            background: rgba(255,215,0,0.28);
+          }
+        </style>
+        <div class="ds-topnav">
+        """
+    
         for key, lab in labels:
             cls = "ds-item selected" if selected == key else "ds-item"
-            html += f"<div class='{cls}' id='nav-{key}'>{lab}</div>"
+            html += f'<div class="{cls}" id="nav-{key}">{lab}</div>'
+    
         html += "</div>"
     
         clicked = click_detector(html)
         if clicked and clicked.startswith("nav-"):
             key = clicked.replace("nav-", "")
+    
             if key == "menu":
                 st.session_state["comp_view"] = "home"
             elif key == "sair":
                 st.session_state["nav_to"] = "Pokédex (Busca)"
             else:
                 st.session_state["comp_view"] = key
+    
             st.rerun()
+
 
     _consume_comp_qp()
     
@@ -6719,7 +6708,6 @@ div[data-testid="stRadio"] {{
             b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
             return f"data:image/png;base64,{b64}"
         
-        left_bg  = _crop_panel_data_uri(NPC_FRAME_PATH, LEFT_PANEL_BOX,  max_w=980)
         right_bg = _crop_panel_data_uri(NPC_FRAME_PATH, RIGHT_PANEL_BOX, max_w=820)
         
         # CSS das molduras (não interfere no click)
@@ -6733,9 +6721,9 @@ div[data-testid="stRadio"] {{
             min-height: 0px;     /* deixa crescer pelo conteúdo */
           }
           .ds-npc-panel.left{
-          background: transparent !important;
-          background-image: none !important;
-          box-shadow: none !important;
+              background: transparent !important;
+              background-image: none !important;
+              box-shadow: none !important;
         }
           .ds-npc-panel.right{
             background-image:url("RIGHT_BG");
@@ -6756,7 +6744,6 @@ div[data-testid="stRadio"] {{
         """
 
         
-        css = css.replace("LEFT_BG", left_bg or "")
         css = css.replace("RIGHT_BG", right_bg or "")
         st.markdown(css, unsafe_allow_html=True)
         st.markdown("""
