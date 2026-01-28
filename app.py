@@ -6184,7 +6184,26 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
         st.markdown(v)
 
 
-import base64
+from PIL import Image
+
+SHEET_PATH = "Assets/ui/icons/MENU_Top.PNG" # <-- ajuste se necessário
+
+# caixas (x1, y1, x2, y2) dos 5 ícones que aparecem no topo do seu sheet
+ICON_BOXES = {
+    "menu":     (3,   3,  96,  96),
+    "npcs":     (103, 3,  196, 96),
+    "ginasios": (203, 3,  296, 96),
+    "locais":   (303, 3,  396, 96),
+    "sair":     (403, 3,  496, 96),
+}
+
+@st.cache_data
+def _icon_b64(sheet_path: str, box: tuple[int,int,int,int], size: int = 56) -> str:
+    img = Image.open(sheet_path).convert("RGBA").crop(box)
+    img = img.resize((size, size), Image.Resampling.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return base64.b64encode(buf.getvalue()).decode("utf-8")
 
 @st.cache_data
 def get_font_base64(font_path):
@@ -6584,8 +6603,88 @@ div[role="radiogroup"] input {{ display: none !important; }}
         if view != "npcs":
             st.session_state["comp_selected_npc"] = None
         st.rerun()
+    def render_ds_tools_nav(selected: str):
+        try:
+            from st_click_detector import click_detector
+        except ImportError:
+            st.error("Instale 'st-click-detector' no requirements.txt e reinicie o app.")
+            return
     
+        st.markdown("""
+        <style>
+          .ds-toolsbar{
+            display:flex; align-items:center; gap:14px;
+            padding: 8px 0 10px 0;
+          }
+          .ds-tool{
+            width:66px; height:66px;
+            border-radius: 6px;
+            border: 1px solid rgba(160,140,80,0.35);
+            background: rgba(0,0,0,0.35);
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35);
+            display:flex; align-items:center; justify-content:center;
+            cursor:pointer;
+            transition: transform .08s ease, filter .12s ease, box-shadow .12s ease;
+            user-select:none;
+          }
+          .ds-tool img{ image-rendering:auto; opacity:.85; filter: grayscale(.35) contrast(1.05); }
+          .ds-tool:hover{
+            transform: translateY(-1px);
+            box-shadow: 0 0 14px rgba(255,215,0,0.12), inset 0 0 0 1px rgba(255,215,0,0.18);
+          }
+          .ds-tool.selected{
+            border: 1px solid rgba(255,215,0,0.55);
+            box-shadow: 0 0 18px rgba(255,215,0,0.22), inset 0 0 0 1px rgba(255,215,0,0.22);
+          }
+          .ds-tool.selected img{ opacity:1; filter: grayscale(0) contrast(1.1); }
     
+          .ds-toollabel{
+            margin-top: 6px;
+            font-size: 12px;
+            letter-spacing: .08em;
+            opacity: .75;
+            text-align:center;
+          }
+          .ds-toolwrap{ display:flex; flex-direction:column; align-items:center; }
+        </style>
+        """, unsafe_allow_html=True)
+    
+        labels = {
+            "menu": "MENU",
+            "npcs": "NPCs",
+            "ginasios": "GINÁSIOS",
+            "locais": "LOCAIS",
+            "sair": "SAIR",
+        }
+    
+        # monta HTML (sem <a>, sem href)
+        html = "<div class='ds-toolsbar'>"
+        for key in ["menu","npcs","ginasios","locais","sair"]:
+            b64 = _icon_b64(SHEET_PATH, ICON_BOXES[key], size=48)
+            cls = "ds-tool selected" if selected == key else "ds-tool"
+            html += f"""
+              <div class='ds-toolwrap' id='wrap-{key}'>
+                <div class='{cls}' id='nav-{key}'>
+                  <img src="data:image/png;base64,{b64}" />
+                </div>
+                <div class='ds-toollabel'>{labels[key]}</div>
+              </div>
+            """
+        html += "</div>"
+    
+        clicked = click_detector(html)
+        if clicked and clicked.startswith("nav-"):
+            key = clicked.replace("nav-", "")
+            if key == "menu":
+                st.session_state["comp_view"] = "home"
+            elif key == "sair":
+                st.session_state["nav_to"] = "Pokédex (Busca)"
+            else:
+                st.session_state["comp_view"] = key
+            st.rerun()
+
+       if st.session_state["comp_view"] != "home":
+        render_ds_tools_nav(st.session_state["comp_view"]) 
 
     # =====================================================================
 
@@ -6598,11 +6697,72 @@ div[role="radiogroup"] input {{ display: none !important; }}
             st.error("Biblioteca não instalada. Adicione 'st-click-detector' ao requirements.txt e reinicie o app.")
             return
     
+        # --- UI FRAME (NPCs) usando o asset MENU_DetailStatus_Base2.PNG ---
+        NPC_FRAME_PATH = "Assets/ui/icons/MENU_DetailStatus_Base2.PNG"
+        
+        # Coordenadas do seu PNG (2048x1024):
+        # - Painel esquerdo: 0..1183
+        # - Gap preto no meio: 1183..1199
+        # - Painel direito: 1199..1867
+        LEFT_PANEL_BOX  = (0, 0, 1183, 1024)
+        RIGHT_PANEL_BOX = (1199, 0, 1867, 1024)
+        
+        @st.cache_data(show_spinner=False)
+        def _crop_panel_data_uri(path: str, box: tuple[int,int,int,int], max_w: int = 920) -> str:
+            import os, io, base64
+            from PIL import Image
+            if not os.path.exists(path):
+                return ""
+            img = Image.open(path).convert("RGBA").crop(box)
+        
+            # redimensiona mantendo proporção (responsivo)
+            w, h = img.size
+            if w > max_w:
+                new_h = int(h * (max_w / w))
+                img = img.resize((max_w, new_h), Image.Resampling.LANCZOS)
+        
+            buf = io.BytesIO()
+            img.save(buf, format="PNG", optimize=True)
+            b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+            return f"data:image/png;base64,{b64}"
+        
+        left_bg  = _crop_panel_data_uri(NPC_FRAME_PATH, LEFT_PANEL_BOX,  max_w=980)
+        right_bg = _crop_panel_data_uri(NPC_FRAME_PATH, RIGHT_PANEL_BOX, max_w=820)
+        
+        # CSS das molduras (não interfere no click)
+        css = """
+        <style>
+          .ds-npc-panel {
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 100% 100%;
+            padding: 42px 34px 34px 34px;
+            min-height: 520px;
+          }
+          .ds-npc-panel.left  { background-image: url("LEFT_BG"); }
+          .ds-npc-panel.right { background-image: url("RIGHT_BG"); padding: 46px 40px 40px 40px; }
+        
+          /* grid automático */
+          .ds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px; width: 100%; }
+      
+          /* garante que a moldura não "coma" cliques */
+          .ds-npc-panel * {
+            position: relative;
+            z-index: 2;
+          }
+        </style>
+        """
+        
+        css = css.replace("LEFT_BG", left_bg or "")
+        css = css.replace("RIGHT_BG", right_bg or "")
+        st.markdown(css, unsafe_allow_html=True)
+
         # --- LAYOUT PRINCIPAL (SEM INDENTAÇÃO ERRADA) ---
         left, right = st.columns([1.25, 2.15], gap="large")
     
         # --- COLUNA ESQUERDA ---
         with left:
+            st.markdown("<div class='ds-npc-panel left'>", unsafe_allow_html=True)
             search = st.text_input(
                 "Buscar personagem",
                 key="ds_npc_search",
@@ -6708,9 +6868,13 @@ div[role="radiogroup"] input {{ display: none !important; }}
                     if nome_selecionado and nome_selecionado != st.session_state.get("comp_selected_npc"):
                         st.session_state["comp_selected_npc"] = nome_selecionado
                         st.rerun()
+                        st.markdown("</div>", unsafe_allow_html=True)
     
         # --- COLUNA DIREITA ---
+        # --- COLUNA DIREITA ---
         with right:
+            st.markdown("<div class='ds-npc-panel right'>", unsafe_allow_html=True)
+        
             sel = st.session_state.get("comp_selected_npc")
             if not sel:
                 st.markdown(
@@ -6718,107 +6882,108 @@ div[role="radiogroup"] input {{ display: none !important; }}
                     "<div class='ds-meta'>clique em um retrato à esquerda</div></div>",
                     unsafe_allow_html=True,
                 )
-                return
-    
-            npc = npcs_gerais.get(sel, {}) or {}
-            ocupacao = npc.get("ocupacao", "")
-            idade = npc.get("idade", "")
-            status = npc.get("status", "")
-    
-            # retrato grande (base64 p/ garantir)
-            portrait_b64 = ""
-            portrait_path = None
-            try:
-                portrait_path = comp_find_image(sel)
-            except Exception:
+            else:
+                npc = npcs_gerais.get(sel, {}) or {}
+                ocupacao = npc.get("ocupacao", "")
+                idade = npc.get("idade", "")
+                status = npc.get("status", "")
+        
+                # retrato grande (base64 p/ garantir)
+                portrait_b64 = ""
                 portrait_path = None
-    
-            if portrait_path and os.path.exists(portrait_path):
                 try:
-                    with open(portrait_path, "rb") as f:
-                        portrait_b64 = base64.b64encode(f.read()).decode("utf-8")
-                    ext = os.path.splitext(portrait_path)[1].lower().replace(".", "")
-                    if ext not in ("png", "jpg", "jpeg", "webp"):
-                        ext = "png"
+                    portrait_path = comp_find_image(sel)
                 except Exception:
-                    portrait_b64 = ""
-                    ext = "png"
-            else:
+                    portrait_path = None
+        
                 ext = "png"
-    
-            # sprites dos pokemons (usa mapa oficial)
-            pokemons = npc.get("pokemons") or npc.get("pokemons_conhecidos") or []
-            if not isinstance(pokemons, list):
-                pokemons = []
-    
-            name_map = {}
-            try:
-                name_map = get_official_pokemon_map() or {}
-            except Exception:
-                name_map = {}
-    
-            sprite_imgs = []
-            for pkm in pokemons:
+                if portrait_path and os.path.exists(portrait_path):
+                    try:
+                        with open(portrait_path, "rb") as f:
+                            portrait_b64 = base64.b64encode(f.read()).decode("utf-8")
+                        ext = os.path.splitext(portrait_path)[1].lower().replace(".", "")
+                        if ext not in ("png", "jpg", "jpeg", "webp"):
+                            ext = "png"
+                    except Exception:
+                        portrait_b64 = ""
+                        ext = "png"
+        
+                # sprites dos pokemons (usa mapa oficial)
+                pokemons = npc.get("pokemons") or npc.get("pokemons_conhecidos") or []
+                if not isinstance(pokemons, list):
+                    pokemons = []
+        
                 try:
-                    url = get_pokemon_image_url(str(pkm), name_map, mode="sprite", shiny=False)
+                    name_map = get_official_pokemon_map() or {}
                 except Exception:
-                    url = ""
-                if url:
-                    sprite_imgs.append(url)
-    
-            # história
-            historia = ""
-            secs = npc.get("sections") or {}
-            if isinstance(secs, dict):
-                historia = secs.get("História") or secs.get("Historia") or ""
-    
-            # highlight busca na história
-            q2 = st.session_state.get("ds_npc_search", "").strip()
-            h_html = ""
-            if isinstance(historia, str) and historia.strip():
-                paragraphs = [p.strip() for p in historia.split("\n\n") if p.strip()]
-                for para in paragraphs:
-                    safe = para.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                    if q2:
-                        pattern = re.compile(re.escape(q2), re.IGNORECASE)
-                        safe = pattern.sub(lambda m: f"<span class='ds-mark'>{m.group(0)}</span>", safe)
-                    h_html += f"<p>{safe}</p>"
-            else:
-                h_html = "<p>(Sem história cadastrada)</p>"
-    
-            meta_parts = []
-            if ocupacao:
-                meta_parts.append(str(ocupacao))
-            if status:
-                meta_parts.append(f"STATUS: {status}")
-            if idade:
-                meta_parts.append(f"IDADE: {idade}")
-            meta_line = " | ".join(meta_parts) if meta_parts else ""
-    
-            portrait_html = ""
-            if portrait_b64:
-                portrait_html = f"<div class='ds-portrait'><img src='data:image/{ext};base64,{portrait_b64}' /></div>"
-    
-            sprites_html = ""
-            if sprite_imgs:
-                sprites_html = "<div class='ds-sprites'>" + "".join(
-                    f"<img src='{u}' alt='sprite'/>" for u in sprite_imgs
-                ) + "</div>"
-    
-            st.markdown(
-                f"""
-                <div class="ds-frame">
-                    <div class="ds-name">{sel}</div>
-                    <div class="ds-meta">{meta_line}</div>
-                    {portrait_html}
-                    {sprites_html}
-                    <div class="ds-section-title">História</div>
-                    <div class="ds-history">{h_html}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+                    name_map = {}
+        
+                sprite_imgs = []
+                for pkm in pokemons:
+                    try:
+                        url = get_pokemon_image_url(str(pkm), name_map, mode="sprite", shiny=False)
+                    except Exception:
+                        url = ""
+                    if url:
+                        sprite_imgs.append(url)
+        
+                # história
+                historia = ""
+                secs = npc.get("sections") or {}
+                if isinstance(secs, dict):
+                    historia = secs.get("História") or secs.get("Historia") or ""
+        
+                # highlight busca na história
+                q2 = st.session_state.get("ds_npc_search", "").strip()
+                h_html = ""
+                if isinstance(historia, str) and historia.strip():
+                    paragraphs = [p.strip() for p in historia.split("\n\n") if p.strip()]
+                    for para in paragraphs:
+                        safe = para.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                        if q2:
+                            pattern = re.compile(re.escape(q2), re.IGNORECASE)
+                            safe = pattern.sub(lambda m: f"<span class='ds-mark'>{m.group(0)}</span>", safe)
+                        h_html += f"<p>{safe}</p>"
+                else:
+                    h_html = "<p>(Sem história cadastrada)</p>"
+        
+                meta_parts = []
+                if ocupacao:
+                    meta_parts.append(str(ocupacao))
+                if status:
+                    meta_parts.append(f"STATUS: {status}")
+                if idade:
+                    meta_parts.append(f"IDADE: {idade}")
+                meta_line = " | ".join(meta_parts) if meta_parts else ""
+        
+                portrait_html = ""
+                if portrait_b64:
+                    portrait_html = f"<div class='ds-portrait'><img src='data:image/{ext};base64,{portrait_b64}' /></div>"
+        
+                sprites_html = ""
+                if sprite_imgs:
+                    sprites_html = "<div class='ds-sprites'>" + "".join(
+                        f"<img src='{u}' alt='sprite'/>" for u in sprite_imgs
+                    ) + "</div>"
+        
+                st.markdown(
+                    f"""
+                    <div class="ds-frame">
+                        <div class="ds-name">{sel}</div>
+                        <div class="ds-meta">{meta_line}</div>
+                        {portrait_html}
+                        {sprites_html}
+                        <div class="ds-section-title">História</div>
+                        <div class="ds-history">{h_html}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+        
+            st.markdown("</div>", unsafe_allow_html=True)
+        
         return
+
     
     # =====================================================================
     # Ginásios / Locais (placeholder)
