@@ -6625,103 +6625,93 @@ div[data-testid="stRadio"] {{
             st.error("Instale 'st-click-detector' no requirements.txt e reinicie o app.")
             return
     
-        st.markdown("""
-        <style>
-          /* barra horizontal no topo */
-          .ds-toolsbar{
-            position: sticky;
-            top: 0;
-            z-index: 9999;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            gap: 18px;
-            padding: 10px 0 14px 0;
-            background: rgba(0,0,0,0.55);
-            backdrop-filter: blur(3px);
-            border-bottom: 1px solid rgba(255,215,0,0.14);
-          }
         
-          .ds-toolwrap{
-            display:flex;
-            flex-direction:column;
-            align-items:center;
-            cursor:pointer;
-            user-select:none;
-          }
-        
-          .ds-tool{
-            width:58px; height:58px;
-            border-radius: 6px;
-            border: 1px solid rgba(160,140,80,0.35);
-            background: rgba(0,0,0,0.35);
-            display:flex; align-items:center; justify-content:center;
-            transition: transform .08s ease, box-shadow .12s ease, border .12s ease;
-          }
-        
-          .ds-tool img{
-            width:50px; height:50px;
-            opacity:.9;
-            pointer-events:none; /* garante clique no wrapper */
-            filter: grayscale(.35) contrast(1.05);
-          }
-        
-          .ds-toolwrap:hover .ds-tool{
-            transform: translateY(-1px);
-            box-shadow: 0 0 14px rgba(255,215,0,0.12);
-          }
-        
-          .ds-toolwrap.selected .ds-tool{
-            border: 1px solid rgba(255,215,0,0.55);
-            box-shadow: 0 0 18px rgba(255,215,0,0.22);
-          }
-          .ds-toolwrap * { pointer-events: none; }  /* tudo dentro NÃO recebe clique */
-          .ds-toolwrap { pointer-events: auto; }   /* o wrapper (com id nav-xxx) recebe */
-       
-          .ds-toollabel{
-            margin-top: 6px;
-            font-size: 12px;
-            letter-spacing: .10em;
-            opacity: .85;
-            text-align:center;
-            text-transform: uppercase;
-          }
-        </style>
-        """, unsafe_allow_html=True)
-    
-        labels = {
-            "menu": "MENU",
-            "npcs": "NPCs",
-            "ginasios": "GINÁSIOS",
-            "locais": "LOCAIS",
-            "sair": "SAIR",
-        }
     
         # monta HTML (sem <a>, sem href)
-        html = "<div class='ds-toolsbar'>"
-        for key in ["menu","npcs","ginasios","locais","sair"]:
-            b64 = _icon_b64(SHEET_PATH, ICON_BOXES[key], size=52)
-            wrap_cls = "ds-toolwrap selected" if selected == key else "ds-toolwrap"
-            html += f"""
-              <div class='{wrap_cls}' id='nav-{key}'>
-                <div class='ds-tool'>
-                  <img src="data:image/png;base64,{b64}" />
-                </div>
-                <div class='ds-toollabel'>{labels[key]}</div>
-              </div>
+        def render_ds_tools_nav(selected: str):
+            try:
+                from st_click_detector import click_detector
+            except ImportError:
+                st.error("Instale 'st-click-detector' no requirements.txt e reinicie o app.")
+                return
+        
+            css_in = """
+            <style>
+              .ds-toolsbar{
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                gap: 18px;
+                padding: 10px 0 14px 0;
+                background: rgba(0,0,0,0.55);
+                border-bottom: 1px solid rgba(255,215,0,0.14);
+              }
+              .ds-toolwrap{
+                display:flex;
+                flex-direction:column;
+                align-items:center;
+                cursor:pointer;
+                user-select:none;
+              }
+              /* IMPORTANTÍSSIMO: só o wrapper recebe clique */
+              .ds-toolwrap *{ pointer-events:none; }
+        
+              .ds-tool{
+                width:58px; height:58px;
+                border-radius: 6px;
+                border: 1px solid rgba(160,140,80,0.35);
+                background: rgba(0,0,0,0.35);
+                display:flex; align-items:center; justify-content:center;
+              }
+              .ds-tool img{
+                width:50px; height:50px;
+                opacity:.9;
+                filter: grayscale(.35) contrast(1.05);
+              }
+              .ds-toollabel{
+                margin-top: 6px;
+                font-size: 12px;
+                letter-spacing: .10em;
+                opacity: .85;
+                text-align:center;
+                text-transform: uppercase;
+                color: rgba(255,255,255,0.85);
+              }
+              .ds-toolwrap.selected .ds-tool{
+                border: 1px solid rgba(255,215,0,0.55);
+                box-shadow: 0 0 18px rgba(255,215,0,0.22);
+              }
+            </style>
             """
-        html += "</div>"
-        clicked = click_detector(html, key=f"ds_tools_nav_{selected}")
-        st.write("clicked:", clicked)
-        if clicked and clicked.startswith("nav-"):
-            key = clicked.replace("nav-", "")
-            if key == "menu":
-                st.session_state["comp_view"] = "home"
-            elif key == "sair":
-                st.session_state["nav_to"] = "Pokédex (Busca)"
-            else:
-                st.session_state["comp_view"] = key
-            st.rerun()
+        
+            # HTML completo (CSS dentro do iframe)
+            html = css_in + "<div class='ds-toolsbar'>"
+            for k in ["menu", "npcs", "ginasios", "locais", "sair"]:
+                b64 = _icon_b64(SHEET_PATH, ICON_BOXES[k], size=52)
+                wrap_cls = "ds-toolwrap selected" if selected == k else "ds-toolwrap"
+                html += f"""
+                  <div class='{wrap_cls}' id='nav-{k}'>
+                    <div class='ds-tool'>
+                      <img src="data:image/png;base64,{b64}" />
+                    </div>
+                    <div class='ds-toollabel'>{labels[k]}</div>
+                  </div>
+                """
+            html += "</div>"
+        
+            clicked = click_detector(html, key="ds_tools_nav")  # key FIXO
+            st.write("clicked:", clicked)
+        
+            if clicked and clicked.startswith("nav-"):
+                k = clicked.replace("nav-", "")
+                if k == "menu":
+                    st.session_state["comp_view"] = "home"
+                elif k == "sair":
+                    st.session_state["nav_to"] = "Pokédex (Busca)"
+                else:
+                    st.session_state["comp_view"] = k
+                st.rerun()
+
 
 
     if st.session_state["comp_view"] != "home":
