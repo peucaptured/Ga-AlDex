@@ -6647,6 +6647,30 @@ div[data-testid="stRadio"] {{
             return
 
         render_ds_tools_nav(st.session_state["comp_view"])
+        st.markdown("""
+        <style>
+        /* Fundo global do app (mata rgb(14,17,23)) */
+        [data-testid="stAppViewContainer"],
+        [data-testid="stAppViewContainer"] > .main,
+        [data-testid="stMain"],
+        [data-testid="stMainBlockContainer"],
+        section.main {
+          background: #000 !important;
+        }
+        
+        /* Wrappers internos */
+        [data-testid="stVerticalBlock"],
+        [data-testid="stHorizontalBlock"],
+        [data-testid="stBlock"]{
+          background: transparent !important;
+        }
+        
+        /* pega exatamente o div com style inline rgb(14, 17, 23) */
+        section.main div[style*="background: rgb(14, 17, 23)"]{
+          background: #000 !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
     
 
         
