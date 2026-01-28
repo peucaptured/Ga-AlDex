@@ -6694,28 +6694,37 @@ div[data-testid="stRadio"] {{
           box-shadow: none !important;
         }
         
-       /* REMOVE o fundo cinza do componente (click_detector) */
-        div[data-testid="stComponentFrame"]:has(iframe[title^="st_click_detector"]),
-        div[data-testid="stElementContainer"]:has(iframe[title^="st_click_detector"]),
-        div[data-testid="stIFrame"]:has(iframe[title^="st_click_detector"]),
-        div[data-testid="stHtml"]:has(iframe[title^="st_click_detector"]) {
-          background:  #000 !important;
-          border: none !important;
-          box-shadow: none !important;
-          padding: 0 !important;
-          margin: 0 !important;
-        }
+
         
         iframe[title^="st_click_detector"]{
           background:  #000 !important;
           border: none !important;
           box-shadow: none !important;
         }
-        
-
-        div[data-testid="stElementContainer"]:has(iframe[title^="st_click_detector"]) > div {
+        /* 1) pinta o container do componente (o mais importante) */
+        div[data-testid="stComponentFrame"]{
+          background: #000 !important;
+          border: none !important;
+          box-shadow: none !important;
           padding: 0 !important;
+          margin: 0 !important;
         }
+        
+        /* 2) pinta o iframe também */
+        div[data-testid="stComponentFrame"] iframe,
+        iframe[title^="st_click_detector"],
+        iframe[title*="click_detector"]{
+          background: #000 !important;
+          border: none !important;
+          box-shadow: none !important;
+        }
+        
+        /* 3) remove padding extra do wrapper do Streamlit */
+        div[data-testid="stElementContainer"]{
+          padding: 0 !important;
+          margin: 0 !important;
+          background: transparent !important;
+        }        
         /* remove padding/margem que às vezes vira “caixa” */
         .ds-npc-panel.left div[data-testid="stElementContainer"]{
           padding: 0 !important;
@@ -6895,7 +6904,7 @@ div[data-testid="stRadio"] {{
                     img_html = f"<img src='{src}' />" if src else "<div style='width:100%;height:100%;background:#222;'></div>"
     
                     content_html += f"""
-                    <a href='#' id='{safe_id}'>
+                    <a href="javascript:void(0)" id="{safe_id}">
                         <div class="ds-card">
                             {img_html}
                             <div class="ds-name-tag">{nome}</div>
