@@ -6746,14 +6746,13 @@ div[data-testid="stRadio"] {{
               box-shadow: none !important;
         }
           .ds-npc-panel.right{
-            background-image:url("RIGHT_BG");
-            background: transparent !important;
+            background: #000 !important;
             background-image: none !important;
             box-shadow: none !important;
             padding: 30px 34px 30px 34px;
           }
           .ds-npc-panel.right .ds-frame{
-            background: transparent !important;
+            background: #000 !important;
             box-shadow: none !important;
           }
         
