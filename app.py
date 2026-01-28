@@ -2824,27 +2824,67 @@ def render_login_menu(trainer_name: str, user_data: dict):
         .fr-login-actions [data-testid="stButton"]:nth-child(2) button {
             background: linear-gradient(180deg, #d1d5db 0%, #b9c0ca 100%);
         }
+        .fr-login-card-link {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+        }
+        .fr-login-card-link:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.03);
+        }
+        .fr-login-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .fr-login-continue-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            background: #16a34a;
+            color: #ffffff;
+            font-weight: 800;
+            border: 2px solid #166534;
+            box-shadow: inset 0 -2px 0 rgba(0,0,0,0.2);
+        }
         </style>
         """,
         unsafe_allow_html=True,
     )
 
+    params = st.experimental_get_query_params()
+    if params.get("continue") == ["1"]:
+        st.session_state["show_login_menu"] = False
+        st.session_state["nav_to"] = "Pokédex (Busca)"
+        st.experimental_set_query_params()
+        st.rerun()
+
     st.markdown("<div class='fr-login-wrap'><div class='fr-login-layout'>", unsafe_allow_html=True)
     st.markdown(
         f"""
-        <div class='fr-login-card'>
-            <div class='fr-login-title'>Continue</div>
+        <a class='fr-login-card fr-login-card-link' href='?continue=1'>
+            <div class='fr-login-title'>
+                <span>Continue</span>
+                <span class='fr-login-continue-badge'>V</span>
+            </div>
             <div class='fr-login-info'>
                 <div class='fr-login-grid'>
                     <div class='fr-login-label'>PLAYER</div>
                     <div class='fr-login-value'>{html.escape(trainer_name)}</div>
                     <div class='fr-login-label'>POKÉDEX</div>
                     <div class='fr-login-value'>{caught_count}</div>
+                    <div class='fr-login-label'>VISTOS</div>
+                    <div class='fr-login-value'>{len(user_data.get("seen", []))}</div>
                     <div class='fr-login-label'>BADGES</div>
                     <div class='fr-login-value'>{badge_count}</div>
                 </div>
             </div>
-        </div>
+        </a>
         """,
         unsafe_allow_html=True,
     )
