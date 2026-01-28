@@ -6220,7 +6220,7 @@ def render_compendium_page() -> None:
 
     
 /* HOME (igual app 35) */
-.ds-home {
+.ds-home {{
     min-height: 74vh;
     display: flex;
     flex-direction: column;
@@ -6228,31 +6228,31 @@ def render_compendium_page() -> None:
     justify-content: center;
     gap: 22px;
     padding: 10px 0 0 0;
-}
-.ds-title {
+}}
+.ds-title {{
     text-align: center;
     color: var(--ds-white);
     font-size: 56px;
     letter-spacing: 0.28em;
     text-transform: uppercase;
     margin: 0;
-}
-.ds-press {
+}}
+.ds-press {{
     text-align: center;
     color: var(--ds-faint);
     font-size: 14px;
     letter-spacing: 0.34em;
     text-transform: uppercase;
     margin: 0;
-}
-@keyframes dsBlink {
-    0%, 48% { opacity: 0.10; }
-    60%, 100% { opacity: 0.88; }
-}
-.ds-blink { animation: dsBlink 1.05s ease-in-out infinite; }
+}}
+@keyframes dsBlink {{
+    0%, 48% {{ opacity: 0.10; }}
+    60%, 100% {{ opacity: 0.88; }}
+}}
+.ds-blink {{ animation: dsBlink 1.05s ease-in-out infinite; }}
 
 /* Tabs (radio horizontal) no rodapé */
-div[data-testid="stRadio"] {
+div[data-testid="stRadio"] {{
     position: fixed !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
@@ -6260,25 +6260,25 @@ div[data-testid="stRadio"] {
     z-index: 10000 !important;
     padding: 10px 18px !important;
     background: rgba(0,0,0,0.0) !important;
-}
-div[data-testid="stRadio"] > label { display: none !important; }
+}}
+div[data-testid="stRadio"] > label {{ display: none !important; }}
 /* Linha dourada fina acima dos tabs */
-div[data-testid="stRadio"]::before {
+div[data-testid="stRadio"]::before {{
     content: "";
     display: block;
     height: 1px;
     background: linear-gradient(90deg, transparent, var(--ds-gold-dim), transparent);
     margin-bottom: 10px;
-}
+}}
 
 /* Estilo das opções */
-div[role="radiogroup"] {
+div[role="radiogroup"] {{
     display: flex !important;
     gap: 58px !important;
     justify-content: center !important;
     align-items: center !important;
-}
-div[role="radiogroup"] > label {
+}}
+div[role="radiogroup"] > label {{
     position: relative !important;
     padding: 6px 10px !important;
     cursor: pointer !important;
@@ -6288,17 +6288,17 @@ div[role="radiogroup"] > label {
     font-size: 12px !important;
     user-select: none !important;
     transition: all 120ms ease !important;
-}
-div[role="radiogroup"] > label:hover {
+}}
+div[role="radiogroup"] > label:hover {{
     color: #FFD700 !important;
     text-shadow: 0 0 10px rgba(255,215,0,0.65) !important;
-}
-div[role="radiogroup"] > label[data-checked="true"] {
+}}
+div[role="radiogroup"] > label[data-checked="true"] {{
     color: #FFD700 !important;
     text-shadow: 0 0 10px rgba(255,215,0,0.65) !important;
-}
+}}
 /* Esconde o bolinha padrão do radio */
-div[role="radiogroup"] input { display: none !important; }
+div[role="radiogroup"] input {{ display: none !important; }}
 
 
 .ds-frame {{
