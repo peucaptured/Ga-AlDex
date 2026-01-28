@@ -6457,6 +6457,23 @@ div[role="radiogroup"] input {{ display: none !important; }}
           margin: 12px 0 18px 0;
           background: linear-gradient(90deg, transparent, var(--ds-gold-dim), transparent);
         }}
+        .ds-nav-item,
+        .ds-nav-item:visited {{
+          color: rgba(255,255,255,0.72) !important;
+          text-decoration: none !important;
+        }}
+        
+        .ds-nav-item:hover {{
+          color: rgba(255,215,0,0.95) !important;
+          text-shadow: 0 0 14px rgba(255,215,0,0.35) !important;
+          text-decoration: none !important;
+        }}
+        
+        .ds-nav-item.selected {{
+          color: rgba(255,215,0,0.98) !important;
+          text-shadow: 0 0 16px rgba(255,215,0,0.45) !important;
+          text-decoration: none !important;
+        }}
         
         /* Remove outline padrão */
         .ds-tab div[data-testid="stButton"] > button:focus {{
@@ -6528,6 +6545,9 @@ div[role="radiogroup"] input {{ display: none !important; }}
         # 2) Se veio view antiga (gaal_view)
         if gv in {"home", "npcs", "ginasios", "locais"}:
             st.session_state["comp_view"] = gv
+            if gv == "home":
+                st.session_state["ds_home_tabs"] = "__home__"
+                st.session_state["ds_home_tabs_prev"] = "__home__"
             if gv != "npcs":
                 st.session_state["comp_selected_npc"] = None
             _clear_qp()
@@ -6541,14 +6561,18 @@ div[role="radiogroup"] input {{ display: none !important; }}
             st.session_state["nav_to"] = "Pokédex (Busca)"
         else:
             st.session_state["comp_view"] = cv
+        
+            # ✅ AQUI: se voltou pro HOME, reseta o radio do rodapé
+            if cv == "home":
+                st.session_state["ds_home_tabs"] = "__home__"
+                st.session_state["ds_home_tabs_prev"] = "__home__"
+        
             if cv != "npcs":
                 st.session_state["comp_selected_npc"] = None
-    
+        
         _clear_qp()
         st.rerun()
-    
-    _consume_comp_qp()
-    
+            
     # ----------------------------
     # Navegação (sempre no topo)
     # ----------------------------
@@ -6580,7 +6604,7 @@ div[role="radiogroup"] input {{ display: none !important; }}
         html = f"<div class='{wrapper_class}'>"
         for v, lab in labels:
             cls = "ds-nav-item selected" if selected == v else "ds-nav-item"
-            html += f"<a href='?cv={v}' class='{cls}'>{lab}</a>"
+            html += f"<a href='?cv={v}' class='{cls}' target='_self'>{lab}</a>"
         html += "</div>"
 
         st.markdown(html, unsafe_allow_html=True)
