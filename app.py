@@ -6964,7 +6964,9 @@ div[data-testid="stRadio"] {{
             sel = st.session_state.get("comp_selected_npc")
             if not sel:
                 st.markdown(
-                    "<div class='ds-frame'><div class='ds-name' style='font-size:30px;'>NENHUM NPC SELECIONADO</div>"
+                    "<div class='ds-frame'>"
+                    "<div class='ds-name' style='font-size:30px;'>NENHUM NPC SELECIONADO</div>"
+                    "</div>",
                     unsafe_allow_html=True,
                 )
             else:
