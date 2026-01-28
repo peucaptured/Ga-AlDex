@@ -6566,10 +6566,7 @@ div[data-testid="stRadio"] {{
         _clear_qp()
         st.rerun()
     
-    _consume_comp_qp()
-    
-    if st.session_state["comp_view"] != "home":
-        render_ds_tools_nav(st.session_state["comp_view"])
+
 
 
             
@@ -6665,6 +6662,12 @@ div[data-testid="stRadio"] {{
             else:
                 st.session_state["comp_view"] = key
             st.rerun()
+
+    _consume_comp_qp()
+    
+    if st.session_state["comp_view"] != "home":
+        sel = "menu" if st.session_state["comp_view"] == "home" else st.session_state["comp_view"]
+        render_ds_tools_nav(sel)
 
 
     # =====================================================================
