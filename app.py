@@ -7328,17 +7328,21 @@ div[data-testid="stRadio"] {{
             unsafe_allow_html=True,
         )
 
-        # ----------------------------
-        # Layout (split)
+        # ---------------------------
+        # Layout (3 colunas): esquerda (menus) | centro (imagem) | direita (lore)
         # ----------------------------
         st.markdown("<div class='ds-loc-shell'>", unsafe_allow_html=True)
-        left, right = st.columns([1.05, 2.15], gap="large")
+        col_left, col_center, col_right = st.columns([1.05, 1.70, 1.70], gap="large")
 
-        with left:
+        # ============================
+        # ESQUERDA: Região -> Cidade -> Sublocal (sem busca)
+        # ============================
+        with col_left:
             st.markdown("<div class='ds-frame ds-loc-left'>", unsafe_allow_html=True)
+
+            # --- Região ---
             st.markdown("<div class='ds-meta'>REGIÃO</div>", unsafe_allow_html=True)
 
-            # Região (selectbox por usabilidade)
             prev_reg = st.session_state.get("comp_loc_region")
             region = st.selectbox(
                 "Região",
@@ -7347,76 +7351,40 @@ div[data-testid="stRadio"] {{
                 key="comp_loc_region_sel",
                 label_visibility="collapsed",
             )
+
             if region != st.session_state.get("comp_loc_region"):
                 st.session_state["comp_loc_region"] = region
                 st.session_state["comp_loc_city"] = None
                 st.session_state["comp_loc_sublocal"] = "__visao__"
                 st.rerun()
 
-            st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
-
-            # Busca (filtra cidades e sublocais)
-            q = st.text_input(
-                "Buscar em Locais",
-                key="comp_loc_search",
-                placeholder="Cidade ou sublocal...",
-                label_visibility="collapsed",
-            ).strip()
-            qn = _norm_loc(q)
-
+            # cidades disponíveis na região
             region_cities = by_region.get(region, []) or []
-            # Se região não tem cidades mapeadas, tenta mostrar todas (fallback)
             if not region_cities:
                 region_cities = sorted(list(cities.keys()))
 
-            # Filtra cidades por busca
-            # Filtra cidades por busca
-            if qn:
-                filtered = []
-                for cname in region_cities:
-                    cobj = cities.get(cname) or {}
-            
-                    # texto das seções (garante string)
-                    secs = cobj.get("sections") or {}
-                    if not isinstance(secs, dict):
-                        secs = {}
-                    sec_text = " ".join([str(v) for v in secs.values() if v is not None])
-            
-                    blob = _norm_loc(cname + " " + sec_text)
-            
-                    # inclui sublocais no blob
-                    for sl in (cobj.get("sublocais") or []):
-                        if not isinstance(sl, dict):
-                            continue
-                        blob += " " + _norm_loc((sl.get("name") or "") + " " + (sl.get("text") or ""))
-            
-                    if qn in blob:
-                        filtered.append(cname)
-            
-                region_cities = filtered
+            st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
 
-
-            # Menu de cidades (radio DS)
+            # --- Cidade ---
             st.markdown("<div class='ds-meta'>CIDADES</div>", unsafe_allow_html=True)
             if not region_cities:
-                st.markdown("<div class='ds-loc-hint'>Nenhum resultado.</div>", unsafe_allow_html=True)
+                st.markdown("<div class='ds-loc-hint'>Sem cidades nesta região.</div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
                 st.markdown("</div>", unsafe_allow_html=True)
                 return
 
-            current_city = st.session_state.get("comp_loc_city")
-            if current_city not in region_cities:
-                current_city = region_cities[0]
-                st.session_state["comp_loc_city"] = current_city
+            cur_city = st.session_state.get("comp_loc_city")
+            if cur_city not in region_cities:
+                cur_city = region_cities[0]
+                st.session_state["comp_loc_city"] = cur_city
 
             city = st.radio(
                 "Cidades",
                 options=region_cities,
-                index=region_cities.index(current_city) if current_city in region_cities else 0,
+                index=region_cities.index(cur_city),
                 key="comp_loc_city_radio",
                 label_visibility="collapsed",
-                help=None,
             )
-            # aplica classe de menu DS no radio (escopo)
             st.markdown("<div class='ds-loc-menu'></div>", unsafe_allow_html=True)
 
             if city != st.session_state.get("comp_loc_city"):
@@ -7424,25 +7392,27 @@ div[data-testid="stRadio"] {{
                 st.session_state["comp_loc_sublocal"] = "__visao__"
                 st.rerun()
 
-            # Sublocais como menu (radio DS)
+            st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+
+            # --- Sublocais ---
+            st.markdown("<div class='ds-meta'>SUBLOCAIS</div>", unsafe_allow_html=True)
+
             cobj = cities.get(city) or {}
             sublocais = (cobj.get("sublocais") or [])
             sub_names = ["__visao__"] + [
-                (sl.get("name") or "").strip() for sl in sublocais if (sl.get("name") or "").strip()
+                (sl.get("name") or "").strip() for sl in sublocais
+                if isinstance(sl, dict) and (sl.get("name") or "").strip()
             ]
-            # remove duplicados preservando ordem
+
+            # remove duplicados
             seen = set()
             sub_names = [x for x in sub_names if (x not in seen and not seen.add(x))]
-
-            st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
-            st.markdown("<div class='ds-meta'>SUBLOCAIS</div>", unsafe_allow_html=True)
 
             def _fmt_sublocal(v: str) -> str:
                 return "Visão geral" if v == "__visao__" else v
 
-            # Se não tem sublocais, mantém só visão geral
             if len(sub_names) <= 1:
-                st.markdown("<div class='ds-loc-hint'>Sem sublocais cadastrados.</div>", unsafe_allow_html=True)
+                st.markdown("<div class='ds-loc-hint'>Sem sublocais.</div>", unsafe_allow_html=True)
                 st.session_state["comp_loc_sublocal"] = "__visao__"
             else:
                 cur_sl = st.session_state.get("comp_loc_sublocal", "__visao__")
@@ -7458,42 +7428,57 @@ div[data-testid="stRadio"] {{
                     label_visibility="collapsed",
                     format_func=_fmt_sublocal,
                 )
-                # aplica classe de menu DS no radio (escopo)
                 st.markdown("<div class='ds-loc-menu'></div>", unsafe_allow_html=True)
 
                 if sl_choice != st.session_state.get("comp_loc_sublocal"):
                     st.session_state["comp_loc_sublocal"] = sl_choice
                     st.rerun()
 
-            st.markdown("</div>", unsafe_allow_html=True)  # ds-frame (left)
+            st.markdown("</div>", unsafe_allow_html=True)  # ds-frame left
 
-        with right:
-            # Breadcrumb
+        # ============================
+        # CENTRO: imagem da CIDADE (sempre)
+        # ============================
+        with col_center:
+            city_now = st.session_state.get("comp_loc_city") or (region_cities[0] if region_cities else "")
+            st.markdown("<div class='ds-frame'>", unsafe_allow_html=True)
+
+            # sempre imagem da cidade, mesmo em sublocal
+            city_img = _city_image_path(city_now)
+            img_uri = _img_data_uri(city_img, max_w=1600) if city_img else ""
+
+            # título compacto
+            reg_now = st.session_state.get("comp_loc_region") or ""
+            st.markdown(f"<div class='ds-meta' style='text-align:center'>{reg_now} — {city_now}</div>", unsafe_allow_html=True)
+
+            if img_uri:
+                st.markdown(f"<img class='comp-map' src='{img_uri}'/>", unsafe_allow_html=True)
+            else:
+                st.markdown("<div class='ds-loc-hint' style='text-align:center'>Sem imagem para esta cidade.</div>", unsafe_allow_html=True)
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # ============================
+        # DIREITA: Lore (cidade ou sublocal)
+        # ============================
+        with col_right:
             reg_now = st.session_state.get("comp_loc_region") or ""
             city_now = st.session_state.get("comp_loc_city") or ""
             sl_now = st.session_state.get("comp_loc_sublocal") or "__visao__"
-            crumb = f"{reg_now}  —  {city_now}"
-            if sl_now and sl_now != "__visao__":
-                crumb += f"  —  {sl_now}"
 
             st.markdown("<div class='ds-frame'>", unsafe_allow_html=True)
-            st.markdown(f"<div class='ds-name'>LOCAIS</div>", unsafe_allow_html=True)
+            st.markdown("<div class='ds-name'>LOCAIS</div>", unsafe_allow_html=True)
+
+            crumb = f"{reg_now} — {city_now}"
+            if sl_now and sl_now != "__visao__":
+                crumb += f" — {sl_now}"
             st.markdown(f"<div class='ds-meta'>{crumb}</div>", unsafe_allow_html=True)
+            st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
 
-            # Imagem da cidade + mapa (quando útil)
-            city_img = _city_image_path(city_now)
-            map_img = _map_path()
-
-            img_uri = _img_data_uri(city_img, max_w=1400) if city_img else ""
-            if img_uri:
-                st.markdown(f"<img class='comp-map' src='{img_uri}'/>", unsafe_allow_html=True)
-                st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
-
-            # Conteúdo
             cobj = cities.get(city_now) or {}
             secs = (cobj.get("sections") or {}) if isinstance(cobj.get("sections"), dict) else {}
 
-            # Tags (se você quiser que apareça “Industrial/Portuária/etc”)
+            # Tags
             try:
                 inferred = infer_city_tags(cobj)
                 tags = _merge_tags("cities", city_now, inferred)
@@ -7505,9 +7490,9 @@ div[data-testid="stRadio"] {{
                 st.markdown(f"<div style='text-align:center'>{chips}</div>", unsafe_allow_html=True)
                 st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
 
-            # Se estiver em “Visão geral”: mostra seções da cidade
+            # Lore
             if sl_now == "__visao__":
-                # Seções principais (ordem “bonita”)
+                # mostra seções da cidade
                 prefer = [
                     "Visão geral",
                     "Como é viver em " + city_now,
@@ -7518,7 +7503,6 @@ div[data-testid="stRadio"] {{
                 ]
                 used = set()
 
-                # Primeiro: preferidas
                 for k in prefer:
                     if k in secs and k not in used and (secs.get(k) or "").strip():
                         used.add(k)
@@ -7526,7 +7510,6 @@ div[data-testid="stRadio"] {{
                         st.markdown(f"<div class='ds-history'>{(secs.get(k) or '').replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
                         st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
 
-                # Depois: resto
                 for k, v in secs.items():
                     if k in used:
                         continue
@@ -7536,18 +7519,11 @@ div[data-testid="stRadio"] {{
                     st.markdown(f"<div class='ds-history'>{v.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
                     st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
 
-                # Se não tiver imagem de cidade, tenta mostrar o mapa geral por último
-                if (not img_uri) and map_img:
-                    m_uri = _img_data_uri(map_img, max_w=1600)
-                    if m_uri:
-                        st.markdown("<div class='ds-subtitle'>Mapa da região</div>", unsafe_allow_html=True)
-                        st.markdown(f"<img class='comp-map' src='{m_uri}'/>", unsafe_allow_html=True)
-
             else:
-                # Sublocal selecionado: mostra texto daquele sublocal
+                # lore do sublocal
                 sl_obj = None
                 for sl in (cobj.get("sublocais") or []):
-                    if (sl.get("name") or "").strip() == sl_now:
+                    if isinstance(sl, dict) and (sl.get("name") or "").strip() == sl_now:
                         sl_obj = sl
                         break
 
@@ -7558,85 +7534,13 @@ div[data-testid="stRadio"] {{
                     txt = (sl_obj.get("text") or "").strip()
                     st.markdown(f"<div class='ds-history'>{txt.replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
 
-                    # mini-mapa (se existir) embaixo do sublocal
-                    if map_img:
-                        m_uri = _img_data_uri(map_img, max_w=1600)
-                        if m_uri:
-                            st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
-                            st.markdown("<div class='ds-subtitle'>Mapa</div>", unsafe_allow_html=True)
-                            st.markdown(f"<img class='comp-map' src='{m_uri}'/>", unsafe_allow_html=True)
-
-            st.markdown("</div>", unsafe_allow_html=True)  # ds-frame (right)
+            st.markdown("</div>", unsafe_allow_html=True)  # ds-frame right
 
         st.markdown("</div>", unsafe_allow_html=True)  # ds-loc-shell
         return
 
-    
-    # ... (código existente acima: if st.session_state["comp_view"] == "locais": ...)
-
-    # =========================================================
-    # VIEW: HOME (estilo do app 35 — sem clicker e sem ENTER)
-    # =========================================================
-    if st.session_state["comp_view"] == "home":
-        st.markdown(
-            """
-            <div class="ds-home">
-                <div class="ds-title">BEM VINDO A GA'AL</div>
-                <div class="ds-press ds-blink">PRESS ANY BUTTON</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        tab_key = st.radio(
-            "Compendium Tabs",
-            ["__home__", "npcs", "ginasios", "locais", "sair"],  # <-- placeholder
-            index=0,
-            horizontal=True,
-            label_visibility="collapsed",
-            key="ds_home_tabs",
-            format_func=lambda v: {
-                "__home__": "",      # não mostra texto
-                "npcs": "NPCs",
-                "ginasios": "Ginásios",
-                "locais": "Locais",
-                "sair": "Sair",
-            }[v],
-        )
         
-        # esconde visualmente o primeiro item (placeholder)
-        st.markdown(
-            """
-            <style>
-              /* some o 1º item do radio (placeholder) */
-              div[data-testid="stRadio"] label:first-child { display:none !important; }
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
-        
-        # Evita rerun em loop na primeira renderização
-        if "ds_home_tabs_prev" not in st.session_state:
-            st.session_state["ds_home_tabs_prev"] = tab_key
-            return
-        
-        if st.session_state["ds_home_tabs_prev"] != tab_key:
-            st.session_state["ds_home_tabs_prev"] = tab_key
-        
-            if tab_key == "__home__":
-                return
-        
-            if tab_key == "sair":
-                st.session_state["nav_to"] = "Pokédex (Busca)"
-            else:
-                st.session_state["comp_view"] = tab_key  # <-- já vem sem acento
-        
-            st.rerun()
-        
-        return
-
-
-    
+           
     
     def _tentar_achar_imagem_compendium(nome):
         if not nome:
