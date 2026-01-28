@@ -2325,31 +2325,36 @@ def render_ds_tools_nav(selected_view: str):
 
       /* cada opção (label) */
       div[data-testid="stRadio"] [role="radiogroup"] > label{
+        position: relative;
         margin: 0 !important;
-        padding: 0 !important;
+        padding: 0 0 0 26px !important;
         cursor: pointer !important;
+        display: flex !important;
+        align-items: center !important;
       }
 
       /* o texto do radio no Streamlit geralmente fica em p */
       div[data-testid="stRadio"] label p{
         position: relative;
-        padding-left: 26px;
+        padding-left: 0;
         margin: 0 !important;
         user-select: none;
         font-family: "DarkSouls", serif;
-        font-size: 20px;
-        letter-spacing: 0.6px;
+        font-size: 18px;
+        letter-spacing: 0.4px;
         line-height: 1;
         color: rgba(220,220,220,0.92);
       }
 
       /* esconde o circulinho padrão do Streamlit */
       div[data-testid="stRadio"] input[type="radio"]{
-        display: none !important;
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
       }
 
       /* nossa bolinha (antes do texto) */
-      div[data-testid="stRadio"] label p::before{
+      div[data-testid="stRadio"] [role="radiogroup"] > label::before{
         content:"";
         position:absolute;
         left: 0;
@@ -2368,12 +2373,12 @@ def render_ds_tools_nav(selected_view: str):
         color: rgba(255,232,170,0.98);
         text-shadow: 0 0 10px rgba(255,215,0,0.25);
       }
-      div[data-testid="stRadio"] label:has(input:checked) p::before{
+      div[data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked)::before{
         border-color: rgba(255,215,0,0.72);
         background: rgba(255,215,0,0.34);
         box-shadow: 0 0 14px rgba(255,215,0,0.18);
       }
-      div[data-testid="stRadio"] label:has(input:checked) p::after{
+      div[data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked)::after{
         content:"";
         position:absolute;
         left: 4px;
