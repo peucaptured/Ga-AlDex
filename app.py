@@ -2268,9 +2268,7 @@ def stop_pvp_sync_listener():
     st.session_state.pop("pvp_sync_listener", None)
 
 
-
 def render_ds_tools_nav(selected_view: str):
-    # opções (texto que aparece)
     opts = ["Menu", "NPCs", "Ginásios", "Locais", "Sair"]
 
     to_view = {
@@ -2282,34 +2280,61 @@ def render_ds_tools_nav(selected_view: str):
     }
     from_view = {v: k for k, v in to_view.items()}
 
-    # index padrão baseado na view atual
     default_label = from_view.get(selected_view, "NPCs")
     idx = opts.index(default_label)
 
-    # --- CSS do estilo DS (bolinha + dourado no selecionado) ---
     st.markdown("""
     <style>
-      /* barra no topo (sticky) */
+      /* ====== RESGATE (caso você tenha CSS que esconde widgets) ====== */
+      div[data-testid="stRadio"], 
+      div[data-testid="stRadio"] *{
+        visibility: visible !important;
+        opacity: 1 !important;
+        display: revert !important;
+      }
+      /* garante que o radio não seja escondido pelo seu CSS global */
+        div[data-testid="stRadio"]{
+          visibility: visible !important;
+          opacity: 1 !important;
+        }
+        
+        /* container correto das opções */
+        div[data-testid="stRadio"] [role="radiogroup"]{
+          display: flex !important;
+          justify-content: center !important;
+          align-items: center !important;
+          gap: 34px !important;
+        }
+
+      /* wrapper sticky */
       div[data-testid="stRadio"]{
         position: sticky;
         top: 0;
         z-index: 9999;
-        padding: 26px 0 14px 0;
-        background: rgba(0,0,0,0.0);
+        padding: 22px 0 12px 0;
+        background: rgba(0,0,0,0);
       }
 
-      /* alinha no centro e espaça */
-      div[data-testid="stRadio"] > div{
-        display: flex;
-        justify-content: center;
-        gap: 34px;
+      /* radiogroup horizontal e centralizado */
+      div[data-testid="stRadio"] [role="radiogroup"]{
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        gap: 34px !important;
       }
 
-      /* cada opção */
-      div[data-testid="stRadio"] label{
+      /* cada opção (label) */
+      div[data-testid="stRadio"] [role="radiogroup"] > label{
+        margin: 0 !important;
+        padding: 0 !important;
+        cursor: pointer !important;
+      }
+
+      /* o texto do radio no Streamlit geralmente fica em p */
+      div[data-testid="stRadio"] label p{
         position: relative;
         padding-left: 34px;
-        cursor: pointer;
+        margin: 0 !important;
         user-select: none;
         font-family: "DarkSouls", serif;
         font-size: 28px;
@@ -2317,13 +2342,13 @@ def render_ds_tools_nav(selected_view: str):
         color: rgba(220,220,220,0.92);
       }
 
-      /* esconde o rádio “padrão” */
+      /* esconde o circulinho padrão do Streamlit */
       div[data-testid="stRadio"] input[type="radio"]{
         display: none !important;
       }
 
-      /* bolinha */
-      div[data-testid="stRadio"] label::before{
+      /* nossa bolinha (antes do texto) */
+      div[data-testid="stRadio"] label p::before{
         content:"";
         position:absolute;
         left: 0;
@@ -2338,11 +2363,11 @@ def render_ds_tools_nav(selected_view: str):
       }
 
       /* selecionado (Chrome suporta :has) */
-      div[data-testid="stRadio"] label:has(input:checked){
+      div[data-testid="stRadio"] label:has(input:checked) p{
         color: rgba(255,232,170,0.98);
         text-shadow: 0 0 10px rgba(255,215,0,0.25);
       }
-      div[data-testid="stRadio"] label:has(input:checked)::before{
+      div[data-testid="stRadio"] label:has(input:checked) p::before{
         border-color: rgba(255,215,0,0.72);
         background: rgba(255,215,0,0.34);
         box-shadow: 0 0 14px rgba(255,215,0,0.18);
@@ -2364,12 +2389,7 @@ def render_ds_tools_nav(selected_view: str):
     if new_view == "sair":
         st.session_state["nav_to"] = "Pokédex (Busca)"
         st.rerun()
-    
-    elif new_view == "home":
-        st.session_state["comp_view"] = "home"
-        st.rerun()
-    
-    elif st.session_state.get("comp_view") != new_view:
+    elif new_view != st.session_state.get("comp_view"):
         st.session_state["comp_view"] = new_view
         if new_view != "npcs":
             st.session_state["comp_selected_npc"] = None
