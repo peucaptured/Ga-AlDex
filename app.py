@@ -4292,6 +4292,22 @@ def apply_compendium_theme() -> None:
         unsafe_allow_html=True,
     )
 
+def render_top_menu_compendium(selected: str):
+    st.markdown("<div class='ds-home'>", unsafe_allow_html=True)
+
+    opts = [("menu", "Menu"),
+            ("npcs", "NPCs"),
+            ("ginasios", "Ginásios"),
+            ("locais", "Locais"),
+            ("sair", "Sair")]
+
+    for key, label in opts:
+        if st.button(label, key=f"top_{key}"):
+            st.session_state["comp_view"] = key
+            st.rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
 
 # ----------------------------
 # ASSETS (index rápido)
@@ -5349,11 +5365,18 @@ def comp_load() -> dict:
             npc_v_j, _comp_mtime(npc_v_j),
             npc_m_j, _comp_mtime(npc_m_j),
         )
-
+    
         bundle = load_compendium_gym_data_json(
             loc_j, _comp_mtime(loc_j),
             gin_j, _comp_mtime(gin_j),
         ) if (loc_j or gin_j) else {"gyms": {}, "npcs_extra": {}}
+    
+        # =========================
+        # NPCs gerais (Vivos + Mortos + Extras)
+        # =========================
+        npcs_gerais = {}
+        npcs_gerais.update(data.get("npcs", {}) or {})
+        npcs_gerais.update(bundle.get("npcs_extra", {}) or {})
 
     else:
         # ----------------------------
@@ -6186,6 +6209,7 @@ def render_compendium_page() -> None:
         {font_css}
         :root {{
             --ds-font: 'DarkSouls', serif;
+            --ds-gold-dim: rgba(255,215,0,0.55);
         }}
         /* Fundo preto no compendium */
         html, body, .stApp, [data-testid="stAppViewContainer"] {{
@@ -6427,17 +6451,27 @@ div[role="radiogroup"] input {{ display: none !important; }}
           color: rgba(255,215,0,0.98) !important;
           text-shadow: 0 0 18px rgba(255,215,0,0.45) !important;
         }}
+        .ds-gold-top{{
+          height: 1px;
+          width: 100%;
+          margin: 12px 0 18px 0;
+          background: linear-gradient(90deg, transparent, var(--ds-gold-dim), transparent);
+        }}
         
         /* Remove outline padrão */
         .ds-tab div[data-testid="stButton"] > button:focus {{
           outline: none !important;
         }}
         </style>
-        <div class="ds-gold-top"></div>
         """,
         unsafe_allow_html=True,
     )
-    
+        
+    components.html("<div class='ds-gold-top'></div>", height=10)
+
+    # 4️⃣ Menu
+    render_top_menu_compendium(
+        st.session_state.get("comp_view", "menu")
     # ----------------------------
     # Estado do Compendium — NÃO cai direto em NPCs
     # ----------------------------
