@@ -6786,7 +6786,6 @@ div[data-testid="stRadio"] {{
         </style>
         """, unsafe_allow_html=True)
         st.markdown(
-        st.markdown(
             "<div class='ds-npc-banner'>"
             "<div class='ds-npc-banner-title'>Selecione um NPC</div>"
             "<div class='ds-npc-banner-sub'>Clique em um retrato à esquerda</div>"
