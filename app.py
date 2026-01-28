@@ -7287,6 +7287,36 @@ div[data-testid="stRadio"] {{
             """
             <style>
               .ds-loc-shell{ margin-top: 6px; }
+              /* Faz a moldura abraçar os widgets e não ficar "vazia" */
+                .ds-frame.ds-loc-left{
+                  padding: 18px 18px 16px 18px !important;
+                }
+                
+                /* Dá espaçamento entre blocos */
+                .ds-loc-left .comp-divider{
+                  margin: 14px 0 14px 0 !important;
+                }
+                
+                /* Selectbox com cara de "encaixado" dentro do frame */
+                .ds-loc-left div[data-testid="stSelectbox"]{
+                  width: 100% !important;
+                }
+                .ds-loc-left div[data-testid="stSelectbox"] > div{
+                  background: rgba(0,0,0,0.25) !important;
+                  border: 1px solid rgba(176,143,60,0.45) !important;
+                  border-radius: 12px !important;
+                  padding: 6px 10px !important;
+                  box-shadow: 0 0 18px rgba(255,215,0,0.06) !important;
+                }
+                
+                /* Texto do select com fonte DS */
+                .ds-loc-left div[data-testid="stSelectbox"] *{
+                  font-family: "DarkSouls", serif !important;
+                  letter-spacing: 0.18em !important;
+                  text-transform: uppercase !important;
+                  color: rgba(255,255,255,0.82) !important;
+                }
+
               .ds-loc-left .stTextInput input{
                 background: rgba(0,0,0,0.35) !important;
                 border: 1px solid rgba(176,143,60,0.35) !important;
