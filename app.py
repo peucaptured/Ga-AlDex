@@ -26,6 +26,9 @@ from advantages_engine import suggest_advantages
 import queue
 import threading
 import time
+import streamlit.components.v1 as components
+import mimetypes
+from pathlib import Path
 from streamlit.runtime import scriptrunner # <--- IMPORTANTE: Importar o módulo inteiro
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 from streamlit.errors import StreamlitAPIException
