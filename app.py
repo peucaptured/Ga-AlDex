@@ -6197,22 +6197,43 @@ def render_compendium_page() -> None:
     st.markdown(f"""
     <style>
         {font_css}
-        :root {{
+        .ds-scope {{
             --ds-font: 'DarkSouls', serif;
             --ds-gold-dim: rgba(255,215,0,0.55);
         }}
         /* Fundo preto no compendium */
-        html, body, .stApp, [data-testid="stAppViewContainer"] {{
+        body:has(.ds-scope),
+        body:has(.ds-scope) .stApp,
+        body:has(.ds-scope) [data-testid="stAppViewContainer"] {{
             background: #000 !important;
             color: #f8fafc;
         }}
         /* Aplica a fonte em tudo na aba compendium */
-        [data-testid="stAppViewContainer"], [data-testid="stAppViewContainer"] * {{
+        .ds-scope, .ds-scope * {{
             font-family: var(--ds-font) !important;
+        }}
+        .ds-scope .stMarkdown,
+        .ds-scope .stMarkdown p,
+        .ds-scope .stMarkdown span,
+        .ds-scope li,
+        .ds-scope h1,
+        .ds-scope h2,
+        .ds-scope h3,
+        .ds-scope h4,
+        .ds-scope label,
+        .ds-scope .stWidgetLabel,
+        .ds-scope .stTextInput input,
+        .ds-scope .stNumberInput input,
+        .ds-scope .stTextArea textarea,
+        .ds-scope [data-baseweb="tab"],
+        .ds-scope [data-baseweb="tab-list"] {{
+            font-family: var(--ds-font) !important;
+            color: #f8fafc !important;
+            text-shadow: none !important;
         }}
         /* ESTILO DOS BOTÕES (O que você gostou) */
         /* Remove a caixa/borda padrão e deixa só o texto */
-        .stButton > button {{
+        .ds-scope div.stButton > button {{
             background: transparent !important;
             border: none !important;
             color: #888 !important; /* Cor normal (cinza escuro) */
@@ -6222,28 +6243,28 @@ def render_compendium_page() -> None:
             text-transform: uppercase;
             transition: transform 0.2s, color 0.2s;
         }}
-        .stButton > button:hover {{
+        .ds-scope div.stButton > button:hover {{
             color: #FFD700 !important; text-shadow: 0 0 10px #FFD700; transform: scale(1.1);
         }}
-        .stButton > button:active, .stButton > button:focus {{
+        .ds-scope div.stButton > button:active, .ds-scope div.stButton > button:focus {{
             color: #FFD700 !important; outline: none !important; border: none !important; box-shadow: none !important;
         }}
         
     /* Esconde elementos padrão do Streamlit para imersão */
-    [data-testid="stHeader"] {{ visibility: hidden; }}
-    [data-testid="stSidebar"] {{ display: none !important; }}
+    body:has(.ds-scope) [data-testid="stHeader"] {{ visibility: hidden; }}
+    body:has(.ds-scope) [data-testid="stSidebar"] {{ display: none !important; }}
     
     /* Esconde o resto da UI padrão do Streamlit (menu, toolbar, rodapé) */
-    #MainMenu {{ visibility: hidden; }}
-    footer {{ visibility: hidden; }}
-    header {{ visibility: hidden; }}
-    [data-testid="stToolbar"] {{ visibility: hidden !important; height: 0px !important; }}
-    [data-testid="stStatusWidget"] {{ visibility: hidden !important; }}
-    [data-testid="stDeployButton"] {{ display: none !important; }}
+    body:has(.ds-scope) #MainMenu {{ visibility: hidden; }}
+    body:has(.ds-scope) footer {{ visibility: hidden; }}
+    body:has(.ds-scope) header {{ visibility: hidden; }}
+    body:has(.ds-scope) [data-testid="stToolbar"] {{ visibility: hidden !important; height: 0px !important; }}
+    body:has(.ds-scope) [data-testid="stStatusWidget"] {{ visibility: hidden !important; }}
+    body:has(.ds-scope) [data-testid="stDeployButton"] {{ display: none !important; }}
 
     
 /* HOME (igual app 35) */
-.ds-home {{
+.ds-scope .ds-home {{
     min-height: 74vh;
     display: flex;
     flex-direction: column;
@@ -6252,7 +6273,7 @@ def render_compendium_page() -> None:
     gap: 22px;
     padding: 10px 0 0 0;
 }}
-.ds-title {{
+.ds-scope .ds-title {{
     text-align: center;
     color: var(--ds-white);
     font-size: 56px;
@@ -6260,7 +6281,7 @@ def render_compendium_page() -> None:
     text-transform: uppercase;
     margin: 0;
 }}
-.ds-press {{
+.ds-scope .ds-press {{
     text-align: center;
     color: var(--ds-faint);
     font-size: 14px;
@@ -6272,10 +6293,10 @@ def render_compendium_page() -> None:
     0%, 48% {{ opacity: 0.10; }}
     60%, 100% {{ opacity: 0.88; }}
 }}
-.ds-blink {{ animation: dsBlink 1.05s ease-in-out infinite; }}
+.ds-scope .ds-blink {{ animation: dsBlink 1.05s ease-in-out infinite; }}
 
 /* Tabs (radio horizontal) no rodapé */
-div[data-testid="stRadio"] {{
+.ds-scope div[data-testid="stRadio"] {{
     position: fixed !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
@@ -6285,7 +6306,7 @@ div[data-testid="stRadio"] {{
     background: rgba(0,0,0,0.0) !important;
 }}
 /* Tabs (radio horizontal) no rodapé — SOMENTE NA HOME */
-.ds-home div[data-testid="stRadio"] {{
+.ds-scope .ds-home div[data-testid="stRadio"] {{
     position: fixed !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
@@ -6294,10 +6315,10 @@ div[data-testid="stRadio"] {{
     padding: 10px 18px !important;
     background: rgba(0,0,0,0.0) !important;
 }}
-.ds-home div[data-testid="stRadio"] > label {{ display: none !important; }}
+.ds-scope .ds-home div[data-testid="stRadio"] > label {{ display: none !important; }}
 
 /* Linha dourada fina acima dos tabs */
-.ds-home div[data-testid="stRadio"]::before {{
+.ds-scope .ds-home div[data-testid="stRadio"]::before {{
     content: "";
     display: block;
     height: 1px;
@@ -6306,13 +6327,13 @@ div[data-testid="stRadio"] {{
 }}
 
 /* Estilo das opções */
-.ds-home div[role="radiogroup"] {{
+.ds-scope .ds-home div[role="radiogroup"] {{
     display: flex !important;
     gap: 58px !important;
     justify-content: center !important;
     align-items: center !important;
 }}
-.ds-home div[role="radiogroup"] > label {{
+.ds-scope .ds-home div[role="radiogroup"] > label {{
     position: relative !important;
     padding: 6px 10px !important;
     cursor: pointer !important;
@@ -6323,20 +6344,20 @@ div[data-testid="stRadio"] {{
     user-select: none !important;
     transition: all 120ms ease !important;
 }}
-.ds-home div[role="radiogroup"] > label:hover {{
+.ds-scope .ds-home div[role="radiogroup"] > label:hover {{
     color: #FFD700 !important;
     text-shadow: 0 0 10px rgba(255,215,0,0.65) !important;
 }}
-.ds-home div[role="radiogroup"] > label[data-checked="true"] {{
+.ds-scope .ds-home div[role="radiogroup"] > label[data-checked="true"] {{
     color: #FFD700 !important;
     text-shadow: 0 0 10px rgba(255,215,0,0.65) !important;
 }}
 /* Esconde o bolinha padrão do radio */
-.ds-home div[role="radiogroup"] input {{ display: none !important; }}
+.ds-scope .ds-home div[role="radiogroup"] input {{ display: none !important; }}
 
 
 
-.ds-frame {{
+.ds-scope .ds-frame {{
             background: rgba(0,0,0,0.55);
             border: 2px solid rgba(176,143,60,0.55);
             box-shadow: 0 0 45px rgba(0,0,0,0.9);
@@ -6344,7 +6365,7 @@ div[data-testid="stRadio"] {{
             padding: 26px 26px 18px 26px;
             position: relative;
         }}
-        .ds-frame::after {{
+        .ds-scope .ds-frame::after {{
             content: "";
             position: absolute;
             top: 10px; left: 10px; right: 10px; bottom: 10px;
@@ -6352,7 +6373,7 @@ div[data-testid="stRadio"] {{
             border-radius: 10px;
             pointer-events: none;
         }}
-        .ds-name {{
+        .ds-scope .ds-name {{
             font-size: 52px;
             text-transform: uppercase;
             letter-spacing: 0.22em;
@@ -6361,7 +6382,7 @@ div[data-testid="stRadio"] {{
             padding-bottom: 14px;
             border-bottom: 1px solid rgba(255,255,255,0.10);
         }}
-        .ds-meta {{
+        .ds-scope .ds-meta {{
             text-align: center;
             color: var(--ds-faint);
             letter-spacing: 0.20em;
@@ -6369,16 +6390,16 @@ div[data-testid="stRadio"] {{
             font-size: 13px;
             margin-bottom: 18px;
         }}
-        .ds-portrait {{
+        .ds-scope .ds-portrait {{
             display:flex; justify-content:center; margin: 12px 0 10px 0;
         }}
-        .ds-portrait img {{
+        .ds-scope .ds-portrait img {{
             max-width: 320px; width:100%;
             border-radius: 10px;
             border: 1px solid rgba(255,255,255,0.12);
             box-shadow: 0 0 26px rgba(0,0,0,0.75);
         }}
-        .ds-section-title {{
+        .ds-scope .ds-section-title {{
             margin-top: 14px; margin-bottom: 10px;
             color: var(--ds-faint);
             letter-spacing: 0.18em;
@@ -6388,7 +6409,7 @@ div[data-testid="stRadio"] {{
             padding-bottom: 8px;
             text-align:center;
         }}
-        .ds-poke-container {{
+        .ds-scope .ds-poke-container {{
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -6399,12 +6420,12 @@ div[data-testid="stRadio"] {{
             padding: 8px;
             transition: all 0.3s ease;
         }}
-        .ds-poke-container:hover {{
+        .ds-scope .ds-poke-container:hover {{
             border-color: #FFD700;
             background: rgba(20,20,10,0.8);
             transform: translateY(-3px);
         }}
-        .ds-poke-img {{
+        .ds-scope .ds-poke-img {{
             width: 60px;
             height: 60px;
             object-fit: contain;
@@ -6412,11 +6433,11 @@ div[data-testid="stRadio"] {{
             opacity: 0.85;
             transition: all 0.4s ease;
         }}
-        .ds-poke-container:hover .ds-poke-img {{
+        .ds-scope .ds-poke-container:hover .ds-poke-img {{
             filter: sepia(0) brightness(1) contrast(1);
             opacity: 1;
         }}
-        .ds-poke-name {{
+        .ds-scope .ds-poke-name {{
             font-size: 10px;
             text-transform: uppercase;
             color: #887766;
@@ -6424,10 +6445,10 @@ div[data-testid="stRadio"] {{
             text-align: center;
             letter-spacing: 1px;
         }}
-        .ds-poke-container:hover .ds-poke-name {{
+        .ds-scope .ds-poke-container:hover .ds-poke-name {{
             color: #FFD700;
         }}
-        .ds-history p {{
+        .ds-scope .ds-history p {{
             color: rgba(255,255,255,0.88);
             font-size: 18px;
             line-height: 1.68;
@@ -6435,7 +6456,7 @@ div[data-testid="stRadio"] {{
             margin: 0 0 14px 0;
         }}
         /* TOP NAV — texto puro */
-        .ds-tab div[data-testid="stButton"] > button {{
+        .ds-scope .ds-tab div[data-testid="stButton"] > button {{
           background: transparent !important;
           border: none !important;
           box-shadow: none !important;
@@ -6443,52 +6464,57 @@ div[data-testid="stRadio"] {{
         }}
         
         /* Hover dourado */
-        .ds-tab div[data-testid="stButton"] > button:hover {{
+        .ds-scope .ds-tab div[data-testid="stButton"] > button:hover {{
           color: rgba(255,215,0,0.95) !important;
           text-shadow: 0 0 14px rgba(255,215,0,0.35) !important;
         }}
         
         /* Selecionado = dourado sempre */
-        .ds-tab.selected div[data-testid="stButton"] > button {{
+        .ds-scope .ds-tab.selected div[data-testid="stButton"] > button {{
           color: rgba(255,215,0,0.98) !important;
           text-shadow: 0 0 18px rgba(255,215,0,0.45) !important;
         }}
-        .ds-gold-top{{
+        .ds-scope .ds-gold-top{{
           height: 1px;
           width: 100%;
           margin: 12px 0 18px 0;
           background: linear-gradient(90deg, transparent, var(--ds-gold-dim), transparent);
         }}
-        .ds-nav-item,
-        .ds-nav-item:visited {{
+        .ds-scope .ds-nav-item,
+        .ds-scope .ds-nav-item:visited {{
           color: rgba(255,255,255,0.72) !important;
           text-decoration: none !important;
         }}
         
-        .ds-nav-item:hover {{
+        .ds-scope .ds-nav-item:hover {{
           color: rgba(255,215,0,0.95) !important;
           text-shadow: 0 0 14px rgba(255,215,0,0.35) !important;
           text-decoration: none !important;
         }}
         
-        .ds-nav-item.selected {{
+        .ds-scope .ds-nav-item.selected {{
           color: rgba(255,215,0,0.98) !important;
           text-shadow: 0 0 16px rgba(255,215,0,0.45) !important;
           text-decoration: none !important;
         }}
         
         /* Remove outline padrão */
-        .ds-tab div[data-testid="stButton"] > button:focus {{
+        .ds-scope .ds-tab div[data-testid="stButton"] > button:focus {{
           outline: none !important;
         }}
         /* GARANTIA: fora da HOME, qualquer radio do compendium some */
-        body:not(:has(.ds-home)) div[data-testid="stRadio"] {{
+        body:has(.ds-scope):not(:has(.ds-home)) div[data-testid="stRadio"] {{
           display: none !important;
         }}
         </style>
         """,
         unsafe_allow_html=True,
     )
+
+    st.markdown("<div class='ds-scope'>", unsafe_allow_html=True)
+
+    def _close_ds_scope():
+        st.markdown("</div>", unsafe_allow_html=True)
         
     components.html("<div class='ds-gold-top'></div>", height=10)
 
@@ -6503,6 +6529,7 @@ div[data-testid="stRadio"] {{
         comp_data = comp_load()  # retorna {"regions","cities","npcs","gyms",...}
     except Exception as e:
         st.error(f"Falha ao carregar Compendium: {e}")
+        _close_ds_scope()
         return
     
     npcs_gerais = comp_data.get("npcs", {}) or {}
@@ -6582,7 +6609,7 @@ div[data-testid="stRadio"] {{
         st.markdown(
             """
             <style>
-              .ds-topnav{
+              .ds-scope .ds-topnav{
                 display:flex;
                 align-items:center;
                 justify-content:center;
@@ -6592,7 +6619,7 @@ div[data-testid="stRadio"] {{
                 background: rgba(0,0,0,0.35);
                 border-bottom: 1px solid rgba(255,215,0,0.18);
               }
-              .ds-topnav .ds-item{
+              .ds-scope .ds-topnav .ds-item{
                 cursor:pointer;
                 user-select:none;
                 font-size: 22px;
@@ -6603,16 +6630,16 @@ div[data-testid="stRadio"] {{
                 position: relative;
                 transition: color .12s ease, text-shadow .12s ease, transform .08s ease;
               }
-              .ds-topnav .ds-item:hover{
+              .ds-scope .ds-topnav .ds-item:hover{
                 color: rgba(255,215,0,0.92);
                 text-shadow: 0 0 12px rgba(255,215,0,0.28);
                 transform: translateY(-1px);
               }
-              .ds-topnav .ds-item.selected{
+              .ds-scope .ds-topnav .ds-item.selected{
                 color: rgba(255,215,0,0.98);
                 text-shadow: 0 0 14px rgba(255,215,0,0.34);
               }
-              .ds-topnav .ds-item::after{
+              .ds-scope .ds-topnav .ds-item::after{
                 content:"";
                 position:absolute;
                 left: 0;
@@ -6622,7 +6649,7 @@ div[data-testid="stRadio"] {{
                 background: rgba(255,215,0,0.28);
                 opacity: 0;
               }
-              .ds-topnav .ds-item.selected::after{ opacity: 1; }
+              .ds-scope .ds-topnav .ds-item.selected::after{ opacity: 1; }
             </style>
             """,
             unsafe_allow_html=True,
@@ -6669,6 +6696,7 @@ div[data-testid="stRadio"] {{
             from st_click_detector import click_detector
         except ImportError:
             st.error("Biblioteca não instalada. Adicione 'st-click-detector' ao requirements.txt e reinicie o app.")
+            _close_ds_scope()
             return
     
         # --- UI FRAME (NPCs) usando o asset MENU_DetailStatus_Base2.PNG ---
@@ -6706,25 +6734,25 @@ div[data-testid="stRadio"] {{
         # CSS das molduras (não interfere no click)
         css = """
         <style>
-          .ds-npc-panel{
+          .ds-scope .ds-npc-panel{
             background-repeat:no-repeat;
             background-position:center;
             background-size:100% 100%;
             padding: 28px 28px 26px 28px;
             min-height: 0px;     /* deixa crescer pelo conteúdo */
           }
-          .ds-npc-panel.left{
+          .ds-scope .ds-npc-panel.left{
           background: transparent !important;
           background-image: none !important;
           box-shadow: none !important;
         }
-          .ds-npc-panel.right{
+          .ds-scope .ds-npc-panel.right{
             background-image:url("RIGHT_BG");
             padding: 30px 34px 30px 34px;
           }
         
           /* grid automático */
-          .ds-grid{
+          .ds-scope .ds-grid{
             display:grid;
             grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
             gap: 10px;
@@ -6732,7 +6760,7 @@ div[data-testid="stRadio"] {{
           }
         
           /* evita qualquer camada bloquear cliques */
-          .ds-npc-panel, .ds-npc-panel * { pointer-events:auto; }
+          .ds-scope .ds-npc-panel, .ds-scope .ds-npc-panel * { pointer-events:auto; }
         </style>
         """
 
@@ -6800,21 +6828,21 @@ div[data-testid="stRadio"] {{
             else:
                 content_html = """
                 <style>
-                    .ds-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
-                    .ds-card {
+                    .ds-scope .ds-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
+                    .ds-scope .ds-card {
                         position: relative; aspect-ratio: 3/4;
                         border: 2px solid #554422; border-radius: 8px;
                         overflow: hidden; cursor: pointer; transition: transform 0.1s;
                     }
-                    .ds-card:hover { border-color: #FFD700; transform: scale(1.02); }
-                    .ds-card img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.8); }
-                    .ds-name-tag {
+                    .ds-scope .ds-card:hover { border-color: #FFD700; transform: scale(1.02); }
+                    .ds-scope .ds-card img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.8); }
+                    .ds-scope .ds-name-tag {
                         position: absolute; bottom: 0; left: 0; right: 0;
                         background: rgba(0,0,0,0.85); color: #ddd;
                         font-size: 10px; text-align: center; padding: 4px;
                         font-weight: bold; text-transform: uppercase;
                     }
-                    a { text-decoration: none; display: block; }
+                    .ds-scope .ds-grid a { text-decoration: none; display: block; }
                 </style>
                 <div class='ds-grid'>
                 """
@@ -6966,6 +6994,7 @@ div[data-testid="stRadio"] {{
         
             st.markdown("</div>", unsafe_allow_html=True)
         
+        _close_ds_scope()
         return
 
     
@@ -6977,6 +7006,7 @@ div[data-testid="stRadio"] {{
             "<div class='ds-frame'><div class='ds-name'>GINÁSIOS</div><div class='ds-meta'>EM CONSTRUÇÃO</div></div>",
             unsafe_allow_html=True,
         )
+        _close_ds_scope()
         return
     
     if st.session_state["comp_view"] == "locais":
@@ -6984,6 +7014,7 @@ div[data-testid="stRadio"] {{
             "<div class='ds-frame'><div class='ds-name'>LOCAIS</div><div class='ds-meta'>EM CONSTRUÇÃO</div></div>",
             unsafe_allow_html=True,
         )
+        _close_ds_scope()
         return
     
     # ... (código existente acima: if st.session_state["comp_view"] == "locais": ...)
@@ -7023,7 +7054,7 @@ div[data-testid="stRadio"] {{
             """
             <style>
               /* some o 1º item do radio (placeholder) */
-              div[data-testid="stRadio"] label:first-child { display:none !important; }
+              .ds-scope div[data-testid="stRadio"] label:first-child { display:none !important; }
             </style>
             """,
             unsafe_allow_html=True,
@@ -7032,12 +7063,14 @@ div[data-testid="stRadio"] {{
         # Evita rerun em loop na primeira renderização
         if "ds_home_tabs_prev" not in st.session_state:
             st.session_state["ds_home_tabs_prev"] = tab_key
+            _close_ds_scope()
             return
         
         if st.session_state["ds_home_tabs_prev"] != tab_key:
             st.session_state["ds_home_tabs_prev"] = tab_key
         
             if tab_key == "__home__":
+                _close_ds_scope()
                 return
         
             if tab_key == "sair":
@@ -7047,11 +7080,14 @@ div[data-testid="stRadio"] {{
         
             st.rerun()
         
+        _close_ds_scope()
         return
 
 
     
     
+    _close_ds_scope()
+
     def _tentar_achar_imagem_compendium(nome):
         if not nome:
             return None
