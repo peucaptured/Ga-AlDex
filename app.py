@@ -6472,6 +6472,7 @@ div[role="radiogroup"] input {{ display: none !important; }}
     # 4️⃣ Menu
     render_top_menu_compendium(
         st.session_state.get("comp_view", "menu")
+    )
     # ----------------------------
     # Estado do Compendium — NÃO cai direto em NPCs
     # ----------------------------
