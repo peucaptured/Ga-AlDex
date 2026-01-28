@@ -2460,6 +2460,365 @@ def render_ds_tools_nav(selected_view: str):
             st.session_state["comp_selected_npc"] = None
         st.rerun()
 
+def _resolve_badge_path_assets_insignias(gym_key: str, g: dict) -> str:
+    """
+    Procura badge em Assets/insignias.
+    Regra:
+      - ginásio "por cidade" -> badge_<cidade>.png
+      - ginásio "por líder"  -> badge_<lider>.png
+    Fallbacks: gym_key -> meta.cidade -> meta.lider
+    """
+    import os, re
+
+    def _norm(s: str) -> str:
+        try:
+            return _stem_key(str(s))
+        except Exception:
+            x = str(s).strip().lower()
+            x = re.sub(r"\s+", " ", x)
+            return x.replace(" ", "_")
+
+    def _try(name: str) -> str:
+        if not name:
+            return ""
+        base = f"badge_{_norm(name)}.png"
+        p = os.path.join("Assets", "insignias", base)
+        return p if os.path.exists(p) else ""
+
+    meta = (g.get("meta") or {})
+    staff = (g.get("staff") or {})
+
+    city = (meta.get("cidade") or meta.get("city") or g.get("city") or "").strip()
+    lider = (meta.get("lider") or meta.get("líder") or meta.get("leader") or staff.get("lider") or "").strip()
+
+    # 1) tenta pela chave atual (pode ser cidade ou líder)
+    p = _try(gym_key)
+    if p: return p
+
+    # 2) tenta pela cidade
+    p = _try(city)
+    if p: return p
+
+    # 3) tenta pelo líder
+    p = _try(lider)
+    if p: return p
+
+    return ""
+
+def render_compendium_ginasios() -> None:
+    import os, re
+
+    comp_data = comp_load()
+    gyms: dict = (comp_data.get("gyms") or {})
+    npcs: dict = (comp_data.get("npcs") or {})
+    cities: dict = (comp_data.get("cities") or {})
+
+    if not gyms:
+        st.markdown(
+            "<div class='ds-frame'><div class='ds-name'>GINÁSIOS</div><div class='ds-meta'>Nenhum ginásio encontrado.</div></div>",
+            unsafe_allow_html=True,
+        )
+        return
+
+    def _norm(s: str) -> str:
+        try:
+            return _stem_key(str(s))
+        except Exception:
+            x = str(s).strip().lower()
+            x = re.sub(r"\s+", " ", x)
+            return x.replace(" ", "_")
+
+    def _pick(d: dict, *keys: str) -> str:
+        for k in keys:
+            v = d.get(k)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        return ""
+
+    @st.cache_data(show_spinner=False)
+    def _img_data_uri(path: str, max_w: int = 900) -> str:
+        try:
+            import base64, io
+            from PIL import Image
+            if not path or not os.path.exists(path):
+                return ""
+            img = Image.open(path).convert("RGBA")
+            img.thumbnail((max_w, 2400))
+            buf = io.BytesIO()
+            img.save(buf, format="PNG", optimize=True)
+            b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+            return f"data:image/png;base64,{b64}"
+        except Exception:
+            return ""
+
+    def _npc_obj(name: str, g: dict) -> dict:
+        staff_npcs = g.get("staff_npcs") or {}
+        return (npcs.get(name) or staff_npcs.get(name) or {})
+
+    def _gym_staff(g: dict) -> tuple[str, str]:
+        meta = g.get("meta") or {}
+        staff = g.get("staff") or {}
+        lider = (meta.get("lider") or staff.get("lider") or "").strip()
+        vice  = (meta.get("vice_lider") or meta.get("vice-lider") or staff.get("vice_lider") or staff.get("vice") or "").strip()
+        return lider, vice
+
+    def _collect_gym_pokemons(lider_nm: str, vice_nm: str, g: dict) -> list[str]:
+        seen = set()
+        out: list[str] = []
+
+        def add_from(nm: str):
+            if not nm:
+                return
+            npc = _npc_obj(nm, g)
+            pokes = npc.get("pokemons") or npc.get("pokemons_conhecidos") or []
+            if not isinstance(pokes, list):
+                return
+            for p in pokes:
+                ps = str(p).strip()
+                if not ps:
+                    continue
+                key = _norm(ps)
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append(ps)
+
+        add_from(lider_nm)
+        add_from(vice_nm)
+        return out
+
+    def _render_section(title: str, text: str):
+        if not isinstance(text, str) or not text.strip():
+            return
+        st.markdown(f"<div class='ds-subtitle'>{title}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='ds-history'>{text.strip().replace(chr(10), '<br>')}</div>", unsafe_allow_html=True)
+        st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+
+    # ---- lista de ginásios (chaves do seu bundle gyms) ----
+    gym_keys = list(gyms.keys())
+
+    def _sort_key(k: str):
+        g = gyms.get(k) or {}
+        meta = g.get("meta") or {}
+        city = (meta.get("cidade") or meta.get("city") or "").strip() or k
+        reg = ""
+        cobj = cities.get(city) or {}
+        if isinstance(cobj, dict):
+            reg = (cobj.get("region") or "").strip()
+        return (_norm(reg), _norm(city), _norm(k))
+
+    gym_keys = sorted(gym_keys, key=_sort_key)
+
+    # estado
+    st.session_state.setdefault("comp_gym_key", gym_keys[0] if gym_keys else "")
+    if st.session_state["comp_gym_key"] not in gyms:
+        st.session_state["comp_gym_key"] = gym_keys[0] if gym_keys else ""
+
+    st.session_state.setdefault("comp_gym_focus", "__visao__")  # "__visao__" | "lider" | "vice"
+
+    gym_now = st.session_state["comp_gym_key"]
+    focus_now = st.session_state["comp_gym_focus"]
+    g = gyms.get(gym_now) or {}
+    meta = g.get("meta") or {}
+    lider_nm, vice_nm = _gym_staff(g)
+
+    # 3 colunas igual Locais
+    col_left, col_center, col_right = st.columns([1.05, 1.35, 2.15], gap="large")
+
+    # ============================
+    # ESQUERDA: seletor + pokémons
+    # ============================
+    with col_left:
+        st.markdown("<div class='ds-frame'>", unsafe_allow_html=True)
+        st.markdown("<div class='ds-name'>GINÁSIOS</div>", unsafe_allow_html=True)
+
+        # label: se a chave for cidade -> mostra só cidade; senão "Líder — Cidade"
+        label_map = {}
+        for k in gym_keys:
+            gg = gyms.get(k) or {}
+            mm = gg.get("meta") or {}
+            city = (mm.get("cidade") or mm.get("city") or "").strip() or k
+            if _norm(k) == _norm(city):
+                label = f"{city}"
+            else:
+                label = f"{k} — {city}"
+            label_map[label] = k
+
+        labels = list(label_map.keys())
+        cur_label = next((lbl for lbl, kk in label_map.items() if kk == gym_now), labels[0] if labels else "")
+
+        pick = st.selectbox("Ginásio", labels, index=labels.index(cur_label) if cur_label in labels else 0, key="comp_gym_pick")
+        if pick and label_map.get(pick) != st.session_state["comp_gym_key"]:
+            st.session_state["comp_gym_key"] = label_map[pick]
+            st.session_state["comp_gym_focus"] = "__visao__"
+            st.rerun()
+
+        opts = ["__visao__", "lider", "vice"]
+        labels2 = {"__visao__": "Visão", "lider": "Líder", "vice": "Vice-líder"}
+        focus = st.radio(
+            "Foco",
+            opts,
+            index=opts.index(focus_now) if focus_now in opts else 0,
+            key="comp_gym_focus_pick",
+            format_func=lambda v: labels2.get(v, v),
+        )
+        if focus != st.session_state["comp_gym_focus"]:
+            st.session_state["comp_gym_focus"] = focus
+            st.rerun()
+
+        st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+
+        pokes = _collect_gym_pokemons(lider_nm, vice_nm, g)
+        st.markdown("<div class='ds-subtitle'>Pokémons disponíveis</div>", unsafe_allow_html=True)
+
+        if not pokes:
+            st.markdown("<div class='ds-history'>(Nenhum pokémon cadastrado)</div>", unsafe_allow_html=True)
+        else:
+            try:
+                cols = st.columns(4, gap="small")
+                for i, pnm in enumerate(pokes[:48]):
+                    with cols[i % 4]:
+                        spr = ""
+                        try:
+                            spr = _poke_sprite_cached(pnm)
+                        except Exception:
+                            spr = ""
+                        if spr:
+                            st.image(spr, width=56)
+                        st.caption(pnm)
+            except Exception:
+                st.markdown("<div class='ds-history'>" + "<br>".join(pokes[:48]) + "</div>", unsafe_allow_html=True)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ============================
+    # CENTRO: badge + retratos
+    # ============================
+    with col_center:
+        st.markdown("<div class='ds-frame'>", unsafe_allow_html=True)
+
+        city = (meta.get("cidade") or meta.get("city") or "").strip()
+        title = city if city else gym_now
+        st.markdown(f"<div class='ds-name'>{title}</div>", unsafe_allow_html=True)
+
+        chips = []
+        if meta.get("tipo"): chips.append(f"Tipo: {meta.get('tipo')}")
+        if meta.get("status"): chips.append(f"Status: {meta.get('status')}")
+        if meta.get("localizacao"): chips.append(f"Local: {meta.get('localizacao')}")
+        st.markdown(f"<div class='ds-meta'>{' | '.join(chips) if chips else ''}</div>", unsafe_allow_html=True)
+
+        st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+
+        # BADGE (Assets/insignias)
+        badge_path = _resolve_badge_path_assets_insignias(gym_now, g)
+        if badge_path:
+            badge_uri = _img_data_uri(badge_path, max_w=520)
+            st.markdown(
+                f"<div style='display:flex;justify-content:center;margin:10px 0 14px 0;'><img src='{badge_uri}' style='max-width:260px;width:72%;height:auto;opacity:0.95;'/></div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown("<div class='ds-history'>(Sem insígnia encontrada em Assets/insignias)</div>", unsafe_allow_html=True)
+
+        def _portrait(role: str, nm: str):
+            if not nm:
+                st.markdown(f"<div class='ds-history'>({role}: não definido)</div>", unsafe_allow_html=True)
+                return
+        
+            p = comp_find_image(nm)
+            if p and os.path.exists(p):
+                uri = _img_data_uri(p, max_w=520)
+        
+                st.markdown(f"<div class='ds-subtitle'>{role}</div>", unsafe_allow_html=True)
+        
+                st.markdown(
+                    f"<div style='display:flex;justify-content:center;'>"
+                    f"<img src='{uri}' style='max-width:340px;width:100%;height:auto;border-radius:10px;opacity:0.98;'/>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+        
+                st.markdown(
+                    f"<div class='ds-meta' style='text-align:center;margin-top:8px;'>{nm}</div>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(f"<div class='ds-subtitle'>{role}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='ds-history'>{nm} (sem retrato)</div>", unsafe_allow_html=True)
+
+
+        _portrait("Líder", lider_nm)
+        _portrait("Vice-líder", vice_nm)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ============================
+    # DIREITA: lore
+    # ============================
+    with col_right:
+        st.markdown("<div class='ds-frame'>", unsafe_allow_html=True)
+        st.markdown("<div class='ds-name'>LORE</div>", unsafe_allow_html=True)
+
+        crumb = title + (" — Visão" if focus_now == "__visao__" else (" — Líder" if focus_now == "lider" else " — Vice-líder"))
+        st.markdown(f"<div class='ds-meta'>{crumb}</div>", unsafe_allow_html=True)
+        st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+
+        st.markdown("<div class='ds-lore-scroll'>", unsafe_allow_html=True)
+
+        if focus_now == "__visao__":
+            narrative = (g.get("narrative") or "").strip()
+            if narrative:
+                _render_section("Ginásio", narrative)
+
+            if lider_nm:
+                npcL = _npc_obj(lider_nm, g)
+                secs = npcL.get("sections") or {}
+                if isinstance(secs, dict):
+                    _render_section(f"Líder — {lider_nm}", _pick(secs, "Ginásio", "Historia", "História"))
+
+            if vice_nm:
+                npcV = _npc_obj(vice_nm, g)
+                secs = npcV.get("sections") or {}
+                if isinstance(secs, dict):
+                    _render_section(f"Vice-líder — {vice_nm}", _pick(secs, "Ginásio", "Historia", "História"))
+
+            if not narrative and not lider_nm and not vice_nm:
+                st.markdown("<div class='ds-history'>(Sem lore cadastrada)</div>", unsafe_allow_html=True)
+
+        elif focus_now == "lider":
+            npcL = _npc_obj(lider_nm, g) if lider_nm else {}
+            secs = npcL.get("sections") or {}
+            if not lider_nm:
+                st.markdown("<div class='ds-history'>(Líder não definido)</div>", unsafe_allow_html=True)
+            elif not isinstance(secs, dict) or not secs:
+                st.markdown("<div class='ds-history'>(Sem seções para o líder)</div>", unsafe_allow_html=True)
+            else:
+                _render_section("Ginásio", _pick(secs, "Ginásio"))
+                _render_section("História", _pick(secs, "História", "Historia", "Histórico", "Historico"))
+                for k, v in secs.items():
+                    if k in ("Ginásio", "História", "Historia", "Histórico", "Historico"):
+                        continue
+                    _render_section(k, v)
+
+        else:
+            npcV = _npc_obj(vice_nm, g) if vice_nm else {}
+            secs = npcV.get("sections") or {}
+            if not vice_nm:
+                st.markdown("<div class='ds-history'>(Vice-líder não definido)</div>", unsafe_allow_html=True)
+            elif not isinstance(secs, dict) or not secs:
+                st.markdown("<div class='ds-history'>(Sem seções para o vice-líder)</div>", unsafe_allow_html=True)
+            else:
+                _render_section("Ginásio", _pick(secs, "Ginásio"))
+                _render_section("História", _pick(secs, "História", "Historia", "Histórico", "Historico"))
+                for k, v in secs.items():
+                    if k in ("Ginásio", "História", "Historia", "Histórico", "Historico"):
+                        continue
+                    _render_section(k, v)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+
 
 def render_compendium_page() -> None:
     if "comp_view" not in st.session_state:
@@ -7360,17 +7719,14 @@ div[data-testid="stRadio"] {{
     # =====================================================================
     # Ginásios / Locais (placeholder)
     # =====================================================================
-    if st.session_state["comp_view"] == "ginasios":
+    elif st.session_state["comp_view"] == "ginasios":
         render_ds_tools_nav(st.session_state["comp_view"])
-
-        st.markdown(
-            "<div class='ds-frame'><div class='ds-name'>GINÁSIOS</div><div class='ds-meta'>EM CONSTRUÇÃO</div></div>",
-            unsafe_allow_html=True,
-        )
+        render_compendium_ginasios()
         return
     
-     
-        # =====================================================================
+
+    
+     # ===================LOCAIS==================================================
     if st.session_state["comp_view"] == "locais":
         render_ds_tools_nav(st.session_state["comp_view"])
 
