@@ -6725,6 +6725,34 @@ div[data-testid="stRadio"] {{
             border: none !important;
             box-shadow: none !important;
           }
+          /* --- CORREÇÃO DO QUADRADO CINZA --- */
+        
+        /* Remove fundo do container do input */
+        .ds-npc-panel .stTextInput, 
+        .ds-npc-panel .stTextInput > div,
+        .ds-npc-panel .stTextInput > div > div,
+        .ds-npc-panel div[data-baseweb="input"],
+        .ds-npc-panel div[data-baseweb="base-input"] {
+            background-color: transparent !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Estiliza apenas a caixa de digitação (o input real) */
+        .ds-npc-panel input {
+            background-color: rgba(0, 0, 0, 0.8) !important; /* Fundo preto transparente */
+            color: #f8fafc !important; /* Texto claro */
+            border: 1px solid rgba(255, 215, 0, 0.3) !important; /* Borda dourada suave */
+            border-radius: 8px !important;
+        }
+        
+        /* Remove o quadrado cinza de Selectboxes (se houver) */
+        .ds-npc-panel div[data-baseweb="select"] > div {
+            background-color: rgba(0, 0, 0, 0.8) !important;
+            border: 1px solid rgba(255, 215, 0, 0.3) !important;
+            color: #f8fafc !important;
+        }
         
           /* grid automático */
           .ds-grid{
