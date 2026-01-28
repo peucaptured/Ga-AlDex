@@ -6524,9 +6524,7 @@ div[data-testid="stRadio"] {{
     components.html("<div class='ds-gold-top'></div>", height=10)
 
     # 4️⃣ Menu
-    render_top_menu_compendium(
-        st.session_state.get("comp_view", "menu")
-    )
+   
     # ----------------------------
     # Estado do Compendium — NÃO cai direto em NPCs
     # ----------------------------
