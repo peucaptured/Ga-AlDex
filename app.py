@@ -448,6 +448,17 @@ def _audio_data_uri(path_str: str) -> str:
         mime = "audio/mpeg"
     b64 = base64.b64encode(data).decode("utf-8")
     return f"data:{mime};base64,{b64}"
+    
+@st.cache_data(show_spinner=False)
+def _img_data_uri(path_str: str) -> str:
+    p = Path(path_str)
+    data = p.read_bytes()
+    mime, _ = mimetypes.guess_type(str(p))
+    if not mime:
+        mime = "image/png"
+    b64 = base64.b64encode(data).decode("utf-8")
+    return f"data:{mime};base64,{b64}"
+
 
 def render_bgm(track_path: str, volume: float = 0.35) -> None:
     src = _audio_data_uri(track_path)
@@ -6573,6 +6584,12 @@ def render_compendium_page() -> None:
     gap: 22px;
     padding: 10px 0 0 0;
 }}
+.ds-logo{{
+  width: min(78vw, 760px);
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 0 18px rgba(0,0,0,0.75));
+}}
 .ds-title {{
     text-align: center;
     color: var(--ds-white);
@@ -7843,10 +7860,12 @@ div[data-testid="stRadio"] {{
     # VIEW: HOME (estilo do app 35 — sem clicker e sem ENTER)
     # =========================================================
     if st.session_state["comp_view"] == "home":
+        logo_src = _img_data_uri("logo.png")  # arquivo na raiz do projeto
+    
         st.markdown(
-            """
+            f"""
             <div class="ds-home">
-                <div class="ds-title">BEM VINDO A GA'AL</div>
+                <img class="ds-logo" src="{logo_src}" alt="Ga'Al" />
                 <div class="ds-press ds-blink">PRESS ANY BUTTON</div>
             </div>
             """,
