@@ -6240,6 +6240,134 @@ def render_compendium_home() -> None:
         st.markdown("</div>", unsafe_allow_html=True)
 
 
+def render_compendium_npcs(npcs_gerais: dict) -> None:
+    # NPCs (VERSÃO CORRIGIDA - SAFE IDs)
+    try:
+        from st_click_detector import click_detector
+    except ImportError:
+        st.error("Biblioteca não instalada. Adicione 'st-click-detector' ao requirements.txt e reinicie o app.")
+        return
+
+    # --- LAYOUT PRINCIPAL ---
+    left, right = st.columns([1.25, 2.15], gap="large")
+
+    # --- COLUNA ESQUERDA ---
+    with left:
+        search = st.text_input(
+            "Buscar personagem",
+            key="ds_npc_search",
+            placeholder="Nome ou história...",
+        ).strip()
+
+        def _norm(s: str) -> str:
+            if not isinstance(s, str):
+                return ""
+            return re.sub(r"\s+", " ", s).strip().lower()
+
+        q = _norm(search)
+
+        # Preparar lista
+        items = []
+        for nome, obj in (npcs_gerais or {}).items():
+            if not isinstance(obj, dict):
+                continue
+
+            historia = ""
+            secs = obj.get("sections") or {}
+            if isinstance(secs, dict):
+                historia = secs.get("História") or secs.get("Historia") or ""
+
+            hay = _norm(nome) + " " + _norm(historia)
+            if not q or q in hay:
+                items.append((nome, obj))
+
+        items.sort(key=lambda x: x[0])
+
+        # Cache de imagens
+        @st.cache_data(show_spinner=False)
+        def _thumb_data_uri(path: str, max_w: int = 360, max_h: int = 520) -> str:
+            try:
+                from PIL import Image
+                import io, base64, os
+
+                if not path or not os.path.exists(path):
+                    return ""
+                img = Image.open(path).convert("RGB")
+                img.thumbnail((max_w, max_h))
+                buf = io.BytesIO()
+                img.save(buf, format="JPEG", quality=70)
+                b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+                return f"data:image/jpeg;base64,{b64}"
+            except:
+                return ""
+
+        if not items:
+            st.info("Nenhum NPC encontrado.")
+            return
+
+        content_html = """
+        <style>
+            .ds-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
+            .ds-card {
+                position: relative; aspect-ratio: 3/4;
+                border: 2px solid #554422; border-radius: 8px;
+                overflow: hidden; cursor: pointer; transition: transform 0.1s;
+            }
+            .ds-card:hover { border-color: #FFD700; transform: scale(1.02); }
+            .ds-card img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.8); }
+            .ds-name-tag {
+                position: absolute; bottom: 0; left: 0; right: 0;
+                background: rgba(0,0,0,0.85); color: #ddd;
+                font-size: 10px; text-align: center; padding: 4px;
+                font-weight: bold; text-transform: uppercase;
+            }
+            a { text-decoration: none; display: block; }
+        </style>
+        <div class='ds-grid'>
+        """
+
+        id_map = {}
+
+        for idx, (nome, obj) in enumerate(items):
+            safe_id = str(idx)
+            id_map[safe_id] = nome
+
+            img_path = None
+            try:
+                img_path = comp_find_image(nome)
+            except:
+                pass
+
+            src = _thumb_data_uri(img_path) if img_path else ""
+            img_html = f"<img src='{src}' />" if src else "<div style='width:100%;height:100%;background:#222;'></div>"
+
+            content_html += f"""
+            <a href='#' id='{safe_id}'>
+                <div class="ds-card">
+                    {img_html}
+                    <div class="ds-name-tag">{nome}</div>
+                </div>
+            </a>
+            """
+
+        content_html += "</div>"
+
+        clicked_safe_id = click_detector(content_html)
+
+        if clicked_safe_id is not None:
+            nome_selecionado = id_map.get(str(clicked_safe_id))
+            if nome_selecionado and nome_selecionado != st.session_state.get("comp_selected_npc"):
+                st.session_state["comp_selected_npc"] = nome_selecionado
+                st.rerun()
+
+    # (Opcional) aqui você renderiza no "right" os detalhes do NPC selecionado
+    with right:
+        nome = st.session_state.get("comp_selected_npc")
+        if not nome:
+            st.info("Selecione um NPC à esquerda.")
+            return
+        # render_npc_detail(nome, npcs_gerais.get(nome))
+
 def render_compendium_page() -> None:
     # --- INÍCIO DA INSERÇÃO ---
     data = comp_load()
