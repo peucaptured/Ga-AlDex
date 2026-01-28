@@ -2718,7 +2718,7 @@ def register_new_user(name, password):
         if find_user_row(sheet, name) is not None:
             return "EXISTS"
             
-        empty_data = json.dumps({"seen": [], "caught": [], "party": [], "notes": {}})
+        empty_data = json.dumps(get_empty_user_data())
         # Adiciona: Coluna A (Nome), Coluna B (Dados), Coluna C (Senha)
         sheet.append_row([name, empty_data, str(password)])
         return "SUCCESS"
@@ -2743,6 +2743,104 @@ def save_data_cloud(trainer_name, data):
     except Exception as e:
         st.error(f"Erro ao salvar: {e}")
         return False
+
+def get_empty_user_data():
+    return {"seen": [], "caught": [], "party": [], "notes": {}}
+
+def render_login_menu(trainer_name: str, user_data: dict):
+    caught_count = len(user_data.get("caught", []) or [])
+    badge_count = int(user_data.get("badges", 0) or 0)
+
+    st.markdown(
+        """
+        <style>
+        .fr-login-wrap {
+            max-width: 520px;
+            margin: 24px auto 0 auto;
+            font-family: "Press Start 2P", "Trebuchet MS", sans-serif;
+        }
+        .fr-login-card {
+            border: 4px solid #2d3748;
+            border-radius: 12px;
+            background: #f7fafc;
+            padding: 14px 16px;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.25);
+        }
+        .fr-login-title {
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+        .fr-login-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 16px;
+            font-size: 11px;
+            color: #1a202c;
+        }
+        .fr-login-label {
+            color: #4a5568;
+            font-weight: 700;
+        }
+        .fr-login-value {
+            color: #2b6cb0;
+        }
+        .fr-menu-actions .stButton button {
+            width: 100%;
+            border-radius: 8px;
+            border: 3px solid #1a202c;
+            padding: 10px 12px;
+            background: #edf2f7;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("<div class='fr-login-wrap'>", unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div class='fr-login-card'>
+            <div class='fr-login-title'>Continue</div>
+            <div class='fr-login-grid'>
+                <div class='fr-login-label'>PLAYER</div>
+                <div class='fr-login-value'>{html.escape(trainer_name)}</div>
+                <div class='fr-login-label'>POKÉDEX</div>
+                <div class='fr-login-value'>{caught_count}</div>
+                <div class='fr-login-label'>BADGES</div>
+                <div class='fr-login-value'>{badge_count}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("<div class='fr-menu-actions'>", unsafe_allow_html=True)
+    if st.button("Continue", type="primary", key="fr_continue"):
+        st.session_state["show_login_menu"] = False
+        st.session_state["nav_to"] = "Pokédex (Busca)"
+        st.rerun()
+
+    if st.button("New Game", key="fr_new_game"):
+        st.session_state["confirm_new_game"] = True
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    if st.session_state.get("confirm_new_game"):
+        st.warning("Isso vai apagar todos os seus dados salvos.")
+        if st.button("Confirmar novo jogo", type="primary", key="fr_confirm_new_game"):
+            st.session_state["user_data"] = get_empty_user_data()
+            save_data_cloud(trainer_name, st.session_state["user_data"])
+            st.session_state["confirm_new_game"] = False
+            st.rerun()
+        if st.button("Cancelar", key="fr_cancel_new_game"):
+            st.session_state["confirm_new_game"] = False
+            st.rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # --- TELA DE LOGIN ---
 if 'trainer_name' not in st.session_state:
@@ -2769,6 +2867,7 @@ if 'trainer_name' not in st.session_state:
                     elif isinstance(result, dict):
                         st.session_state['trainer_name'] = l_user
                         st.session_state['user_data'] = result
+                        st.session_state["show_login_menu"] = True
                         st.rerun()
     
     # ABA DE REGISTRO
@@ -2796,6 +2895,10 @@ if 'trainer_name' not in st.session_state:
 
 user_data = st.session_state['user_data']
 trainer_name = st.session_state['trainer_name']
+
+if st.session_state.get("show_login_menu"):
+    render_login_menu(trainer_name, user_data)
+    st.stop()
 
 # --- FUNÇÕES DO APP ---
 import random
