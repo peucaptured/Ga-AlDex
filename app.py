@@ -6644,10 +6644,6 @@ div[data-testid="stRadio"] {{
         .ds-tab div[data-testid="stButton"] > button:focus {{
           outline: none !important;
         }}
-        /* GARANTIA: fora da HOME, qualquer radio do compendium some */
-        body:not(:has(.ds-home)) div[data-testid="stRadio"] {{
-          display: none !important;
-        }}
         </style>
         """,
         unsafe_allow_html=True,
