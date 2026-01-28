@@ -6481,34 +6481,65 @@ div[role="radiogroup"] input {{ display: none !important; }}
     # ----------------------------
     # Navegação via query params (?cv=...) — evita click-detector na HOME e no TOP NAV
     # ----------------------------
-    def _consume_comp_qp():
-        cv = None
+    def _qp_get(key: str):
         try:
             qp = st.query_params
-            cv = qp.get("cv")
-            if isinstance(cv, list):
-                cv = cv[0] if cv else None
+            v = qp.get(key)
+            if v is None:
+                return None
+            if isinstance(v, list):
+                return v[0] if v else None
+            return str(v)
         except Exception:
             qp = st.experimental_get_query_params()
-            cv = (qp.get("cv") or [None])[0]
-
+            v = qp.get(key)
+            if not v:
+                return None
+            return v[0]
+    
+    def _clear_qp():
+        try:
+            st.query_params.clear()
+        except Exception:
+            st.experimental_set_query_params()
+    
+    def _consume_comp_qp():
+        # NOVO: suporte ao formato antigo do botoes.py
+        gv = _qp_get("gaal_view")   # home / npcs / ginasios / locais
+        gn = _qp_get("gaal_npc")    # nome do npc
+    
+        # Seu formato novo
+        cv = _qp_get("cv")          # home / npcs / ginasios / locais / sair
+    
+        # 1) Se veio NPC específico, isso tem prioridade
+        if gn:
+            st.session_state["comp_view"] = "npcs"
+            st.session_state["comp_selected_npc"] = gn
+            _clear_qp()
+            st.rerun()
+    
+        # 2) Se veio view antiga (gaal_view)
+        if gv in {"home", "npcs", "ginasios", "locais"}:
+            st.session_state["comp_view"] = gv
+            if gv != "npcs":
+                st.session_state["comp_selected_npc"] = None
+            _clear_qp()
+            st.rerun()
+    
+        # 3) Se veio view nova (cv)
         if not cv:
             return
-
+    
         if cv == "sair":
             st.session_state["nav_to"] = "Pokédex (Busca)"
         else:
             st.session_state["comp_view"] = cv
             if cv != "npcs":
                 st.session_state["comp_selected_npc"] = None
-
-        # limpa o query param pra não ficar preso no link
-        try:
-            st.query_params.clear()
-        except Exception:
-            st.experimental_set_query_params()
+    
+        _clear_qp()
         st.rerun()
-
+    
     _consume_comp_qp()
     
     # ----------------------------
