@@ -450,14 +450,21 @@ def _audio_data_uri(path_str: str) -> str:
     return f"data:{mime};base64,{b64}"
     
 @st.cache_data(show_spinner=False)
-def _img_data_uri(path_str: str) -> str:
+def comp_img_data_uri(path_str: str) -> str:
+    from pathlib import Path
+    import base64, mimetypes
+
     p = Path(path_str)
+    if not p.exists():
+        return ""
+
     data = p.read_bytes()
     mime, _ = mimetypes.guess_type(str(p))
     if not mime:
         mime = "image/png"
     b64 = base64.b64encode(data).decode("utf-8")
     return f"data:{mime};base64,{b64}"
+
 
 
 def render_bgm(track_path: str, volume: float = 0.35) -> None:
@@ -4660,6 +4667,8 @@ def _comp_base_dirs() -> list[str]:
         os.path.join(os.getcwd(), "assets", "portraits"),
         os.path.join(os.getcwd(), "cidades"),
         os.path.join(os.getcwd(), "treinadores"),
+        os.path.join(base, "Assets", "insignias"),
+        os.path.join(os.getcwd(), "Assets", "insignias"),
     ]
     uniq = []
     for r in roots:
@@ -7851,17 +7860,16 @@ div[data-testid="stRadio"] {{
     # VIEW: HOME (estilo do app 35 — sem clicker e sem ENTER)
     # =========================================================
     if st.session_state["comp_view"] == "home":
-        logo_src = _img_data_uri("logo.png")  # arquivo na raiz do projeto
-    
-        st.markdown(
-            f"""
-            <div class="ds-home">
-                <img class="ds-logo" src="{logo_src}" alt="Ga'Al" />
-                <div class="ds-press ds-blink">PRESS ANY BUTTON</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        logo_src = comp_img_data_uri("logo.png")
+
+        html_home = (
+            "<div class='ds-home'>"
+            f"<img class='ds-logo' src='{logo_src}' alt=\"Ga'Al\" />"
+            "<div class='ds-press ds-blink'>PRESS ANY BUTTON</div>"
+            "</div>"
         )
+    
+        st.markdown(html_home, unsafe_allow_html=True)
 
         tab_key = st.radio(
             "Compendium Tabs",
