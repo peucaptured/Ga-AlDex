@@ -6707,7 +6707,7 @@ div[data-testid="stRadio"] {{
         }
         
         iframe[title^="st_click_detector"]{
-          background: transparent !important;
+          background:  #000 !important;
           border: none !important;
           box-shadow: none !important;
         }
@@ -6822,7 +6822,7 @@ div[data-testid="stRadio"] {{
                   html, body {
                     background: #000 !important;
                     margin: 0 !important;
-                    padding: 0 !important;
+                    padding: 6px !important;  /* pinta também a “folga” */
 
                   }
                                 
@@ -6841,7 +6841,6 @@ div[data-testid="stRadio"] {{
                     aspect-ratio: 3/4;
                     border: 2px solid #554422;
                     background: #000 !important;   /* <- ISSO remove o “cinza” */
-                    height: 240px;          /* exemplo */
 
                     border-radius: 8px;
                     overflow: hidden;
@@ -6905,28 +6904,16 @@ div[data-testid="stRadio"] {{
                     """
     
                 content_html += "</div>"
+                clicked_safe_id = click_detector(content_html)
     
-                # --- calcula altura exata do grid (evita “área vazia” do componente) ---
-                COLS = 4
-                CARD_H = 220   # tem que bater com a altura real do card no CSS do content_html
-                GAP_Y  = 12
-                TOP_PAD = 6
-                
-                rows = (len(items) + COLS - 1) // COLS
-                height = TOP_PAD + rows * CARD_H + max(0, rows - 1) * GAP_Y
-                
-                clicked_safe_id = click_detector(content_html, height=height)
-                
-                # atualiza seleção UMA vez e rerun UMA vez
                 if clicked_safe_id is not None:
-                    sid = str(clicked_safe_id)
-                    nome_selecionado = id_map.get(sid)
-                
+                    nome_selecionado = id_map.get(str(clicked_safe_id))
                     if nome_selecionado and nome_selecionado != st.session_state.get("comp_selected_npc"):
-                        st.session_state["npc_safe_id"] = sid
                         st.session_state["comp_selected_npc"] = nome_selecionado
                         st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
+                
+                st.markdown("</div>", unsafe_allow_html=True)  # NÃO remove: fecha <div class='ds-npc-panel left'>
+
             
         # --- COLUNA DIREITA ---
         # --- COLUNA DIREITA ---
