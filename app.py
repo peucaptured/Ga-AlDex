@@ -10,6 +10,8 @@ import json
 import requests
 import unicodedata
 import os
+import io
+
 import re
 import difflib
 import uuid
