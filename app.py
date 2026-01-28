@@ -6702,6 +6702,20 @@ div[data-testid="stRadio"] {{
             background: #000 !important;
             box-shadow: none !important;
           }
+          .ds-npc-panel .stTextInput,
+          .ds-npc-panel .stTextInput > div,
+          .ds-npc-panel .stTextInput > div > div,
+          .ds-npc-panel .stTextInput div[data-baseweb="input"],
+          .ds-npc-panel .stTextInput div[data-baseweb="base-input"]{
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+          .ds-npc-panel .stTextInput input{
+            background: rgba(0,0,0,0.7) !important;
+            border: 1px solid #000 !important;
+            box-shadow: none !important;
+          }
         
           /* grid automático */
           .ds-grid{
