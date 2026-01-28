@@ -4040,85 +4040,6 @@ if page != "PvP – Arena Tática":
     stop_pvp_sync_listener()
 
 
-def apply_non_pokedex_theme() -> None:
-    st.markdown(
-        """
-        <style>
-        [data-testid="stAppViewContainer"] {
-            background: linear-gradient(180deg, #f8fafc 0%, #edf2f7 45%, #e2e8f0 100%);
-            color: #0f172a;
-            animation: pageFade 0.35s ease-in;
-        }
-        [data-testid="stMainBlockContainer"] {
-            animation: contentSlide 0.35s ease-in;
-        }
-        h1, h2, h3 {
-            color: #0f172a;
-            letter-spacing: -0.02em;
-        }
-        .stMarkdown, .stMarkdown p, .stTextInput input, .stSelectbox, .stMultiSelect, .stRadio, .stCheckbox {
-            color: #1e293b;
-        }
-        [data-testid="stHeader"] {
-            background: transparent !important;
-            backdrop-filter: none !important;
-        }
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 0.4rem;
-            background: linear-gradient(135deg, #dbeafe 0%, #c7d2fe 45%, #bae6fd 100%);
-            padding: 0.4rem;
-            border-radius: 999px;
-            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.4);
-        }
-        .stTabs [data-baseweb="tab"] {
-            border-radius: 999px;
-            padding: 0.4rem 1rem;
-            font-weight: 600;
-            color: #1e293b;
-            border: 1px solid transparent;
-            transition: all 0.2s ease;
-            background: rgba(59, 130, 246, 0.12);
-        }
-        .stTabs [data-baseweb="tab"]:hover {
-            color: #0f172a;
-            background: rgba(59, 130, 246, 0.2);
-        }
-        .stTabs [aria-selected="true"] {
-            background: #1e293b;
-            color: #f8fafc;
-            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.15);
-        }
-        [data-testid="stTabs"] [role="tabpanel"] {
-            animation: tabFade 0.3s ease-in;
-        }
-        div[data-testid="stMetric"] {
-            background: #ffffff;
-            border-radius: 14px;
-            padding: 0.9rem;
-            border: 1px solid rgba(148, 163, 184, 0.35);
-            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
-        }
-        [data-testid="stContainer"] > div {
-            border-radius: 16px;
-        }
-        @keyframes pageFade {
-            from { opacity: 0.92; }
-            to { opacity: 1; }
-        }
-        @keyframes contentSlide {
-            from { transform: translateY(8px); opacity: 0.92; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes tabFade {
-            from { opacity: 0.9; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
 
 # ==============================================================================
 # COMPENDIUM DE GA'AL — Aba completa (UPGRADED)
@@ -6200,6 +6121,8 @@ def render_compendium_page() -> None:
         .ds-scope {{
             --ds-font: 'DarkSouls', serif;
             --ds-gold-dim: rgba(255,215,0,0.55);
+            --ds-white: #f8fafc;
+            --ds-faint: rgba(248,250,252,0.72);
         }}
         /* Fundo preto no compendium */
         body:has(.ds-scope),
@@ -6479,25 +6402,7 @@ def render_compendium_page() -> None:
           width: 100%;
           margin: 12px 0 18px 0;
           background: linear-gradient(90deg, transparent, var(--ds-gold-dim), transparent);
-        }}
-        .ds-scope .ds-nav-item,
-        .ds-scope .ds-nav-item:visited {{
-          color: rgba(255,255,255,0.72) !important;
-          text-decoration: none !important;
-        }}
-        
-        .ds-scope .ds-nav-item:hover {{
-          color: rgba(255,215,0,0.95) !important;
-          text-shadow: 0 0 14px rgba(255,215,0,0.35) !important;
-          text-decoration: none !important;
-        }}
-        
-        .ds-scope .ds-nav-item.selected {{
-          color: rgba(255,215,0,0.98) !important;
-          text-shadow: 0 0 16px rgba(255,215,0,0.45) !important;
-          text-decoration: none !important;
-        }}
-        
+        }}        
         /* Remove outline padrão */
         .ds-scope .ds-tab div[data-testid="stButton"] > button:focus {{
           outline: none !important;
@@ -6750,15 +6655,7 @@ def render_compendium_page() -> None:
             background-image:url("RIGHT_BG");
             padding: 30px 34px 30px 34px;
           }
-        
-          /* grid automático */
-          .ds-scope .ds-grid{
-            display:grid;
-            grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
-            gap: 10px;
-            width:100%;
-          }
-        
+                          
           /* evita qualquer camada bloquear cliques */
           .ds-scope .ds-npc-panel, .ds-scope .ds-npc-panel * { pointer-events:auto; }
         </style>
@@ -7298,8 +7195,7 @@ if page == "Pokédex (Busca)":
     }
     </style>
     """, unsafe_allow_html=True)
-else:
-    apply_non_pokedex_theme()
+
 
 
 
