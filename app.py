@@ -6834,14 +6834,15 @@ div[data-testid="stRadio"] {{
                   .ds-card {
                     position: relative;
                     aspect-ratio: 3/4;
-                    border: 2px solid #554422;
+                    border: none !important;       /* remove a borda */
+                    outline: none !important;      /* remove outline/focus */
                     border-radius: 8px;
                     overflow: hidden;
                     cursor: pointer;
                     transition: transform 0.1s;
                   }
                 
-                  .ds-card:hover { border-color: #FFD700; transform: scale(1.02); }
+                  .ds-card:hover {transform: scale(1.02); }
                 
                   .ds-card img {
                     width: 100%;
