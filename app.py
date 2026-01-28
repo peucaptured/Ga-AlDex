@@ -2755,71 +2755,101 @@ def render_login_menu(trainer_name: str, user_data: dict):
         """
         <style>
         .fr-login-wrap {
-            max-width: 520px;
-            margin: 24px auto 0 auto;
+            max-width: 760px;
+            margin: 32px auto 0 auto;
             font-family: "Press Start 2P", "Trebuchet MS", sans-serif;
         }
+        .fr-login-layout {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
         .fr-login-card {
-            border: 4px solid #2d3748;
-            border-radius: 12px;
-            background: #f7fafc;
+            flex: 1;
+            border: 4px solid #1f2937;
+            border-radius: 14px;
+            background: linear-gradient(180deg, #f9fbff 0%, #f4f6fb 100%);
             padding: 14px 16px;
-            box-shadow: 0 4px 0 rgba(0,0,0,0.25);
+            box-shadow: 0 6px 0 rgba(0,0,0,0.35);
         }
         .fr-login-title {
             text-transform: uppercase;
             font-size: 12px;
             letter-spacing: 1px;
-            color: #1a202c;
-            margin-bottom: 8px;
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+        .fr-login-info {
+            border: 3px solid #1f2937;
+            border-radius: 10px;
+            background: #ffffff;
+            padding: 10px 12px;
+            box-shadow: inset 0 0 0 2px #e2e8f0;
         }
         .fr-login-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px 16px;
+            grid-template-columns: 1.1fr 1fr;
+            gap: 8px 20px;
             font-size: 11px;
-            color: #1a202c;
+            color: #1f2937;
         }
         .fr-login-label {
-            color: #4a5568;
+            color: #334155;
             font-weight: 700;
         }
         .fr-login-value {
-            color: #2b6cb0;
+            color: #1d4ed8;
         }
-        .fr-menu-actions .stButton button {
-            width: 100%;
-            border-radius: 8px;
-            border: 3px solid #1a202c;
-            padding: 10px 12px;
-            background: #edf2f7;
+        .fr-login-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-top: 26px;
+        }
+        .fr-login-actions [data-testid="stButton"] button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 4px solid #111827;
+            padding: 0;
             font-weight: 700;
             text-transform: uppercase;
+            font-size: 10px;
+            color: #ffffff;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.35), inset 0 -4px 0 rgba(0,0,0,0.2);
+        }
+        .fr-login-actions [data-testid="stButton"]:nth-child(1) button {
+            background: radial-gradient(circle at 30% 30%, #86efac 0%, #22c55e 55%, #15803d 100%);
+        }
+        .fr-login-actions [data-testid="stButton"]:nth-child(2) button {
+            background: radial-gradient(circle at 30% 30%, #7dd3fc 0%, #38bdf8 55%, #0ea5e9 100%);
         }
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown("<div class='fr-login-wrap'>", unsafe_allow_html=True)
+    st.markdown("<div class='fr-login-wrap'><div class='fr-login-layout'>", unsafe_allow_html=True)
     st.markdown(
         f"""
         <div class='fr-login-card'>
             <div class='fr-login-title'>Continue</div>
-            <div class='fr-login-grid'>
-                <div class='fr-login-label'>PLAYER</div>
-                <div class='fr-login-value'>{html.escape(trainer_name)}</div>
-                <div class='fr-login-label'>POKÉDEX</div>
-                <div class='fr-login-value'>{caught_count}</div>
-                <div class='fr-login-label'>BADGES</div>
-                <div class='fr-login-value'>{badge_count}</div>
+            <div class='fr-login-info'>
+                <div class='fr-login-grid'>
+                    <div class='fr-login-label'>PLAYER</div>
+                    <div class='fr-login-value'>{html.escape(trainer_name)}</div>
+                    <div class='fr-login-label'>POKÉDEX</div>
+                    <div class='fr-login-value'>{caught_count}</div>
+                    <div class='fr-login-label'>BADGES</div>
+                    <div class='fr-login-value'>{badge_count}</div>
+                </div>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown("<div class='fr-menu-actions'>", unsafe_allow_html=True)
+    st.markdown("<div class='fr-login-actions'>", unsafe_allow_html=True)
     if st.button("Continue", type="primary", key="fr_continue"):
         st.session_state["show_login_menu"] = False
         st.session_state["nav_to"] = "Pokédex (Busca)"
@@ -2827,7 +2857,7 @@ def render_login_menu(trainer_name: str, user_data: dict):
 
     if st.button("New Game", key="fr_new_game"):
         st.session_state["confirm_new_game"] = True
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
     if st.session_state.get("confirm_new_game"):
         st.warning("Isso vai apagar todos os seus dados salvos.")
