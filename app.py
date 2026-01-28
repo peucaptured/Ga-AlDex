@@ -6694,17 +6694,24 @@ div[data-testid="stRadio"] {{
           box-shadow: none !important;
         }
         
-        /* limpa wrappers do Streamlit dentro do painel esquerdo */
-        .ds-npc-panel.left div[data-testid="stElementContainer"],
-        .ds-npc-panel.left div[data-testid="stMarkdownContainer"],
-        .ds-npc-panel.left div[data-testid="stComponentFrame"],
-        .ds-npc-panel.left div[data-testid="stIFrame"],
-        .ds-npc-panel.left div[data-testid="stHtml"],
-        .ds-npc-panel.left iframe{
+       /* REMOVE o fundo cinza do componente (click_detector) */
+        div[data-testid="stComponentFrame"]:has(iframe[title^="st_click_detector"]),
+        div[data-testid="stElementContainer"]:has(iframe[title^="st_click_detector"]),
+        div[data-testid="stIFrame"]:has(iframe[title^="st_click_detector"]),
+        div[data-testid="stHtml"]:has(iframe[title^="st_click_detector"]) {
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+        
+        iframe[title^="st_click_detector"]{
           background: transparent !important;
           border: none !important;
           box-shadow: none !important;
         }
+
         
         /* remove padding/margem que às vezes vira “caixa” */
         .ds-npc-panel.left div[data-testid="stElementContainer"]{
@@ -6712,15 +6719,7 @@ div[data-testid="stRadio"] {{
           margin: 0 !important;
         }
         
-        /* garante que o iframe não pinte fundo */
-        .ds-npc-panel.left div[data-testid="stIFrame"] iframe,
-        .ds-npc-panel.left div[data-testid="stHtml"] iframe,
-        .ds-npc-panel.left div[data-testid="stComponentFrame"] iframe{
-          background: transparent !important;
-          border: none !important;
-          box-shadow: none !important;
-        }
-       
+               
         
           /* grid automático */
           .ds-grid{
