@@ -6208,6 +6208,37 @@ def get_font_base64(font_path):
 # ==============================================================================
 # 📚 COMPENDIUM NOVO (JSON + DARK SOULS) - CORRIGIDO
 # ==============================================================================
+def render_compendium_home() -> None:
+        st.markdown("<div class='ds-home'>", unsafe_allow_html=True)
+    
+        st.markdown("<h1 class='ds-title'>BEM VINDO A GA'AL</h1>", unsafe_allow_html=True)
+        st.markdown("<p class='ds-press ds-blink'>PRESS ANY BUTTON</p>", unsafe_allow_html=True)
+    
+        choice = st.radio(
+            "Ir para:",
+            ["NPCs", "Ginásios", "Locais", "Sair"],
+            horizontal=True,
+            label_visibility="collapsed",
+            key="comp_home_radio",
+        )
+    
+        mapping = {
+            "NPCs": "npcs",
+            "Ginásios": "ginasios",
+            "Locais": "locais",
+            "Sair": "sair",
+        }
+        target = mapping.get(choice, "home")
+    
+        if target == "sair":
+            st.session_state["page"] = "Home"   # troque se o nome da sua page for outro
+            st.rerun()
+        else:
+            st.session_state["comp_view"] = target
+            st.rerun()
+    
+        st.markdown("</div>", unsafe_allow_html=True)
+
 
 def render_compendium_page() -> None:
     # --- INÍCIO DA INSERÇÃO ---
@@ -6509,38 +6540,7 @@ div[role="radiogroup"] input {{ display: none !important; }}
     # ----------------------------
     # Navegação via query params (?cv=...) — evita click-detector na HOME e no TOP NAV
     # ----------------------------
-    def render_compendium_home() -> None:
-        st.markdown("<div class='ds-home'>", unsafe_allow_html=True)
     
-        st.markdown("<h1 class='ds-title'>BEM VINDO A GA'AL</h1>", unsafe_allow_html=True)
-        st.markdown("<p class='ds-press ds-blink'>PRESS ANY BUTTON</p>", unsafe_allow_html=True)
-    
-        choice = st.radio(
-            "Ir para:",
-            ["NPCs", "Ginásios", "Locais", "Sair"],
-            horizontal=True,
-            label_visibility="collapsed",
-            key="comp_home_radio",
-        )
-    
-        mapping = {
-            "NPCs": "npcs",
-            "Ginásios": "ginasios",
-            "Locais": "locais",
-            "Sair": "sair",
-        }
-        target = mapping.get(choice, "home")
-    
-        if target == "sair":
-            st.session_state["page"] = "Home"   # troque se o nome da sua page for outro
-            st.rerun()
-        else:
-            st.session_state["comp_view"] = target
-            st.rerun()
-    
-        st.markdown("</div>", unsafe_allow_html=True)
-
-
     
     
     def _consume_comp_qp():
