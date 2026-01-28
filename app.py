@@ -2299,6 +2299,32 @@ def render_ds_tools_nav(selected: str):
 
     st.markdown("</div>", unsafe_allow_html=True)
 
+def render_compendium_page() -> None:
+    if "comp_view" not in st.session_state:
+        st.session_state["comp_view"] = "home"
+
+    # topo só fora da home
+    if st.session_state["comp_view"] != "home":
+        render_ds_tools_nav(st.session_state["comp_view"])
+
+    # ---- ROTEAMENTO ----
+    if st.session_state["comp_view"] == "home":
+        render_compendium_home()
+        return
+
+    if st.session_state["comp_view"] == "npcs":
+        render_compendium_npcs()
+        return
+
+    if st.session_state["comp_view"] == "ginasios":
+        render_compendium_ginasios()
+        return
+
+    if st.session_state["comp_view"] == "locais":
+        render_compendium_locais()
+        return
+
+
 
 def ensure_pvp_sync_listener(db, rid):
     """
@@ -6619,10 +6645,6 @@ div[data-testid="stRadio"] {{
 
     _consume_comp_qp()
     
-    if st.session_state["comp_view"] != "home":
-        sel = "menu" if st.session_state["comp_view"] == "home" else st.session_state["comp_view"]
-        render_ds_tools_nav(sel)
-
 
     # =====================================================================
 
