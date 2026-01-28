@@ -6859,29 +6859,34 @@ div[role="radiogroup"] input {{ display: none !important; }}
             unsafe_allow_html=True,
         )
 
-        # Tabs (radio) no rodapé — navega ao clicar (sem ENTER)
-        tab = st.radio(
+        tab_key = st.radio(
             "Compendium Tabs",
-            ["NPCs", "Ginásios", "Locais", "Sair"],
+            ["npcs", "ginasios", "locais", "sair"],
             index=0,
             horizontal=True,
             label_visibility="collapsed",
             key="ds_home_tabs",
+            format_func=lambda v: {
+                "npcs": "NPCs",
+                "ginasios": "Ginásios",
+                "locais": "Locais",
+                "sair": "Sair",
+            }[v],
         )
-
+        
         # Evita rerun em loop na primeira renderização
         if "ds_home_tabs_prev" not in st.session_state:
-            st.session_state["ds_home_tabs_prev"] = tab
+            st.session_state["ds_home_tabs_prev"] = tab_key
             return
-
-        if st.session_state["ds_home_tabs_prev"] != tab:
-            st.session_state["ds_home_tabs_prev"] = tab
-            if tab == "Sair":
+        
+        if st.session_state["ds_home_tabs_prev"] != tab_key:
+            st.session_state["ds_home_tabs_prev"] = tab_key
+            if tab_key == "sair":
                 st.session_state["nav_to"] = "Pokédex (Busca)"
             else:
-                st.session_state["comp_view"] = tab.lower()
+                st.session_state["comp_view"] = tab_key
             st.rerun()
-
+        
         return
 
 
