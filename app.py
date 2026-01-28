@@ -6852,11 +6852,18 @@ div[data-testid="stRadio"] {{
             else:
                 content_html = """
                 <style>
-                  html, body {
+                  html, body{
                     background: #000 !important;
                     margin: 0 !important;
                     padding: 6px !important;  /* pinta também a “folga” */
 
+                  }
+                :root{ --background-color:#000 !important; --text-color:#fff !important; }
+
+                  body, div { background:#000 !important; }
+                
+                  div[style*="background: rgb(14, 17, 23)"]{
+                    background:#000 !important;
                   }
                                 
                   .ds-npc-grid{
