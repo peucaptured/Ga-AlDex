@@ -6189,6 +6189,13 @@ def get_font_base64(font_path):
 # ==============================================================================
 
 def render_compendium_page() -> None:
+    # garante default
+    if "comp_view" not in st.session_state:
+        st.session_state["comp_view"] = "home"
+    
+    # ✅ NAV NO TOPO SÓ QUANDO NÃO FOR HOME
+    if st.session_state["comp_view"] != "home":
+        render_ds_tools_nav(st.session_state["comp_view"])
     
     # --- INÍCIO DA INSERÇÃO ---
     font_b64 = get_font_base64("fonts/DarkSouls.ttf")
@@ -6572,93 +6579,35 @@ div[data-testid="stRadio"] {{
             st.session_state["comp_selected_npc"] = None
         st.rerun()
     def render_ds_tools_nav(selected: str):
-        try:
-            from st_click_detector import click_detector
-        except ImportError:
-            st.error("Instale 'st-click-detector' no requirements.txt e reinicie o app.")
-            return
-    
         labels = [
-            ("menu", "MENU"),
-            ("npcs", "NPCs"),
+            ("home", "MENU"),
+            ("npcs", "NPCS"),
             ("ginasios", "GINÁSIOS"),
             ("locais", "LOCAIS"),
             ("sair", "SAIR"),
         ]
     
-        html = """
-        <style>
-          .ds-topnav{
-            display:flex;
-            flex-direction:row;
-            flex-wrap:nowrap;
-            align-items:center;
-            justify-content:flex-start;
-            gap: 26px;
+        st.markdown("<div class='ds-toolsbar'>", unsafe_allow_html=True)
+        cols = st.columns([1, 1, 1, 1, 1], gap="small")
     
-            padding: 14px 18px;
-            background: rgba(20,20,20,0.55);
-            border: 1px solid rgba(255,215,0,0.12);
-            border-radius: 10px;
+        for i, (key, lab) in enumerate(labels):
+            with cols[i]:
+                cls = "ds-tab selected" if selected == key else "ds-tab"
+                st.markdown(f"<div class='{cls}'>", unsafe_allow_html=True)
     
-            position: sticky;
-            top: 0;
-            z-index: 99999;
-          }
+                if st.button(lab, key=f"topnav_btn_{key}"):
+                    if key == "sair":
+                        st.session_state["nav_to"] = "Pokédex (Busca)"
+                    else:
+                        st.session_state["comp_view"] = key
+                        if key != "npcs":
+                            st.session_state["comp_selected_npc"] = None
+                    st.rerun()
     
-          .ds-item{
-            cursor:pointer;
-            user-select:none;
-            white-space:nowrap;
-            letter-spacing: .14em;
-            text-transform: uppercase;
-            font-size: 18px;
-            color: rgba(235,235,235,0.65);
-            padding: 6px 10px;
-            position: relative;
-          }
+                st.markdown("</div>", unsafe_allow_html=True)
     
-          .ds-item:hover{
-            color: rgba(255,215,0,0.95);
-            text-shadow: 0 0 12px rgba(255,215,0,0.25);
-          }
-    
-          .ds-item.selected{
-            color: rgba(255,215,0,0.98);
-            text-shadow: 0 0 14px rgba(255,215,0,0.30);
-          }
-    
-          .ds-item.selected::after{
-            content:"";
-            position:absolute;
-            left: 0;
-            right: 0;
-            bottom: -6px;
-            height: 1px;
-            background: rgba(255,215,0,0.28);
-          }
-        </style>
-        <div class="ds-topnav">
-        """
-    
-        for key, lab in labels:
-            cls = "ds-item selected" if selected == key else "ds-item"
-            html += f'<div class="{cls}" id="nav-{key}">{lab}</div>'
-    
-        html += "</div>"
-    
-        clicked = click_detector(html)
-        if clicked and clicked.startswith("nav-"):
-            key = clicked.replace("nav-", "")
-    
-            if key == "menu":
-                st.session_state["comp_view"] = "home"
-            elif key == "sair":
-                st.session_state["nav_to"] = "Pokédex (Busca)"
-            else:
-                st.session_state["comp_view"] = key
-    
-            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+
 
 
     _consume_comp_qp()
