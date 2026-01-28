@@ -2286,113 +2286,74 @@ def render_ds_tools_nav(selected_view: str):
     st.markdown("""
     <style>
       /* ====== RESGATE (caso você tenha CSS que esconde widgets) ====== */
-      div[data-testid="stRadio"], 
-      div[data-testid="stRadio"] *{
+      .ds-topnav div[data-testid="stRadio"],
+      .ds-topnav div[data-testid="stRadio"] *{
         visibility: visible !important;
         opacity: 1 !important;
         display: revert !important;
       }
       /* garante que o radio não seja escondido pelo seu CSS global */
-        div[data-testid="stRadio"]{
-          visibility: visible !important;
-          opacity: 1 !important;
-        }
-        
-        /* container correto das opções */
-        div[data-testid="stRadio"] [role="radiogroup"]{
-          display: flex !important;
-          justify-content: center !important;
-          align-items: center !important;
-          gap: 34px !important;
-        }
-
-      /* wrapper sticky */
-      div[data-testid="stRadio"]{
-        position: sticky;
-        top: 0;
-        z-index: 9999;
-        padding: 22px 0 12px 0;
-        background: rgba(0,0,0,0);
+      .ds-topnav div[data-testid="stRadio"]{
+        visibility: visible !important;
+        opacity: 1 !important;
       }
-
+        
       /* radiogroup horizontal e centralizado */
-      div[data-testid="stRadio"] [role="radiogroup"]{
+      .ds-topnav div[data-testid="stRadio"] [role="radiogroup"]{
         display: flex !important;
         justify-content: center !important;
         align-items: center !important;
-        gap: 34px !important;
+        gap: 58px !important;
       }
 
       /* cada opção (label) */
-      div[data-testid="stRadio"] [role="radiogroup"] > label{
+      .ds-topnav div[data-testid="stRadio"] [role="radiogroup"] > label{
         position: relative;
         margin: 0 !important;
-        padding: 0 0 0 26px !important;
+        padding: 6px 10px !important;
         cursor: pointer !important;
         display: flex !important;
         align-items: center !important;
+        color: rgba(255,255,255,0.70) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.24em !important;
+        font-size: 12px !important;
+        user-select: none !important;
+        transition: all 120ms ease !important;
       }
 
       /* o texto do radio no Streamlit geralmente fica em p */
-      div[data-testid="stRadio"] label p{
+      .ds-topnav div[data-testid="stRadio"] label p{
         position: relative;
         padding-left: 0;
         margin: 0 !important;
         user-select: none;
         font-family: "DarkSouls", serif;
-        font-size: 18px;
-        letter-spacing: 0.4px;
+        font-size: 12px;
+        letter-spacing: 0.24em;
         line-height: 1;
-        color: rgba(220,220,220,0.92);
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.70);
+      }
+
+      .ds-topnav div[data-testid="stRadio"] [role="radiogroup"] > label:hover{
+        color: #FFD700 !important;
+        text-shadow: 0 0 10px rgba(255,215,0,0.65) !important;
+      }
+
+      .ds-topnav div[data-testid="stRadio"] [role="radiogroup"] > label[data-checked="true"]{
+        color: #FFD700 !important;
+        text-shadow: 0 0 10px rgba(255,215,0,0.65) !important;
       }
 
       /* esconde o circulinho padrão do Streamlit */
-      div[data-testid="stRadio"] input[type="radio"]{
-        position: absolute;
-        opacity: 0;
-        pointer-events: none;
-      }
-
-      /* nossa bolinha (antes do texto) */
-      div[data-testid="stRadio"] [role="radiogroup"] > label::before{
-        content:"";
-        position:absolute;
-        left: 0;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 16px;
-        height: 16px;
-        border-radius: 999px;
-        border: 2px solid rgba(255,215,0,0.28);
-        background: rgba(255,215,0,0.08);
-        box-shadow: 0 0 0 1px rgba(0,0,0,0.55) inset;
-      }
-
-      /* selecionado (Chrome suporta :has) */
-      div[data-testid="stRadio"] label:has(input:checked) p{
-        color: rgba(255,232,170,0.98);
-        text-shadow: 0 0 10px rgba(255,215,0,0.25);
-      }
-      div[data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked)::before{
-        border-color: rgba(255,215,0,0.72);
-        background: rgba(255,215,0,0.34);
-        box-shadow: 0 0 14px rgba(255,215,0,0.18);
-      }
-      div[data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked)::after{
-        content:"";
-        position:absolute;
-        left: 4px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 8px;
-        height: 8px;
-        border-radius: 999px;
-        background: rgba(255,215,0,0.92);
-        box-shadow: 0 0 8px rgba(255,215,0,0.55);
+      .ds-topnav div[data-testid="stRadio"] input[type="radio"]{
+        display: none !important;
       }
     </style>
     """, unsafe_allow_html=True)
 
+    st.markdown("<div class='ds-topnav'>", unsafe_allow_html=True)
     choice = st.radio(
         "",
         opts,
@@ -2401,6 +2362,7 @@ def render_ds_tools_nav(selected_view: str):
         key="comp_topnav_radio",
         label_visibility="collapsed",
     )
+    st.markdown("</div>", unsafe_allow_html=True)
 
     new_view = to_view[choice]
 
@@ -6367,10 +6329,6 @@ def render_compendium_page() -> None:
     if "comp_view" not in st.session_state:
         st.session_state["comp_view"] = "home"
     
-    # ✅ NAV NO TOPO SÓ QUANDO NÃO FOR HOME
-    if st.session_state["comp_view"] != "home":
-        render_ds_tools_nav(st.session_state["comp_view"])
-    
     # --- INÍCIO DA INSERÇÃO ---
     font_b64 = get_font_base64("fonts/DarkSouls.ttf")
     font_css = f"@font-face {{ font-family: 'DarkSouls'; src: url('data:font/ttf;base64,{font_b64}') format('truetype'); }}" if font_b64 else ""
@@ -6767,6 +6725,8 @@ div[data-testid="stRadio"] {{
         except ImportError:
             st.error("Biblioteca não instalada. Adicione 'st-click-detector' ao requirements.txt e reinicie o app.")
             return
+
+        render_ds_tools_nav(st.session_state["comp_view"])
     
         # --- UI FRAME (NPCs) usando o asset MENU_DetailStatus_Base2.PNG ---
         NPC_FRAME_PATH = "Assets/ui/icons/MENU_DetailStatus_Base2.PNG"
@@ -7079,6 +7039,7 @@ div[data-testid="stRadio"] {{
     # Ginásios / Locais (placeholder)
     # =====================================================================
     if st.session_state["comp_view"] == "ginasios":
+        render_ds_tools_nav(st.session_state["comp_view"])
         st.markdown(
             "<div class='ds-frame'><div class='ds-name'>GINÁSIOS</div><div class='ds-meta'>EM CONSTRUÇÃO</div></div>",
             unsafe_allow_html=True,
@@ -7086,6 +7047,7 @@ div[data-testid="stRadio"] {{
         return
     
     if st.session_state["comp_view"] == "locais":
+        render_ds_tools_nav(st.session_state["comp_view"])
         st.markdown(
             "<div class='ds-frame'><div class='ds-name'>LOCAIS</div><div class='ds-meta'>EM CONSTRUÇÃO</div></div>",
             unsafe_allow_html=True,
