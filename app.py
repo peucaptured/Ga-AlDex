@@ -6699,7 +6699,7 @@ div[data-testid="stRadio"] {{
         div[data-testid="stElementContainer"]:has(iframe[title^="st_click_detector"]),
         div[data-testid="stIFrame"]:has(iframe[title^="st_click_detector"]),
         div[data-testid="stHtml"]:has(iframe[title^="st_click_detector"]) {
-          background: transparent !important;
+          background:  #000 !important;
           border: none !important;
           box-shadow: none !important;
           padding: 0 !important;
@@ -6823,6 +6823,8 @@ div[data-testid="stRadio"] {{
                     background: #000 !important;
                     margin: 0 !important;
                     padding: 0 !important;
+                    min-height:100vh !important;   /* <- importante */
+
                   }
                                 
                   .ds-npc-grid{
@@ -6830,6 +6832,8 @@ div[data-testid="stRadio"] {{
                     grid-template-columns:repeat(4, 1fr);
                     gap: 10px;
                     width:100%;
+                    min-height:100vh !important;   /* <- pinta o espaço “sobrando” */
+
                     background: #000 !important;
                   }
                                 
