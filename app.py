@@ -2353,19 +2353,9 @@ def render_ds_tools_nav(selected_view: str):
         pointer-events: none;
       }
 
-      /* nossa bolinha (antes do texto) */
+      /* remove a bolinha dourada padrão */
       div[data-testid="stRadio"] [role="radiogroup"] > label::before{
-        content:"";
-        position:absolute;
-        left: 0;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 16px;
-        height: 16px;
-        border-radius: 999px;
-        border: 2px solid rgba(255,215,0,0.28);
-        background: rgba(255,215,0,0.08);
-        box-shadow: 0 0 0 1px rgba(0,0,0,0.55) inset;
+        content: none !important;
       }
 
       /* selecionado (Chrome suporta :has) */
@@ -2373,10 +2363,17 @@ def render_ds_tools_nav(selected_view: str):
         color: rgba(255,232,170,0.98);
         text-shadow: 0 0 10px rgba(255,215,0,0.25);
       }
-      div[data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked)::before{
-        border-color: rgba(255,215,0,0.72);
-        background: rgba(255,215,0,0.34);
-        box-shadow: 0 0 14px rgba(255,215,0,0.18);
+      div[data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked) p::after{
+        content:"";
+        position:absolute;
+        left: 50%;
+        top: -10px;
+        transform: translate(-50%, -50%);
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #ff4d4d;
+        box-shadow: 0 0 10px rgba(255,77,77,0.7);
       }
       div[data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked)::after{
         content:"";
