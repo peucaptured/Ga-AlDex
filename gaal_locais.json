@@ -651,10 +651,10 @@
       },
       "sublocais": []
     },
-    "Localidades": {
+    "Gêmeas": {
       "region": "Coração Verde",
       "sections": {
-        "Gêmeas": "No centro do Coração Verde, duas cidades-torres irmãs se erguem acima do lago como um monumento que se recusa a cair — mesmo depois de já ter caído uma vez. As Gêmeas foram projetadas por andares: círculos radiais largos, com moradias e serviços no miolo metálico e passagens de manutenção nos anéis externos. A parte inferior dos pisos é feita de LED branco; de dia, ilumina o andar abaixo; à noite, apaga e cede lugar a uma luz amarelada fraca, como se a própria cidade economizasse esperança.\n\nO térreo (e tudo abaixo dele) não é uma 'camada' — é uma fronteira. Do lado de fora, uma massa de pobres e desabrigados se amontoa sem acesso a serviços, vivendo de sobras, favores e risco. Ali, a 'pesca de lixo' virou rotina: Trubbish são pescados na esperança de que carreguem restos de comida, roupas ou itens básicos. Garbodor rondam como caminhões de lixo vivos, territoriais e imprevisíveis.",
+        "Visão Geral": "No centro do Coração Verde, duas cidades-torres irmãs se erguem acima do lago como um monumento que se recusa a cair — mesmo depois de já ter caído uma vez. As Gêmeas foram projetadas por andares: círculos radiais largos, com moradias e serviços no miolo metálico e passagens de manutenção nos anéis externos. A parte inferior dos pisos é feita de LED branco; de dia, ilumina o andar abaixo; à noite, apaga e cede lugar a uma luz amarelada fraca, como se a própria cidade economizasse esperança.\n\nO térreo (e tudo abaixo dele) não é uma 'camada' — é uma fronteira. Do lado de fora, uma massa de pobres e desabrigados se amontoa sem acesso a serviços, vivendo de sobras, favores e risco. Ali, a 'pesca de lixo' virou rotina: Trubbish são pescados na esperança de que carreguem restos de comida, roupas ou itens básicos. Garbodor rondam como caminhões de lixo vivos, territoriais e imprevisíveis.",
         "Safari Pokémon": "O Safari do Coração Verde é anunciado como o maior do mundo. Espécies de diversos continentes foram introduzidas e mantidas por cercas, barreiras naturais e tecnologia de contenção. Reabrir o parque foi um gesto político: provar que a região ainda tem futuro. Mas, no fundo, é também um negócio e um laboratório vivo.",
         "Ruínas de Zibrênia": "O que sobrou da primeira cidade de Ga'Al, perdida em algum lugar do Coração Verde.\n\nZibrênia é citada como a primeira cidade de Ga'Al — ou ao menos o primeiro 'projeto de megalópole'. Do alto das Gêmeas, ainda se veem trechos de muros antigos engolidos pela mata. A sede, porém, jamais foi encontrada; alguns dizem que afundou, outros que foi 'apagada'.",
         "ArteBalls": "A ArteBalls cresceu na borda do caos: onde Pokébolas são recursos, identidade e, às vezes, contrabando. A oficina vende modelos personalizados (pintura, gravação, acabamento) e faz reparos em cascas danificadas. Em dias de pouco movimento, a loja parece um ateliê; em dias de crise, parece um posto de guerra."
@@ -674,43 +674,4 @@
         }
       ]
     },
-    "Como ler por código": {
-      "region": "Ginásios de Ga'Al",
-      "sections": {
-        "_sem_secao": "Cada entrada de ginásio possui um bloco\n\nO texto narrativo abaixo do bloco é opcional para o parser."
-      },
-      "sublocais": []
-    },
-    "Ginásios abertos": {
-      "region": "Ginásios de Ga'Al",
-      "sections": {
-        "Ginásio de Borgonha": "O ginásio de Borgonha carrega uma memória pesada: a antiga líder Less foi assassinada pela Team Keneze, e o Ginásio Escaravelho - uma estrutura móvel montada sobre um escaravelho robótico - ficou como marco e ponto turístico.\n\nEneias conduz o “novo” campo como um desafio direto e prático, com foco em leitura de campo e pressão constante do tipo Inseto. A ausência de vice-líder é um ponto de vulnerabilidade política - e uma oportunidade narrativa.",
-        "Ginásio de Turquesa": "Turquesa faz do próprio mar parte da luta: espaço amplo, instabilidade e horizonte como elemento de pressão. A bolha tornou-se símbolo da cidade desde a época da chuva ácida, e as boias mantêm a “geografia” da arena estável.\n\nLarissa frequentemente recebe desafiantes e, na prática, atua como rosto do ginásio quando Alfonso está ausente.",
-        "Ginásio de Grená": "Em Grená, o ginásio é uma âncora social: um lugar de encontro e de teste de força em uma cidade cansada.\n\nAnastácia usa um estilo agressivo e de antecipação; o dojo reforça disciplina e impacto - para humanos e Pokémon.",
-        "Ginásio de Kobicha": "O ginásio de Kobicha é simples por fora e corrosivo por dentro: a identidade vem do jeito de lutar, não da fachada.\n\nAs placas solares no topo viraram detalhe icônico da cidade - utilitário, mas fácil de reconhecer à distância.",
-        "Ginásio de Obsidian": "O ginásio é um corte de rocha e concreto: corredores frios, pó mineral e ecos longos, como uma pedreira viva.\n\nA figura de Stênio - antigo líder local - ainda aparece em histórias sobre o Monte Pedra, e a exploração profunda continua sendo tema sensível.",
-        "Ginásio de Dainise": "Dainise se mistura com a natureza: passarelas nas copas, madeira viva e bioluminescência à noite.\n\nO desafio do ginásio costuma parecer ambiental - umidade, odores de resina e a sensação de que a floresta observa.",
-        "Ginásio de Sinoper": "Clementina conduz um ginásio sem espetáculo: resistência, uso de itens, controle de status e disciplina de longo prazo.\n\nApós a queda de Erick (ex-líder), Sinoper tenta reconstruir confiança sem perder a cautela.",
-        "Ginásio de Malva": "Vitória trata cada batalha como aula: anuncia intenções, observa decisões e entrega feedback direto ao final.\n\nO endividamento da cidade com a Associação de Batalha pressiona o cargo - e Draco só será vice “oficial” quando derrotá-la.",
-        "Ginásio de Mikado": "O ginásio foi concebido como peça de infraestrutura energética (uma ambição termoelétrica) e hoje é uma fortaleza de calor controlado.\n\nCom Salete fora do tabuleiro, Falco segura o posto como líder interino - e a cidade vive entre ciência, fé no progresso e ressentimentos.",
-        "Ginásio de Liberty": "Vittorio transformou o ginásio em espetáculo e aposta: desafio como reality show, com oponente pressionado a “apostar” algo antes da luta.\n\nO ginásio virou parte do ecossistema financeiro e criminal da cidade - uma arena onde humilhar é tão importante quanto vencer.",
-        "Ginásio de Gamborre": "O ginásio de Gamborre é parte do projeto de reconstrução: um farol de atividade em meio às ruínas.\n\nPixie usa o desafio como prova pública de que a cidade pode voltar a ser grande; Lancelot mantém disciplina rígida e fama de não perdoar erros táticos."
-      },
-      "sublocais": []
-    },
-    "Ginásios fechados (registro histórico)": {
-      "region": "Ginásios de Ga'Al",
-      "sections": {
-        "_sem_secao": "Alguns ginásios ficaram sem liderança após remoções, mortes ou desaparecimentos. Em Ga'Al, isso vira disputa, memória e boato — e muita gente evita dizer em voz alta por quê.",
-        "Jade (instalação criogênica)": "A instalação do ginásio funciona como mausoléu gelado: ciência, luto e rumores de preservação de corpos.\n\nMesmo quando a porta está fisicamente lá, socialmente é ‘fechada’: ninguém quer ser o responsável por reabrir esse frio.",
-        "Borgonha (ciclo de Less)": "O Ginásio Escaravelho permanece como marco e lembrança: metal, turismo e luto misturados.",
-        "Mikado (ciclo de Salete)": "O ginásio segue operando sob Falco como interino; esta entrada registra o ciclo anterior.",
-        "Obsidian (ciclo de Stênio)": "O nome de Stênio ainda assombra conversas sobre exploração no Monte Pedra.",
-        "Sinoper (ciclo de Erick)": "Entrada breve para preservar o histórico citado nos documentos e nos relatos.",
-        "Ginásio das Gêmeas (Andy & Dany)": "Registro mínimo: útil para hooks e cronologia. Detalhes de local/tipo podem ser preenchidos quando definidos.",
-        "Arthur (registro citado)": "Placeholder proposital para não perder referência; preencher quando houver material."
-      },
-      "sublocais": []
-    }
-  }
-}
+    
