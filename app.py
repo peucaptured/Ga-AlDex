@@ -4292,21 +4292,31 @@ def apply_compendium_theme() -> None:
         unsafe_allow_html=True,
     )
 
-def render_top_menu_compendium(selected: str):
-    st.markdown("<div class='ds-home'>", unsafe_allow_html=True)
+def render_top_nav_ds(selected: str):
+    cols = st.columns([1, 1, 1, 1, 1], gap="small")
+    labels = [
+        ("home", "Menu"),
+        ("npcs", "NPCs"),
+        ("ginasios", "Ginásios"),
+        ("locais", "Locais"),
+        ("sair", "Sair"),
+    ]
 
-    opts = [("menu", "Menu"),
-            ("npcs", "NPCs"),
-            ("ginasios", "Ginásios"),
-            ("locais", "Locais"),
-            ("sair", "Sair")]
+    for i, (v, lab) in enumerate(labels):
+        cls = "ds-tab selected" if selected == v else "ds-tab"
+        with cols[i]:
+            st.markdown(f"<div class='{cls}'>", unsafe_allow_html=True)
+            if st.button(lab, key=f"ds_top_{v}"):
+                if v == "sair":
+                    st.session_state["page"] = "Home"
+                else:
+                    st.session_state["comp_view"] = v
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
 
-    for key, label in opts:
-        if st.button(label, key=f"top_{key}"):
-            st.session_state["comp_view"] = key
-            st.rerun()
 
-    st.markdown("</div>", unsafe_allow_html=True)
+
+
 
 
 # ----------------------------
@@ -6201,8 +6211,27 @@ def get_font_base64(font_path):
 
 def render_compendium_page() -> None:
     # --- INÍCIO DA INSERÇÃO ---
+    data = comp_load()
+    gyms = data.get("gyms") or {}
+    npcs_gerais = data.get("npcs") or {}
     font_b64 = get_font_base64("fonts/DarkSouls.ttf")
     font_css = f"@font-face {{ font-family: 'DarkSouls'; src: url('data:font/ttf;base64,{font_b64}') format('truetype'); }}" if font_b64 else ""
+    apply_ds_css()
+    st.session_state.setdefault("comp_view", "home")
+    if st.session_state["comp_view"] == "home":
+        render_compendium_home()  # seu "BEM VINDO A GA'AL" + radio
+        
+        return
+    render_top_nav_ds(st.session_state["comp_view"])
+    st.markdown("<div class='ds-gold-top'></div>", unsafe_allow_html=True)
+    if st.session_state["comp_view"] == "npcs":
+        render_compendium_npcs(npcs_gerais)
+    elif st.session_state["comp_view"] == "ginasios":
+        render_compendium_ginasios(gyms)
+    elif st.session_state["comp_view"] == "locais":
+        render_compendium_locais()
+
+
 
     st.markdown(f"""
     <style>
@@ -6470,9 +6499,8 @@ div[role="radiogroup"] input {{ display: none !important; }}
     components.html("<div class='ds-gold-top'></div>", height=10)
 
     # 4️⃣ Menu
-    render_top_menu_compendium(
-        st.session_state.get("comp_view", "menu")
-    )
+    render_top_nav_ds(st.session_state.get("comp_view", "home"))
+
     # ----------------------------
     # Estado do Compendium — NÃO cai direto em NPCs
     # ----------------------------
@@ -6586,6 +6614,8 @@ div[role="radiogroup"] input {{ display: none !important; }}
     
             # Preparar lista
             items = []
+            npcs_gerais = (data.get("npcs") or {})
+            for nome, obj in npcs_gerais.items():
             for nome, obj in (npcs_gerais or {}).items():
                 if not isinstance(obj, dict):
                     continue
