@@ -125,20 +125,22 @@
         "sections_key": "Ginásio de Gamborre"
       }
     },
-    "Mikado": {
-      "city": "Mikado",
-      "region": "Deserto Irrigado",
-      "source_scope": "sections",
-      "section_key": "Ginásio de Mikado",
-      "meta": {
-        "leader": "Falco (interino) • Salete (ex-líder, banida)."
-      },
-      "lore": "Ginásio Local: Tipo Fogo | Liderança: Falco (interino) • Salete (ex-líder, banida).\n\nO ginásio nasceu como extensão de um projeto científico e industrial: uma arena que conversa com o calor do Monte Fogo, com plataformas aquecidas, zonas de vapor e desafios que punem deslocamento descuidado.\n\nA antiga liderança prometia progresso em troca de risco — e acumulou inimigos. Hoje, Falco tenta manter a vila funcional com medidas pragmáticas e pouco glamour. Sobre Salete, a versão pública é de queda e exílio; a versão de rua é mais confusa e cheia de ‘mas’.",
-      "raw_text": "Ginásio Local: Tipo Fogo | Liderança: Falco (interino) • Salete (ex-líder, banida).\n\nO ginásio nasceu como extensão de um projeto científico e industrial: uma arena que conversa com o calor do Monte Fogo, com plataformas aquecidas, zonas de vapor e desafios que punem deslocamento descuidado.\n\nA antiga liderança prometia progresso em troca de risco — e acumulou inimigos. Hoje, Falco tenta manter a vila funcional com medidas pragmáticas e pouco glamour. Sobre Salete, a versão pública é de queda e exílio; a versão de rua é mais confusa e cheia de ‘mas’.",
-      "source": {
-        "from_file": "gaal_locais (2).json",
-        "cities_key": "Mikado",
-        "sections_key": "Ginásio de Mikado"
+      "Mikado": {
+        "city": "Mikado",
+        "region": "Deserto Irrigado",
+        "source_scope": "sections",
+        "section_key": "Ginásio de Mikado",
+        "meta": {
+          "type": "Fogo",
+          "leader": "Falco (interino)",
+          "ex_lideres": ["Salete (ex-líder, banida)."]
+        },
+        "lore": "Tipo: Fogo | Líder: Falco (interino) | Ex-líder: Salete (banida)\n\nGinásio Local: Tipo Fogo | Liderança: Falco (interino) • Salete (ex-líder, banida).\n\nO ginásio nasceu como extensão de um projeto científico e industrial: uma arena que conversa com o calor do Monte Fogo, com plataformas aquecidas, zonas de vapor e desafios que punem deslocamento descuidado.\n\nA antiga liderança prometia progresso em troca de risco — e acumulou inimigos. Hoje, Falco tenta manter a vila funcional com medidas pragmáticas e pouco glamour. Sobre Salete, a versão pública é de queda e exílio; a versão de rua é mais confusa e cheia de ‘mas’.",
+        "raw_text": "Tipo: Fogo | Líder: Falco (interino) | Ex-líder: Salete (banida)\n\nGinásio Local: Tipo Fogo | Liderança: Falco (interino) • Salete (ex-líder, banida).\n\nO ginásio nasceu como extensão de um projeto científico e industrial: uma arena que conversa com o calor do Monte Fogo, com plataformas aquecidas, zonas de vapor e desafios que punem deslocamento descuidado.\n\nA antiga liderança prometia progresso em troca de risco — e acumulou inimigos. Hoje, Falco tenta manter a vila funcional com medidas pragmáticas e pouco glamour. Sobre Salete, a versão pública é de queda e exílio; a versão de rua é mais confusa e cheia de ‘mas’.",
+        "source": {
+          "from_file": "gaal_locais (2).json",
+          "cities_key": "Mikado",
+          "sections_key": "Ginásio de Mikado"
       }
     },
     "Turquesa": {
@@ -155,7 +157,7 @@
       "source": {
         "from_file": "gaal_locais (2).json",
         "cities_key": "Turquesa",
-        "sections_key": "Ginásio"
+        "sections_key": "Ginásio de Turquesa"
       }
     },
     "Borgonha": {
@@ -163,7 +165,7 @@
       "region": "Terras Fluviais",
       "parent_city": "Borgonha",
       "source_scope": "sublocais",
-      "section_key": "Ginásio Escaravelho",
+      "section_key": "Ginásio de Borgonha",
       "meta": {},
       "lore": "O ginásio não nasceu da vila: Less, antiga e falecida líder, montou seu ginásio nas costas de um escaravelho robótico — uma estrutura de metal do tamanho de meio estádio de futebol. Quando o inseto abre as asas, um campo de batalha se revela, com direito a pequenas árvores. A sala de comandos fica na cabeça do animal. Less veio a Borgonha para testar sistemas de natação; a máquina atravessou o Plessi, escalou a lateral da gruta e entrou pela abertura superior, instalando-se no atracadouro. Eneias manteve o ginásio parado dentro da vila, como respeito à líder e para que permanecesse junto do corpo dela. Hoje, virou ponto turístico; o novo ginásio de Eneias é um campo de terra batida à margem do rio, do lado de fora da gruta.\n\nO metal do escaravelho guarda marcas de uso e chuva, e o cheiro é uma mistura de ferrugem, óleo e madeira úmida do atracadouro. Mesmo parado, ele impõe presença — como se a vila tivesse um monumento ambulante estacionado no quintal. É fácil imaginar porque virou atração: ele é assombro e orgulho ao mesmo tempo.",
       "raw_text": "O ginásio não nasceu da vila: Less, antiga e falecida líder, montou seu ginásio nas costas de um escaravelho robótico — uma estrutura de metal do tamanho de meio estádio de futebol. Quando o inseto abre as asas, um campo de batalha se revela, com direito a pequenas árvores. A sala de comandos fica na cabeça do animal. Less veio a Borgonha para testar sistemas de natação; a máquina atravessou o Plessi, escalou a lateral da gruta e entrou pela abertura superior, instalando-se no atracadouro. Eneias manteve o ginásio parado dentro da vila, como respeito à líder e para que permanecesse junto do corpo dela. Hoje, virou ponto turístico; o novo ginásio de Eneias é um campo de terra batida à margem do rio, do lado de fora da gruta.\n\nO metal do escaravelho guarda marcas de uso e chuva, e o cheiro é uma mistura de ferrugem, óleo e madeira úmida do atracadouro. Mesmo parado, ele impõe presença — como se a vila tivesse um monumento ambulante estacionado no quintal. É fácil imaginar porque virou atração: ele é assombro e orgulho ao mesmo tempo.",
@@ -171,14 +173,13 @@
         "from_file": "gaal_locais (2).json",
         "cities_key": "Borgonha",
         "sublocal_index": 1,
-        "sublocal_name": "Ginásio Escaravelho"
       }
     },
     "Grená": {
       "city": "Grená",
       "region": "Chifre de Ga'Al",
       "source_scope": "sections",
-      "section_key": "Ginásio",
+      "section_key": "Ginásio de Grena",
       "meta": {
         "leader": "Anastácia",
         "type": "Lutador"
@@ -195,7 +196,7 @@
       "city": "Kobicha",
       "region": "Chifre de Ga'Al",
       "source_scope": "sections",
-      "section_key": "Ginásio",
+      "section_key": "Ginásio de Kobicha",
       "meta": {
         "leader": "Roxie",
         "type": "Veneno"
