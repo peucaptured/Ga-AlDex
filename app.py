@@ -3444,109 +3444,104 @@ def render_intro_screen() -> None:
     start_src = comp_img_data_uri("Assets/start.png")
     render_bgm("music/menu.mp3", volume=0.25)
 
-    st.markdown(
-        """
-        <style>
-        .gaal-intro{
-            position: fixed;
-            inset: 0;
-            width: 100vw;
-            height: 100vh;
-            background: #000;
-            overflow: hidden;
-            margin: 0;
-            padding: 0;
-            z-index: 9999;
-        }
-        .gaal-intro-title{
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            object-position: center;
-            display: block;
-            z-index: 1;
-            filter: drop-shadow(0 16px 26px rgba(0,0,0,0.75));
-        }
-        .gaal-intro-start{
-            position: absolute;
-            left: 50%;
-            bottom: 8vh;
-            transform: translateX(-50%);
-            width: min(70vw, 720px);
-            height: auto;
-            display: block;
-            z-index: 2;
-            animation: gaalIntroBlink 1.05s ease-in-out infinite;
-            pointer-events: none;
-        }
-        .gaal-intro-skip-link{
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            z-index: 10001;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-family: "Press Start 2P", "Trebuchet MS", sans-serif !important;
-            background: linear-gradient(180deg, #ffd85c 0%, #ff9f1a 60%, #f57a00 100%) !important;
-            border: 3px solid #ffffff !important;
-            color: #2a1a00 !important;
-            font-weight: 700 !important;
-            letter-spacing: 1px !important;
-            text-transform: uppercase !important;
-            padding: 12px 18px !important;
-            border-radius: 999px !important;
-            box-shadow: 0 8px 0 rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.4) !important;
-            text-shadow: 2px 2px 0 rgba(0,0,0,0.35) !important;
-            transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease !important;
-            text-decoration: none !important;
-        }
-        .gaal-intro-skip-link:hover{
-            filter: brightness(1.08);
-        }
-        .gaal-intro-skip-link:active{
-            transform: translateY(2px);
-            box-shadow: 0 5px 0 rgba(0,0,0,0.45) !important;
-        }
-        .gaal-intro-press-link{
-            position: fixed;
-            left: 50%;
-            bottom: 8vh;
-            transform: translateX(-50%);
-            width: min(70vw, 720px);
-            height: 110px;
-            z-index: 10001;
-            background: transparent;
-            border: none;
-            color: transparent;
-            box-shadow: none;
-            opacity: 0;
-            cursor: pointer;
-            display: block;
-        }
+    css = "\n".join([
+        "<style>",
+        ".gaal-intro{",
+        "  position: fixed;",
+        "  inset: 0;",
+        "  width: 100vw;",
+        "  height: 100vh;",
+        "  background: #000;",
+        "  overflow: hidden;",
+        "  margin: 0;",
+        "  padding: 0;",
+        "  z-index: 9999;",
+        "}",
+        ".gaal-intro-title{",
+        "  position: absolute;",
+        "  inset: 0;",
+        "  width: 100%;",
+        "  height: 100%;",
+        "  object-fit: cover;",
+        "  object-position: center;",
+        "  display: block;",
+        "  z-index: 1;",
+        "  filter: drop-shadow(0 16px 26px rgba(0,0,0,0.75));",
+        "}",
+        ".gaal-intro-start{",
+        "  position: absolute;",
+        "  left: 50%;",
+        "  bottom: 8vh;",
+        "  transform: translateX(-50%);",
+        "  width: min(70vw, 720px);",
+        "  height: auto;",
+        "  display: block;",
+        "  z-index: 2;",
+        "  animation: gaalIntroBlink 1.05s ease-in-out infinite;",
+        "  pointer-events: none;",
+        "}",
+        ".gaal-intro-skip-link{",
+        "  position: fixed;",
+        "  top: 24px;",
+        "  right: 24px;",
+        "  z-index: 10001;",
+        "  display: inline-flex;",
+        "  align-items: center;",
+        "  justify-content: center;",
+        "  font-family: \"Press Start 2P\", \"Trebuchet MS\", sans-serif !important;",
+        "  background: linear-gradient(180deg, #ffd85c 0%, #ff9f1a 60%, #f57a00 100%) !important;",
+        "  border: 3px solid #ffffff !important;",
+        "  color: #2a1a00 !important;",
+        "  font-weight: 700 !important;",
+        "  letter-spacing: 1px !important;",
+        "  text-transform: uppercase !important;",
+        "  padding: 12px 18px !important;",
+        "  border-radius: 999px !important;",
+        "  box-shadow: 0 8px 0 rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.4) !important;",
+        "  text-shadow: 2px 2px 0 rgba(0,0,0,0.35) !important;",
+        "  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease !important;",
+        "  text-decoration: none !important;",
+        "}",
+        ".gaal-intro-skip-link:hover{",
+        "  filter: brightness(1.08);",
+        "}",
+        ".gaal-intro-skip-link:active{",
+        "  transform: translateY(2px);",
+        "  box-shadow: 0 5px 0 rgba(0,0,0,0.45) !important;",
+        "}",
+        ".gaal-intro-press-link{",
+        "  position: fixed;",
+        "  left: 50%;",
+        "  bottom: 8vh;",
+        "  transform: translateX(-50%);",
+        "  width: min(70vw, 720px);",
+        "  height: 110px;",
+        "  z-index: 10001;",
+        "  background: transparent;",
+        "  border: none;",
+        "  color: transparent;",
+        "  box-shadow: none;",
+        "  opacity: 0;",
+        "  cursor: pointer;",
+        "  display: block;",
+        "}",
+        "@keyframes gaalIntroBlink{",
+        "  0%, 45% { opacity: 0.1; }",
+        "  55%, 100% { opacity: 0.95; }",
+        "}",
+        "</style>",
+    ])
+    st.markdown(css, unsafe_allow_html=True)
 
-        @keyframes gaalIntroBlink{
-            0%, 45% { opacity: 0.1; }
-            55%, 100% { opacity: 0.95; }
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
+    html = (
+        '<div class="gaal-intro">'
+        f'<img class="gaal-intro-title" src="{title_src}" alt="Ga&#39;Al" />'
+        f'<img class="gaal-intro-start" src="{start_src}" alt="Press Start" />'
+        '<a class="gaal-intro-press-link" href="?intro=start" target="_self" aria-label="Press Start"></a>'
+        '<a class="gaal-intro-skip-link" href="?intro=skip" target="_self">Pular</a>'
+        "</div>"
     )
-
-    st.markdown(
-        f"""
-        <div class="gaal-intro">
-            <img class="gaal-intro-title" src="{title_src}" alt="Ga'Al" />
-            <img class="gaal-intro-start" src="{start_src}" alt="Press Start" />
-            <a class="gaal-intro-press-link" href="?intro=start" aria-label="Press Start"></a>
-            <a class="gaal-intro-skip-link" href="?intro=skip">Pular</a>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown(html, unsafe_allow_html=True)
 
 
 # --- INTRO / LOGIN ---
