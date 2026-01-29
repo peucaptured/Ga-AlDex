@@ -2400,14 +2400,14 @@ def render_ds_tools_nav(selected_view: str):
         display: flex !important;
         justify-content: center !important;
         align-items: center !important;
-        gap: 58px !important;
+        gap: 86px !important;
       }
 
       /* cada opção (label) */
       .ds-topnav div[data-testid="stRadio"] [role="radiogroup"] > label{
         position: relative;
         margin: 0 !important;
-        padding: 6px 10px !important;
+        padding: 8px 30px !important;
         cursor: pointer !important;
         display: flex !important;
         align-items: center !important;
@@ -2417,6 +2417,20 @@ def render_ds_tools_nav(selected_view: str):
         font-size: 12px !important;
         user-select: none !important;
         transition: all 120ms ease !important;
+        z-index: 0 !important;
+      }
+
+      .ds-topnav div[data-testid="stRadio"] [role="radiogroup"] > label::before{
+        content: "" !important;
+        position: absolute !important;
+        inset: 0 !important;
+        border-radius: 999px !important;
+        background: radial-gradient(ellipse at center, rgba(255, 200, 64, 0.55), rgba(255, 200, 64, 0.05) 70%, transparent 100%) !important;
+        opacity: 0 !important;
+        filter: blur(0.4px) !important;
+        transform: scaleX(0.85) !important;
+        transition: opacity 140ms ease, transform 140ms ease !important;
+        z-index: -1 !important;
       }
 
       /* o texto do radio no Streamlit geralmente fica em p */
@@ -2443,8 +2457,17 @@ def render_ds_tools_nav(selected_view: str):
         text-shadow: 0 0 10px rgba(255,215,0,0.65) !important;
       }
 
+      .ds-topnav div[data-testid="stRadio"] [role="radiogroup"] > label:hover::before,
+      .ds-topnav div[data-testid="stRadio"] [role="radiogroup"] > label[data-checked="true"]::before{
+        opacity: 1 !important;
+        transform: scaleX(1) !important;
+      }
+
       /* esconde o circulinho padrão do Streamlit */
       .ds-topnav div[data-testid="stRadio"] input[type="radio"]{
+        display: none !important;
+      }
+      .ds-topnav div[data-testid="stRadio"] [role="radiogroup"] > label > div:first-child{
         display: none !important;
       }
     </style>
@@ -7473,6 +7496,12 @@ def render_compendium_page() -> None:
 [data-testid="stAppViewContainer"]:has(.ds-home) div[role="radiogroup"] > label[data-checked="true"]::before {{
     opacity: 1 !important;
     transform: scaleX(1) !important;
+}}
+/* Trava scroll apenas na HOME do compendium */
+html:has(.ds-home),
+body:has(.ds-home),
+[data-testid="stAppViewContainer"]:has(.ds-home) {{
+    overflow: hidden !important;
 }}
 /* Esconde o bolinha padrão do radio */
 [data-testid="stAppViewContainer"]:has(.ds-home) div[role="radiogroup"] input {{ display: none !important; }}
