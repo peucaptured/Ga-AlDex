@@ -7222,7 +7222,7 @@ def render_compendium_page() -> None:
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 22px;
+    gap: 16px;
     padding: 10px 0 0 0;
 }}
 .ds-logo{{
@@ -7245,7 +7245,7 @@ def render_compendium_page() -> None:
     font-size: 14px;
     letter-spacing: 0.34em;
     text-transform: uppercase;
-    margin: 0;
+    margin: -14px 0 0 0;
 }}
 @keyframes dsBlink {{
     0%, 48% {{ opacity: 0.10; }}
@@ -7287,13 +7287,14 @@ div[data-testid="stRadio"] {{
 /* Estilo das opções */
 .ds-home div[role="radiogroup"] {{
     display: flex !important;
-    gap: 58px !important;
+    flex-direction: column !important;
+    gap: 18px !important;
     justify-content: center !important;
     align-items: center !important;
 }}
 .ds-home div[role="radiogroup"] > label {{
     position: relative !important;
-    padding: 6px 10px !important;
+    padding: 6px 34px !important;
     cursor: pointer !important;
     color: rgba(255,255,255,0.70) !important;
     text-transform: uppercase !important;
@@ -7302,13 +7303,31 @@ div[data-testid="stRadio"] {{
     user-select: none !important;
     transition: all 120ms ease !important;
 }}
+.ds-home div[role="radiogroup"] > label::before {{
+    content: "" !important;
+    position: absolute !important;
+    inset: 0 !important;
+    border-radius: 999px !important;
+    background: radial-gradient(ellipse at center, rgba(255, 200, 64, 0.55), rgba(255, 200, 64, 0.05) 70%, transparent 100%) !important;
+    opacity: 0 !important;
+    filter: blur(0.4px) !important;
+    transition: opacity 140ms ease, transform 140ms ease !important;
+    transform: scaleX(0.85) !important;
+    z-index: -1 !important;
+}}
 .ds-home div[role="radiogroup"] > label:hover {{
     color: #FFD700 !important;
     text-shadow: 0 0 10px rgba(255,215,0,0.65) !important;
+    transform: translateY(-1px) !important;
 }}
 .ds-home div[role="radiogroup"] > label[data-checked="true"] {{
     color: #FFD700 !important;
     text-shadow: 0 0 10px rgba(255,215,0,0.65) !important;
+}}
+.ds-home div[role="radiogroup"] > label:hover::before,
+.ds-home div[role="radiogroup"] > label[data-checked="true"]::before {{
+    opacity: 1 !important;
+    transform: scaleX(1) !important;
 }}
 /* Esconde o bolinha padrão do radio */
 .ds-home div[role="radiogroup"] input {{ display: none !important; }}
