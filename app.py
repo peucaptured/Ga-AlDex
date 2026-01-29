@@ -3488,17 +3488,25 @@ def render_intro_screen() -> None:
             z-index: 3;
         }
         .gaal-intro-skip button{
-            background: linear-gradient(180deg, #ffcc33 0%, #f28c00 100%) !important;
-            border: 2px solid #ffffff !important;
-            color: #1b1b1b !important;
+            font-family: "Press Start 2P", "Trebuchet MS", sans-serif !important;
+            background: linear-gradient(180deg, #ffd85c 0%, #ff9f1a 60%, #f57a00 100%) !important;
+            border: 3px solid #ffffff !important;
+            color: #2a1a00 !important;
             font-weight: 700 !important;
-            padding: 10px 16px !important;
+            letter-spacing: 1px !important;
+            text-transform: uppercase !important;
+            padding: 12px 18px !important;
             border-radius: 999px !important;
-            box-shadow: 0 6px 0 rgba(0,0,0,0.35) !important;
+            box-shadow: 0 8px 0 rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.4) !important;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.35) !important;
+            transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease !important;
+        }
+        .gaal-intro-skip button:hover{
+            filter: brightness(1.08);
         }
         .gaal-intro-skip button:active{
             transform: translateY(2px);
-            box-shadow: 0 4px 0 rgba(0,0,0,0.35) !important;
+            box-shadow: 0 5px 0 rgba(0,0,0,0.45) !important;
         }
         .gaal-intro-press{
             position: fixed;
@@ -3516,6 +3524,8 @@ def render_intro_screen() -> None:
             border: none !important;
             color: transparent !important;
             box-shadow: none !important;
+            opacity: 0 !important;
+            cursor: pointer !important;
         }
         @keyframes gaalIntroBlink{
             0%, 45% { opacity: 0.1; }
@@ -3537,11 +3547,10 @@ def render_intro_screen() -> None:
     )
 
 
-# --- INTRO / LOGIN (APENAS TIMER 5s) ---
+# --- INTRO / LOGIN ---
 if not st.session_state.get("intro_done", False):
 
-    if "intro_t0" not in st.session_state:
-        st.session_state["intro_t0"] = time.time()
+
 
     # mostra a intro
     render_intro_screen()
@@ -3556,21 +3565,11 @@ if not st.session_state.get("intro_done", False):
 
     if skip_intro or press_intro:
         st.session_state["intro_done"] = True
-        st.session_state.pop("intro_t0", None)
         st.rerun()
 
-    # passou 5s -> troca de tela
-    if (time.time() - st.session_state["intro_t0"]) >= 5:
-        st.session_state["intro_done"] = True
-        st.session_state.pop("intro_t0", None)
-        st.rerun()
 
-    # força rerun para contar o tempo sem interação do usuário
-    time.sleep(0.2)
-    st.rerun()
 else:
-    st.session_state.pop("intro_t0", None)
-
+    pass
 
 
 # --- TELA DE LOGIN ---
