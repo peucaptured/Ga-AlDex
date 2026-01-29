@@ -3357,7 +3357,7 @@ def render_login_menu(trainer_name: str, user_data: dict):
     st.markdown("<div class='fr-login-wrap'><div class='fr-login-layout'>", unsafe_allow_html=True)
     st.markdown(
         f"""
-        <div class='fr-login-card fr-login-continue-card'>
+        <div id='fr_continue_card' class='fr-login-card fr-login-continue-card'>
             <div class='fr-login-title'>
                 <span>Continue</span>
                 <span class='fr-login-continue-badge'>V</span>
@@ -3379,19 +3379,31 @@ def render_login_menu(trainer_name: str, user_data: dict):
         unsafe_allow_html=True,
     )
 
-    st.markdown(
-        """
-        <div class='fr-login-actions'>
-            <div class='fr-login-actions-row'>
-                <a class='fr-login-action fr-login-action-continue' href='?action=continue'>Continue</a>
-                <a class='fr-login-action fr-login-action-confirm' href='?action=continue'>Ok</a>
-            </div>
-            <a class='fr-login-action fr-login-action-new-game' href='?action=new_game'>New Game</a>
-        </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    try:
+        from st_click_detector import click_detector
+    except ImportError:
+        st.error("Instale 'st-click-detector' no requirements.txt e reinicie o app.")
+        return
+    
+    clicked = click_detector("""
+    <div class='fr-login-actions'>
+      <div class='fr-login-actions-row'>
+        <div id='fr_continue' class='fr-login-action fr-login-action-continue'>Continue</div>
+        <div id='fr_ok' class='fr-login-action fr-login-action-confirm'>Ok</div>
+      </div>
+      <div id='fr_newgame' class='fr-login-action fr-login-action-new-game'>New Game</div>
+    </div>
+    """)
+    
+    if clicked in ("fr_continue", "fr_ok", "fr_continue_card"):
+        st.session_state["show_login_menu"] = False
+        st.session_state["nav_to"] = "Pokédex (Busca)"
+        st.rerun()
+    
+    if clicked == "fr_newgame":
+        st.session_state["confirm_new_game"] = True
+        st.rerun()
+
 
     if st.session_state.get("confirm_new_game"):
         st.warning("Isso vai apagar todos os seus dados salvos.")
