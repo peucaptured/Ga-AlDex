@@ -9562,6 +9562,11 @@ if page == "Pokédex (Busca)":
                 grid-template-columns: repeat(6, 1fr);
                 gap: 10px;
                 row-gap: 14px;
+                padding: 16px;
+                border-radius: 16px;
+                border: 1px solid rgba(148, 163, 184, 0.35);
+                background: rgba(15, 23, 42, 0.55);
+                box-shadow: inset 0 0 12px rgba(15, 23, 42, 0.45);
               }
             </style>
             <div class="pokedex-grid">
