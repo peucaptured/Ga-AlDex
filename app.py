@@ -7247,7 +7247,8 @@ def render_compendium_page() -> None:
     font-size: 14px;
     letter-spacing: 0.34em;
     text-transform: uppercase;
-    margin: -14px 0 0 0;
+    margin: -32px 0 0 0;
+    transform: translateY(-12px);
 }}
 @keyframes dsBlink {{
     0%, 48% {{ opacity: 0.10; }}
@@ -7255,8 +7256,8 @@ def render_compendium_page() -> None:
 }}
 .ds-blink {{ animation: dsBlink 1.05s ease-in-out infinite; }}
 
-/* Tabs (radio horizontal) no rodapé */
-div[data-testid="stRadio"] {{
+/* Tabs (radio) no rodapé — SOMENTE NA HOME */
+[data-testid="stAppViewContainer"]:has(.ds-home) div[data-testid="stRadio"] {{
     position: fixed !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
@@ -7265,20 +7266,9 @@ div[data-testid="stRadio"] {{
     padding: 10px 18px !important;
     background: rgba(0,0,0,0.0) !important;
 }}
-/* Tabs (radio horizontal) no rodapé — SOMENTE NA HOME */
-.ds-home div[data-testid="stRadio"] {{
-    position: fixed !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    bottom: 48px !important;
-    z-index: 10000 !important;
-    padding: 10px 18px !important;
-    background: rgba(0,0,0,0.0) !important;
-}}
-.ds-home div[data-testid="stRadio"] > label {{ display: none !important; }}
-
+[data-testid="stAppViewContainer"]:has(.ds-home) div[data-testid="stRadio"] > label {{ display: none !important; }}
 /* Linha dourada fina acima dos tabs */
-.ds-home div[data-testid="stRadio"]::before {{
+[data-testid="stAppViewContainer"]:has(.ds-home) div[data-testid="stRadio"]::before {{
     content: "";
     display: block;
     height: 1px;
@@ -7287,14 +7277,14 @@ div[data-testid="stRadio"] {{
 }}
 
 /* Estilo das opções */
-.ds-home div[role="radiogroup"] {{
+[data-testid="stAppViewContainer"]:has(.ds-home) div[role="radiogroup"] {{
     display: flex !important;
     flex-direction: column !important;
     gap: 18px !important;
     justify-content: center !important;
     align-items: center !important;
 }}
-.ds-home div[role="radiogroup"] > label {{
+[data-testid="stAppViewContainer"]:has(.ds-home) div[role="radiogroup"] > label {{
     position: relative !important;
     padding: 6px 34px !important;
     cursor: pointer !important;
@@ -7305,7 +7295,7 @@ div[data-testid="stRadio"] {{
     user-select: none !important;
     transition: all 120ms ease !important;
 }}
-.ds-home div[role="radiogroup"] > label::before {{
+[data-testid="stAppViewContainer"]:has(.ds-home) div[role="radiogroup"] > label::before {{
     content: "" !important;
     position: absolute !important;
     inset: 0 !important;
@@ -7317,23 +7307,27 @@ div[data-testid="stRadio"] {{
     transform: scaleX(0.85) !important;
     z-index: -1 !important;
 }}
+[data-testid="stAppViewContainer"]:has(.ds-home) div[role="radiogroup"] > label:hover {{
+    color: #FFD700 !important;
+    text-shadow: 0 0 10px rgba(255,215,0,0.65) !important;
+    transform: translateY(-1px) !important;
+}}
 .ds-home div[role="radiogroup"] > label:hover {{
     color: #FFD700 !important;
     text-shadow: 0 0 10px rgba(255,215,0,0.65) !important;
     transform: translateY(-1px) !important;
 }}
-.ds-home div[role="radiogroup"] > label[data-checked="true"] {{
+[data-testid="stAppViewContainer"]:has(.ds-home) div[role="radiogroup"] > label[data-checked="true"] {{
     color: #FFD700 !important;
     text-shadow: 0 0 10px rgba(255,215,0,0.65) !important;
 }}
-.ds-home div[role="radiogroup"] > label:hover::before,
-.ds-home div[role="radiogroup"] > label[data-checked="true"]::before {{
+[data-testid="stAppViewContainer"]:has(.ds-home) div[role="radiogroup"] > label:hover::before,
+[data-testid="stAppViewContainer"]:has(.ds-home) div[role="radiogroup"] > label[data-checked="true"]::before {{
     opacity: 1 !important;
     transform: scaleX(1) !important;
 }}
 /* Esconde o bolinha padrão do radio */
-.ds-home div[role="radiogroup"] input {{ display: none !important; }}
-
+[data-testid="stAppViewContainer"]:has(.ds-home) div[role="radiogroup"] input {{ display: none !important; }}
 
 
 .ds-frame {{
