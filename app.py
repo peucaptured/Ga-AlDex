@@ -3423,6 +3423,7 @@ def render_login_menu(trainer_name: str, user_data: dict):
 def render_intro_screen() -> None:
     title_src = comp_img_data_uri("Assets/titulo.png") or comp_img_data_uri("Assets/inicio.png")
     start_src = comp_img_data_uri("Assets/start.png")
+    render_bgm("music/menu.mp3", volume=0.25)
 
     st.markdown(
         """
