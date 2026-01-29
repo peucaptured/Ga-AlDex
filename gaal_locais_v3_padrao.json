@@ -6,17 +6,18 @@
     "Chifre de Ga'Al",
     "Coração Verde",
     "Deserto Irrigado",
-    "Terras Fluviais"
+    "Terras Fluviais",
+    "Coração Verde"
   ],
   "cities": {
-    "Anexo: Ruínas de Celeste (nota breve)": {
+    "Ruínas de Celeste": {
       "region": "Baía Morta",
       "sections": {
         "Visão": "Ao sul da Baía Morta, onde as correntes ficam mais frias e o mar muda de cor, as Ruínas de Celeste surgem como um quebra-mar antigo e fraturado. Em maré baixa, linhas de pedra branca aparecem sob o lodo salgado; em maré cheia, tudo vira uma silhueta fantasmagórica sob a água turva. O ar ali cheira a sal velho e algas, e o som das ondas batendo nas colunas partidas cria um ritmo que lembra passos dentro de um salão vazio.\n\nCeleste é um lugar de passagem curta e atenção constante: o piso escorrega, a visibilidade muda de um instante para outro, e qualquer movimento parece ecoar demais. Use as ruínas como ponto de descoberta (relíquias, inscrições, rastros) ou como cenário de encontro tenso — a maré determina quanto tempo os personagens têm antes que corredores e escadarias voltem a ser engolidos pelo mar.\n\nPontos rápidos (para uso em mesa e indexação):\n\nGalerias de Maré\nTúneis semi-alagados que se abrem com a maré baixa; paredes lisas, marcas de sal e um silêncio que amplifica qualquer conversa.\n\nPátio das Colunas\nUm pátio aberto, tomado por areia e detritos; colunas rachadas formam sombras compridas ao entardecer e escondem linhas de visão.\n\nPlataforma do Farol Quebrado\nRestos de uma estrutura elevada com vista para o litoral; vento forte, aves e sinais de que alguém ainda observa a baía dali.",
         "Visão da Região": "A Baía Morta é a face mais exposta de Ga’Al: aberta ao mar, ao comércio e ao olhar estrangeiro, mas também à instabilidade que acompanha tudo o que chega de fora. Suas cidades cresceram de maneiras distintas em torno da mesma promessa — acesso, progresso e relevância — e todas pagaram um preço por isso. Portos movimentados, rotas aéreas, centros de pesquisa e polos culturais coexistem com ressentimentos antigos, desconfiança em relação a treinadores Pokémon e uma memória coletiva marcada por decisões tomadas longe da população comum. Aqui, nada permanece isolado por muito tempo: crises se espalham com a mesma velocidade que mercadorias e boatos.\n\nApesar da aparência cosmopolita, a Baía Morta não é homogênea. Obsidian concentra poder, ciência e infraestrutura; Aspargo carrega o peso de ter sido deixada para trás; e Dainise vive no limite entre a civilização e o avanço do ambiente selvagem. O cheiro de sal, óleo e pedra úmida é constante, assim como a sensação de que algo pode sair do controle a qualquer momento. Para viajantes e treinadores, a região oferece oportunidades únicas — visibilidade, recursos e influência — mas também cobra atenção redobrada: na Baía Morta, cada escolha ecoa além da cidade onde foi feita."
       },
       "sublocais": [],
-      "img": "Assets/cities/anexo_ruinas_de_celeste_nota_breve.png"
+      "img": "Assets/cities/ruinas_de_celeste.png"
     },
     "Borgonha": {
       "region": "Terras Fluviais",
@@ -626,16 +627,33 @@
       ],
       "img": "Assets/cities/kobicha.png"
     },
-    "Coração Verde": {
+    "Gêmeas": {
       "region": "Coração Verde",
+      "img": "Assets/cities/gemeas.png",
       "sections": {
-        "Visão": "O Coração Verde é um recorte úmido e pesado de Ga'Al: uma bacia tomada por mata, brejo e estruturas antigas que sobreviveram ao fim do mundo só o suficiente para virar ruína. O lago central, outrora 'verdejante', apodreceu e escureceu; o que era água virou caldo marrom, fétido, e a vida ao redor se adaptou ao lixo, à ferrugem e a uma economia de sobrevivência.\n\nÉ também uma região de contrastes verticais: as Gêmeas erguem-se como obelisco sobre a podridão do lago, separando classes por altura, cheiro e luz. O alto respira vento e privilégio; o baixo respira esgoto e guerra.",
-        "Visão da Região": "O Coração Verde é um recorte úmido e pesado de Ga'Al: uma bacia tomada por mata, brejo e estruturas antigas que sobreviveram ao fim do mundo só o suficiente para virar ruína. O lago central, outrora 'verdejante', apodreceu e escureceu; o que era água virou caldo marrom, fétido, e a vida ao redor se adaptou ao lixo, à ferrugem e a uma economia de sobrevivência.\n\nÉ também uma região de contrastes verticais: as Gêmeas erguem-se como obelisco sobre a podridão do lago, separando classes por altura, cheiro e luz. O alto respira vento e privilégio; o baixo respira esgoto e guerra."
+        "Visão": "No centro do Coração Verde, duas cidades-torres irmãs se erguem acima do lago como um monumento que se recusa a cair — mesmo depois de já ter caído uma vez. As Gêmeas foram projetadas por andares: círculos radiais largos, com moradias e serviços no miolo metálico e passagens de manutenção nos anéis externos. A parte inferior dos pisos é feita de LED branco; de dia, ilumina o andar abaixo; à noite, apaga e cede lugar a uma luz amarelada fraca, como se a própria cidade economizasse esperança.\n\nO térreo (e tudo abaixo dele) não é uma 'camada' — é uma fronteira. Do lado de fora, uma massa de pobres e desabrigados se amontoa sem acesso a serviços, vivendo de sobras, favores e risco. Ali, a 'pesca de lixo' virou rotina: Trubbish são pescados na esperança de que carreguem restos de comida, roupas ou itens básicos. Garbodor rondam como caminhões de lixo vivos, territoriais e imprevisíveis.\n\nA Queda das Gêmeas partiu a cidade ao meio. Uma das torres foi implodida de dentro para fora quando a Team Keneze tentou transformar o topo do obelisco em um mecanismo de abertura de portal — alimentado por 'passagens' entre vivos e mortos. A destruição espalhou destroços no lago e quebrou rotas internas. Desde então, Gêmeas vive entre três estados ao mesmo tempo: ruína, ocupação e reconstrução.",
+        "Ginásio de Gêmeas": "Líder: (a definir) | Vice-líder: (a definir) | Tipo: (a definir) | Localização: Gêmeas (Coração Verde).\n\nAntes, desafiar o ginásio era 'subir' a cidade: cada etapa testava mobilidade, vento e resistência, como se a própria arquitetura fosse um oponente. Hoje, a Jaula é símbolo de duas coisas: do auge (quando Gêmeas era vitrine) e da queda (quando o topo virou alvo de guerra)."
       },
       "sublocais": [
         {
-          "name": "Gêmeas",
-          "text": "No centro do Coração Verde, duas cidades-torres irmãs se erguem acima do lago como um monumento que se recusa a cair — mesmo depois de já ter caído uma vez. As Gêmeas foram projetadas por andares: círculos radiais largos, com moradias e serviços no miolo metálico e passagens de manutenção nos anéis externos. A parte inferior dos pisos é feita de LED branco; de dia, ilumina o andar abaixo; à noite, apaga e cede lugar a uma luz amarelada fraca, como se a própria cidade economizasse esperança.\n\nO térreo (e tudo abaixo dele) não é uma 'camada' — é uma fronteira. Do lado de fora, uma massa de pobres e desabrigados se amontoa sem acesso a serviços, vivendo de sobras, favores e risco. Ali, a 'pesca de lixo' virou rotina: Trubbish são pescados na esperança de que carreguem restos de comida, roupas ou itens básicos. Garbodor rondam como caminhões de lixo vivos, territoriais e imprevisíveis."
+          "name": "Lago Verdejante (atual Lago Marrom)",
+          "text": "O antigo lago 'verde' tornou-se marrom, denso e fétido. A superfície parece calma, mas bolhas de gás sobem como suspiros. Trubbish e Garbodor são comuns; toxinas se acumulam nas margens."
+        },
+        {
+          "name": "Pesca de Lixo",
+          "text": "Docas improvisadas onde moradores pescam Trubbish e arrastam lixo em redes, procurando comida, roupa e itens reaproveitáveis."
+        },
+        {
+          "name": "Esgotos",
+          "text": "A base da cidade ficava no esgoto: um acesso guardado por 07 chaves. Hoje, é rota vital da resistência e o único labirinto que a ocupação nunca controlou por completo."
+        },
+        {
+          "name": "Oficina de Próteses e Reparo",
+          "text": "Um conjunto de bancadas e impressoras/forjas improvisadas onde próteses, muletas, armas de sucata e peças estruturais são consertadas."
+        },
+        {
+          "name": "Memorial do Andar Caído",
+          "text": "Um corredor com nomes gravados em placas reaproveitadas. Alguns nomes têm marcas de bala; outros, apenas espaço vazio."
         },
         {
           "name": "Safari Pokémon",
@@ -643,14 +661,13 @@
         },
         {
           "name": "Ruínas de Zibrênia",
-          "text": "O que sobrou da primeira cidade de Ga'Al, perdida em algum lugar do Coração Verde.\n\nZibrênia é citada como a primeira cidade de Ga'Al — ou ao menos o primeiro 'projeto de megalópole'. Do alto das Gêmeas, ainda se veem trechos de muros antigos engolidos pela mata. A sede, porém, jamais foi encontrada; alguns dizem que afundou, outros que foi 'apagada'."
+          "text": "O que sobrou da primeira cidade de Ga'Al, perdida em algum lugar do Coração Verde. Do alto das Gêmeas, ainda se veem trechos de muros antigos engolidos pela mata. A sede, porém, jamais foi encontrada; alguns dizem que afundou, outros que foi 'apagada'."
         },
         {
           "name": "ArteBalls",
           "text": "A ArteBalls cresceu na borda do caos: onde Pokébolas são recursos, identidade e, às vezes, contrabando. A oficina vende modelos personalizados (pintura, gravação, acabamento) e faz reparos em cascas danificadas. Em dias de pouco movimento, a loja parece um ateliê; em dias de crise, parece um posto de guerra."
         }
-      ],
-      "img": "Assets/cities/coracao_verde.png"
+      ]
     }
   }
 }
