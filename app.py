@@ -3420,21 +3420,11 @@ def render_login_menu(trainer_name: str, user_data: dict):
 
 
 
+
 def render_intro_screen() -> None:
     title_src = comp_img_data_uri("Assets/titulo.png") or comp_img_data_uri("Assets/inicio.png")
     start_src = comp_img_data_uri("Assets/start.png")
     render_bgm("music/menu.mp3", volume=0.25)
-
-    # =========================
-    # TIMER (5s) NO PYTHON
-    # =========================
-    if "intro_t0" not in st.session_state:
-        st.session_state["intro_t0"] = time.time()
-
-    if (time.time() - st.session_state["intro_t0"]) >= 5:
-        st.session_state["intro_done"] = True
-        st.session_state.pop("intro_t0", None)  # limpa o timer
-        st.rerun()
 
     st.markdown(
         """
@@ -3450,15 +3440,6 @@ def render_intro_screen() -> None:
             padding: 0;
             z-index: 9999;
         }
-        input[placeholder="__gaal_intro__"]{
-          position: fixed !important;
-          left: -10000px !important;
-          top: -10000px !important;
-          width: 1px !important;
-          height: 1px !important;
-          opacity: 0 !important;
-        }
-
         .gaal-intro-title{
             position: absolute;
             inset: 0;
@@ -3470,7 +3451,6 @@ def render_intro_screen() -> None:
             z-index: 1;
             filter: drop-shadow(0 16px 26px rgba(0,0,0,0.75));
         }
-
         .gaal-intro-start{
             position: absolute;
             left: 50%;
@@ -3483,7 +3463,6 @@ def render_intro_screen() -> None:
             animation: gaalIntroBlink 1.05s ease-in-out infinite;
             pointer-events: none;
         }
-
         @keyframes gaalIntroBlink{
             0%, 45% { opacity: 0.1; }
             55%, 100% { opacity: 0.95; }
@@ -3493,96 +3472,36 @@ def render_intro_screen() -> None:
         unsafe_allow_html=True,
     )
 
-    st.text_input(
-        " ",
-        key="__intro_key_capture__",
-        placeholder="__gaal_intro__",
-        label_visibility="collapsed",
-    )
-
     st.markdown(
-        """
+        f"""
         <div class="gaal-intro">
             <img class="gaal-intro-title" src="{title_src}" alt="Ga'Al" />
             <img class="gaal-intro-start" src="{start_src}" alt="Press Start" />
         </div>
-        """.format(title_src=title_src, start_src=start_src),
+        """,
         unsafe_allow_html=True,
     )
 
 
-    components.html(
-        """
-        <script>
-        (function () {
-          const root = window.parent || window;
-          const doc = (root.document || document);
-
-          if (root.__gaalIntroHooked) return;
-          root.__gaalIntroHooked = true;
-
-          function triggerIntro(){
-            if (root.__gaalIntroTriggered) return;
-            root.__gaalIntroTriggered = true;
-            const url = new URL(root.location.href);
-            url.searchParams.set("intro", "1");
-            root.location.replace(url.toString());
-          }
-
-          function focusHiddenInput(){
-            try{
-              const inp = doc.querySelector('input[placeholder="__gaal_intro__"]');
-              if (!inp) return false;
-              inp.focus({ preventScroll: true });
-              return (doc.activeElement === inp);
-            }catch(e){
-              return false;
-            }
-          }
-
-          let tries = 0;
-          const focusTimer = setInterval(() => {
-            tries += 1;
-            if (focusHiddenInput() || tries > 60) clearInterval(focusTimer);
-          }, 50);
-
-          doc.addEventListener("mousemove", () => focusHiddenInput(), { capture:true });
-          doc.addEventListener("mousedown", () => { focusHiddenInput(); triggerIntro(); }, { once:true, capture:true });
-          doc.addEventListener("pointerdown", () => { focusHiddenInput(); triggerIntro(); }, { once:true, capture:true });
-          doc.addEventListener("keydown", () => { triggerIntro(); }, { once:true, capture:true });
-          doc.addEventListener("touchstart", () => { triggerIntro(); }, { once:true, capture:true });
-
-        })();
-        </script>
-        """,
-        height=0,
-    )
-
-
-
-# --- INTRO / LOGIN ---
+# --- INTRO / LOGIN (APENAS TIMER 5s) ---
 if not st.session_state.get("intro_done", False):
 
-    # inicia timer (uma vez)
     if "intro_t0" not in st.session_state:
         st.session_state["intro_t0"] = time.time()
 
-    # 5s -> avança
+    # mostra a intro
+    render_intro_screen()
+
+    # passou 5s -> troca de tela
     if (time.time() - st.session_state["intro_t0"]) >= 5:
         st.session_state["intro_done"] = True
         st.session_state.pop("intro_t0", None)
         st.rerun()
 
-    # se qualquer tecla foi digitada (input invisível recebeu texto), avança
-    if (st.session_state.get("__intro_key_capture__") or "").strip():
-        st.session_state["intro_done"] = True
-        st.session_state.pop("intro_t0", None)
-        st.rerun()
-
-    render_intro_screen()
-    st.stop()
+    # força rerun para contar o tempo sem interação do usuário
+    time.sleep(0.2)
+    st.rerun()
 else:
-    # (opcional) limpa caso tenha sobrado
     st.session_state.pop("intro_t0", None)
 
 
