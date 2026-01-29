@@ -3418,6 +3418,90 @@ def render_login_menu(trainer_name: str, user_data: dict):
 
     st.markdown("</div>", unsafe_allow_html=True)
 
+
+
+def render_intro_screen() -> None:
+    title_src = comp_img_data_uri("Assets/titulo.png") or comp_img_data_uri("Assets/inicio.png")
+    start_src = comp_img_data_uri("Assets/start.png")
+
+    st.markdown(
+        """
+        <style>
+        .gaal-intro {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            background: #000;
+            padding: 24px 16px 40px;
+        }
+        .gaal-intro-title {
+            width: min(86vw, 940px);
+            height: auto;
+            display: block;
+            filter: drop-shadow(0 16px 26px rgba(0,0,0,0.75));
+        }
+        .gaal-intro-start {
+            width: min(60vw, 520px);
+            height: auto;
+            display: block;
+            animation: gaalIntroBlink 1.05s ease-in-out infinite;
+        }
+        @keyframes gaalIntroBlink {
+            0%, 45% { opacity: 0.1; }
+            55%, 100% { opacity: 0.95; }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+        <div class="gaal-intro">
+            <img class="gaal-intro-title" src="{title_src}" alt="Ga'Al" />
+            <img class="gaal-intro-start" src="{start_src}" alt="Press Start" />
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    components.html(
+        """
+        <script>
+        (function () {
+          const root = window.parent || window;
+          if (root.__gaalIntroHooked) return;
+          root.__gaalIntroHooked = true;
+          root.addEventListener("keydown", () => {
+            if (root.__gaalIntroTriggered) return;
+            root.__gaalIntroTriggered = true;
+            const url = new URL(root.location.href);
+            url.searchParams.set("intro", "1");
+            root.location.href = url.toString();
+          }, { once: true });
+        })();
+        </script>
+        """,
+        height=0,
+    )
+
+# --- TELA DE LOGIN ---
+if not st.session_state.get("intro_done"):
+    params = st.query_params
+    intro_param = params.get("intro")
+    if isinstance(intro_param, list):
+        intro_param = intro_param[0] if intro_param else None
+    if intro_param == "1":
+        st.session_state["intro_done"] = True
+        st.query_params.clear()
+        st.rerun()
+
+    render_intro_screen()
+    st.stop()
+
+
 # --- TELA DE LOGIN ---
 if 'trainer_name' not in st.session_state:
     render_bgm("music/login.mp3", volume=0.25)
