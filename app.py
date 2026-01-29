@@ -2517,7 +2517,6 @@ def _resolve_badge_path_assets_insignias(gym_key: str, g: dict) -> str:
     return ""
 
 def render_compendium_ginasios() -> None:
-    import os, re
 
     comp_data = comp_load()
     gyms: dict = (comp_data.get("gyms") or {})
@@ -7955,7 +7954,6 @@ div[data-testid="stRadio"] {{
         # ----------------------------
         # Helpers locais
         # ----------------------------
-        import os
 
         def _norm_loc(s: str) -> str:
             if not isinstance(s, str):
@@ -8493,7 +8491,6 @@ div[data-testid="stRadio"] {{
     def _tentar_achar_imagem_compendium(nome):
         if not nome:
             return None
-        import os
         for tentativa in [nome, nome.replace(" ", "_"), nome.replace(" ", ""), nome.lower()]:
             for ext in [".png", ".jpg", ".jpeg"]:
                 if os.path.exists(tentativa + ext):
