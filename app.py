@@ -3481,6 +3481,42 @@ def render_intro_screen() -> None:
             animation: gaalIntroBlink 1.05s ease-in-out infinite;
             pointer-events: none;
         }
+        .gaal-intro-skip{
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 3;
+        }
+        .gaal-intro-skip button{
+            background: linear-gradient(180deg, #ffcc33 0%, #f28c00 100%) !important;
+            border: 2px solid #ffffff !important;
+            color: #1b1b1b !important;
+            font-weight: 700 !important;
+            padding: 10px 16px !important;
+            border-radius: 999px !important;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.35) !important;
+        }
+        .gaal-intro-skip button:active{
+            transform: translateY(2px);
+            box-shadow: 0 4px 0 rgba(0,0,0,0.35) !important;
+        }
+        .gaal-intro-press{
+            position: fixed;
+            left: 50%;
+            bottom: 8vh;
+            transform: translateX(-50%);
+            width: min(70vw, 720px);
+            height: 110px;
+            z-index: 3;
+        }
+        .gaal-intro-press button{
+            width: 100%;
+            height: 100%;
+            background: transparent !important;
+            border: none !important;
+            color: transparent !important;
+            box-shadow: none !important;
+        }
         @keyframes gaalIntroBlink{
             0%, 45% { opacity: 0.1; }
             55%, 100% { opacity: 0.95; }
@@ -3509,6 +3545,19 @@ if not st.session_state.get("intro_done", False):
 
     # mostra a intro
     render_intro_screen()
+
+    st.markdown("<div class='gaal-intro-skip'>", unsafe_allow_html=True)
+    skip_intro = st.button("Pular", key="gaal_intro_skip")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("<div class='gaal-intro-press'>", unsafe_allow_html=True)
+    press_intro = st.button("Press Start", key="gaal_intro_press")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    if skip_intro or press_intro:
+        st.session_state["intro_done"] = True
+        st.session_state.pop("intro_t0", None)
+        st.rerun()
 
     # passou 5s -> troca de tela
     if (time.time() - st.session_state["intro_t0"]) >= 5:
