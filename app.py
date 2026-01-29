@@ -3550,13 +3550,9 @@ def render_intro_screen() -> None:
 
 # --- TELA DE LOGIN ---
 if not st.session_state.get("intro_done"):
-    params = st.query_params
-    intro_param = params.get("intro")
-    if isinstance(intro_param, list):
-        intro_param = intro_param[0] if intro_param else None
-    if intro_param == "1":
+    # se qualquer tecla foi digitada (input invisível recebeu texto), avança
+    if (st.session_state.get("__intro_key_capture__") or "").strip():
         st.session_state["intro_done"] = True
-        st.query_params.clear()
         st.rerun()
 
     render_intro_screen()
