@@ -2750,9 +2750,63 @@ def render_compendium_ginasios() -> None:
     g = gyms.get(gym_now) or {}
     meta = g.get("meta") or {}
     lider_nm, vice_nm = _gym_staff(g)
-
+    
+    # --- EX-LÍDERES (não deixa quebrar + tenta puxar do próprio ginásio e do JSON de NPCs) ---
+    staff = g.get("staff") or {}
+    raw_ex = (
+        meta.get("ex_lideres")
+        or meta.get("ex_lider")
+        or staff.get("ex_lideres")
+        or staff.get("ex_lider")
+        or []
+    )
+    
+    # normaliza formatos
+    if isinstance(raw_ex, str):
+        ex_list = [s.strip() for s in re.split(r"[;,/|\n]+", raw_ex) if s.strip()]
+    elif isinstance(raw_ex, list):
+        ex_list = [str(s).strip() for s in raw_ex if str(s).strip()]
+    else:
+        ex_list = []
+    
+    # fallback: varre NPCs procurando "Ex-Líder de Ginásio de <cidade/ginásio>"
+    if not ex_list:
+        city = (meta.get("cidade") or meta.get("city") or "").strip() or gym_now
+        targets = {_norm(city), _norm(gym_now)}
+        for nm, npc in (npcs or {}).items():
+            if not isinstance(npc, dict):
+                continue
+            occ = str(npc.get("ocupacao") or "")
+            secs = npc.get("sections") or {}
+            sec_gym = ""
+            if isinstance(secs, dict):
+                sec_gym = str(secs.get("Ginásio") or secs.get("Ginasio") or "")
+            blob = f"{occ}\n{sec_gym}"
+    
+            m = re.search(r"Ex-?L[ií]der de Gin[aá]sio de\s*(.+)", blob, flags=re.IGNORECASE)
+            if m:
+                place = m.group(1).strip()
+                if _norm(place) in targets:
+                    ex_list.append(nm)
+    
+    # limpa duplicatas e remove líder/vice atuais
+    seen = set()
+    clean = []
+    for nm in ex_list:
+        if not nm:
+            continue
+        nk = _norm(nm)
+        if nk in seen:
+            continue
+        if nk in {_norm(lider_nm), _norm(vice_nm)}:
+            continue
+        seen.add(nk)
+        clean.append(nm)
+    ex_list = clean
+    
     # 3 colunas igual Locais
     st.markdown("<div class='ds-gym-shell'>", unsafe_allow_html=True)
+
     col_left, col_center, col_right = st.columns([1.05, 1.35, 2.15], gap="large")
 
     # ============================
@@ -2906,7 +2960,11 @@ def render_compendium_ginasios() -> None:
         st.markdown("<div class='ds-frame-marker ds-gym-right'></div>", unsafe_allow_html=True)
         st.markdown("<div class='ds-name'>LORE</div>", unsafe_allow_html=True)
 
-        crumb = title + (" — Visão" if focus_now == "__visao__" else (" — Líder" if focus_now == "lider" else " — Vice-líder"))
+        if isinstance(focus_now, str) and focus_now.startswith("ex::"):
+            ex_nm = focus_now.split("::", 1)[1].strip()
+            crumb = f"{title} — Ex-líder ({ex_nm})"
+        else:
+            crumb = title + (" — Visão" if focus_now == "__visao__" else (" — Líder" if focus_now == "lider" else " — Vice-líder"))
         st.markdown(f"<div class='ds-meta'>{crumb}</div>", unsafe_allow_html=True)
         st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
 
@@ -2939,6 +2997,22 @@ def render_compendium_ginasios() -> None:
                 st.markdown("<div class='ds-history'>(Líder não definido)</div>", unsafe_allow_html=True)
             elif not isinstance(secs, dict) or not secs:
                 st.markdown("<div class='ds-history'>(Sem seções para o líder)</div>", unsafe_allow_html=True)
+            else:
+                _render_section("Ginásio", _pick(secs, "Ginásio"))
+                _render_section("História", _pick(secs, "História", "Historia", "Histórico", "Historico"))
+                for k, v in secs.items():
+                    if k in ("Ginásio", "História", "Historia", "Histórico", "Historico"):
+                        continue
+                    _render_section(k, v)
+        elif isinstance(focus_now, str) and focus_now.startswith("ex::"):
+            ex_nm = focus_now.split("::", 1)[1].strip()
+            npcX = _npc_obj(ex_nm, g) if ex_nm else {}
+            secs = npcX.get("sections") or {}
+        
+            if not ex_nm:
+                st.markdown("<div class='ds-history'>(Ex-líder não definido)</div>", unsafe_allow_html=True)
+            elif not isinstance(secs, dict) or not secs:
+                st.markdown("<div class='ds-history'>(Sem seções para o ex-líder)</div>", unsafe_allow_html=True)
             else:
                 _render_section("Ginásio", _pick(secs, "Ginásio"))
                 _render_section("História", _pick(secs, "História", "Historia", "Histórico", "Historico"))
