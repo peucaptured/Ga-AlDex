@@ -3420,17 +3420,29 @@ def render_login_menu(trainer_name: str, user_data: dict):
 
 
 
+
 def render_intro_screen() -> None:
     title_src = comp_img_data_uri("Assets/titulo.png") or comp_img_data_uri("Assets/inicio.png")
     start_src = comp_img_data_uri("Assets/start.png")
     render_bgm("music/menu.mp3", volume=0.25)
+
+    # =========================
+    # TIMER (5s) NO PYTHON
+    # =========================
+    if "intro_t0" not in st.session_state:
+        st.session_state["intro_t0"] = time.time()
+
+    if (time.time() - st.session_state["intro_t0"]) >= 5:
+        st.session_state["intro_done"] = True
+        st.session_state.pop("intro_t0", None)  # limpa o timer
+        st.rerun()
 
     st.markdown(
         """
         <style>
         .gaal-intro{
             position: fixed;
-            inset: 0;                 /* top:0 right:0 bottom:0 left:0 */
+            inset: 0;
             width: 100vw;
             height: 100vh;
             background: #000;
@@ -3447,22 +3459,19 @@ def render_intro_screen() -> None:
           height: 1px !important;
           opacity: 0 !important;
         }
-        
-    
-        /* TÍTULO: ocupa a tela inteira */
+
         .gaal-intro-title{
             position: absolute;
             inset: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover;      /* "contain" = aparece inteiro | se quiser preencher mais, use cover */
+            object-fit: cover;
             object-position: center;
             display: block;
             z-index: 1;
             filter: drop-shadow(0 16px 26px rgba(0,0,0,0.75));
         }
-    
-        /* PRESS START: fica por cima */
+
         .gaal-intro-start{
             position: absolute;
             left: 50%;
@@ -3471,11 +3480,11 @@ def render_intro_screen() -> None:
             width: min(70vw, 720px);
             height: auto;
             display: block;
-            z-index: 2;               /* maior que o título = fica na frente */
+            z-index: 2;
             animation: gaalIntroBlink 1.05s ease-in-out infinite;
-            pointer-events: none;     /* evita “capturar” clique */
+            pointer-events: none;
         }
-    
+
         @keyframes gaalIntroBlink{
             0%, 45% { opacity: 0.1; }
             55%, 100% { opacity: 0.95; }
@@ -3484,6 +3493,7 @@ def render_intro_screen() -> None:
         """,
         unsafe_allow_html=True,
     )
+
     st.text_input(
         " ",
         key="__intro_key_capture__",
@@ -3492,24 +3502,26 @@ def render_intro_screen() -> None:
     )
 
     st.markdown(
-        f"""
+        """
         <div class="gaal-intro">
             <img class="gaal-intro-title" src="{title_src}" alt="Ga'Al" />
             <img class="gaal-intro-start" src="{start_src}" alt="Press Start" />
         </div>
-        """,
+        """.format(title_src=title_src, start_src=start_src),
         unsafe_allow_html=True,
     )
+
+
     components.html(
         """
         <script>
         (function () {
           const root = window.parent || window;
           const doc = (root.document || document);
-    
+
           if (root.__gaalIntroHooked) return;
           root.__gaalIntroHooked = true;
-    
+
           function triggerIntro(){
             if (root.__gaalIntroTriggered) return;
             root.__gaalIntroTriggered = true;
@@ -3517,10 +3529,7 @@ def render_intro_screen() -> None:
             url.searchParams.set("intro", "1");
             root.location.replace(url.toString());
           }
-          setTimeout(() => {
-              triggerIntro();
-            }, 5000);
-    
+
           function focusHiddenInput(){
             try{
               const inp = doc.querySelector('input[placeholder="__gaal_intro__"]');
@@ -3531,45 +3540,57 @@ def render_intro_screen() -> None:
               return false;
             }
           }
-    
-          // tenta focar repetidamente por ~3s (Streamlit pode renderizar/reatribuir)
+
           let tries = 0;
           const focusTimer = setInterval(() => {
             tries += 1;
             if (focusHiddenInput() || tries > 60) clearInterval(focusTimer);
           }, 50);
-    
-          // re-tenta foco se o usuário mexer
+
           doc.addEventListener("mousemove", () => focusHiddenInput(), { capture:true });
-    
-          // ✅ mouse: ao apertar qualquer botão já vai pro login
           doc.addEventListener("mousedown", () => { focusHiddenInput(); triggerIntro(); }, { once:true, capture:true });
-    
-          // ✅ melhor ainda: pointerdown cobre touch + caneta + trackpad
           doc.addEventListener("pointerdown", () => { focusHiddenInput(); triggerIntro(); }, { once:true, capture:true });
-    
-          // teclado: qualquer tecla avança
-          doc.addEventListener("keydown", (e) => { triggerIntro(); }, { once:true, capture:true });
-    
-          // mobile fallback (se pointerdown não pegar em algum device)
+          doc.addEventListener("keydown", () => { triggerIntro(); }, { once:true, capture:true });
           doc.addEventListener("touchstart", () => { triggerIntro(); }, { once:true, capture:true });
-    
+
         })();
         </script>
         """,
         height=0,
     )
 
+    # =========================
+    # FORÇA RERUN PRA CONTAR O TIMER SEM INPUT
+    # =========================
+    time.sleep(0.2)
+    st.rerun()
 
-# --- TELA DE LOGIN ---
-if not st.session_state.get("intro_done"):
+
+# --- INTRO / LOGIN ---
+if not st.session_state.get("intro_done", False):
+
+    # inicia timer (uma vez)
+    if "intro_t0" not in st.session_state:
+        st.session_state["intro_t0"] = time.time()
+
+    # 5s -> avança
+    if (time.time() - st.session_state["intro_t0"]) >= 5:
+        st.session_state["intro_done"] = True
+        st.session_state.pop("intro_t0", None)
+        st.rerun()
+
     # se qualquer tecla foi digitada (input invisível recebeu texto), avança
     if (st.session_state.get("__intro_key_capture__") or "").strip():
         st.session_state["intro_done"] = True
+        st.session_state.pop("intro_t0", None)
         st.rerun()
 
     render_intro_screen()
     st.stop()
+else:
+    # (opcional) limpa caso tenha sobrado
+    st.session_state.pop("intro_t0", None)
+
 
 
 # --- TELA DE LOGIN ---
