@@ -3430,7 +3430,7 @@ def render_intro_screen() -> None:
         <style>
         .gaal-intro{
             position: fixed;
-            inset: 0;
+            inset: 0;                 /* top:0 right:0 bottom:0 left:0 */
             width: 100vw;
             height: 100vh;
             background: #000;
@@ -3439,19 +3439,30 @@ def render_intro_screen() -> None:
             padding: 0;
             z-index: 9999;
         }
-
+        input[placeholder="__gaal_intro__"]{
+          position: fixed !important;
+          left: -10000px !important;
+          top: -10000px !important;
+          width: 1px !important;
+          height: 1px !important;
+          opacity: 0 !important;
+        }
+        
+    
+        /* TÍTULO: ocupa a tela inteira */
         .gaal-intro-title{
             position: absolute;
             inset: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: cover;      /* "contain" = aparece inteiro | se quiser preencher mais, use cover */
             object-position: center;
             display: block;
             z-index: 1;
             filter: drop-shadow(0 16px 26px rgba(0,0,0,0.75));
         }
-
+    
+        /* PRESS START: fica por cima */
         .gaal-intro-start{
             position: absolute;
             left: 50%;
@@ -3460,11 +3471,11 @@ def render_intro_screen() -> None:
             width: min(70vw, 720px);
             height: auto;
             display: block;
-            z-index: 2;
+            z-index: 2;               /* maior que o título = fica na frente */
             animation: gaalIntroBlink 1.05s ease-in-out infinite;
-            pointer-events: none;
+            pointer-events: none;     /* evita “capturar” clique */
         }
-
+    
         @keyframes gaalIntroBlink{
             0%, 45% { opacity: 0.1; }
             55%, 100% { opacity: 0.95; }
@@ -3473,26 +3484,77 @@ def render_intro_screen() -> None:
         """,
         unsafe_allow_html=True,
     )
+    st.text_input(
+        " ",
+        key="__intro_key_capture__",
+        placeholder="__gaal_intro__",
+        label_visibility="collapsed",
+    )
 
-    try:
-        from st_click_detector import click_detector
-    except ImportError:
-        st.error("Instale 'st-click-detector' no requirements.txt e reinicie o app.")
-        return
+    st.markdown(
+        f"""
+        <div class="gaal-intro">
+            <img class="gaal-intro-title" src="{title_src}" alt="Ga'Al" />
+            <img class="gaal-intro-start" src="{start_src}" alt="Press Start" />
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    components.html(
+        """
+        <script>
+        (function () {
+          const root = window.parent || window;
+          const doc = (root.document || document);
+        
+          if (root.__gaalIntroHooked) return;
+          root.__gaalIntroHooked = true;
+        
+          function triggerIntro(){
+            if (root.__gaalIntroTriggered) return;
+            root.__gaalIntroTriggered = true;
+            const url = new URL(root.location.href);
+            url.searchParams.set("intro", "1");
+            root.location.replace(url.toString());
+          }
+        
+          function focusHiddenInput(){
+            try{
+              const inp = doc.querySelector('input[placeholder="__gaal_intro__"]');
+              if (!inp) return false;
+              inp.focus({ preventScroll: true });
+              return (doc.activeElement === inp);
+            }catch(e){
+              return false;
+            }
+          }
+        
+          // tenta focar repetidamente por ~3s (Streamlit pode renderizar/reatribuir)
+          let tries = 0;
+          const focusTimer = setInterval(() => {
+            tries += 1;
+            if (focusHiddenInput() || tries > 60) clearInterval(focusTimer);
+          }, 50);
+        
+          // re-tenta foco se o usuário mexer
+          doc.addEventListener("mousemove", () => focusHiddenInput(), { capture:true });
+          doc.addEventListener("mousedown", () => focusHiddenInput(), { capture:true });
+        
+          // clique: foca e avança
+          doc.addEventListener("click", () => { focusHiddenInput(); triggerIntro(); }, { once:true, capture:true });
+        
+          // teclado: qualquer tecla avança
+          doc.addEventListener("keydown", () => { triggerIntro(); }, { once:true, capture:true });
+        
+          // mobile
+          doc.addEventListener("touchstart", () => { triggerIntro(); }, { once:true, capture:true });
+        
+        })();
+        </script>
 
-    clicked = click_detector(f"""
-    <div id="intro_any" class="gaal-intro" style="cursor:pointer">
-      <img class="gaal-intro-title" src="{title_src}" alt="Ga'Al" />
-      <img class="gaal-intro-start" src="{start_src}" alt="Press Start" />
-    </div>
-    """)
-
-    if clicked == "intro_any":
-        st.session_state["intro_done"] = True
-        st.rerun()
-
-
-    
+        """,
+        height=0,
+    )
 
 
 # --- TELA DE LOGIN ---
