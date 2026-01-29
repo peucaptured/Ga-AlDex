@@ -8183,6 +8183,7 @@ div[data-testid="stRadio"] {{
                 color: rgba(255,255,255,0.88) !important;
               }
 
+
               /* Radio vertical DS */
               .ds-loc-menu div[data-testid="stRadio"] [role="radiogroup"]{
                 gap: 8px !important;
@@ -8224,7 +8225,7 @@ div[data-testid="stRadio"] {{
               text-transform: uppercase;
               font-size: 11px;
               color: rgba(255,255,255,0.55);
-            }
+              }
             /* remove margens estranhas dos blocos de widget dentro do frame */
             div[data-testid="column"]:has(.ds-frame-marker.ds-loc-center) img.comp-map,
             div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-center) img.comp-map{
@@ -8363,7 +8364,6 @@ div[data-testid="stRadio"] {{
                 if cur_sl not in sub_names:
                     cur_sl = "__visao__"
                     st.session_state["comp_loc_sublocal"] = "__visao__"
-
                 sl_choice = st.selectbox(
                     "Sublocal",
                     options=sub_names,
@@ -8440,6 +8440,7 @@ div[data-testid="stRadio"] {{
                 st.markdown(f"<div style='text-align:center'>{chips}</div>", unsafe_allow_html=True)
                 st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
 
+
             # Conteúdo rolável (abre)
             st.markdown("<div class='ds-lore-scroll'>", unsafe_allow_html=True)
 
@@ -8465,6 +8466,7 @@ div[data-testid="stRadio"] {{
                         )
                         st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
 
+
                 for k, v in secs.items():
                     if k in used:
                         continue
@@ -8478,15 +8480,6 @@ div[data-testid="stRadio"] {{
                     st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
 
             else:
-                sl_obj = None
-                for sl in (cobj.get("sublocais") or []):
-                    if isinstance(sl, dict) and (sl.get("name") or "").strip() == sl_now:
-                        sl_obj = sl
-                        break
-
-                if not sl_obj:
-                    st.markdown("<div class='ds-history'>Sublocal não encontrado.</div>", unsafe_allow_html=True)
-                else:
                     st.markdown(f"<div class='ds-subtitle'>{sl_now}</div>", unsafe_allow_html=True)
                     txt = (sl_obj.get("text") or "").strip()
                     st.markdown(
