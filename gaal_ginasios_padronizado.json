@@ -1,0 +1,379 @@
+{
+  "npcs": [
+    {
+      "name": "Eneias",
+      "ocupacao": "Líder de Ginásio de Borgonha",
+      "status": "Ativo",
+      "img": "",
+      "pokemons": [
+        "Yamma",
+        "Beedrill",
+        "Scolipede"
+      ],
+      "sections": {
+        "Ginásio": "Ginásio Local\n\nLíder: Eneias\n\nA presença do ginásio em Borgonha carrega memória e metal. O marco mais famoso é o Ginásio Escaravelho — uma estrutura itinerante montada nas costas de um escaravelho robótico — enquanto o “novo” campo de Eneias é simples e direto, à margem do rio, do lado de fora da gruta. Entre os dois, a vila aprendeu a receber desafiantes sem perder o cheiro de madeira molhada e rede de pesca.",
+        "História": "Líder de ginásio em  Borgonha, durante sua adolescência sempre foi apaixonado por insetos, e tinha o costume de colecionar Exoesqueletos, por vezes postava vídeos sobre sua coleção, bem como falando curiosidades sobre o tipo. Foi justamente em um desses vídeos que chamou a atenção de Viola, ela o chamou para ser assistente em seu ginásio e pouco a pouco foi subindo de patente, chegando até o posto de Vice Líder.\n\nQuando os convites para vir a Ga'Al foram enviados, ele pediu autorização a Viola para realizar um intercâmbio no ginásio de Less, infelizmente, ele nunca chegou a conhecê-la, já que membros da team Keneze a assassinaram.\n\nEntretanto, com a vaga de líder vazia, começou a articular como poderia alcançar seu objetivo, graças a seu contato com Viola, conseguiu receber o posto de líder através de uma recomendação da própria Associação de Batalhas. Infelizmente não tem um Vice ainda.\n\nPesquisa: Insetos na Construção Civil"
+      },
+      "idade": "36 anos",
+      "origem": "Kalos"
+    },
+    {
+      "name": "Alfonso",
+      "ocupacao": "Líder de Ginásio de Turquesa",
+      "status": "Ativo",
+      "img": "",
+      "pokemons": [
+        "Vaporeon",
+        "Toxapex",
+        "Slowking",
+        "Gyarados"
+      ],
+      "sections": {
+        "Ginásio": "Ginásio Local\n\nTipo: Água\n\nLíder: Alfonso\n\nEm Turquesa, a arena favorece o movimento e a instabilidade do mar aberto: a água balança, a distância se alonga e o horizonte vira parte do combate. O som das ondas reverbera sob a bolha, e a sensação é de lutar com o mundo inteiro respirando em volta — um campo amplo o suficiente para punir distrações e recompensar controle.",
+        "História": "Líder de ginásio em Turquesa, assumiu o posto ainda muito novo, foi treinado pelo Mike Aqua para atingir a especialidade no tipo água, entretanto não teve resultados tão bom quanto o Elite esperava, razão pela qual atualmente é \"apenas\" líder de ginásio, e nem é dos mais fortes. Foi durante muito tempo rival de Stenio, tanto na arqueologia, quanto em batalhas, tendo inclusive se dedicado ao tipo água para poder derrotá-lo, contudo isso nunca ocorreu. Chegou a ajudar o caçador a esconder alguns pokémon roubados. Durante a chuva ácida conseguiu salvar sua cidade graças a uma bolha que impedia a entrada do ácido.\n\nPesquisa: Reversão de polaridade e como se aproveitar da mesma"
+      },
+      "idade": "38 anos",
+      "origem": "Ga'Al"
+    },
+    {
+      "name": "Larissa",
+      "ocupacao": "Vice Líder de Ginásio de Turquesa",
+      "status": "Ativo",
+      "img": "",
+      "pokemons": [
+        "Miolotic",
+        "Peliper",
+        "Seismtoad",
+        "Corsola"
+      ],
+      "sections": {
+        "Ginásio": "Ginásio Local\n\nTipo: Água\n\nLíder: Alfonso\n\nEm Turquesa, a arena favorece o movimento e a instabilidade do mar aberto: a água balança, a distância se alonga e o horizonte vira parte do combate. O som das ondas reverbera sob a bolha, e a sensação é de lutar com o mundo inteiro respirando em volta — um campo amplo o suficiente para punir distrações e recompensar controle.",
+        "História": ""
+      },
+      "idade": "26 anos",
+      "origem": "Ga'Al"
+    },
+    {
+      "name": "Salete",
+      "ocupacao": "Ex-Líder de Ginásio de Mikado",
+      "status": "Ativo",
+      "img": "",
+      "pokemons": [
+        "Camerupt",
+        "Emboar",
+        "Talonflame"
+      ],
+      "sections": {
+        "Ginásio": "Ginásio Local: Tipo Fogo  |  Liderança: Falco (interino) • Salete (ex-líder, banida).\n\nO ginásio nasceu como extensão de um projeto científico e industrial: uma arena que conversa com o calor do Monte Fogo, com plataformas aquecidas, zonas de vapor e desafios que punem deslocamento descuidado.\n\nA antiga liderança prometia progresso em troca de risco — e acumulou inimigos. Hoje, Falco tenta manter a vila funcional com medidas pragmáticas e pouco glamour. Sobre Salete, a versão pública é de queda e exílio; a versão de rua é mais confusa e cheia de ‘mas’.",
+        "História": "Líder na vila de Mikado. Quando mais nova era considerada por muitos como a maior cientista da região de Hoenn, sua tese de doutorado que descreve sua invenção capaz de extrair energia através de pokémons de fogo é no mínimo revolucionária, já tendo sido citada enumeras vezes.\n\nQuando se fala sobre a Salete muitos se esquecem que é treinadora tão boa quanto acadêmica, apresentando uma enorme variedade de feitos notáveis em batalhas. Tudo isso cominou em receber o convite para se instaurar como líder na vila de Mikado.\n\nO ginásio de Mikado foi construído sobre medida levando em conta os cálculos que ela havia realizado no seu doutorado, o objetivo era constuir uma enorme usina termoelétrica.\n\nFoi somente quando o ginásio estava pronto e ela recebeu o cargo de líder que percebeu  um grande problema logístico que teria na região, ela não era nativa de Ga'Al.\n\nBem, ela nasceu em Ga'Al, mas seus pais eram turistas, vindos da região de Hoen, que estavam passando as ferias em Liberty, e casou dela nascer antes da hora. Só veio retornar a Ga'Al aos 30 anos para uma reunião com Isac Umbra, antigo campeão da região, para a instalação do ginásio em Mikado.\n\nPortanto os habitantes da vila de Mikado não a respeitavam, por mais que ela fizesse obras de bem feitorias na cidade, nunca era reconhecida, graças a ela os rios em volta de Mikado se tornaram permanentes, não precisando mais das chuvas, uma pequena faixa de terra na montanha foi transformada em campos agrícolas, e tudo que obteve foi desprezo.\n\nSua ultima tentativa foi apresentar uma defesa do porquê não se deveriam se chamar novos treinadores para a região, que foi veementemente negada.\n\nApós a Team Keneeze perder sua base de energia solar nas Terras Fluviais eles precisavam de uma nova fonte de energia, e foram em Mikado, surpreendentemente Salete estava disposta a oferecer seus geradores em troca de paz para ela e sua família.\n\nCondição que foi aceita, durante a permanência da Team Keneze, ninguém de sua família foi ferido ou machucado, com tudo, quando a equipe foi expulsa de Ga'Al na batalha das Gemeas, seu Vice-Líder tomou o controle do ginásio e a baniu da vila.\n\nAtualmente está em Lilac, solicitou uma auditoria com a Felicia para saber os rumos do seu ginásio, nem sabe se ainda irá continuar como líder, ou só retornar a Hoen e seguir os seus estudos.\n\nPesquisa: Energia termonuclear"
+      },
+      "idade": "41 anos",
+      "origem": "Ga'Al"
+    },
+    {
+      "name": "Falco",
+      "ocupacao": "Vice Líder de Ginásio de Mikado",
+      "status": "Ativo",
+      "img": "",
+      "pokemons": [
+        "Flareon",
+        "Magmotar",
+        "Torkoal",
+        "Volcarona"
+      ],
+      "sections": {
+        "Ginásio": "Ginásio Local: Tipo Fogo  |  Liderança: Falco (interino) • Salete (ex-líder, banida).\n\nO ginásio nasceu como extensão de um projeto científico e industrial: uma arena que conversa com o calor do Monte Fogo, com plataformas aquecidas, zonas de vapor e desafios que punem deslocamento descuidado.\n\nA antiga liderança prometia progresso em troca de risco — e acumulou inimigos. Hoje, Falco tenta manter a vila funcional com medidas pragmáticas e pouco glamour. Sobre Salete, a versão pública é de queda e exílio; a versão de rua é mais confusa e cheia de ‘mas’.",
+        "História": "Falco conseguiu uns papeis que provam que ela tentou por vezes trocar a cidadania Ga'Alense para tentar se candidatar a líder em Hoen. Isso o levou a acreditar que o único motivo de ter vindo a Ga'Al foi a oportunidade de construir seu maquinário.\n\nQuando a Team Keneze chegou foi a gota d'agua, Falco clamou para ela reagir a invasão, lutar, proteger o povo, contudo não obteve  resposta.\n\nFoi então que organizou o levante...."
+      },
+      "idade": "35 anos",
+      "origem": "Ga'Al"
+    },
+    {
+      "name": "Anastácia",
+      "ocupacao": "Líder de Ginásio de Grená",
+      "status": "Ativo",
+      "img": "",
+      "pokemons": [
+        "Pangoro",
+        "Mega Heracross",
+        "Machamp",
+        "Infernape",
+        "Medicham"
+      ],
+      "sections": {
+        "Ginásio": "Ginásio Local\n\nLíder: Anastácia\n\nTipo: Lutador\n\nEm Grená, o ginásio funciona como âncora social: é um dos lugares onde a cidade ainda se reúne, comenta a vida e mede forças. O ambiente é duro e direto — o tipo de espaço em que o silêncio antes do combate pesa, e cada impacto parece ecoar mais do que deveria.",
+        "História": "realiza pesquisa em artes marciais e estilos de combate para humanos\n\nPesquisa: realiza pesquisa em artes marciais e estilos de combate para humanos"
+      },
+      "idade": "38 anos",
+      "origem": "Kalos"
+    },
+    {
+      "name": "Soko",
+      "ocupacao": "Vice Líder de Ginásio de Grená",
+      "status": "Ativo",
+      "img": "",
+      "pokemons": [
+        "Hitmoncham",
+        "Haryama",
+        "Fearow Shiny"
+      ],
+      "sections": {
+        "Ginásio": "Ginásio Local\n\nLíder: Anastácia\n\nTipo: Lutador\n\nEm Grená, o ginásio funciona como âncora social: é um dos lugares onde a cidade ainda se reúne, comenta a vida e mede forças. O ambiente é duro e direto — o tipo de espaço em que o silêncio antes do combate pesa, e cada impacto parece ecoar mais do que deveria.",
+        "História": ""
+      },
+      "idade": "44 anos",
+      "origem": ""
+    },
+    {
+      "name": "Roxie",
+      "ocupacao": "Líder de Ginásio de Kobicha",
+      "status": "Ativo",
+      "img": "",
+      "pokemons": [
+        "Toxicroak",
+        "Garbodor",
+        "Gastly",
+        "Whirlipede",
+        "Dustox"
+      ],
+      "sections": {
+        "Ginásio": "Ginásio Local\n\nLíder: Roxie\n\nTipo: Veneno\n\nEm Kobicha, o ginásio é ponto de encontro e válvula de escape: jovens estudam, treinam e transformam rivalidades em algo que parece mais justo do que a disputa por terras. O ar tem o peso de laboratório e oficina ao mesmo tempo — um lugar onde a coragem se testa e a reputação se constrói.",
+        "História": "Roxie sempre teve duas paixões: a música e as batalhas Pokémon. Aos 21 anos, ela se tornou Líder de Ginásio em Unova, mas também continuou sua carreira de Pop-Star. Ela nunca soube equilibrar bem as duas atividades, e acabou se dedicando mais à música do que às batalhas. Por isso, aos 30 anos, ela perdeu seu cargo de Líder de Ginásio. Esse foi um golpe duro para Roxie, que se afundou em vícios e depressão. Ela passou por um longo processo de recuperação, e conseguiu se livrar das drogas. Agora, aos 51 anos, ela decidiu recomeçar sua vida em Ga’Al, uma região onde há uma vila parecida com sua terra natal."
+      },
+      "idade": "",
+      "origem": ""
+    },
+    {
+      "name": "Condessa Pixie de Laverre",
+      "ocupacao": "Líder de Ginásio de Gamborre",
+      "status": "Ativo",
+      "img": "",
+      "pokemons": [
+        "Sylveon",
+        "Meganium",
+        "Confey"
+      ],
+      "sections": {
+        "Ginásio": "Tipo: Fada  |  Líder: Pixie  |  Vice-líder: Lancelot\n\nO ginásio de Gamborre virou parte do projeto de reconstrução. Entre ruínas e jardins planejados, a cidade tenta costurar um medievo elegante com o contemporâneo. Pixie trata cada vitória como prova de que Gamborre pode voltar a ser grande; Lancelot, veterano de Galar, mantém a disciplina dos desafios e dá ao local a reputação de não perdoar erros táticos.",
+        "História": "Focada em paisagismo e urbanismo, busca mesclar estilo medievo com o contemporâneo\n\nPesquisa: Focada em paisagismo e urbanismo, busca mesclar estilo medievo com o contemporâneo"
+      },
+      "idade": "38 anos",
+      "origem": "Kalos"
+    },
+    {
+      "name": "Lancelot",
+      "ocupacao": "Vice Líder de Ginásio de Gamborre",
+      "status": "Ativo",
+      "img": "",
+      "pokemons": [
+        "Sirfetch'd",
+        "Escavalier",
+        "Pyroar",
+        "Noivern",
+        "Decidueye",
+        "Grimmsnarl"
+      ],
+      "sections": {
+        "Ginásio": "Tipo: Fada  |  Líder: Pixie  |  Vice-líder: Lancelot\n\nO ginásio de Gamborre virou parte do projeto de reconstrução. Entre ruínas e jardins planejados, a cidade tenta costurar um medievo elegante com o contemporâneo. Pixie trata cada vitória como prova de que Gamborre pode voltar a ser grande; Lancelot, veterano de Galar, mantém a disciplina dos desafios e dá ao local a reputação de não perdoar erros táticos.",
+        "História": ""
+      },
+      "idade": "65 anos",
+      "origem": ""
+    },
+    {
+      "name": "Victória",
+      "ocupacao": "Líder de Ginásio de Malva",
+      "status": "Ativo",
+      "img": "",
+      "pokemons": [
+        "Drampa",
+        "Hydregon",
+        "Dragonite"
+      ],
+      "sections": {
+        "Ginásio": "Líder: Vitória  |  Tipo: Dragão  |  Localização: Malva (núcleo urbano).\n\nVitória conduz o ginásio como extensão do seu método: cada batalha é, ao mesmo tempo, confronto e aula. Ela costuma anunciar o que pretende fazer para observar a reação do desafiante e, ao final, entrega um relatório direto sobre decisões, tempo de troca e leitura de campo — um estilo que atrai treinadores sérios e irrita quem espera espetáculo fácil.\n\nDurante a expansão da Team Keneze no Baixo Deserto, Vitória ganhou respeito por agir onde outros recuavam: ao encontrar pessoas marcadas, oferecia água, comida, tratamento médico e acompanhamento psicológico, e buscava reinseri-las com dignidade. Para sustentar isso em uma cidade de receita irregular, contraiu empréstimos com a Associação de Batalha; hoje, o endividamento é uma sombra constante sobre o cargo. Seu vice, Draco, carrega devoção quase religiosa à líder — e a condição de que só será ‘oficial’ quando conseguir derrotá-la em batalha reconhecida virou história repetida em filas de inscrição.",
+        "História": "Nichos ecológicos e sobre como eles se desenvolvem\n\nPesquisa: Nichos ecológicos e sobre como eles se desenvolvem"
+      },
+      "idade": "41 anos",
+      "origem": "Ga'Al"
+    },
+    {
+      "name": "Draco",
+      "ocupacao": "Vice Líder de Ginásio de Malva",
+      "status": "Ativo",
+      "img": "",
+      "pokemons": [
+        "Noivern",
+        "Drampa",
+        "Zweilous"
+      ],
+      "sections": {
+        "Ginásio": "Líder: Vitória  |  Tipo: Dragão  |  Localização: Malva (núcleo urbano).\n\nVitória conduz o ginásio como extensão do seu método: cada batalha é, ao mesmo tempo, confronto e aula. Ela costuma anunciar o que pretende fazer para observar a reação do desafiante e, ao final, entrega um relatório direto sobre decisões, tempo de troca e leitura de campo — um estilo que atrai treinadores sérios e irrita quem espera espetáculo fácil.\n\nDurante a expansão da Team Keneze no Baixo Deserto, Vitória ganhou respeito por agir onde outros recuavam: ao encontrar pessoas marcadas, oferecia água, comida, tratamento médico e acompanhamento psicológico, e buscava reinseri-las com dignidade. Para sustentar isso em uma cidade de receita irregular, contraiu empréstimos com a Associação de Batalha; hoje, o endividamento é uma sombra constante sobre o cargo. Seu vice, Draco, carrega devoção quase religiosa à líder — e a condição de que só será ‘oficial’ quando conseguir derrotá-la em batalha reconhecida virou história repetida em filas de inscrição.",
+        "História": ""
+      },
+      "idade": "21 anos",
+      "origem": ""
+    },
+    {
+      "name": "Clementina \"Vovó\" Joy",
+      "ocupacao": "Líder de Ginásio de Sinoper",
+      "status": "Ativo",
+      "img": "",
+      "pokemons": [
+        "Wigglytuff",
+        "Bibarel",
+        "Miltank",
+        "Kangaskhan"
+      ],
+      "sections": {
+        "Ginásio": "Líder: Clementina “Vovó” Joy  |  Tipo: Normal (tema: cuidado e agricultura)  |  Localização: Centro da vila (celeiro reformado).\n\nClementina é uma antiga Enfermeira Joy aposentada do serviço ativo há décadas. Em vez de permanecer na linha de frente médica, ela concluiu que curar o mundo pós-apocalíptico de Ga’Al passa por garantir que as pessoas tenham o que comer e onde dormir. Por isso, ajudou a consolidar a Fazenda Comum e defende a partilha como princípio — e, desde que assumiu o ginásio, carrega também uma missão silenciosa: desfazer a desconfiança deixada por Erick e restaurar a reputação da vila como lugar seguro para viajantes.\n\nSeu ginásio não é um estádio tecnológico: funciona em um celeiro reformado com aroma de palha seca, chá quente e antisséptico. Clementina educa treinadores novatos em resistência, uso estratégico de itens e controle de status. A gentileza faz parte do método — mas não confunda gentileza com fraqueza: quem se afoba aqui perde para o desgaste.",
+        "História": ""
+      },
+      "idade": "68 anos",
+      "origem": ""
+    },
+    {
+      "name": "Vittorio \"Ace\" Moretti",
+      "ocupacao": "Líder de Ginásio de Liberty",
+      "status": "Ativo",
+      "img": "",
+      "pokemons": [
+        "Gholdengo",
+        "Honchkrow",
+        "Machoke",
+        "Zoroark",
+        "Drapion"
+      ],
+      "sections": {
+        "Ginásio": "Tipo: Variado  |  Liderança: Hoops (registro antigo) • Vittorio “Ace” Moretti (controle atual)  |  Insígnia: Insígnia da Aposta (Gamble Badge)\n\nEm Liberty, o ginásio conversa com a rua. O estádio e suas câmeras transformam cada desafio em evento; e, nos bastidores, alianças e rivalidades são tão importantes quanto a batalha em si.",
+        "História": "45 anos\n\nGholdengo\n\nHonchkrow\n\nMachoke\n\nZoroark\n\nDrapion\n\nNascido não nas coberturas brilhantes, mas nas lonas sujas do \"Fumacê\" (a base da cidade), Vittorio aprendeu cedo que em Liberty, a vida não vale nada se você não tiver fichas na mesa. Quando jovem, era um mero \"olheiro\" para a gangue Ñóm, mas sua habilidade natural de ler pessoas e manipular probabilidades o fez subir rápido.\n\nEle não ganhou sua fortuna batalhando honestamente; ele a ganhou apostando contra si mesmo em lutas arranjadas nos subterrâneos da Última Ladeira. Com o dinheiro sujo, comprou sua entrada no Gran Catino e, numa noite lendária de pôquer contra um antigo chefe do Sindicato, ganhou a escritura do Ginásio local (que estava abandonado e ocupado por sem-tetos, como mencionado nos registros antigos).\n\nVittorio reformou o Ginásio transformando-o em um espetáculo televisionado. Ele vende a narrativa do \"Self-Made Man\", o garoto da favela que virou rei, para manter a população pobre iludida com a esperança de ascensão. No entanto, é um segredo aberto que ele serve como o \"Banqueiro\" do Sindicato Paramilitar, lavando o dinheiro das operações ilegais através das apostas do Ginásio.\n\nReside na cobertura do Gran Catino. Diferente de outros líderes que buscam o crescimento do desafiante, Vittorio luta para humilhar. Ele transformou a batalha de ginásio em um Reality Show. Antes da luta, ele força o desafiante a fazer uma \"aposta\" (pode ser dinheiro, um Pokémon ou um favor futuro). Dizem que ele está cansado da coleira do Sindicato e procura secretamente um treinador forte o suficiente para quebrar a banca e causar um caos que o permita fugir com sua fortuna acumulada."
+      },
+      "idade": "",
+      "origem": ""
+    },
+    {
+      "name": "Kevin",
+      "ocupacao": "Ex-Líder de Ginásio de Jade",
+      "status": "Inativo",
+      "img": "",
+      "pokemons": [
+        "Froslass",
+        "Abomasnow",
+        "Cloyster"
+      ],
+      "sections": {
+        "Ginásio": "Líder: Kevin (desaparecido)  |  Tipo: Gelo  |  Localização: Nova Jade (instalação criogênica).\n\nOficialmente, o ginásio pertence a Kevin — um líder marcado por pesquisas de criogenia e por um silêncio que nunca se resolveu. Filho da Elite 4 Lorelei, ele veio a Ga’Al tentando superar o peso do legado, mas sua reputação desabou durante a Avalanche Vermelha: há quem diga que, enquanto a cidade era soterrada, Kevin priorizou a própria sobrevivência, refugiando-se e deixando gente morrer sob neve e terra.\n\nA instalação do ginásio, mantida a temperaturas extremas (há relatos de -50°C), virou um mausoléu gelado: ciência e luto misturados, com rumores de preservação de corpos. Kevin desapareceu após a queda da Team Keneze, e o lugar segue como tabu — uma porta fria demais para ser aberta sem consequências.",
+        "História": "Filho da Elite 4 Lorelei, Kevin veio a Ga'Al tentando superar o legado da mãe. Durante a tragédia da Avalanche Vermelha, não lutou para salvar os habitantes; usou seu conhecimento em criogenia para se refugiar. O ginásio, mantido a -50ºC, tornou-se um mausoléu frio. Kevin desapareceu após a queda da Team Keneze e o local virou um tabu na região ."
+      },
+      "idade": "",
+      "origem": ""
+    },
+    {
+      "name": "Andy",
+      "ocupacao": "Ex-Líder de Ginásio de Gêmeas",
+      "status": "Inativo",
+      "img": "",
+      "pokemons": [],
+      "sections": {
+        "Ginásio": "Localização: Torres Gêmeas (Coração Verde).\nEspecialidade: Voador e Terra.\nArena: \"A Jaula\" — estrutura suspensa a mais de 1000m de altura, conectando as duas torres.\nStatus: destruído/inoperante desde a Queda das Gêmeas; atualmente a área segue em reconstrução.",
+        "História": "Ex-líder do Ginásio das Gêmeas (ao lado de Dany). Após a ruptura da dupla, Andy foi associado a uma traição que deixou a cidade em colapso; desde então, seu paradeiro é incerto."
+      },
+      "idade": "",
+      "origem": ""
+    },
+    {
+      "name": "Dany",
+      "ocupacao": "Ex-Líder de Ginásio de Gêmeas",
+      "status": "Falecido",
+      "img": "",
+      "pokemons": [],
+      "sections": {
+        "Ginásio": "Localização: Torres Gêmeas (Coração Verde).\nEspecialidade: Voador e Terra.\nArena: \"A Jaula\" — estrutura suspensa a mais de 1000m de altura, conectando as duas torres.\nStatus: destruído/inoperante desde a Queda das Gêmeas; atualmente a área segue em reconstrução.",
+        "História": "Ex-líder do Ginásio das Gêmeas. Figura lembrada pela atuação durante a Queda das Gêmeas e pelos eventos que levaram à destruição do ginásio. Faleceu durante a crise nas Gêmeas."
+      },
+      "idade": "42",
+      "origem": "Ga'Al"
+    },
+    {
+      "name": "Arthur",
+      "ocupacao": "Ex-Líder de Ginásio de Gamborre",
+      "status": "Inativo",
+      "img": "",
+      "pokemons": [
+        "Bisharp",
+        "Honchkrow",
+        "Pangoro"
+      ],
+      "sections": {
+        "Ginásio": "Tipo: Fada  |  Líder: Pixie  |  Vice-líder: Lancelot\n\nO ginásio de Gamborre virou parte do projeto de reconstrução. Entre ruínas e jardins planejados, a cidade tenta costurar um medievo elegante com o contemporâneo. Pixie trata cada vitória como prova de que Gamborre pode voltar a ser grande; Lancelot, veterano de Galar, mantém a disciplina dos desafios e dá ao local a reputação de não perdoar erros táticos.",
+        "História": "Arthur tentou salvar Gamborre através de um pacto com Rockfeller, criando a \"Cidade Colmeia\" industrial que eventualmente colapsou. Após o êxodo da população, trancou-se no ginásio. Investigações revelaram uma câmara de tortura subterrânea conectada ao prédio. Desapareceu deixando seu Pangoro para trás em condições deploráveis ."
+      },
+      "idade": "",
+      "origem": ""
+    },
+    {
+      "name": "Erick",
+      "ocupacao": "Ex-Líder de Ginásio de Sinoper",
+      "status": "Inativo",
+      "img": "",
+      "pokemons": [
+        "Kangaskhan",
+        "Sawsbuck"
+      ],
+      "sections": {
+        "Ginásio": "Líder: Clementina “Vovó” Joy  |  Tipo: Normal (tema: cuidado e agricultura)  |  Localização: Centro da vila (celeiro reformado).\n\nClementina é uma antiga Enfermeira Joy aposentada do serviço ativo há décadas. Em vez de permanecer na linha de frente médica, ela concluiu que curar o mundo pós-apocalíptico de Ga’Al passa por garantir que as pessoas tenham o que comer e onde dormir. Por isso, ajudou a consolidar a Fazenda Comum e defende a partilha como princípio — e, desde que assumiu o ginásio, carrega também uma missão silenciosa: desfazer a desconfiança deixada por Erick e restaurar a reputação da vila como lugar seguro para viajantes.\n\nSeu ginásio não é um estádio tecnológico: funciona em um celeiro reformado com aroma de palha seca, chá quente e antisséptico. Clementina educa treinadores novatos em resistência, uso estratégico de itens e controle de status. A gentileza faz parte do método — mas não confunda gentileza com fraqueza: quem se afoba aqui perde para o desgaste.",
+        "História": "Após a morte de sua neta, Erick tornou-se xenofóbico e isolacionista, culpando treinadores estrangeiros pelo declínio de Ga'Al. Tentou realizar um \"expurgo\" violento em Sinoper, expulsando forasteiros. Foi deposto e substituído por Clementina (Vovó Joy), que tenta restaurar a hospitalidade da vila ."
+      },
+      "idade": "",
+      "origem": ""
+    },
+    {
+      "name": "Hoops",
+      "ocupacao": "Ex-Líder de Ginásio de Liberty",
+      "status": "Inativo",
+      "img": "",
+      "pokemons": [
+        "Poliwhirl",
+        "Sawk",
+        "Quilladin"
+      ],
+      "sections": {
+        "Ginásio": "Tipo: Variado  |  Liderança: Hoops (registro antigo) • Vittorio “Ace” Moretti (controle atual)  |  Insígnia: Insígnia da Aposta (Gamble Badge)\n\nEm Liberty, o ginásio conversa com a rua. O estádio e suas câmeras transformam cada desafio em evento; e, nos bastidores, alianças e rivalidades são tão importantes quanto a batalha em si.",
+        "História": "Um atleta profissional de Touchdown que nunca teve vocação para a burocracia ou proteção civil. Abandonou o cargo para focar na carreira esportiva. Sua negligência permitiu que o Sindicato Paramilitar tomasse conta da segurança da cidade, abrindo caminho para a gestão corrupta de Vittorio \"Ace\" Moretti ."
+      },
+      "idade": "",
+      "origem": ""
+    },
+    {
+      "name": "Less",
+      "ocupacao": "Ex-Líder de Ginásio de Borgonha",
+      "status": "Falecido",
+      "img": "",
+      "pokemons": [
+        "Fortress",
+        "Scizor",
+        "Vivilion",
+        "Galvantula"
+      ],
+      "sections": {
+        "Ginásio": "Ginásio Local\n\nLíder: Eneias\n\nA presença do ginásio em Borgonha carrega memória e metal. O marco mais famoso é o Ginásio Escaravelho — uma estrutura itinerante montada nas costas de um escaravelho robótico — enquanto o “novo” campo de Eneias é simples e direto, à margem do rio, do lado de fora da gruta. Entre os dois, a vila aprendeu a receber desafiantes sem perder o cheiro de madeira molhada e rede de pesca.",
+        "História": "Less foi assassinada por membros da Team Keneze. Seu ginásio, construído nas costas de um enorme escaravelho mecânico, permanece imobilizado em Borgonha como ponto turístico e memorial, enquanto o atual líder Eneias opera em um campo tradicional ."
+      },
+      "idade": "",
+      "origem": ""
+    },
+    {
+      "name": "Stênio",
+      "ocupacao": "Ex-Líder de Ginásio de Obsidian",
+      "status": "Inativo",
+      "img": "",
+      "pokemons": [],
+      "sections": {
+        "Ginásio": "Líder: Marlon  |  Tipo: Terra  |  Localização: Dentro do Monte Pedra (acesso pela zona externa).\n\nNo interior do Monte Pedra, o ginásio é um corte de rocha e concreto: corredores frios, pó mineral no ar e ecos longos. A sensação é a de entrar numa pedreira viva — cada passo reverbera, e a umidade condensa nas paredes como suor de pedra.\n\nVeteranos da cidade ainda citam o nome de Stênio — antigo líder local e figura temida — quando falam do Monte Pedra. A exploração profunda da montanha é assunto sensível, com regras que mudam conforme quem pergunta. A versão ‘oficial’ sempre menciona segurança; a versão de bar fala de coisas que ninguém quer acordar lá embaixo.",
+        "História": "Antes de se tornar membro da Elite dos 4, Stênio era o temido líder de Obsidian. Conhecido por restringir o acesso ao Monte Pedra para proteger suas descobertas arqueológicas (e segredos sobre criaturas antigas). Sua saída abriu vaga para a liderança atual (Marlon), mas sua sombra ainda paira sobre a cidade ."
+      },
+      "idade": "",
+      "origem": ""
+    }
+  ]
+}
