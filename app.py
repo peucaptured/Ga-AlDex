@@ -2540,9 +2540,12 @@ def render_compendium_ginasios() -> None:
           .ds-frame-marker{
             display: none;
           }
-          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-left),
-          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-center),
-          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-right){
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left),
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-center),
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right),
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left),
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-center),
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right){
             background: rgba(0,0,0,0.55);
             border: 2px solid rgba(176,143,60,0.55);
             box-shadow: 0 0 45px rgba(0,0,0,0.9);
@@ -2551,9 +2554,12 @@ def render_compendium_ginasios() -> None:
             position: relative;
             box-sizing: border-box;
           }
-          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-left)::after,
-          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-center)::after,
-          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-right)::after{
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left)::after,
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-center)::after,
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right)::after,
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left)::after,
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-center)::after,
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right)::after{
             content: "";
             position: absolute;
             top: 10px; left: 10px; right: 10px; bottom: 10px;
@@ -2561,41 +2567,50 @@ def render_compendium_ginasios() -> None:
             border-radius: 10px;
             pointer-events: none;
           }
-          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-left) .comp-divider{
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left) .comp-divider,
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left) .comp-divider{
             margin: 14px 0 14px 0 !important;
           }
-          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"]{
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"],
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"]{
             width: 100% !important;
           }
-          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"] > div{
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"] > div,
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"] > div{
             background: rgba(0,0,0,0.25) !important;
             border: 1px solid rgba(176,143,60,0.45) !important;
             border-radius: 12px !important;
             padding: 6px 10px !important;
             box-shadow: 0 0 18px rgba(255,215,0,0.06) !important;
           }
-          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"] *{
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"] *,
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"] *{
             font-family: "DarkSouls", serif !important;
             letter-spacing: 0.18em !important;
             text-transform: uppercase !important;
             color: rgba(255,255,255,0.82) !important;
           }
-          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-right){
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right),
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right){
             display: flex;
             flex-direction: column;
             height: 78vh;
           }
-          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll{
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll,
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll{
             flex: 1 1 auto;
             overflow-y: auto;
             padding-right: 8px;
           }
-          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar{ width: 8px; }
-          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-thumb{
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar,
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar{ width: 8px; }
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-thumb,
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-thumb{
             background: rgba(255,215,0,0.18);
             border-radius: 10px;
           }
-          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-track{
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-track,
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-track{
             background: rgba(255,255,255,0.06);
           }
         </style>
@@ -8107,9 +8122,12 @@ div[data-testid="stRadio"] {{
               .ds-frame-marker{
                 display: none;
               }
-              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-left),
-              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-center),
-              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-right){
+              div[data-testid="column"]:has(.ds-frame-marker.ds-loc-left),
+              div[data-testid="column"]:has(.ds-frame-marker.ds-loc-center),
+              div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right),
+              div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-left),
+              div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-center),
+              div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right){
                 background: rgba(0,0,0,0.55);
                 border: 2px solid rgba(176,143,60,0.55);
                 box-shadow: 0 0 45px rgba(0,0,0,0.9);
@@ -8118,9 +8136,12 @@ div[data-testid="stRadio"] {{
                 position: relative;
                 box-sizing: border-box;
               }
-              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-left)::after,
-              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-center)::after,
-              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-right)::after{
+              div[data-testid="column"]:has(.ds-frame-marker.ds-loc-left)::after,
+              div[data-testid="column"]:has(.ds-frame-marker.ds-loc-center)::after,
+              div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right)::after,
+              div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-left)::after,
+              div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-center)::after,
+              div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right)::after{
                 content: "";
                 position: absolute;
                 top: 10px; left: 10px; right: 10px; bottom: 10px;
@@ -8129,14 +8150,17 @@ div[data-testid="stRadio"] {{
                 pointer-events: none;
               }
               /* Dá espaçamento entre blocos */
-              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-left) .comp-divider{
+              div[data-testid="column"]:has(.ds-frame-marker.ds-loc-left) .comp-divider,
+              div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-left) .comp-divider{
                 margin: 14px 0 14px 0 !important;
               }
               /* Selectbox com cara de "encaixado" dentro do frame */
-              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-left) div[data-testid="stSelectbox"]{
+              div[data-testid="column"]:has(.ds-frame-marker.ds-loc-left) div[data-testid="stSelectbox"],
+              div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-left) div[data-testid="stSelectbox"]{
                 width: 100% !important;
               }
-              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-left) div[data-testid="stSelectbox"] > div{
+              div[data-testid="column"]:has(.ds-frame-marker.ds-loc-left) div[data-testid="stSelectbox"] > div,
+              div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-left) div[data-testid="stSelectbox"] > div{
                 background: rgba(0,0,0,0.25) !important;
                 border: 1px solid rgba(176,143,60,0.45) !important;
                 border-radius: 12px !important;
@@ -8144,14 +8168,16 @@ div[data-testid="stRadio"] {{
                 box-shadow: 0 0 18px rgba(255,215,0,0.06) !important;
               }
               /* Texto do select com fonte DS */
-              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-left) div[data-testid="stSelectbox"] *{
+              div[data-testid="column"]:has(.ds-frame-marker.ds-loc-left) div[data-testid="stSelectbox"] *,
+              div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-left) div[data-testid="stSelectbox"] *{
                 font-family: "DarkSouls", serif !important;
                 letter-spacing: 0.18em !important;
                 text-transform: uppercase !important;
                 color: rgba(255,255,255,0.82) !important;
               }
 
-              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-left) .stTextInput input{
+              div[data-testid="column"]:has(.ds-frame-marker.ds-loc-left) .stTextInput input,
+              div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-left) .stTextInput input{
                 background: rgba(0,0,0,0.35) !important;
                 border: 1px solid rgba(176,143,60,0.35) !important;
                 color: rgba(255,255,255,0.88) !important;
@@ -8192,15 +8218,16 @@ div[data-testid="stRadio"] {{
               }
               .ds-loc-menu div[data-testid="stRadio"] input{ display:none !important; }
 
-              .ds-loc-hint{
-                font-family: "DarkSouls", serif;
-                letter-spacing: 0.18em;
-                text-transform: uppercase;
-                font-size: 11px;
-                color: rgba(255,255,255,0.55);
-              }
+            .ds-loc-hint{
+              font-family: "DarkSouls", serif;
+              letter-spacing: 0.18em;
+              text-transform: uppercase;
+              font-size: 11px;
+              color: rgba(255,255,255,0.55);
+            }
             /* remove margens estranhas dos blocos de widget dentro do frame */
-            div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-center) img.comp-map{
+            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-center) img.comp-map,
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-center) img.comp-map{
               width: 100% !important;
               height: auto !important;
               display: block !important;
@@ -8208,31 +8235,38 @@ div[data-testid="stRadio"] {{
             }
             
             /* espaçamento controlado entre widgets */
-            div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-center) .comp-divider,
-            div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-right) .comp-divider{
+            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-center) .comp-divider,
+            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .comp-divider,
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-center) .comp-divider,
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .comp-divider{
               margin: 14px 0 12px 0 !important;
             }
             /* frame da lore */
-            div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-right){
+            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right),
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right){
               display: flex;
               flex-direction: column;
               height: 78vh;
             }
             
             /* área rolável da lore (não explode o frame) */
-            div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll{
+            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll,
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll{
               flex: 1 1 auto;
               overflow-y: auto;
               padding-right: 8px;
             }
             
             /* scrollbar discreto */
-            div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar{ width: 8px; }
-            div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar-thumb{
+            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar,
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar{ width: 8px; }
+            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar-thumb,
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar-thumb{
               background: rgba(255,215,0,0.18);
               border-radius: 10px;
             }
-            div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar-track{
+            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar-track,
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar-track{
               background: rgba(255,255,255,0.06);
             }
 
