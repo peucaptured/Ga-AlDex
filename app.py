@@ -2762,11 +2762,12 @@ def render_compendium_ginasios() -> None:
             st.session_state["comp_gym_focus"] = "__visao__"
             st.rerun()
         st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
-        focus_options = ["Visão", "Líder", "Vice-líder"]
+        focus_options = ["Visão", "Líder", "Vice-líder"] + [f"Ex-líder: {nm}" for nm in ex_list]
         focus_map = {
             "Visão": "__visao__",
             "Líder": "lider",
             "Vice-líder": "vice",
+            **{f"Ex-líder: {nm}": f"ex::{nm}" for nm in ex_list},
         }
         reverse_focus_map = {v: k for k, v in focus_map.items()}
         
@@ -2789,6 +2790,7 @@ def render_compendium_ginasios() -> None:
 
         
         st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+
 
         pokes = _collect_gym_pokemons(lider_nm, vice_nm, g)
         st.markdown("<div class='ds-subtitle'>Pokémons disponíveis</div>", unsafe_allow_html=True)
@@ -5927,23 +5929,126 @@ def load_compendium_json_data(
     data["npcs"] = npcs_all
     return data
 
-
 def _extract_gym_meta_from_text(t: str) -> dict:
-    """
-    Extrai metadados do ginásio a partir do texto do 'Ginásio de <Cidade>' no JSON de locais.
-    Aceita variações do padrão: 'Líder: X | Tipo: Y | Localização: Z'
+    """Extrai metadados do bloco 'Ginásio de X' (locais.json).
+
+    Suporta formatos como:
+      - 'Líder: X | Tipo: Y | Localização: Z'
+      - 'Tipo: Y | Líder: X | Vice-líder: W | Localização: Z'
+      - 'Liderança: A (registro antigo) • B (controle atual)'
     """
     out: dict = {}
     if not t:
         return out
-    # Linha principal com pipes
-    m = re.search(r"L[íi]der\s*:\s*([^|\n]+)\|\s*Tipo\s*:\s*([^|\n]+)(?:\|\s*Localiza[cç][aã]o\s*:\s*([^\n]+))?", t, flags=re.IGNORECASE)
-    if m:
-        out["lider"] = (m.group(1) or "").strip()
-        out["tipo"] = (m.group(2) or "").strip()
-        if m.group(3):
-            out["localizacao"] = (m.group(3) or "").strip()
-        return out
+
+    def _clean(v: str) -> str:
+        v = (v or "").strip()
+        # remove bullets e espaços extras nas pontas
+        v = re.sub(r"^[•\-–—\s]+", "", v).strip()
+        v = re.sub(r"[•\-–—\s]+$", "", v).strip()
+        return v
+
+    def _as_list(x) -> list[str]:
+        if not x:
+            return []
+        if isinstance(x, list):
+            return [str(i).strip() for i in x if str(i).strip()]
+        if isinstance(x, str):
+            return [s.strip() for s in re.split(r"[;,•/]+", x) if s.strip()]
+        return []
+
+    # tenta interpretar a PRIMEIRA linha (normalmente contém os pipes)
+    head = ""
+    for ln in str(t).splitlines():
+        if ln.strip():
+            head = ln.strip()
+            break
+
+    if head and "|" in head:
+        parts = [p.strip() for p in head.split("|") if p.strip()]
+        for part in parts:
+            # Tipo
+            m = re.match(r"(?i)^tipo\s*:\s*(.+)$", part)
+            if m:
+                out["tipo"] = _clean(m.group(1))
+                continue
+
+            # Vice-líder
+            m = re.match(r"(?i)^vice\s*[-\s]*l[íi]der\s*:\s*(.+)$", part)
+            if m:
+                out["vice_lider"] = _clean(m.group(1))
+                continue
+
+            # Líder / Liderança
+            m = re.match(r"(?i)^(l[íi]der|lideran[cç]a)\s*:\s*(.+)$", part)
+            if m:
+                k = _norm(m.group(1))
+                val = _clean(m.group(2))
+                if "lideranca" in k:
+                    out["lideranca_raw"] = val
+                    # tenta escolher o atual: '(controle atual)' ou último item
+                    pieces = [x.strip() for x in re.split(r"[•;/]+", val) if x.strip()]
+                    cur = next((x for x in pieces if "controle atual" in _norm(x)), (pieces[-1] if pieces else val))
+                    cur_name = re.sub(r"\s*\(.*?\)\s*", "", cur).strip()
+                    if cur_name:
+                        out["lider"] = cur_name
+                    # ex-líderes = demais itens
+                    ex = []
+                    for x in pieces:
+                        if x == cur:
+                            continue
+                        nm = re.sub(r"\s*\(.*?\)\s*", "", x).strip()
+                        if nm:
+                            ex.append(nm)
+                    if ex:
+                        out["ex_lideres"] = ex
+                else:
+                    out["lider"] = val
+                continue
+
+            # Localização
+            m = re.match(r"(?i)^localiza[cç][aã]o\s*:\s*(.+)$", part)
+            if m:
+                out["localizacao"] = _clean(m.group(1))
+                continue
+
+            # Status
+            m = re.match(r"(?i)^status\s*:\s*(.+)$", part)
+            if m:
+                out["status"] = _clean(m.group(1))
+                continue
+
+            # Ex-líder(es) explícito
+            m = re.match(r"(?i)^ex\s*[-\s]*l[íi]der(?:es)?\s*:\s*(.+)$", part)
+            if m:
+                out["ex_lideres"] = _as_list(_clean(m.group(1)))
+                continue
+
+    # fallback: procura em qualquer parte (captura até '|' ou quebra de linha)
+    def _grab(key: str, pat: str):
+        if key in out and out.get(key):
+            return
+        mm = re.search(pat, str(t), flags=re.IGNORECASE)
+        if mm:
+            out[key] = _clean(mm.group(1))
+
+    _grab("tipo", r"tipo\s*:\s*([^|\n]+)")
+    _grab("lider", r"l[íi]der\s*:\s*([^|\n]+)")
+    _grab("vice_lider", r"vice\s*[-\s]*l[íi]der\s*:\s*([^|\n]+)")
+    _grab("localizacao", r"localiza[cç][aã]o\s*:\s*([^|\n]+)")
+    _grab("status", r"status\s*:\s*([^|\n]+)")
+    # ex-líder(es)
+    if "ex_lideres" not in out:
+        mm = re.search(r"ex\s*[-\s]*l[íi]der(?:es)?\s*:\s*([^|\n]+)", str(t), flags=re.IGNORECASE)
+        if mm:
+            out["ex_lideres"] = _as_list(_clean(mm.group(1)))
+
+    # saneia campos (evita pegar o resto do texto após pipes)
+    for k in ("tipo", "lider", "vice_lider", "localizacao", "status"):
+        if k in out and isinstance(out[k], str) and "|" in out[k]:
+            out[k] = _clean(out[k].split("|")[0])
+
+    return out
 
     # Alternativo: linhas soltas
     m1 = re.search(r"L[íi]der\s*:\s*(.+)", t, flags=re.IGNORECASE)
@@ -6002,24 +6107,59 @@ def load_compendium_gym_data_json(
             npcs_extra[nm] = npc
 
             # tenta vincular a um ginásio/cidade pelo texto de ocupação
-            occ = _norm(npc.get("ocupacao") or "")
-            # procura "ginasio de X"
-            m = re.search(r"ginasio\s+de\s+([a-z0-9\s\'\-]+)", occ)
-            if not m:
-                continue
-            city_guess = (m.group(1) or "").strip()
-            # best match com nomes de cidades
+            occ_raw = npc.get("ocupacao") or ""
+            occ = _norm(occ_raw)
+
+            # papel (líder / vice / ex)
+            role = "staff"
+            if ("ex" in occ and "lider" in occ):
+                role = "ex_lider"
+            elif "vice" in occ:
+                role = "vice"
+            elif "lider" in occ:
+                role = "lider"
+
+            # tenta achar a cidade pelo padrão "ginasio_de_<cidade_norm>" dentro do texto normalizado
             city_hit = None
-            if gyms:
-                for c in gyms.keys():
-                    if _norm(c) == _norm(city_guess):
-                        city_hit = c
-                        break
-            # se ainda não achou, tenta comparar com cidades do locais
-            if not city_hit and locais_path and os.path.exists(locais_path):
-                cities = _json_read(locais_path).get("cities") or {}
-                for c in cities.keys():
-                    if _norm(c) == _norm(city_guess):
+            cand = list((gyms or {}).keys())
+            if locais_path and os.path.exists(locais_path):
+                try:
+                    cities = (_json_read(locais_path).get("cities") or {})
+                    cand.extend(list(cities.keys()))
+                except Exception:
+                    pass
+
+            # dedupe preservando ordem
+            seen = set()
+            cand2 = []
+            for c in cand:
+                ck = _norm(c)
+                if ck and ck not in seen:
+                    seen.add(ck)
+                    cand2.append(c)
+
+            for c in cand2:
+                c_norm = _norm(c)
+                if not c_norm:
+                    continue
+                if f"ginasio_de_{c_norm}" in occ or f"ginasio_{c_norm}" in occ:
+                    city_hit = c
+                    break
+
+            # heurística: ex-líder sem cidade explícita -> tenta inferir pelas seções (histórico/ginásio)
+            if not city_hit and role == "ex_lider":
+                secs = npc.get("sections") or {}
+                # prioriza chaves mais úteis se existirem
+                blob = ""
+                for kk in ("Ginásio", "Ginasio", "Histórico", "Historico", "História", "Historia"):
+                    if secs.get(kk):
+                        blob += " " + str(secs.get(kk))
+                if not blob:
+                    blob = " ".join(str(v) for v in secs.values() if v)
+                blob_n = _norm(blob)
+                for c in cand2:
+                    c_norm = _norm(c)
+                    if c_norm and c_norm in blob_n:
                         city_hit = c
                         break
 
@@ -6027,13 +6167,17 @@ def load_compendium_gym_data_json(
                 continue
 
             g = gyms.setdefault(city_hit, {"meta": {}, "staff": {}, "staff_npcs": {}, "narrative": ""})
-            role = "staff"
-            if "vice" in occ:
-                role = "vice"
-            elif "lider" in occ or "líder" in occ:
-                role = "lider"
-            g.setdefault("staff", {})
-            g["staff"][role] = nm
+            staff = g.setdefault("staff", {})
+
+            if role == "ex_lider":
+                staff.setdefault("ex_lideres", [])
+                if nm not in staff["ex_lideres"]:
+                    staff["ex_lideres"].append(nm)
+            elif role == "vice":
+                staff["vice"] = nm
+            elif role == "lider":
+                staff["lider"] = nm
+
             g.setdefault("staff_npcs", {})
             g["staff_npcs"][nm] = npc
 
