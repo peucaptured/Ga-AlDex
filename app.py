@@ -2988,78 +2988,85 @@ def render_compendium_ginasios() -> None:
         st.markdown(f"<div class='ds-meta'>{crumb}</div>", unsafe_allow_html=True)
         st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
     
-        lore_parts = []  # <<< OBRIGATÓRIO
-    
+        # Lore com scroll: render em 1 markdown só (não pode “abrir div” num markdown e renderizar depois)
+        lore_html_parts = []
+
+        def _push_gym_section(title_txt: str, body_txt: str):
+            if not isinstance(body_txt, str) or not body_txt.strip():
+                return
+            ttl = html.escape(str(title_txt))
+            body = html.escape(body_txt.strip()).replace("\n", "<br>")
+            lore_html_parts.append(f"<div class='ds-subtitle'>{ttl}</div>")
+            lore_html_parts.append(f"<div class='ds-history'>{body}</div>")
+            lore_html_parts.append("<div class='comp-divider'></div>")
+
         if focus_now == "__visao__":
             narrative = (g.get("narrative") or "").strip()
             if narrative:
-                lore_parts.append(_section_html("Ginásio", narrative))
-    
+                _push_gym_section("Ginásio", narrative)
+
             if lider_nm:
                 npcL = _npc_obj(lider_nm, g)
                 secs = npcL.get("sections") or {}
                 if isinstance(secs, dict):
-                    lore_parts.append(_section_html(f"Líder — {lider_nm}", _pick(secs, "Ginásio", "Historia", "História")))
-    
+                    _push_gym_section(f"Líder — {lider_nm}", _pick(secs, "Ginásio", "Historia", "História"))
+
             if vice_nm:
                 npcV = _npc_obj(vice_nm, g)
                 secs = npcV.get("sections") or {}
                 if isinstance(secs, dict):
-                    lore_parts.append(_section_html(f"Vice-líder — {vice_nm}", _pick(secs, "Ginásio", "Historia", "História")))
-    
+                    _push_gym_section(f"Vice-líder — {vice_nm}", _pick(secs, "Ginásio", "Historia", "História"))
+
         elif focus_now == "lider":
             npcL = _npc_obj(lider_nm, g) if lider_nm else {}
             secs = npcL.get("sections") or {}
             if not lider_nm:
-                lore_parts.append(_section_html("", "(Líder não definido)"))
+                lore_html_parts.append("<div class='ds-history'>(Líder não definido)</div>")
             elif not isinstance(secs, dict) or not secs:
-                lore_parts.append(_section_html("", "(Sem seções para o líder)"))
+                lore_html_parts.append("<div class='ds-history'>(Sem seções para o líder)</div>")
             else:
-                lore_parts.append(_section_html("Ginásio", _pick(secs, "Ginásio")))
-                lore_parts.append(_section_html("História", _pick(secs, "História", "Historia", "Histórico", "Historico")))
+                _push_gym_section("Ginásio", _pick(secs, "Ginásio"))
+                _push_gym_section("História", _pick(secs, "História", "Historia", "Histórico", "Historico"))
                 for k, v in secs.items():
                     if k in ("Ginásio", "História", "Historia", "Histórico", "Historico"):
                         continue
-                    lore_parts.append(_section_html(k, v))
-    
+                    _push_gym_section(k, v)
+
         elif isinstance(focus_now, str) and focus_now.startswith("ex::"):
             ex_nm = focus_now.split("::", 1)[1].strip()
             npcX = _npc_obj(ex_nm, g) if ex_nm else {}
             secs = npcX.get("sections") or {}
-    
+
             if not ex_nm:
-                lore_parts.append(_section_html("", "(Ex-líder não definido)"))
+                lore_html_parts.append("<div class='ds-history'>(Ex-líder não definido)</div>")
             elif not isinstance(secs, dict) or not secs:
-                lore_parts.append(_section_html("", "(Sem seções para o ex-líder)"))
+                lore_html_parts.append("<div class='ds-history'>(Sem seções para o ex-líder)</div>")
             else:
-                lore_parts.append(_section_html("Ginásio", _pick(secs, "Ginásio")))
-                lore_parts.append(_section_html("História", _pick(secs, "História", "Historia", "Histórico", "Historico")))
+                _push_gym_section("Ginásio", _pick(secs, "Ginásio"))
+                _push_gym_section("História", _pick(secs, "História", "Historia", "Histórico", "Historico"))
                 for k, v in secs.items():
                     if k in ("Ginásio", "História", "Historia", "Histórico", "Historico"):
                         continue
-                    lore_parts.append(_section_html(k, v))
-    
-        else:  # vice
+                    _push_gym_section(k, v)
+
+        else:
             npcV = _npc_obj(vice_nm, g) if vice_nm else {}
             secs = npcV.get("sections") or {}
-    
             if not vice_nm:
-                lore_parts.append(_section_html("", "(Vice-líder não definido)"))
+                lore_html_parts.append("<div class='ds-history'>(Vice-líder não definido)</div>")
             elif not isinstance(secs, dict) or not secs:
-                lore_parts.append(_section_html("", "(Sem seções para o vice-líder)"))
+                lore_html_parts.append("<div class='ds-history'>(Sem seções para o vice-líder)</div>")
             else:
-                lore_parts.append(_section_html("Ginásio", _pick(secs, "Ginásio")))
-                lore_parts.append(_section_html("História", _pick(secs, "História", "Historia", "Histórico", "Historico")))
+                _push_gym_section("Ginásio", _pick(secs, "Ginásio"))
+                _push_gym_section("História", _pick(secs, "História", "Historia", "Histórico", "Historico"))
                 for k, v in secs.items():
                     if k in ("Ginásio", "História", "Historia", "Histórico", "Historico"):
                         continue
-                    lore_parts.append(_section_html(k, v))
-    
-        # ✅ RENDER FINAL ÚNICO (o scroll funciona aqui)
-        lore_html = "".join([p for p in lore_parts if p]) or "<div class='ds-history'>(Sem lore cadastrada)</div>"
+                    _push_gym_section(k, v)
+
+        lore_html = "".join(lore_html_parts) or "<div class='ds-history'>(Sem lore cadastrada)</div>"
         st.markdown(f"<div class='ds-lore-scroll'>{lore_html}</div>", unsafe_allow_html=True)
-    
-    st.markdown("</div>", unsafe_allow_html=True)
+
 
 
 
@@ -8741,7 +8748,17 @@ body:has(.ds-home),
 
 
             # Conteúdo rolável (abre)
-            st.markdown("<div class='ds-lore-scroll'>", unsafe_allow_html=True)
+            # Conteúdo rolável (render em 1 markdown só)
+            lore_html_parts = []
+
+            def _push_loc_section(title_txt: str, body_txt: str):
+                if not isinstance(body_txt, str) or not body_txt.strip():
+                    return
+                ttl = html.escape(str(title_txt))
+                body = html.escape(body_txt.strip()).replace("\n", "<br>")
+                lore_html_parts.append(f"<div class='ds-subtitle'>{ttl}</div>")
+                lore_html_parts.append(f"<div class='ds-history'>{body}</div>")
+                lore_html_parts.append("<div class='comp-divider'></div>")
 
             # Lore
             if sl_now == "__visao__":
@@ -8756,35 +8773,26 @@ body:has(.ds-home),
                 used = set()
 
                 for k in prefer:
-                    if k in secs and k not in used and (secs.get(k) or "").strip():
+                    if k in secs and k not in used and isinstance(secs.get(k), str) and (secs.get(k) or "").strip():
                         used.add(k)
-                        st.markdown(f"<div class='ds-subtitle'>{k}</div>", unsafe_allow_html=True)
-                        st.markdown(
-                            f"<div class='ds-history'>{(secs.get(k) or '').replace(chr(10), '<br>')}</div>",
-                            unsafe_allow_html=True,
-                        )
-                        st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
-
+                        _push_loc_section(k, secs.get(k) or "")
 
                 for k, v in secs.items():
                     if k in used:
                         continue
                     if not isinstance(v, str) or not v.strip():
                         continue
-                    st.markdown(f"<div class='ds-subtitle'>{k}</div>", unsafe_allow_html=True)
-                    st.markdown(
-                        f"<div class='ds-history'>{v.replace(chr(10), '<br>')}</div>",
-                        unsafe_allow_html=True,
-                    )
-                    st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+                    _push_loc_section(k, v)
 
             else:
-                    st.markdown(f"<div class='ds-subtitle'>{sl_now}</div>", unsafe_allow_html=True)
-                    txt = (sl_obj.get("text") or "").strip()
-                    st.markdown(
-                        f"<div class='ds-history'>{txt.replace(chr(10), '<br>')}</div>",
-                        unsafe_allow_html=True,
-                    )
+                sublocs = cobj.get("sublocais") or {}
+                sl_obj = (sublocs.get(sl_now) or {}) if isinstance(sublocs, dict) else {}
+                txt = (sl_obj.get("text") or "").strip()
+                _push_loc_section(sl_now, txt)
+
+            lore_html = "".join(lore_html_parts) or "<div class='ds-history'>(Sem lore cadastrada)</div>"
+            st.markdown(f"<div class='ds-lore-scroll'>{lore_html}</div>", unsafe_allow_html=True)
+
 
             # Conteúdo rolável (fecha)
             st.markdown("</div>", unsafe_allow_html=True)  # ds-lore-scroll
