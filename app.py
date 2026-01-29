@@ -3481,13 +3481,14 @@ def render_intro_screen() -> None:
             animation: gaalIntroBlink 1.05s ease-in-out infinite;
             pointer-events: none;
         }
-        .gaal-intro-skip{
+        .gaal-intro-skip-link{
             position: fixed;
             top: 24px;
             right: 24px;
-            z-index: 3;
-        }
-        .gaal-intro-skip button{
+            z-index: 10001;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             font-family: "Press Start 2P", "Trebuchet MS", sans-serif !important;
             background: linear-gradient(180deg, #ffd85c 0%, #ff9f1a 60%, #f57a00 100%) !important;
             border: 3px solid #ffffff !important;
@@ -3500,33 +3501,32 @@ def render_intro_screen() -> None:
             box-shadow: 0 8px 0 rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.4) !important;
             text-shadow: 2px 2px 0 rgba(0,0,0,0.35) !important;
             transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease !important;
+            text-decoration: none !important;
         }
-        .gaal-intro-skip button:hover{
+        .gaal-intro-skip-link:hover{
             filter: brightness(1.08);
         }
-        .gaal-intro-skip button:active{
+        .gaal-intro-skip-link:active{
             transform: translateY(2px);
             box-shadow: 0 5px 0 rgba(0,0,0,0.45) !important;
         }
-        .gaal-intro-press{
+        .gaal-intro-press-link{
             position: fixed;
             left: 50%;
             bottom: 8vh;
             transform: translateX(-50%);
             width: min(70vw, 720px);
             height: 110px;
-            z-index: 3;
+            z-index: 10001;
+            background: transparent;
+            border: none;
+            color: transparent;
+            box-shadow: none;
+            opacity: 0;
+            cursor: pointer;
+            display: block;
         }
-        .gaal-intro-press button{
-            width: 100%;
-            height: 100%;
-            background: transparent !important;
-            border: none !important;
-            color: transparent !important;
-            box-shadow: none !important;
-            opacity: 0 !important;
-            cursor: pointer !important;
-        }
+
         @keyframes gaalIntroBlink{
             0%, 45% { opacity: 0.1; }
             55%, 100% { opacity: 0.95; }
@@ -3541,6 +3541,8 @@ def render_intro_screen() -> None:
         <div class="gaal-intro">
             <img class="gaal-intro-title" src="{title_src}" alt="Ga'Al" />
             <img class="gaal-intro-start" src="{start_src}" alt="Press Start" />
+            <a class="gaal-intro-press-link" href="?intro=start" aria-label="Press Start"></a>
+            <a class="gaal-intro-skip-link" href="?intro=skip">Pular</a>
         </div>
         """,
         unsafe_allow_html=True,
@@ -3550,24 +3552,17 @@ def render_intro_screen() -> None:
 # --- INTRO / LOGIN ---
 if not st.session_state.get("intro_done", False):
 
+    intro_action = st.query_params.get("intro")
+    if isinstance(intro_action, list):
+        intro_action = intro_action[0] if intro_action else None
+    if intro_action in {"skip", "start"}:
+        st.session_state["intro_done"] = True
+        st.query_params.clear()
+        st.rerun()
 
 
     # mostra a intro
     render_intro_screen()
-
-    st.markdown("<div class='gaal-intro-skip'>", unsafe_allow_html=True)
-    skip_intro = st.button("Pular", key="gaal_intro_skip")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("<div class='gaal-intro-press'>", unsafe_allow_html=True)
-    press_intro = st.button("Press Start", key="gaal_intro_press")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    if skip_intro or press_intro:
-        st.session_state["intro_done"] = True
-        st.rerun()
-
-
 else:
     pass
 
