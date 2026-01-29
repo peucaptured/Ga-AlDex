@@ -7229,6 +7229,7 @@ def render_compendium_page() -> None:
     justify-content: center;
     gap: 16px;
     padding: 10px 0 0 0;
+    transform: translateY(-24px);
 }}
 .ds-logo{{
   width: min(78vw, 760px);
@@ -7331,6 +7332,9 @@ def render_compendium_page() -> None:
 }}
 /* Esconde o bolinha padrão do radio */
 [data-testid="stAppViewContainer"]:has(.ds-home) div[role="radiogroup"] input {{ display: none !important; }}
+[data-testid="stAppViewContainer"]:has(.ds-home) div[role="radiogroup"] > label > div:first-child {{
+    display: none !important;
+}}
 
 
 .ds-frame {{
