@@ -2480,7 +2480,6 @@ def _resolve_badge_path_assets_insignias(gym_key: str, g: dict) -> str:
       - ginásio "por líder"  -> badge_<lider>.png
     Fallbacks: gym_key -> meta.cidade -> meta.lider
     """
-    import os, re
 
     def _norm(s: str) -> str:
         try:
