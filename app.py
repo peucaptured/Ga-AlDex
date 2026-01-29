@@ -3506,10 +3506,10 @@ def render_intro_screen() -> None:
         (function () {
           const root = window.parent || window;
           const doc = (root.document || document);
-        
+    
           if (root.__gaalIntroHooked) return;
           root.__gaalIntroHooked = true;
-        
+    
           function triggerIntro(){
             if (root.__gaalIntroTriggered) return;
             root.__gaalIntroTriggered = true;
@@ -3517,7 +3517,7 @@ def render_intro_screen() -> None:
             url.searchParams.set("intro", "1");
             root.location.replace(url.toString());
           }
-        
+    
           function focusHiddenInput(){
             try{
               const inp = doc.querySelector('input[placeholder="__gaal_intro__"]');
@@ -3528,30 +3528,31 @@ def render_intro_screen() -> None:
               return false;
             }
           }
-        
+    
           // tenta focar repetidamente por ~3s (Streamlit pode renderizar/reatribuir)
           let tries = 0;
           const focusTimer = setInterval(() => {
             tries += 1;
             if (focusHiddenInput() || tries > 60) clearInterval(focusTimer);
           }, 50);
-        
+    
           // re-tenta foco se o usuário mexer
           doc.addEventListener("mousemove", () => focusHiddenInput(), { capture:true });
-          doc.addEventListener("mousedown", () => focusHiddenInput(), { capture:true });
-        
-          // clique: foca e avança
-          doc.addEventListener("click", () => { focusHiddenInput(); triggerIntro(); }, { once:true, capture:true });
-        
+    
+          // ✅ mouse: ao apertar qualquer botão já vai pro login
+          doc.addEventListener("mousedown", () => { focusHiddenInput(); triggerIntro(); }, { once:true, capture:true });
+    
+          // ✅ melhor ainda: pointerdown cobre touch + caneta + trackpad
+          doc.addEventListener("pointerdown", () => { focusHiddenInput(); triggerIntro(); }, { once:true, capture:true });
+    
           // teclado: qualquer tecla avança
-          doc.addEventListener("keydown", () => { triggerIntro(); }, { once:true, capture:true });
-        
-          // mobile
+          doc.addEventListener("keydown", (e) => { triggerIntro(); }, { once:true, capture:true });
+    
+          // mobile fallback (se pointerdown não pegar em algum device)
           doc.addEventListener("touchstart", () => { triggerIntro(); }, { once:true, capture:true });
-        
+    
         })();
         </script>
-
         """,
         height=0,
     )
