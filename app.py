@@ -3379,30 +3379,29 @@ def render_login_menu(trainer_name: str, user_data: dict):
         unsafe_allow_html=True,
     )
 
-    try:
-        from st_click_detector import click_detector
-    except ImportError:
-        st.error("Instale 'st-click-detector' no requirements.txt e reinicie o app.")
-        return
-    
-    clicked = click_detector("""
-    <div class='fr-login-actions'>
-      <div class='fr-login-actions-row'>
-        <div id='fr_continue' class='fr-login-action fr-login-action-continue'>Continue</div>
-        <div id='fr_ok' class='fr-login-action fr-login-action-confirm'>Ok</div>
-      </div>
-      <div id='fr_newgame' class='fr-login-action fr-login-action-new-game'>New Game</div>
-    </div>
-    """)
-    
-    if clicked in ("fr_continue", "fr_ok", "fr_continue_card"):
-        st.session_state["show_login_menu"] = False
-        st.session_state["nav_to"] = "Pokédex (Busca)"
-        st.rerun()
-    
-    if clicked == "fr_newgame":
-        st.session_state["confirm_new_game"] = True
-        st.rerun()
+        # --- MENU + BOTÃO CONFIRMAR AO LADO (SEM click-detector) ---
+    menu_col, confirm_col = st.columns([7, 1], gap="small")
+
+    with menu_col:
+        action = st.radio(
+            "Ação",
+            ["Continue", "Ok", "New Game"],
+            index=0,
+            key="fr_login_action",
+            label_visibility="collapsed",
+        )
+
+    with confirm_col:
+        if st.button("Confirmar", type="primary", key="fr_login_confirm"):
+            if action in ("Continue", "Ok"):
+                st.session_state["show_login_menu"] = False
+                st.session_state["nav_to"] = "Pokédex (Busca)"
+                st.rerun()
+
+            if action == "New Game":
+                st.session_state["confirm_new_game"] = True
+                st.rerun()
+
 
 
     if st.session_state.get("confirm_new_game"):
@@ -3559,11 +3558,6 @@ def render_intro_screen() -> None:
         height=0,
     )
 
-    # =========================
-    # FORÇA RERUN PRA CONTAR O TIMER SEM INPUT
-    # =========================
-    time.sleep(0.2)
-    st.rerun()
 
 
 # --- INTRO / LOGIN ---
