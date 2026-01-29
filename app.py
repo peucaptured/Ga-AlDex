@@ -2628,6 +2628,11 @@ def render_compendium_ginasios() -> None:
             overflow-y: auto;
             padding-right: 8px;
           }
+          .ds-gym-shell .ds-lore-scroll{
+            max-height: calc(78vh - 140px);
+            overflow-y: auto;
+            overscroll-behavior: contain;
+          }
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar,
           div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar{ width: 8px; }
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-thumb,
@@ -8443,6 +8448,11 @@ body:has(.ds-home),
               min-height: 0;
               overflow-y: auto;
               padding-right: 8px;
+            }
+            .ds-loc-shell .ds-lore-scroll{
+              max-height: calc(78vh - 140px);
+              overflow-y: auto;
+              overscroll-behavior: contain;
             }
             
             /* scrollbar discreto */
