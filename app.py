@@ -2531,6 +2531,66 @@ def render_compendium_ginasios() -> None:
             unsafe_allow_html=True,
         )
         return
+    st.markdown(
+        """
+        <style>
+          .ds-gym-shell{
+            margin-top: 6px;
+            padding: 0 24px 12px 24px;
+            box-sizing: border-box;
+          }
+          .ds-frame-wrap{
+            display: block !important;
+            width: 100% !important;
+            padding: 18px 18px 14px 18px !important;
+            box-sizing: border-box !important;
+          }
+          .ds-gym-left{
+            padding: 18px 18px 16px 18px !important;
+          }
+          .ds-gym-left .comp-divider{
+            margin: 14px 0 14px 0 !important;
+          }
+          .ds-gym-left div[data-testid="stSelectbox"]{
+            width: 100% !important;
+          }
+          .ds-gym-left div[data-testid="stSelectbox"] > div{
+            background: rgba(0,0,0,0.25) !important;
+            border: 1px solid rgba(176,143,60,0.45) !important;
+            border-radius: 12px !important;
+            padding: 6px 10px !important;
+            box-shadow: 0 0 18px rgba(255,215,0,0.06) !important;
+          }
+          .ds-gym-left div[data-testid="stSelectbox"] *{
+            font-family: "DarkSouls", serif !important;
+            letter-spacing: 0.18em !important;
+            text-transform: uppercase !important;
+            color: rgba(255,255,255,0.82) !important;
+          }
+          .ds-gym-right{
+            padding: 18px 18px 14px 18px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            height: 78vh;
+            box-sizing: border-box;
+          }
+          .ds-gym-right .ds-lore-scroll{
+            flex: 1 1 auto;
+            overflow-y: auto;
+            padding-right: 8px;
+          }
+          .ds-gym-right .ds-lore-scroll::-webkit-scrollbar{ width: 8px; }
+          .ds-gym-right .ds-lore-scroll::-webkit-scrollbar-thumb{
+            background: rgba(255,215,0,0.18);
+            border-radius: 10px;
+          }
+          .ds-gym-right .ds-lore-scroll::-webkit-scrollbar-track{
+            background: rgba(255,255,255,0.06);
+          }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
     def _norm(s: str) -> str:
         try:
@@ -2635,13 +2695,14 @@ def render_compendium_ginasios() -> None:
     lider_nm, vice_nm = _gym_staff(g)
 
     # 3 colunas igual Locais
+    st.markdown("<div class='ds-gym-shell'>", unsafe_allow_html=True)
     col_left, col_center, col_right = st.columns([1.05, 1.35, 2.15], gap="large")
 
     # ============================
     # ESQUERDA: seletor + pokémons
     # ============================
     with col_left:
-        st.markdown("<div class='ds-frame'>", unsafe_allow_html=True)
+        st.markdown("<div class='ds-frame ds-frame-wrap ds-gym-left'>", unsafe_allow_html=True)
         st.markdown("<div class='ds-name'>GINÁSIOS</div>", unsafe_allow_html=True)
 
         # label: se a chave for cidade -> mostra só cidade; senão "Líder — Cidade"
@@ -2659,12 +2720,19 @@ def render_compendium_ginasios() -> None:
         labels = list(label_map.keys())
         cur_label = next((lbl for lbl, kk in label_map.items() if kk == gym_now), labels[0] if labels else "")
 
-        pick = st.selectbox("Ginásio", labels, index=labels.index(cur_label) if cur_label in labels else 0, key="comp_gym_pick")
+        st.markdown("<div class='ds-meta'>GINÁSIO</div>", unsafe_allow_html=True)
+        pick = st.selectbox(
+            "Ginásio",
+            labels,
+            index=labels.index(cur_label) if cur_label in labels else 0,
+            key="comp_gym_pick",
+            label_visibility="collapsed",
+        )
         if pick and label_map.get(pick) != st.session_state["comp_gym_key"]:
             st.session_state["comp_gym_key"] = label_map[pick]
             st.session_state["comp_gym_focus"] = "__visao__"
             st.rerun()
-
+        st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
         focus_options = ["Visão", "Líder", "Vice-líder"]
         focus_map = {
             "Visão": "__visao__",
@@ -2674,6 +2742,7 @@ def render_compendium_ginasios() -> None:
         reverse_focus_map = {v: k for k, v in focus_map.items()}
         
         current_label = reverse_focus_map.get(focus_now, "Visão")
+        st.markdown("<div class='ds-meta'>FOCO</div>", unsafe_allow_html=True)
         
         focus_label = st.selectbox(
             "Foco",
@@ -2722,8 +2791,7 @@ def render_compendium_ginasios() -> None:
     # CENTRO: badge + retratos
     # ============================
     with col_center:
-        st.markdown("<div class='ds-frame'>", unsafe_allow_html=True)
-
+        st.markdown("<div class='ds-frame ds-frame-wrap ds-gym-center'>", unsafe_allow_html=True)
         city = (meta.get("cidade") or meta.get("city") or "").strip()
         title = city if city else gym_now
         st.markdown(f"<div class='ds-name'>{title}</div>", unsafe_allow_html=True)
@@ -2783,7 +2851,7 @@ def render_compendium_ginasios() -> None:
     # DIREITA: lore
     # ============================
     with col_right:
-        st.markdown("<div class='ds-frame'>", unsafe_allow_html=True)
+        st.markdown("<div class='ds-frame ds-frame-wrap ds-gym-right'>", unsafe_allow_html=True)
         st.markdown("<div class='ds-name'>LORE</div>", unsafe_allow_html=True)
 
         crumb = title + (" — Visão" if focus_now == "__visao__" else (" — Líder" if focus_now == "lider" else " — Vice-líder"))
@@ -2844,6 +2912,7 @@ def render_compendium_ginasios() -> None:
 
         st.markdown("</div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 
