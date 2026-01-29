@@ -3171,7 +3171,6 @@ def render_login_menu(trainer_name: str, user_data: dict):
             text-transform: uppercase;
             font-size: 12px;
             letter-spacing: 1px;
-            color: #1e3a8a;
             margin-bottom: 10px;
         }
         .fr-login-info {
@@ -3186,53 +3185,62 @@ def render_login_menu(trainer_name: str, user_data: dict):
             grid-template-columns: 1.1fr 1fr;
             gap: 8px 20px;
             font-size: 11px;
-            color: #1e3a8a;
-        }
-        .fr-login-label {
-            color: #1e40af;
-            font-weight: 700;
-        }
-        .fr-login-value {
-            color: #1d4ed8;
         }
         .fr-login-actions {
             display: flex;
             flex-direction: column;
             gap: 12px;
             padding-top: 26px;
+            align-items: flex-start;
         }
-        .fr-login-actions [data-testid="stButton"] button {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            border: 4px solid #374151;
-            padding: 0;
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 10px;
-            color: #1f2937;
-            box-shadow: 0 6px 0 rgba(0,0,0,0.35), inset 0 -4px 0 rgba(0,0,0,0.2);
+        .fr-login-actions-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
-        .fr-login-actions [data-testid="stButton"]:nth-child(1) button {
-            background: linear-gradient(180deg, #e5e7eb 0%, #cbd5e1 100%);
-        }
-        .fr-login-actions [data-testid="stButton"]:nth-child(2) button {
-            background: linear-gradient(180deg, #d1d5db 0%, #b9c0ca 100%);
-        }
-        .fr-login-card-link {
-            display: block;
+        .fr-login-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 12px;
             text-decoration: none;
-            color: inherit;
+            text-transform: uppercase;
+            font-size: 9px;
+            font-weight: 700;
+            border: 3px solid #4b5563;
+            color: #111827;
+            background: linear-gradient(180deg, #e5e7eb 0%, #cbd5e1 100%);
+            box-shadow: 0 4px 0 rgba(0,0,0,0.35), inset 0 -3px 0 rgba(0,0,0,0.18);
+            border-radius: 12px;
         }
-        .fr-login-card-link:hover {
-            transform: translateY(-2px);
-            filter: brightness(1.03);
+        .fr-login-action-confirm {
+            padding: 6px 10px;
+            font-size: 8px;
+            border-radius: 10px;
+            background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+        }
+        .fr-login-action-new-game {
+            width: 150px;
+            justify-content: center;
+            font-size: 10px;
+            padding: 10px 14px;
+            border-radius: 6px;
+            background: linear-gradient(180deg, #d4d4d8 0%, #a1a1aa 100%);
+            border: 3px solid #5b6470;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.35), inset 0 -3px 0 rgba(0,0,0,0.25);
         }
         .fr-login-title {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
+        }
+        .fr-login-continue-card,
+        .fr-login-continue-card .fr-login-title,
+        .fr-login-continue-card .fr-login-grid,
+        .fr-login-continue-card .fr-login-label,
+        .fr-login-continue-card .fr-login-value {
+            color: #0b2d6b;
         }
         .fr-login-continue-badge {
             display: inline-flex;
@@ -3253,17 +3261,25 @@ def render_login_menu(trainer_name: str, user_data: dict):
     )
 
     params = st.query_params
-    continue_param = params.get("continue")
-    if continue_param == "1" or continue_param == ["1"]:
+    action_param = params.get("action")
+    if action_param == ["continue"]:
+        action_param = "continue"
+    if action_param == ["new_game"]:
+        action_param = "new_game"
+    if action_param == "continue":
         st.session_state["show_login_menu"] = False
         st.session_state["nav_to"] = "Pokédex (Busca)"
+        st.query_params.clear()
+        st.rerun()
+    if action_param == "new_game":
+        st.session_state["confirm_new_game"] = True
         st.query_params.clear()
         st.rerun()
 
     st.markdown("<div class='fr-login-wrap'><div class='fr-login-layout'>", unsafe_allow_html=True)
     st.markdown(
         f"""
-        <a class='fr-login-card fr-login-card-link' href='?continue=1'>
+        <div class='fr-login-card fr-login-continue-card'>
             <div class='fr-login-title'>
                 <span>Continue</span>
                 <span class='fr-login-continue-badge'>V</span>
@@ -3280,20 +3296,24 @@ def render_login_menu(trainer_name: str, user_data: dict):
                     <div class='fr-login-value'>{badge_count}</div>
                 </div>
             </div>
-        </a>
+        </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown("<div class='fr-login-actions'>", unsafe_allow_html=True)
-    if st.button("Continue", type="primary", key="fr_continue"):
-        st.session_state["show_login_menu"] = False
-        st.session_state["nav_to"] = "Pokédex (Busca)"
-        st.rerun()
-
-    if st.button("New Game", key="fr_new_game"):
-        st.session_state["confirm_new_game"] = True
-    st.markdown("</div></div>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class='fr-login-actions'>
+            <div class='fr-login-actions-row'>
+                <a class='fr-login-action fr-login-action-continue' href='?action=continue'>Continue</a>
+                <a class='fr-login-action fr-login-action-confirm' href='?action=continue'>Ok</a>
+            </div>
+            <a class='fr-login-action fr-login-action-new-game' href='?action=new_game'>New Game</a>
+        </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     if st.session_state.get("confirm_new_game"):
         st.warning("Isso vai apagar todos os seus dados salvos.")
