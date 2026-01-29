@@ -47,7 +47,7 @@
       }
     },
     "Salete": {
-      "ocupacao": "Vice Líder do ginásio de Mikado",
+      "ocupacao": "Líder do ginásio de Mikado",
       "idade": "41 anos",
       "origem": "Ga'Al",
       "pokemons": [
@@ -126,7 +126,7 @@
         "Ginásio": "Roxie sempre teve duas paixões: a música e as batalhas Pokémon. Aos 21 anos, ela se tornou Líder de Ginásio em Unova, mas também continuou sua carreira de Pop-Star. Ela nunca soube equilibrar bem as duas atividades, e acabou se dedicando mais à música do que às batalhas. Por isso, aos 30 anos, ela perdeu seu cargo de Líder de Ginásio. Esse foi um golpe duro para Roxie, que se afundou em vícios e depressão. Ela passou por um longo processo de recuperação, e conseguiu se livrar das drogas. Agora, aos 51 anos, ela decidiu recomeçar sua vida em Ga’Al, uma região onde há uma vila parecida com sua terra natal."
       }
     },
-    "Condessa Pixie de Laverre": {
+    "Pixie": {
       "ocupacao": "Líder de Ginásio de Gamborre",
       "idade": "38 anos",
       "origem": "Kalos",
@@ -175,7 +175,7 @@
       }
     },
     "Draco": {
-      "ocupacao": "Líder de Ginásio de Malva",
+      "ocupacao": "Více Líder de Ginásio de Malva",
       "idade": "21 anos",
       "origem": "",
       "pokemons": [
@@ -206,12 +206,16 @@
     },
     "Vittorio \"Ace\" Moretti": {
       "ocupacao": "Líder de Ginásio de Liberty",
-      "idade": "",
-      "origem": "",
-      "pokemons": [],
+      "idade": "40 Anos",
+      "origem": "Ga'Al",
+      "pokemons": ["Gholdengo",
+      "Honchkrow",
+      "Machoke",
+      "Drapion",
+      "octillery"],
       "status": "Ativo",
       "sections": {
-        "História": "45 anos\n\nGholdengo\n\nHonchkrow\n\nMachoke\n\nZoroark\n\nDrapion\n\nNascido não nas coberturas brilhantes, mas nas lonas sujas do \"Fumacê\" (a base da cidade), Vittorio aprendeu cedo que em Liberty, a vida não vale nada se você não tiver fichas na mesa. Quando jovem, era um mero \"olheiro\" para a gangue Ñóm, mas sua habilidade natural de ler pessoas e manipular probabilidades o fez subir rápido.",
+        "História": "Nascido não nas coberturas brilhantes, mas nas lonas sujas do \"Fumacê\" (a base da cidade), Vittorio aprendeu cedo que em Liberty, a vida não vale nada se você não tiver fichas na mesa. Quando jovem, era um mero \"olheiro\" para a gangue Ñóm, mas sua habilidade natural de ler pessoas e manipular probabilidades o fez subir rápido.",
         "Ginásio": "Ele não ganhou sua fortuna batalhando honestamente; ele a ganhou apostando contra si mesmo em lutas arranjadas nos subterrâneos da Última Ladeira. Com o dinheiro sujo, comprou sua entrada no Gran Catino e, numa noite lendária de pôquer contra um antigo chefe do Sindicato, ganhou a escritura do Ginásio local (que estava abandonado e ocupado por sem-tetos, como consta nos arquivos amarelados do ginásio).\n\nVittorio reformou o Ginásio transformando-o em um espetáculo televisionado. Ele vende a narrativa do \"Self-Made Man\", o garoto da favela que virou rei, para manter a população pobre iludida com a esperança de ascensão. No entanto, é um segredo aberto que ele serve como o \"Banqueiro\" do Sindicato Paramilitar, lavando o dinheiro das operações ilegais através das apostas do Ginásio.\n\nReside na cobertura do Gran Catino. Diferente de outros líderes que buscam o crescimento do desafiante, Vittorio luta para humilhar. Ele transformou a batalha de ginásio em um Reality Show. Antes da luta, ele força o desafiante a fazer uma \"aposta\" (pode ser dinheiro, um Pokémon ou um favor futuro). Dizem que ele está cansado da coleira do Sindicato e procura secretamente um treinador forte o suficiente para quebrar a banca e causar um caos que o permita fugir com sua fortuna acumulada."
       }
     },
@@ -230,11 +234,11 @@
         "Ginásio": "Ex-Líder de Ginásio de Nova Jade"
       }
     },
-    "Andy e Dany": {
+    "Andy": {
       "ocupacao": "Ex-Líder de Ginásio de Torres Gêmeas",
-      "idade": "",
-      "origem": "",
-      "pokemons": [],
+      "idade": "35",
+      "origem": "Ga'Al",
+      "pokemons": ["Staraptor", "Gyarados"],
       "status": "Inativo",
       "sections": {
         "Histórico": "O ginásio operava no topo da megalópole vertical. Durante a \"Queda das Gêmeas\", a Team Keneze tentou transformar o obelisco em um portal, resultando na implosão de uma das torres. Dany é lembrada como uma figura lendária que atuou durante a queda. Atualmente, a área é zona de guerra e reconstrução liderada por Daniela (ex-vice), e o ginásio está inoperante .",
@@ -243,8 +247,8 @@
     },
     "Arthur": {
       "ocupacao": "Ex-Líder de Ginásio de Desconhecida",
-      "idade": "",
-      "origem": "",
+      "idade": "42",
+      "origem": "Ga'Al",
       "pokemons": [
         "Bisharp",
         "Honchkrow",
@@ -258,8 +262,8 @@
     },
     "Erick": {
       "ocupacao": "Ex-Líder de Ginásio de Desconhecida",
-      "idade": "",
-      "origem": "",
+      "idade": "62",
+      "origem": "Ga'Al",
       "pokemons": [
         "Kangaskhan",
         "Sawsbuck"
@@ -272,8 +276,8 @@
     },
     "Hoops": {
       "ocupacao": "Ex-Líder de Ginásio de Desconhecida",
-      "idade": "",
-      "origem": "",
+      "idade": "34",
+      "origem": "Ga'Al",
       "pokemons": [
         "Poliwhirl",
         "Sawk",
@@ -287,9 +291,11 @@
     },
     "Less": {
       "ocupacao": "Ex-Líder de Ginásio de Desconhecida",
-      "idade": "",
-      "origem": "",
-      "pokemons": [],
+      "idade": "34",
+      "origem": "Kalos",
+      "pokemons": ["Vivilion",
+      "Scizor",
+      ],
       "status": "Falecido",
       "sections": {
         "Histórico": "Less foi assassinada por membros da Team Keneze. Seu ginásio, construído nas costas de um enorme escaravelho mecânico, permanece imobilizado em Borgonha como ponto turístico e memorial, enquanto o atual líder Eneias opera em um campo tradicional .",
@@ -300,7 +306,9 @@
       "ocupacao": "Ex-Líder de Ginásio de Desconhecida",
       "idade": "",
       "origem": "",
-      "pokemons": [],
+      "pokemons": ["Solrock",
+        "Rhyperior",
+        "Cradilly"],
       "status": "Inativo",
       "sections": {
         "Histórico": "Antes de se tornar membro da Elite dos 4, Stênio era o temido líder de Obsidian. Conhecido por restringir o acesso ao Monte Pedra para proteger suas descobertas arqueológicas (e segredos sobre criaturas antigas). Sua saída abriu vaga para a liderança atual (Marlon), mas sua sombra ainda paira sobre a cidade .",
