@@ -3427,29 +3427,46 @@ def render_intro_screen() -> None:
     st.markdown(
         """
         <style>
-        .gaal-intro {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 24px;
+        .gaal-intro{
+            position: fixed;
+            inset: 0;                 /* top:0 right:0 bottom:0 left:0 */
+            width: 100vw;
+            height: 100vh;
             background: #000;
-            padding: 24px 16px 40px;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            z-index: 9999;
         }
-        .gaal-intro-title {
-            width: min(86vw, 940px);
-            height: auto;
+    
+        /* TÍTULO: ocupa a tela inteira */
+        .gaal-intro-title{
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;      /* "contain" = aparece inteiro | se quiser preencher mais, use cover */
+            object-position: center;
             display: block;
+            z-index: 1;
             filter: drop-shadow(0 16px 26px rgba(0,0,0,0.75));
         }
-        .gaal-intro-start {
-            width: min(60vw, 520px);
+    
+        /* PRESS START: fica por cima */
+        .gaal-intro-start{
+            position: absolute;
+            left: 50%;
+            bottom: 8vh;
+            transform: translateX(-50%);
+            width: min(70vw, 720px);
             height: auto;
             display: block;
+            z-index: 2;               /* maior que o título = fica na frente */
             animation: gaalIntroBlink 1.05s ease-in-out infinite;
+            pointer-events: none;     /* evita “capturar” clique */
         }
-        @keyframes gaalIntroBlink {
+    
+        @keyframes gaalIntroBlink{
             0%, 45% { opacity: 0.1; }
             55%, 100% { opacity: 0.95; }
         }
