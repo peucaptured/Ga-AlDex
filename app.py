@@ -2595,10 +2595,13 @@ def render_compendium_ginasios() -> None:
             display: flex;
             flex-direction: column;
             height: 78vh;
+            min-height: 0;
+            overflow: hidden;
           }
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll,
           div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll{
             flex: 1 1 auto;
+            min-height: 0;
             overflow-y: auto;
             padding-right: 8px;
           }
@@ -8252,12 +8255,15 @@ def render_compendium_page() -> None:
               display: flex;
               flex-direction: column;
               height: 78vh;
+              min-height: 0;
+              overflow: hidden;
             }
             
             /* área rolável da lore (não explode o frame) */
             div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll,
             div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll{
               flex: 1 1 auto;
+              min-height: 0;
               overflow-y: auto;
               padding-right: 8px;
             }
