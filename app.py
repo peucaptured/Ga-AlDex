@@ -3545,50 +3545,52 @@ def render_intro_screen() -> None:
 
 
 # --- INTRO / LOGIN ---
+# --- INTRO / LOGIN ---
 if not st.session_state.get("intro_done", False):
 
     intro_action = st.query_params.get("intro")
     if isinstance(intro_action, list):
         intro_action = intro_action[0] if intro_action else None
+
     if intro_action in {"skip", "start"}:
         st.session_state["intro_done"] = True
         st.query_params.clear()
         st.rerun()
 
-
     # mostra a intro
     render_intro_screen()
-else:
-    pass
+    st.stop()  # <<< IMPORTANTÍSSIMO: impede cair no login e tocar login.mp3
 
 
 # --- TELA DE LOGIN ---
-if 'trainer_name' not in st.session_state:
+if "trainer_name" not in st.session_state:
     render_bgm("music/login.mp3", volume=0.25)
 
     st.title("Bem-vindo(a) ao Ga'Al")
-    
+
     tab_login, tab_register = st.tabs(["🔑 Acessar", "📝 Cadastrar"])
-    
-    # ABA DE LOGIN
+
     with tab_login:
         l_user = st.text_input("Nome do treinador", key="l_user")
         l_pass = st.text_input("Senha", type="password", key="l_pass")
-        
+
         if st.button("Acessar", type="primary"):
             if l_user and l_pass:
                 with st.spinner("Verificando credenciais..."):
                     result = authenticate_user(l_user, l_pass)
-                    
+
                     if result == "WRONG_PASS":
                         st.error("🚫 Senha incorreta. Verifique e tente novamente.")
                     elif result == "NOT_FOUND":
                         st.warning("Treinador não encontrado. Cadastre-se na aba ao lado.")
                     elif isinstance(result, dict):
-                        st.session_state['trainer_name'] = l_user
-                        st.session_state['user_data'] = result
+                        st.session_state["trainer_name"] = l_user
+                        st.session_state["user_data"] = result
                         st.session_state["show_login_menu"] = True
                         st.rerun()
+
+    st.stop()  # opcional: trava aqui até logar, se o resto do app vem abaixo
+
     
     # ABA DE REGISTRO
     with tab_register:
