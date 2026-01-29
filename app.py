@@ -9486,10 +9486,9 @@ if page == "Pokédex (Busca)":
         
         <script>
             function selectDex(pid) {
-                // window.parent permite que o clique saia do iframe e atualize o site principal 
-                const url = new URL(window.parent.location.href);
+                const url = new URL(window.location.href);
                 url.searchParams.set("dex", pid);
-                window.parent.location.assign(url.toString());
+                window.location.assign(url.toString());
             }
         </script>
         '''
@@ -9553,7 +9552,7 @@ if page == "Pokédex (Busca)":
                         # 3. Renderiza a MOLDURA + IMAGEM como link clicável (sem nome)
                         # Isso garante que a imagem fique DENTRO da borda colorida
                         html_card = (
-                            f'<a class="dex-card-link" href="?dex={dex_num}" aria-label="{p_name}">\n'
+                            f'<a class="dex-card-link" href="?dex={dex_num}" aria-label="{p_name}" target="_self">\n'
                             f'    <div class="dex-card-frame {status_class}">\n'
                             f'        <img src="{sprite_url}" class="dex-sprite-img" alt="{p_name}">\n'
                             "    </div>\n"
