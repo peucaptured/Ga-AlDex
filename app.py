@@ -2861,32 +2861,32 @@ def render_compendium_ginasios() -> None:
             st.session_state["comp_gym_key"] = label_map[pick]
             st.session_state["comp_gym_focus"] = "__visao__"
             st.rerun()
+        
         st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
-
-        lore_parts = []  # <-- tudo que vai pro scroll fica aqui (HTML em string)
-
-        if focus_now == "__visao__":
+        
+        # ---- FOCO ----
+        focus_map = {
             "Visão": "__visao__",
             "Líder": "lider",
             "Vice-líder": "vice",
             **{f"Ex-líder: {nm}": f"ex::{nm}" for nm in ex_list},
         }
+        focus_options = list(focus_map.keys())
         reverse_focus_map = {v: k for k, v in focus_map.items()}
         
         current_label = reverse_focus_map.get(focus_now, "Visão")
-        st.markdown("<div class='ds-meta'>FOCO</div>", unsafe_allow_html=True)
         
+        st.markdown("<div class='ds-meta'>FOCO</div>", unsafe_allow_html=True)
         focus_label = st.selectbox(
             "Foco",
             options=focus_options,
-            index=focus_options.index(current_label),
+            index=focus_options.index(current_label) if current_label in focus_options else 0,
             key="comp_gym_focus_sel",
             label_visibility="collapsed",
         )
         
-        new_focus = focus_map[focus_label]
-        
-        if new_focus != st.session_state["comp_gym_focus"]:
+        new_focus = focus_map.get(focus_label, "__visao__")
+        if new_focus != st.session_state.get("comp_gym_focus"):
             st.session_state["comp_gym_focus"] = new_focus
             st.rerun()
 
