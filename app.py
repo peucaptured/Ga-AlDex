@@ -9568,6 +9568,64 @@ if page == "Pokédex (Busca)":
                 background: rgba(15, 23, 42, 0.55);
                 box-shadow: inset 0 0 12px rgba(15, 23, 42, 0.45);
               }
+              
+              .dex-card-link {
+                display: block;
+                text-decoration: none;
+                color: inherit;
+                cursor: pointer;
+              }
+
+              .dex-card-frame {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 110px;
+                width: 100%;
+                border-radius: 12px;
+                margin-bottom: 8px;
+                transition: transform 0.2s ease;
+                background: rgba(15, 23, 42, 0.6);
+                position: relative;
+              }
+
+              .dex-card-frame:hover {
+                transform: scale(1.02);
+              }
+
+              .dex-sprite-img {
+                max-width: 80px;
+                max-height: 80px;
+                width: auto;
+                height: auto;
+                object-fit: contain;
+                image-rendering: pixelated;
+                filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+                z-index: 1;
+              }
+
+              .dex-frame--caught {
+                border: 2px solid #00ff41;
+                box-shadow: 0 0 12px rgba(0, 255, 65, 0.25), inset 0 0 15px rgba(0, 60, 20, 0.6);
+                background: rgba(0, 60, 20, 0.4);
+              }
+
+              .dex-frame--seen {
+                border: 2px solid #00d0ff;
+                box-shadow: 0 0 12px rgba(0, 208, 255, 0.25), inset 0 0 15px rgba(0, 40, 60, 0.6);
+                background: rgba(0, 40, 60, 0.4);
+              }
+
+              .dex-frame--wish {
+                border: 2px solid #ffd700;
+                box-shadow: 0 0 12px rgba(255, 215, 0, 0.25), inset 0 0 15px rgba(60, 50, 0, 0.6);
+                background: rgba(60, 50, 0, 0.4);
+              }
+
+              .dex-frame--default {
+                border: 2px solid rgba(255, 255, 255, 0.15);
+                background: rgba(255, 255, 255, 0.03);
+              }
             </style>
             <div class="pokedex-grid">
             REPLACE_ME
