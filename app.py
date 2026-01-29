@@ -2537,52 +2537,65 @@ def render_compendium_ginasios() -> None:
             padding: 0 24px 12px 24px;
             box-sizing: border-box;
           }
-          .ds-frame-wrap{
-            display: block !important;
-            width: 100% !important;
+          .ds-frame-marker{
+            display: none;
+          }
+          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-left),
+          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-center),
+          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-right){
+            background: rgba(0,0,0,0.55);
+            border: 2px solid rgba(176,143,60,0.55);
+            box-shadow: 0 0 45px rgba(0,0,0,0.9);
+            border-radius: 12px;
             padding: 18px 18px 14px 18px !important;
-            box-sizing: border-box !important;
+            position: relative;
+            box-sizing: border-box;
           }
-          .ds-gym-left{
-            padding: 18px 18px 16px 18px !important;
+          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-left)::after,
+          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-center)::after,
+          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-right)::after{
+            content: "";
+            position: absolute;
+            top: 10px; left: 10px; right: 10px; bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 10px;
+            pointer-events: none;
           }
-          .ds-gym-left .comp-divider{
+          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-left) .comp-divider{
             margin: 14px 0 14px 0 !important;
           }
-          .ds-gym-left div[data-testid="stSelectbox"]{
+          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"]{
             width: 100% !important;
           }
-          .ds-gym-left div[data-testid="stSelectbox"] > div{
+          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"] > div{
             background: rgba(0,0,0,0.25) !important;
             border: 1px solid rgba(176,143,60,0.45) !important;
             border-radius: 12px !important;
             padding: 6px 10px !important;
             box-shadow: 0 0 18px rgba(255,215,0,0.06) !important;
           }
-          .ds-gym-left div[data-testid="stSelectbox"] *{
+          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"] *{
             font-family: "DarkSouls", serif !important;
             letter-spacing: 0.18em !important;
             text-transform: uppercase !important;
             color: rgba(255,255,255,0.82) !important;
           }
-          .ds-gym-right{
-            padding: 18px 18px 14px 18px !important;
-            display: flex !important;
-            flex-direction: column !important;
+          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-right){
+            display: flex;
+            flex-direction: column;
             height: 78vh;
-            box-sizing: border-box;
           }
-          .ds-gym-right .ds-lore-scroll{
+          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll{
             flex: 1 1 auto;
             overflow-y: auto;
             padding-right: 8px;
           }
-          .ds-gym-right .ds-lore-scroll::-webkit-scrollbar{ width: 8px; }
-          .ds-gym-right .ds-lore-scroll::-webkit-scrollbar-thumb{
+          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar{ width: 8px; }
+          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-thumb{
             background: rgba(255,215,0,0.18);
             border-radius: 10px;
           }
-          .ds-gym-right .ds-lore-scroll::-webkit-scrollbar-track{
+          div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-track{
             background: rgba(255,255,255,0.06);
           }
         </style>
@@ -2700,7 +2713,7 @@ def render_compendium_ginasios() -> None:
     # ESQUERDA: seletor + pokémons
     # ============================
     with col_left:
-        st.markdown("<div class='ds-frame ds-frame-wrap ds-gym-left'>", unsafe_allow_html=True)
+        st.markdown("<div class='ds-frame-marker ds-gym-left'></div>", unsafe_allow_html=True)
         st.markdown("<div class='ds-name'>GINÁSIOS</div>", unsafe_allow_html=True)
 
         # label: se a chave for cidade -> mostra só cidade; senão "Líder — Cidade"
@@ -2780,13 +2793,11 @@ def render_compendium_ginasios() -> None:
             except Exception:
                 st.markdown("<div class='ds-history'>" + "<br>".join(pokes[:48]) + "</div>", unsafe_allow_html=True)
 
-        st.markdown("</div>", unsafe_allow_html=True)
-
     # ============================
     # CENTRO: badge + retratos
     # ============================
     with col_center:
-        st.markdown("<div class='ds-frame ds-frame-wrap ds-gym-center'>", unsafe_allow_html=True)
+        st.markdown("<div class='ds-frame-marker ds-gym-center'></div>", unsafe_allow_html=True)
         city = (meta.get("cidade") or meta.get("city") or "").strip()
         title = city if city else gym_now
         st.markdown(f"<div class='ds-name'>{title}</div>", unsafe_allow_html=True)
@@ -2840,13 +2851,11 @@ def render_compendium_ginasios() -> None:
         _portrait("Líder", lider_nm)
         _portrait("Vice-líder", vice_nm)
 
-        st.markdown("</div>", unsafe_allow_html=True)
-
     # ============================
     # DIREITA: lore
     # ============================
     with col_right:
-        st.markdown("<div class='ds-frame ds-frame-wrap ds-gym-right'>", unsafe_allow_html=True)
+        st.markdown("<div class='ds-frame-marker ds-gym-right'></div>", unsafe_allow_html=True)
         st.markdown("<div class='ds-name'>LORE</div>", unsafe_allow_html=True)
 
         crumb = title + (" — Visão" if focus_now == "__visao__" else (" — Líder" if focus_now == "lider" else " — Vice-líder"))
@@ -2905,7 +2914,6 @@ def render_compendium_ginasios() -> None:
                         continue
                     _render_section(k, v)
 
-        st.markdown("</div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -8047,51 +8055,57 @@ div[data-testid="stRadio"] {{
                 padding: 0 24px 12px 24px;
                 box-sizing: border-box;
               }
-              /* Faz a moldura abraçar os widgets e não ficar "vazia" */
-                .ds-frame.ds-loc-left{
-                  padding: 18px 18px 16px 18px !important;
-                }
-                
-                /* Dá espaçamento entre blocos */
-                .ds-loc-left .comp-divider{
-                  margin: 14px 0 14px 0 !important;
-                }
-                
-                /* Selectbox com cara de "encaixado" dentro do frame */
-                .ds-loc-left div[data-testid="stSelectbox"]{
-                  width: 100% !important;
-                }
-                .ds-loc-left div[data-testid="stSelectbox"] > div{
-                  background: rgba(0,0,0,0.25) !important;
-                  border: 1px solid rgba(176,143,60,0.45) !important;
-                  border-radius: 12px !important;
-                  padding: 6px 10px !important;
-                  box-shadow: 0 0 18px rgba(255,215,0,0.06) !important;
-                }
-                
-                /* Texto do select com fonte DS */
-                .ds-loc-left div[data-testid="stSelectbox"] *{
-                  font-family: "DarkSouls", serif !important;
-                  letter-spacing: 0.18em !important;
-                  text-transform: uppercase !important;
-                  color: rgba(255,255,255,0.82) !important;
-                }
-
-              .ds-loc-left .stTextInput input{
-                background: rgba(0,0,0,0.35) !important;
-                border: 1px solid rgba(176,143,60,0.35) !important;
-                color: rgba(255,255,255,0.88) !important;
+              .ds-frame-marker{
+                display: none;
               }
-              .ds-loc-left div[data-testid="stSelectbox"] > div{
+              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-left),
+              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-center),
+              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-right){
+                background: rgba(0,0,0,0.55);
+                border: 2px solid rgba(176,143,60,0.55);
+                box-shadow: 0 0 45px rgba(0,0,0,0.9);
+                border-radius: 12px;
+                padding: 18px 18px 14px 18px !important;
+                position: relative;
+                box-sizing: border-box;
+              }
+              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-left)::after,
+              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-center)::after,
+              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-right)::after{
+                content: "";
+                position: absolute;
+                top: 10px; left: 10px; right: 10px; bottom: 10px;
+                border: 1px solid rgba(255,255,255,0.10);
+                border-radius: 10px;
+                pointer-events: none;
+              }
+              /* Dá espaçamento entre blocos */
+              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-left) .comp-divider{
+                margin: 14px 0 14px 0 !important;
+              }
+              /* Selectbox com cara de "encaixado" dentro do frame */
+              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-left) div[data-testid="stSelectbox"]{
+                width: 100% !important;
+              }
+              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-left) div[data-testid="stSelectbox"] > div{
                 background: rgba(0,0,0,0.25) !important;
-                border: 1px solid rgba(176,143,60,0.35) !important;
+                border: 1px solid rgba(176,143,60,0.45) !important;
                 border-radius: 12px !important;
+                padding: 6px 10px !important;
+                box-shadow: 0 0 18px rgba(255,215,0,0.06) !important;
               }
-              .ds-loc-left div[data-testid="stSelectbox"] *{
+              /* Texto do select com fonte DS */
+              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-left) div[data-testid="stSelectbox"] *{
                 font-family: "DarkSouls", serif !important;
                 letter-spacing: 0.18em !important;
                 text-transform: uppercase !important;
                 color: rgba(255,255,255,0.82) !important;
+              }
+
+              div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-left) .stTextInput input{
+                background: rgba(0,0,0,0.35) !important;
+                border: 1px solid rgba(176,143,60,0.35) !important;
+                color: rgba(255,255,255,0.88) !important;
               }
 
               /* Radio vertical DS */
@@ -8136,15 +8150,8 @@ div[data-testid="stRadio"] {{
                 font-size: 11px;
                 color: rgba(255,255,255,0.55);
               }
-              .ds-frame-wrap{
-              display: block !important;
-              width: 100% !important;
-              padding: 18px 18px 14px 18px !important;
-              box-sizing: border-box !important;
-            }
-            
             /* remove margens estranhas dos blocos de widget dentro do frame */
-            .ds-frame-wrap img.comp-map{
+            div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-center) img.comp-map{
               width: 100% !important;
               height: auto !important;
               display: block !important;
@@ -8152,35 +8159,31 @@ div[data-testid="stRadio"] {{
             }
             
             /* espaçamento controlado entre widgets */
-            .ds-frame-wrap div[data-testid="stSelectbox"]{
-              margin: 8px 0 0 0 !important;
-            }
-            .ds-frame-wrap .comp-divider{
+            div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-center) .comp-divider,
+            div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-right) .comp-divider{
               margin: 14px 0 12px 0 !important;
             }
             /* frame da lore */
-            .ds-lore-frame{
-              padding: 18px 18px 14px 18px !important;
-              display: flex !important;
-              flex-direction: column !important;
+            div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-right){
+              display: flex;
+              flex-direction: column;
               height: 78vh;
-              box-sizing: border-box;
             }
             
             /* área rolável da lore (não explode o frame) */
-            .ds-lore-scroll{
+            div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll{
               flex: 1 1 auto;
               overflow-y: auto;
               padding-right: 8px;
             }
             
             /* scrollbar discreto */
-            .ds-lore-scroll::-webkit-scrollbar{ width: 8px; }
-            .ds-lore-scroll::-webkit-scrollbar-thumb{
+            div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar{ width: 8px; }
+            div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar-thumb{
               background: rgba(255,215,0,0.18);
               border-radius: 10px;
             }
-            .ds-lore-scroll::-webkit-scrollbar-track{
+            div[data-testid="stVerticalBlock"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar-track{
               background: rgba(255,255,255,0.06);
             }
 
@@ -8199,227 +8202,219 @@ div[data-testid="stRadio"] {{
         # ESQUERDA: Região -> Cidade -> Sublocal (sem busca)
         # ============================
         with col_left:
-            left_box = st.container()
-            with left_box:
-                st.markdown("<div class='ds-frame ds-loc-left ds-frame-wrap'>", unsafe_allow_html=True)
-                # --- Região ---
-                st.markdown("<div class='ds-meta'>REGIÃO</div>", unsafe_allow_html=True)
-    
-                prev_reg = st.session_state.get("comp_loc_region")
-                region = st.selectbox(
-                    "Região",
-                    options=all_regions,
-                    index=all_regions.index(prev_reg) if prev_reg in all_regions else 0,
-                    key="comp_loc_region_sel",
+            st.markdown("<div class='ds-frame-marker ds-loc-left'></div>", unsafe_allow_html=True)
+            # --- Região ---
+            st.markdown("<div class='ds-meta'>REGIÃO</div>", unsafe_allow_html=True)
+
+            prev_reg = st.session_state.get("comp_loc_region")
+            region = st.selectbox(
+                "Região",
+                options=all_regions,
+                index=all_regions.index(prev_reg) if prev_reg in all_regions else 0,
+                key="comp_loc_region_sel",
+                label_visibility="collapsed",
+            )
+
+            if region != st.session_state.get("comp_loc_region"):
+                st.session_state["comp_loc_region"] = region
+                st.session_state["comp_loc_city"] = None
+                st.session_state["comp_loc_sublocal"] = "__visao__"
+                st.rerun()
+
+            # cidades disponíveis na região
+            region_cities = by_region.get(region, []) or []
+            if not region_cities:
+                region_cities = sorted(list(cities.keys()))
+
+            st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+
+            # --- Cidade ---
+            st.markdown("<div class='ds-meta'>CIDADES</div>", unsafe_allow_html=True)
+            if not region_cities:
+                st.markdown("<div class='ds-loc-hint'>Sem cidades nesta região.</div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)  # fecha ds-loc-shell
+                return
+
+            cur_city = st.session_state.get("comp_loc_city")
+            if cur_city not in region_cities:
+                cur_city = region_cities[0]
+                st.session_state["comp_loc_city"] = cur_city
+
+            city = st.selectbox(
+                "Cidades",
+                options=region_cities,
+                index=region_cities.index(cur_city),
+                key="comp_loc_city_sel",
+                label_visibility="collapsed",
+            )
+
+            if city != st.session_state.get("comp_loc_city"):
+                st.session_state["comp_loc_city"] = city
+                st.session_state["comp_loc_sublocal"] = "__visao__"
+                st.rerun()
+
+            st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+
+            # --- Sublocais ---
+            st.markdown("<div class='ds-meta'>SUBLOCAIS</div>", unsafe_allow_html=True)
+
+            cobj = cities.get(city) or {}
+            sublocais = (cobj.get("sublocais") or [])
+            sub_names = ["__visao__"] + [
+                (sl.get("name") or "").strip() for sl in sublocais
+                if isinstance(sl, dict) and (sl.get("name") or "").strip()
+            ]
+
+            # remove duplicados
+            seen = set()
+            sub_names = [x for x in sub_names if (x not in seen and not seen.add(x))]
+
+            def _fmt_sublocal(v: str) -> str:
+                return "Visão geral" if v == "__visao__" else v
+
+            if len(sub_names) <= 1:
+                st.markdown("<div class='ds-loc-hint'>Sem sublocais.</div>", unsafe_allow_html=True)
+                st.session_state["comp_loc_sublocal"] = "__visao__"
+            else:
+                cur_sl = st.session_state.get("comp_loc_sublocal", "__visao__")
+                if cur_sl not in sub_names:
+                    cur_sl = "__visao__"
+                    st.session_state["comp_loc_sublocal"] = "__visao__"
+
+                sl_choice = st.selectbox(
+                    "Sublocal",
+                    options=sub_names,
+                    index=sub_names.index(cur_sl),
+                    key="comp_loc_sublocal_sel",
                     label_visibility="collapsed",
+                    format_func=_fmt_sublocal,
                 )
-    
-                if region != st.session_state.get("comp_loc_region"):
-                    st.session_state["comp_loc_region"] = region
-                    st.session_state["comp_loc_city"] = None
-                    st.session_state["comp_loc_sublocal"] = "__visao__"
-                    st.rerun()
-   
-                # cidades disponíveis na região
-                region_cities = by_region.get(region, []) or []
-                if not region_cities:
-                    region_cities = sorted(list(cities.keys()))
-    
-                st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
-    
-                # --- Cidade ---
-                st.markdown("<div class='ds-meta'>CIDADES</div>", unsafe_allow_html=True)
-                if not region_cities:
-                    st.markdown("<div class='ds-loc-hint'>Sem cidades nesta região.</div>", unsafe_allow_html=True)
-                    st.markdown("</div>", unsafe_allow_html=True)  # fecha ds-frame
-                    return
-    
-                cur_city = st.session_state.get("comp_loc_city")
-                if cur_city not in region_cities:
-                    cur_city = region_cities[0]
-                    st.session_state["comp_loc_city"] = cur_city
-    
-                city = st.selectbox(
-                    "Cidades",
-                    options=region_cities,
-                    index=region_cities.index(cur_city),
-                    key="comp_loc_city_sel",
-                    label_visibility="collapsed",
-                )
-    
-                if city != st.session_state.get("comp_loc_city"):
-                    st.session_state["comp_loc_city"] = city
-                    st.session_state["comp_loc_sublocal"] = "__visao__"
+
+                if sl_choice != st.session_state.get("comp_loc_sublocal"):
+                    st.session_state["comp_loc_sublocal"] = sl_choice
                     st.rerun()
     
-                st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
-    
-                # --- Sublocais ---
-                st.markdown("<div class='ds-meta'>SUBLOCAIS</div>", unsafe_allow_html=True)
-    
-                cobj = cities.get(city) or {}
-                sublocais = (cobj.get("sublocais") or [])
-                sub_names = ["__visao__"] + [
-                    (sl.get("name") or "").strip() for sl in sublocais
-                    if isinstance(sl, dict) and (sl.get("name") or "").strip()
-                ]
-    
-                # remove duplicados
-                seen = set()
-                sub_names = [x for x in sub_names if (x not in seen and not seen.add(x))]
-    
-                def _fmt_sublocal(v: str) -> str:
-                    return "Visão geral" if v == "__visao__" else v
-    
-                if len(sub_names) <= 1:
-                    st.markdown("<div class='ds-loc-hint'>Sem sublocais.</div>", unsafe_allow_html=True)
-                    st.session_state["comp_loc_sublocal"] = "__visao__"
-                else:
-                    cur_sl = st.session_state.get("comp_loc_sublocal", "__visao__")
-                    if cur_sl not in sub_names:
-                        cur_sl = "__visao__"
-                        st.session_state["comp_loc_sublocal"] = "__visao__"
-    
-                    sl_choice = st.selectbox(
-                        "Sublocal",
-                        options=sub_names,
-                        index=sub_names.index(cur_sl),
-                        key="comp_loc_sublocal_sel",
-                        label_visibility="collapsed",
-                        format_func=_fmt_sublocal,
-                    )
-                    
-                    if sl_choice != st.session_state.get("comp_loc_sublocal"):
-                        st.session_state["comp_loc_sublocal"] = sl_choice
-                        st.rerun()
-    
-                st.markdown("</div>", unsafe_allow_html=True)  # ds-frame left
 
         # ============================
        
         # CENTRO: imagem da CIDADE (sempre)
       
         with col_center:
-            center_box = st.container()
-            with center_box:
-                city_now = st.session_state.get("comp_loc_city") or (region_cities[0] if region_cities else "")
-                st.markdown("<div class='ds-frame ds-frame-wrap'>", unsafe_allow_html=True)
-        
-                # sempre imagem da cidade, mesmo em sublocal
-                city_img = _city_image_path(city_now)
-                img_uri = _img_data_uri(city_img, max_w=1600) if city_img else ""
-        
-                # título compacto
-                reg_now = st.session_state.get("comp_loc_region") or ""
+            city_now = st.session_state.get("comp_loc_city") or (region_cities[0] if region_cities else "")
+            st.markdown("<div class='ds-frame-marker ds-loc-center'></div>", unsafe_allow_html=True)
+
+            # sempre imagem da cidade, mesmo em sublocal
+            city_img = _city_image_path(city_now)
+            img_uri = _img_data_uri(city_img, max_w=1600) if city_img else ""
+
+            # título compacto
+            reg_now = st.session_state.get("comp_loc_region") or ""
+            st.markdown(
+                f"<div class='ds-meta' style='text-align:center'>{reg_now} — {city_now}</div>",
+                unsafe_allow_html=True
+            )
+
+            if img_uri:
+                st.markdown(f"<img class='comp-map' src='{img_uri}'/>", unsafe_allow_html=True)
+            else:
                 st.markdown(
-                    f"<div class='ds-meta' style='text-align:center'>{reg_now} — {city_now}</div>",
+                    "<div class='ds-loc-hint' style='text-align:center'>Sem imagem para esta cidade.</div>",
                     unsafe_allow_html=True
                 )
         
-                if img_uri:
-                    st.markdown(f"<img class='comp-map' src='{img_uri}'/>", unsafe_allow_html=True)
-                else:
-                    st.markdown(
-                        "<div class='ds-loc-hint' style='text-align:center'>Sem imagem para esta cidade.</div>",
-                        unsafe_allow_html=True
-                    )
-        
-                st.markdown("</div>", unsafe_allow_html=True)  # ds-frame
 
 
         # ============================
         # DIREITA: Lore (cidade ou sublocal)
         # ============================
         with col_right:
-            right_box = st.container()
-            with right_box:
-                reg_now = st.session_state.get("comp_loc_region") or ""
-                city_now = st.session_state.get("comp_loc_city") or ""
-                sl_now = st.session_state.get("comp_loc_sublocal") or "__visao__"
-        
-                st.markdown("<div class='ds-frame ds-frame-wrap ds-lore-frame'>", unsafe_allow_html=True)
-        
-                st.markdown("<div class='ds-name'>LOCAIS</div>", unsafe_allow_html=True)
-        
-                crumb = f"{reg_now} — {city_now}"
-                if sl_now and sl_now != "__visao__":
-                    crumb += f" — {sl_now}"
-                st.markdown(f"<div class='ds-meta'>{crumb}</div>", unsafe_allow_html=True)
+            reg_now = st.session_state.get("comp_loc_region") or ""
+            city_now = st.session_state.get("comp_loc_city") or ""
+            sl_now = st.session_state.get("comp_loc_sublocal") or "__visao__"
+
+            st.markdown("<div class='ds-frame-marker ds-loc-right'></div>", unsafe_allow_html=True)
+
+            st.markdown("<div class='ds-name'>LOCAIS</div>", unsafe_allow_html=True)
+
+            crumb = f"{reg_now} — {city_now}"
+            if sl_now and sl_now != "__visao__":
+                crumb += f" — {sl_now}"
+            st.markdown(f"<div class='ds-meta'>{crumb}</div>", unsafe_allow_html=True)
+            st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+
+            cobj = cities.get(city_now) or {}
+            secs = (cobj.get("sections") or {}) if isinstance(cobj.get("sections"), dict) else {}
+
+            # Tags
+            try:
+                inferred = infer_city_tags(cobj)
+                tags = _merge_tags("cities", city_now, inferred)
+            except Exception:
+                tags = []
+
+            if tags:
+                chips = " ".join([f"<span class='comp-chip'>{t}</span>" for t in tags])
+                st.markdown(f"<div style='text-align:center'>{chips}</div>", unsafe_allow_html=True)
                 st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
-        
-                cobj = cities.get(city_now) or {}
-                secs = (cobj.get("sections") or {}) if isinstance(cobj.get("sections"), dict) else {}
-        
-                # Tags
-                try:
-                    inferred = infer_city_tags(cobj)
-                    tags = _merge_tags("cities", city_now, inferred)
-                except Exception:
-                    tags = []
-        
-                if tags:
-                    chips = " ".join([f"<span class='comp-chip'>{t}</span>" for t in tags])
-                    st.markdown(f"<div style='text-align:center'>{chips}</div>", unsafe_allow_html=True)
-                    st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
-        
-                # Conteúdo rolável (abre)
-                st.markdown("<div class='ds-lore-scroll'>", unsafe_allow_html=True)
-        
-                # Lore
-                if sl_now == "__visao__":
-                    prefer = [
-                        "Visão geral",
-                        "Como é viver em " + city_now,
-                        "Como é viver em " + _clean_title(city_now),
-                        "Treinadores, estrangeiros e controle",
-                        "Ginásio de " + city_now,
-                        "Sublocais e pontos de interesse",
-                    ]
-                    used = set()
-        
-                    for k in prefer:
-                        if k in secs and k not in used and (secs.get(k) or "").strip():
-                            used.add(k)
-                            st.markdown(f"<div class='ds-subtitle'>{k}</div>", unsafe_allow_html=True)
-                            st.markdown(
-                                f"<div class='ds-history'>{(secs.get(k) or '').replace(chr(10), '<br>')}</div>",
-                                unsafe_allow_html=True,
-                            )
-                            st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
-        
-                    for k, v in secs.items():
-                        if k in used:
-                            continue
-                        if not isinstance(v, str) or not v.strip():
-                            continue
+
+            # Conteúdo rolável (abre)
+            st.markdown("<div class='ds-lore-scroll'>", unsafe_allow_html=True)
+
+            # Lore
+            if sl_now == "__visao__":
+                prefer = [
+                    "Visão geral",
+                    "Como é viver em " + city_now,
+                    "Como é viver em " + _clean_title(city_now),
+                    "Treinadores, estrangeiros e controle",
+                    "Ginásio de " + city_now,
+                    "Sublocais e pontos de interesse",
+                ]
+                used = set()
+
+                for k in prefer:
+                    if k in secs and k not in used and (secs.get(k) or "").strip():
+                        used.add(k)
                         st.markdown(f"<div class='ds-subtitle'>{k}</div>", unsafe_allow_html=True)
                         st.markdown(
-                            f"<div class='ds-history'>{v.replace(chr(10), '<br>')}</div>",
+                            f"<div class='ds-history'>{(secs.get(k) or '').replace(chr(10), '<br>')}</div>",
                             unsafe_allow_html=True,
                         )
                         st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
-        
+
+                for k, v in secs.items():
+                    if k in used:
+                        continue
+                    if not isinstance(v, str) or not v.strip():
+                        continue
+                    st.markdown(f"<div class='ds-subtitle'>{k}</div>", unsafe_allow_html=True)
+                    st.markdown(
+                        f"<div class='ds-history'>{v.replace(chr(10), '<br>')}</div>",
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+
+            else:
+                sl_obj = None
+                for sl in (cobj.get("sublocais") or []):
+                    if isinstance(sl, dict) and (sl.get("name") or "").strip() == sl_now:
+                        sl_obj = sl
+                        break
+
+                if not sl_obj:
+                    st.markdown("<div class='ds-history'>Sublocal não encontrado.</div>", unsafe_allow_html=True)
                 else:
-                    sl_obj = None
-                    for sl in (cobj.get("sublocais") or []):
-                        if isinstance(sl, dict) and (sl.get("name") or "").strip() == sl_now:
-                            sl_obj = sl
-                            break
-        
-                    if not sl_obj:
-                        st.markdown("<div class='ds-history'>Sublocal não encontrado.</div>", unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"<div class='ds-subtitle'>{sl_now}</div>", unsafe_allow_html=True)
-                        txt = (sl_obj.get("text") or "").strip()
-                        st.markdown(
-                            f"<div class='ds-history'>{txt.replace(chr(10), '<br>')}</div>",
-                            unsafe_allow_html=True,
-                        )
-        
-                # Conteúdo rolável (fecha)
-                st.markdown("</div>", unsafe_allow_html=True)  # ds-lore-scroll
-        
-                st.markdown("</div>", unsafe_allow_html=True)  # ds-frame right
+                    st.markdown(f"<div class='ds-subtitle'>{sl_now}</div>", unsafe_allow_html=True)
+                    txt = (sl_obj.get("text") or "").strip()
+                    st.markdown(
+                        f"<div class='ds-history'>{txt.replace(chr(10), '<br>')}</div>",
+                        unsafe_allow_html=True,
+                    )
+
+            # Conteúdo rolável (fecha)
+            st.markdown("</div>", unsafe_allow_html=True)  # ds-lore-scroll
+
+        st.markdown("</div>", unsafe_allow_html=True)  # ds-loc-shell
 
 
     # =========================================================
