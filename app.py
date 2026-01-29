@@ -2989,8 +2989,10 @@ def render_compendium_ginasios() -> None:
         st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
     
         # Lore com scroll: render em 1 markdown só (não pode “abrir div” num markdown e renderizar depois)
-        lore_html_parts = []
+        # ... você já está dentro do with col_right:
 
+        lore_html_parts = []
+        
         def _push_gym_section(title_txt: str, body_txt: str):
             if not isinstance(body_txt, str) or not body_txt.strip():
                 return
@@ -2999,27 +3001,29 @@ def render_compendium_ginasios() -> None:
             lore_html_parts.append(f"<div class='ds-subtitle'>{ttl}</div>")
             lore_html_parts.append(f"<div class='ds-history'>{body}</div>")
             lore_html_parts.append("<div class='comp-divider'></div>")
-
+        
+        # --------- AQUI SÓ MONTA (APPEND) ---------
         if focus_now == "__visao__":
             narrative = (g.get("narrative") or "").strip()
             if narrative:
                 _push_gym_section("Ginásio", narrative)
-
+        
             if lider_nm:
                 npcL = _npc_obj(lider_nm, g)
                 secs = npcL.get("sections") or {}
                 if isinstance(secs, dict):
                     _push_gym_section(f"Líder — {lider_nm}", _pick(secs, "Ginásio", "Historia", "História"))
-
+        
             if vice_nm:
                 npcV = _npc_obj(vice_nm, g)
                 secs = npcV.get("sections") or {}
                 if isinstance(secs, dict):
                     _push_gym_section(f"Vice-líder — {vice_nm}", _pick(secs, "Ginásio", "Historia", "História"))
-
+        
         elif focus_now == "lider":
             npcL = _npc_obj(lider_nm, g) if lider_nm else {}
             secs = npcL.get("sections") or {}
+        
             if not lider_nm:
                 lore_html_parts.append("<div class='ds-history'>(Líder não definido)</div>")
             elif not isinstance(secs, dict) or not secs:
@@ -3031,12 +3035,12 @@ def render_compendium_ginasios() -> None:
                     if k in ("Ginásio", "História", "Historia", "Histórico", "Historico"):
                         continue
                     _push_gym_section(k, v)
-
+        
         elif isinstance(focus_now, str) and focus_now.startswith("ex::"):
             ex_nm = focus_now.split("::", 1)[1].strip()
             npcX = _npc_obj(ex_nm, g) if ex_nm else {}
             secs = npcX.get("sections") or {}
-
+        
             if not ex_nm:
                 lore_html_parts.append("<div class='ds-history'>(Ex-líder não definido)</div>")
             elif not isinstance(secs, dict) or not secs:
@@ -3048,10 +3052,11 @@ def render_compendium_ginasios() -> None:
                     if k in ("Ginásio", "História", "Historia", "Histórico", "Historico"):
                         continue
                     _push_gym_section(k, v)
-
-        else:
+        
+        else:  # vice
             npcV = _npc_obj(vice_nm, g) if vice_nm else {}
             secs = npcV.get("sections") or {}
+        
             if not vice_nm:
                 lore_html_parts.append("<div class='ds-history'>(Vice-líder não definido)</div>")
             elif not isinstance(secs, dict) or not secs:
@@ -3063,10 +3068,11 @@ def render_compendium_ginasios() -> None:
                     if k in ("Ginásio", "História", "Historia", "Histórico", "Historico"):
                         continue
                     _push_gym_section(k, v)
-
+        
+        # --------- AQUI SÓ RENDERIZA (UMA VEZ) ---------
         lore_html = "".join(lore_html_parts) or "<div class='ds-history'>(Sem lore cadastrada)</div>"
         st.markdown(f"<div class='ds-lore-scroll'>{lore_html}</div>", unsafe_allow_html=True)
-
+        
 
 
 
@@ -9432,33 +9438,29 @@ if page == "Pokédex (Busca)":
         st.divider()
 
         # --- CARROSSEL INFERIOR (navegação) ---
-      
-        dex_param = st.query_params.get("dex", None)
-        if dex_param:
-            st.session_state["pokedex_selected"] = str(dex_param)
-            st.query_params.clear() 
-            st.rerun()
-        
-        # Monta os itens do carrossel usando strings simples para evitar conflitos de chaves
+        from st_click_detector import click_detector
         items_html_list = []
-        for _, r_car in filtered_df.iterrows():
+        carousel_id_map = {}
+        for idx, (_, r_car) in enumerate(filtered_df.iterrows()):
             pid = str(r_car["Nº"])
             sprite = pokemon_pid_to_image(pid, mode="sprite", shiny=False)
-            # Define se o item está ativo para aplicar o estilo de borda amarela
             is_active = "carousel-item-active" if pid == str(st.session_state.get("pokedex_selected")) else ""
             
-            # Criamos o HTML de cada item individualmente
-            item_node = '''
-            <div class="carousel-item {ACTIVE_CLASS}" onclick="selectDex('{PID}')">
-                <img src="{SPRITE}" alt="{PID}">
-            </div>
-            '''.replace("{ACTIVE_CLASS}", is_active).replace("{PID}", pid).replace("{SPRITE}", sprite)
+            safe_id = f"carousel_{idx}"
+            carousel_id_map[safe_id] = pid
+
+            item_node = (
+                f'<a href="javascript:void(0)" id="{safe_id}" class="dex-card-link">'
+                f'  <div class="carousel-item {is_active}">'
+                f'    <img src="{sprite}" alt="{pid}">'
+                "  </div>"
+                "</a>"
+            )
             
             items_html_list.append(item_node)
         
         all_items_string = "".join(items_html_list)
         
-        # Template HTML/CSS/JS (String tripla sem o 'f' para não quebrar o código) 
         html_template = '''
         <style>
             .pokedex-footer-carousel {
@@ -9484,19 +9486,17 @@ if page == "Pokédex (Busca)":
             REPLACE_ME
         </div>
         
-        <script>
-            function selectDex(pid) {
-                const url = new URL(window.location.href);
-                url.searchParams.set("dex", pid);
-                window.location.assign(url.toString());
-            }
-        </script>
+ 
         '''
         
-        # Injeta os itens e renderiza o componente
         final_carousel_html = html_template.replace("REPLACE_ME", all_items_string)
-        components.html(final_carousel_html, height=120)
-                
+        clicked_carousel_id = click_detector(final_carousel_html)
+
+        if clicked_carousel_id is not None:
+            selected_pid = carousel_id_map.get(str(clicked_carousel_id))
+            if selected_pid and selected_pid != st.session_state.get("pokedex_selected"):
+                st.session_state["pokedex_selected"] = selected_pid
+                st.rerun()                
                
         
 
@@ -9521,46 +9521,61 @@ if page == "Pokédex (Busca)":
             )
             st.markdown("<div class='pokedex-grid-note'>Clique em um Pokémon para ver os detalhes.</div>", unsafe_allow_html=True)
 
-            grid_cols = 6 # Reduzi para 6 para as bordas não ficarem espremidas
-            rows = list(filtered_df.iterrows())
+            from st_click_detector import click_detector
 
-            st.markdown("<div class='pokedex-grid'>", unsafe_allow_html=True)
-            for start in range(0, len(rows), grid_cols):
-                cols = st.columns(grid_cols)
-                for col, (index, row_g) in zip(cols, rows[start : start + grid_cols]):
-                    dex_num = str(row_g["Nº"])
-                    p_name = row_g["Nome"]
+            items_html_list = []
+            grid_id_map = {}
+            for idx, (_, row_g) in enumerate(filtered_df.iterrows()):
+                dex_num = str(row_g["Nº"])
+                p_name = row_g["Nome"]
+                sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
 
-                    # 1. Gera o link da imagem
-                    sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
+                is_caught = dex_num in user_data.get("caught", [])
+                is_seen = dex_num in user_data.get("seen", [])
+                is_wished = dex_num in user_data.get("wishlist", [])
 
-                    # 2. Define o status
-                    is_caught = dex_num in user_data.get("caught", [])
-                    is_seen = dex_num in user_data.get("seen", [])
-                    is_wished = dex_num in user_data.get("wishlist", [])
+                if is_caught:
+                    status_class = "dex-frame--caught"
+                elif is_wished:
+                    status_class = "dex-frame--wish"
+                elif is_seen:
+                    status_class = "dex-frame--seen"
+                else:
+                    status_class = "dex-frame--default"
 
-                    if is_caught:
-                        status_class = "dex-frame--caught"
-                    elif is_wished:
-                        status_class = "dex-frame--wish"
-                    elif is_seen:
-                        status_class = "dex-frame--seen"
-                    else:
-                        status_class = "dex-frame--default"
+                safe_id = f"dex_{idx}"
+                grid_id_map[safe_id] = dex_num
 
-                    with col:
-                        # 3. Renderiza a MOLDURA + IMAGEM como link clicável (sem nome)
-                        # Isso garante que a imagem fique DENTRO da borda colorida
-                        html_card = (
-                            f'<a class="dex-card-link" href="?dex={dex_num}" aria-label="{p_name}" target="_self">\n'
-                            f'    <div class="dex-card-frame {status_class}">\n'
-                            f'        <img src="{sprite_url}" class="dex-sprite-img" alt="{p_name}">\n'
-                            "    </div>\n"
-                            "</a>"
-                        )
-                        st.markdown(html_card, unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+                item_node = (
+                    f'<a href="javascript:void(0)" id="{safe_id}" class="dex-card-link" aria-label="{p_name}">'
+                    f'  <div class="dex-card-frame {status_class}">'
+                    f'    <img src="{sprite_url}" class="dex-sprite-img" alt="{p_name}">'
+                    "  </div>"
+                    "</a>"
+                )
+                items_html_list.append(item_node)
+
+            grid_html = """
+            <style>
+              .pokedex-grid {
+                display: grid;
+                grid-template-columns: repeat(6, 1fr);
+                gap: 10px;
+                row-gap: 14px;
+              }
+            </style>
+            <div class="pokedex-grid">
+            REPLACE_ME
+            </div>
+            """
+            final_grid_html = grid_html.replace("REPLACE_ME", "".join(items_html_list))
+            clicked_grid_id = click_detector(final_grid_html)
+
+            if clicked_grid_id is not None:
+                selected_pid = grid_id_map.get(str(clicked_grid_id))
+                if selected_pid and selected_pid != st.session_state.get("pokedex_selected"):
+                    st.session_state["pokedex_selected"] = selected_pid
+                    st.rerun()
 
 # ==============================================================================
 # PÁGINA 2: TRAINER HUB
