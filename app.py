@@ -3439,6 +3439,15 @@ def render_intro_screen() -> None:
             padding: 0;
             z-index: 9999;
         }
+        input[placeholder="__gaal_intro__"]{
+          position: fixed !important;
+          left: -10000px !important;
+          top: -10000px !important;
+          width: 1px !important;
+          height: 1px !important;
+          opacity: 0 !important;
+        }
+        
     
         /* TÍTULO: ocupa a tela inteira */
         .gaal-intro-title{
@@ -3475,6 +3484,12 @@ def render_intro_screen() -> None:
         """,
         unsafe_allow_html=True,
     )
+    st.text_input(
+        " ",
+        key="__intro_key_capture__",
+        placeholder="__gaal_intro__",
+        label_visibility="collapsed",
+    )
 
     st.markdown(
         f"""
@@ -3490,20 +3505,48 @@ def render_intro_screen() -> None:
         <script>
         (function () {
           const root = window.parent || window;
+          const doc = (root.document || document);
+    
           if (root.__gaalIntroHooked) return;
           root.__gaalIntroHooked = true;
-          root.addEventListener("keydown", () => {
+    
+          function triggerIntro(){
             if (root.__gaalIntroTriggered) return;
             root.__gaalIntroTriggered = true;
             const url = new URL(root.location.href);
             url.searchParams.set("intro", "1");
-            root.location.href = url.toString();
-          }, { once: true });
+            root.location.replace(url.toString());
+          }
+    
+          // foca o input invisível para "pegar" teclado
+          function focusHiddenInput(){
+            try{
+              const inp = doc.querySelector('input[placeholder="__gaal_intro__"]');
+              if (inp) inp.focus({ preventScroll: true });
+            }catch(e){}
+          }
+    
+          // tenta focar logo ao carregar
+          focusHiddenInput();
+    
+          // se o usuário clicar, garante foco e já avança (ou só foca, você escolhe)
+          doc.addEventListener("click", () => { focusHiddenInput(); triggerIntro(); }, { once: true, capture: true });
+
+    
+          // teclado: escuta no DOCUMENT (mais confiável que window)
+          doc.addEventListener("keydown", (e) => {
+            triggerIntro();
+          }, { once: true, capture: true });
+    
+          // mobile
+          doc.addEventListener("touchstart", () => { triggerIntro(); }, { once: true, capture: true });
+    
         })();
         </script>
         """,
         height=0,
     )
+
 
 # --- TELA DE LOGIN ---
 if not st.session_state.get("intro_done"):
