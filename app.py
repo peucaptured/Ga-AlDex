@@ -2756,10 +2756,7 @@ def render_compendium_ginasios() -> None:
             st.session_state["comp_gym_focus"] = new_focus
             st.rerun()
 
-        if focus != st.session_state["comp_gym_focus"]:
-            st.session_state["comp_gym_focus"] = focus
-            st.rerun()
-
+        
         st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
 
         pokes = _collect_gym_pokemons(lider_nm, vice_nm, g)
