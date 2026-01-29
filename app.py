@@ -3421,91 +3421,130 @@ def render_login_menu(trainer_name: str, user_data: dict):
 
 
 def render_intro_screen() -> None:
-    # --- 1. Carrega Imagens e Música ---
     title_src = comp_img_data_uri("Assets/titulo.png") or comp_img_data_uri("Assets/inicio.png")
     start_src = comp_img_data_uri("Assets/start.png")
     render_bgm("music/menu.mp3", volume=0.25)
 
-    # --- 2. Função que o 'Enter' vai chamar ---
-    def start_game():
-        st.session_state["intro_done"] = True
-        # Não precisa st.rerun(), o callback já atualiza a tela
-
-    # --- 3. CSS para Estilizar o Input como "Console" ---
-    st.markdown("""
+    st.markdown(
+        """
         <style>
-        /* Fundo Preto Fixo */
-        .gaal-intro {
-            position: fixed; inset: 0; width: 100vw; height: 100vh;
-            background: #000; z-index: 1;
-            display: flex; flex-direction: column; 
-            align-items: center; justify-content: center;
+        .gaal-intro{
+            position: fixed;
+            inset: 0;                 /* top:0 right:0 bottom:0 left:0 */
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            z-index: 9999;
+        }
+        input[placeholder="__gaal_intro__"]{
+          position: fixed !important;
+          left: -10000px !important;
+          top: -10000px !important;
+          width: 1px !important;
+          height: 1px !important;
+          opacity: 0 !important;
         }
         
-        /* Imagens */
-        .gaal-intro-title {
-            max-width: 80%; height: auto; margin-bottom: 20px;
-            filter: drop-shadow(0 0 20px rgba(255,255,255,0.2));
+    
+        /* TÍTULO: ocupa a tela inteira */
+        .gaal-intro-title{
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;      /* "contain" = aparece inteiro | se quiser preencher mais, use cover */
+            object-position: center;
+            display: block;
+            z-index: 1;
+            filter: drop-shadow(0 16px 26px rgba(0,0,0,0.75));
         }
-        .intro-blink {
-            width: 180px; margin-bottom: 80px; opacity: 0.8;
-            animation: blink-animation 1s steps(2, start) infinite;
+    
+        /* PRESS START: fica por cima */
+        .gaal-intro-start{
+            position: absolute;
+            left: 50%;
+            bottom: 8vh;
+            transform: translateX(-50%);
+            width: min(70vw, 720px);
+            height: auto;
+            display: block;
+            z-index: 2;               /* maior que o título = fica na frente */
+            animation: gaalIntroBlink 1.05s ease-in-out infinite;
+            pointer-events: none;     /* evita “capturar” clique */
         }
-        @keyframes blink-animation { to { visibility: hidden; } }
-
-        /* --- O SEGREDO: Estiliza o Input do Streamlit --- */
-        /* Posiciona a caixa de texto exatamente onde o botão estaria */
-        div[data-testid="stTextInput"] {
-            position: fixed !important;
-            bottom: 15% !important;
-            left: 50% !important;
-            transform: translateX(-50%) !important;
-            z-index: 9999 !important; /* Fica acima de tudo */
-            width: 300px !important;
-        }
-
-        /* Faz a caixa parecer texto puro (sem bordas brancas feias) */
-        div[data-testid="stTextInput"] input {
-            background-color: transparent !important;
-            color: #38bdf8 !important; /* Azul Neon */
-            border: none !important;
-            border-bottom: 2px solid #38bdf8 !important; /* Linha estilo terminal */
-            text-align: center !important;
-            font-family: "Courier New", monospace !important;
-            font-weight: bold !important;
-            font-size: 18px !important;
-            text-transform: uppercase !important;
-            caret-color: #38bdf8 !important;
-        }
-        
-        /* Remove o brilho padrão de foco do Streamlit */
-        div[data-testid="stTextInput"] input:focus {
-            box-shadow: none !important;
-            outline: none !important;
-        }
-        
-        /* Esconde o label padrão "Start" */
-        label[data-testid="stWidgetLabel"] {
-            display: none;
+    
+        @keyframes gaalIntroBlink{
+            0%, 45% { opacity: 0.1; }
+            55%, 100% { opacity: 0.95; }
         }
         </style>
-    """, unsafe_allow_html=True)
-
-    # --- 4. Renderiza o Fundo (HTML Puro) ---
-    st.markdown(f"""
-        <div class="gaal-intro">
-            <img class="gaal-intro-title" src="{title_src}">
-            <img src="{start_src}" class="intro-blink">
-        </div>
-    """, unsafe_allow_html=True)
-
-    # --- 5. O Input Funcional ---
-    # O usuário vê "PRESS ENTER", clica e aperta Enter.
+        """,
+        unsafe_allow_html=True,
+    )
     st.text_input(
-        "Start", 
-        placeholder="CLIQUE E TECLE ENTER", 
-        key="intro_console_input", 
-        on_change=start_game  # <--- Isso faz o Enter funcionar
+        " ",
+        key="__intro_key_capture__",
+        placeholder="__gaal_intro__",
+        label_visibility="collapsed",
+    )
+
+    st.markdown(
+        f"""
+        <div class="gaal-intro">
+            <img class="gaal-intro-title" src="{title_src}" alt="Ga'Al" />
+            <img class="gaal-intro-start" src="{start_src}" alt="Press Start" />
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    components.html(
+        """
+        <script>
+        (function () {
+          const root = window.parent || window;
+          const doc = (root.document || document);
+    
+          if (root.__gaalIntroHooked) return;
+          root.__gaalIntroHooked = true;
+    
+          function triggerIntro(){
+            if (root.__gaalIntroTriggered) return;
+            root.__gaalIntroTriggered = true;
+            const url = new URL(root.location.href);
+            url.searchParams.set("intro", "1");
+            root.location.replace(url.toString());
+          }
+    
+          // foca o input invisível para "pegar" teclado
+          function focusHiddenInput(){
+            try{
+              const inp = doc.querySelector('input[placeholder="__gaal_intro__"]');
+              if (inp) inp.focus({ preventScroll: true });
+            }catch(e){}
+          }
+    
+          // tenta focar logo ao carregar
+          focusHiddenInput();
+    
+          // se o usuário clicar, garante foco e já avança (ou só foca, você escolhe)
+          doc.addEventListener("click", () => { focusHiddenInput(); triggerIntro(); }, { once: true, capture: true });
+
+    
+          // teclado: escuta no DOCUMENT (mais confiável que window)
+          doc.addEventListener("keydown", (e) => {
+            triggerIntro();
+          }, { once: true, capture: true });
+    
+          // mobile
+          doc.addEventListener("touchstart", () => { triggerIntro(); }, { once: true, capture: true });
+    
+        })();
+        </script>
+        """,
+        height=0,
     )
 
 
