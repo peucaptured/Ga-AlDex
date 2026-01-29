@@ -2565,6 +2565,11 @@ def render_compendium_ginasios() -> None:
             padding: 0 24px 12px 24px;
             box-sizing: border-box;
           }
+          html:has(.ds-gym-shell),
+          body:has(.ds-gym-shell),
+          div[data-testid="stAppViewContainer"]:has(.ds-gym-shell){
+            overflow: hidden !important;
+          }
           .ds-frame-marker{
             display: none;
           }
@@ -8386,6 +8391,11 @@ body:has(.ds-home),
                 margin-top: 6px;
                 padding: 0 24px 12px 24px;
                 box-sizing: border-box;
+              }
+              html:has(.ds-loc-shell),
+              body:has(.ds-loc-shell),
+              div[data-testid="stAppViewContainer"]:has(.ds-loc-shell){
+                overflow: hidden !important;
               }
               .ds-frame-marker{
                 display: none;
