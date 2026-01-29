@@ -7778,7 +7778,7 @@ div[data-testid="stRadio"] {{
         # ----------------------------
         # Helpers locais
         # ----------------------------
-        import re, os
+        import os
 
         def _norm_loc(s: str) -> str:
             if not isinstance(s, str):
