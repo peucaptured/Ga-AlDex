@@ -2400,18 +2400,20 @@ def render_ds_tools_nav(selected_view: str):
         display: flex !important;
         justify-content: center !important;
         align-items: center !important;
-        gap: 120px !important;
+        gap: 160px !important;
       }
 
       /* cada opção (label) */
       .ds-topnav div[data-testid="stRadio"] [role="radiogroup"] > label{
         position: relative;
         margin: 0 !important;
-        padding: 8px 30px !important;
+        padding: 8px 42px !important;
         cursor: pointer !important;
         display: flex !important;
         align-items: center !important;
         color: rgba(255,255,255,0.70) !important;
+        background: transparent !important;
+        box-shadow: none !important;
         text-transform: uppercase !important;
         letter-spacing: 0.24em !important;
         font-size: 12px !important;
@@ -2455,6 +2457,18 @@ def render_ds_tools_nav(selected_view: str):
       }
 
       /* esconde o circulinho padrão do Streamlit */
+      .ds-topnav div[data-testid="stRadio"] [data-baseweb="radio"]{
+        background: transparent !important;
+        box-shadow: none !important;
+        border: 0 !important;
+        padding: 0 !important;
+      }
+      .ds-topnav div[data-testid="stRadio"] [data-baseweb="radio"] > div:first-child{
+        display: none !important;
+      }
+      .ds-topnav div[data-testid="stRadio"] [data-baseweb="radio"] > div:last-child{
+        padding-left: 0 !important;
+      }
       .ds-topnav div[data-testid="stRadio"] input[type="radio"]{
         display: none !important;
       }
