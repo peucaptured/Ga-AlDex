@@ -9070,6 +9070,13 @@ if page == "Pokédex (Busca)":
         border: 2px solid rgba(255, 255, 255, 0.15);
         background: rgba(255, 255, 255, 0.03);
     }
+
+    .dex-card-link {
+        display: block;
+        text-decoration: none;
+        color: inherit;
+        cursor: pointer;
+    }
     </style>
     """, unsafe_allow_html=True)
 if page == "Pokédex (Busca)":
@@ -9535,38 +9542,24 @@ if page == "Pokédex (Busca)":
 
                     if is_caught:
                         status_class = "dex-frame--caught"
-                        icon = "✅"
                     elif is_wished:
                         status_class = "dex-frame--wish"
-                        icon = "⭐"
                     elif is_seen:
                         status_class = "dex-frame--seen"
-                        icon = "👁️"
                     else:
                         status_class = "dex-frame--default"
-                        icon = ""
-
-                    display_name = f"{icon} {p_name}".strip()
 
                     with col:
-                        # 3. Renderiza a MOLDURA + IMAGEM usando HTML puro
+                        # 3. Renderiza a MOLDURA + IMAGEM como link clicável (sem nome)
                         # Isso garante que a imagem fique DENTRO da borda colorida
                         html_card = (
-                            f'<div class="dex-card-frame {status_class}">\n'
-                            f'    <img src="{sprite_url}" class="dex-sprite-img" alt="{p_name}">\n'
-                            "</div>"
+                            f'<a class="dex-card-link" href="?dex={dex_num}" aria-label="{p_name}">\n'
+                            f'    <div class="dex-card-frame {status_class}">\n'
+                            f'        <img src="{sprite_url}" class="dex-sprite-img" alt="{p_name}">\n'
+                            "    </div>\n"
+                            "</a>"
                         )
                         st.markdown(html_card, unsafe_allow_html=True)
-
-                        # 4. Botão de interação fica logo abaixo
-                        st.button(
-                            display_name,
-                            key=f"dex_btn_{dex_num}_{index}",
-                            help=f"#{dex_num} • {p_name}",
-                            on_click=select_pokedex_entry,
-                            args=(dex_num,),
-                            use_container_width=True, # Faz o botão alinhar com a moldura
-                        )
             st.markdown("</div>", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
