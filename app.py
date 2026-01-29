@@ -3425,150 +3425,83 @@ def render_intro_screen() -> None:
     start_src = comp_img_data_uri("Assets/start.png")
     render_bgm("music/menu.mp3", volume=0.25)
 
-    st.markdown(
-        """
-        <style>
-        .gaal-intro{
-            position: fixed;
-            inset: 0;                 /* top:0 right:0 bottom:0 left:0 */
-            width: 100vw;
-            height: 100vh;
-            background: #000;
-            overflow: hidden;
-            margin: 0;
-            padding: 0;
-            z-index: 9999;
-        }
-        input[placeholder="__gaal_intro__"]{
-          position: fixed !important;
-          left: -10000px !important;
-          top: -10000px !important;
-          width: 1px !important;
-          height: 1px !important;
-          opacity: 0 !important;
-        }
-        
-    
-        /* TÍTULO: ocupa a tela inteira */
-        .gaal-intro-title{
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;      /* "contain" = aparece inteiro | se quiser preencher mais, use cover */
-            object-position: center;
-            display: block;
-            z-index: 1;
-            filter: drop-shadow(0 16px 26px rgba(0,0,0,0.75));
-        }
-    
-        /* PRESS START: fica por cima */
-        .gaal-intro-start{
-            position: absolute;
-            left: 50%;
-            bottom: 8vh;
-            transform: translateX(-50%);
-            width: min(70vw, 720px);
-            height: auto;
-            display: block;
-            z-index: 2;               /* maior que o título = fica na frente */
-            animation: gaalIntroBlink 1.05s ease-in-out infinite;
-            pointer-events: none;     /* evita “capturar” clique */
-        }
-    
-        @keyframes gaalIntroBlink{
-            0%, 45% { opacity: 0.1; }
-            55%, 100% { opacity: 0.95; }
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.text_input(
-        " ",
-        key="__intro_key_capture__",
-        placeholder="__gaal_intro__",
-        label_visibility="collapsed",
-    )
-
-    st.markdown(
-        f"""
-        <div class="gaal-intro">
-            <img class="gaal-intro-title" src="{title_src}" alt="Ga'Al" />
-            <img class="gaal-intro-start" src="{start_src}" alt="Press Start" />
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    components.html(
-        """
-        <script>
-        (function () {
-          const root = window.parent || window;
-          const doc = (root.document || document);
-        
-          if (root.__gaalIntroHooked) return;
-          root.__gaalIntroHooked = true;
-        
-          function triggerIntro(){
-            if (root.__gaalIntroTriggered) return;
-            root.__gaalIntroTriggered = true;
-            const url = new URL(root.location.href);
-            url.searchParams.set("intro", "1");
-            root.location.replace(url.toString());
-          }
-        
-          function focusHiddenInput(){
-            try{
-              const inp = doc.querySelector('input[placeholder="__gaal_intro__"]');
-              if (!inp) return false;
-              inp.focus({ preventScroll: true });
-              return (doc.activeElement === inp);
-            }catch(e){
-              return false;
-            }
-          }
-        
-          // tenta focar repetidamente por ~3s (Streamlit pode renderizar/reatribuir)
-          let tries = 0;
-          const focusTimer = setInterval(() => {
-            tries += 1;
-            if (focusHiddenInput() || tries > 60) clearInterval(focusTimer);
-          }, 50);
-        
-          // re-tenta foco se o usuário mexer
-          doc.addEventListener("mousemove", () => focusHiddenInput(), { capture:true });
-          doc.addEventListener("mousedown", () => focusHiddenInput(), { capture:true });
-        
-          // clique: foca e avança
-          doc.addEventListener("click", () => { focusHiddenInput(); triggerIntro(); }, { once:true, capture:true });
-        
-          // teclado: qualquer tecla avança
-          doc.addEventListener("keydown", () => { triggerIntro(); }, { once:true, capture:true });
-        
-          // mobile
-          doc.addEventListener("touchstart", () => { triggerIntro(); }, { once:true, capture:true });
-        
-        })();
-        </script>
-
-        """,
-        height=0,
-    )
-
-
-# --- TELA DE LOGIN ---
-if not st.session_state.get("intro_done"):
-    # se qualquer tecla foi digitada (input invisível recebeu texto), avança
-    if (st.session_state.get("__intro_key_capture__") or "").strip():
+    def start_game():
         st.session_state["intro_done"] = True
-        st.rerun()
 
+    st.markdown(f"""
+        <style>
+        /* Fundo Preto */
+        .gaal-intro {{
+            position: fixed; inset: 0; width: 100vw; height: 100vh;
+            background: #000; z-index: 1;
+            /* Mantemos Flex apenas para o Título ficar no meio/topo */
+            display: flex; flex-direction: column; 
+            align-items: center; justify-content: center;
+        }}
+        
+        /* Título - Fica centralizado ou um pouco pra cima */
+        .gaal-intro-title {{
+            max-width: 80%; height: auto; 
+            margin-bottom: 100px; /* Empurra um pouco pra cima para dar espaço ao Start */
+            filter: drop-shadow(0 0 20px rgba(255,255,255,0.2));
+            pointer-events: none;
+        }}
+
+        /* --- A IMAGEM "PRESS START" (VISUAL) --- */
+        /* AGORA FIXAMOS ELA NO FUNDO, IGUAL AO INPUT */
+        .intro-blink {{
+            position: fixed !important;
+            bottom: 15% !important;        /* MESMA ALTURA DO INPUT */
+            left: 50% !important;          /* MESMO ALINHAMENTO DO INPUT */
+            transform: translateX(-50%) !important;
+            width: 180px; 
+            opacity: 0.8;
+            animation: blink-animation 1s steps(2, start) infinite;
+            pointer-events: none; /* O clique passa por ela e vai pro input */
+            z-index: 2; /* Fica atrás do input (que é 9999), mas acima do fundo */
+        }}
+        
+        @keyframes blink-animation {{ to {{ visibility: hidden; }} }}
+
+        /* --- O INPUT (ÁREA DE CLIQUE INVISÍVEL) --- */
+        div[data-testid="stTextInput"] {{
+            position: fixed !important;
+            bottom: 15% !important;        /* ALINHADO COM A IMAGEM */
+            left: 50% !important;          /* ALINHADO COM A IMAGEM */
+            transform: translateX(-50%) !important;
+            width: 300px !important;       /* Largura maior que a imagem para garantir o clique */
+            height: 100px !important;      /* Altura generosa */
+            z-index: 9999 !important;      /* Fica EM CIMA de tudo */
+            opacity: 0 !important;         /* Invisível */
+            cursor: pointer !important;
+        }}
+        
+        /* Garante que o cursor de mãozinha apareça */
+        div[data-testid="stTextInput"] input {{
+            cursor: pointer !important;
+        }}
+        </style>
+
+        <div class="gaal-intro">
+            <img class="gaal-intro-title" src="{title_src}">
+            <img src="{start_src}" class="intro-blink">
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.text_input(
+        "Start", 
+        key="intro_console_input", 
+        label_visibility="collapsed",
+        on_change=start_game
+    )
+
+# --- TELA DE INTRODUÇÃO (PRESS START) ---
+if not st.session_state.get("intro_done"):
     render_intro_screen()
-    st.stop()
+    st.stop()  # Para o script aqui até o usuário apertar Enter
 
 
-# --- TELA DE LOGIN ---
+# --- TELA DE LOGIN (Só executa se intro_done for True) ---
 if 'trainer_name' not in st.session_state:
     render_bgm("music/login.mp3", volume=0.25)
 
