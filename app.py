@@ -2400,7 +2400,7 @@ def render_ds_tools_nav(selected_view: str):
         display: flex !important;
         justify-content: center !important;
         align-items: center !important;
-        gap: 86px !important;
+        gap: 120px !important;
       }
 
       /* cada opção (label) */
@@ -2421,16 +2421,8 @@ def render_ds_tools_nav(selected_view: str):
       }
 
       .ds-topnav div[data-testid="stRadio"] [role="radiogroup"] > label::before{
-        content: "" !important;
-        position: absolute !important;
-        inset: 0 !important;
-        border-radius: 999px !important;
-        background: radial-gradient(ellipse at center, rgba(255, 200, 64, 0.55), rgba(255, 200, 64, 0.05) 70%, transparent 100%) !important;
-        opacity: 0 !important;
-        filter: blur(0.4px) !important;
-        transform: scaleX(0.85) !important;
-        transition: opacity 140ms ease, transform 140ms ease !important;
-        z-index: -1 !important;
+        content: none !important;
+        display: none !important;
       }
 
       /* o texto do radio no Streamlit geralmente fica em p */
@@ -2459,8 +2451,7 @@ def render_ds_tools_nav(selected_view: str):
 
       .ds-topnav div[data-testid="stRadio"] [role="radiogroup"] > label:hover::before,
       .ds-topnav div[data-testid="stRadio"] [role="radiogroup"] > label[data-checked="true"]::before{
-        opacity: 1 !important;
-        transform: scaleX(1) !important;
+        display: none !important;
       }
 
       /* esconde o circulinho padrão do Streamlit */
