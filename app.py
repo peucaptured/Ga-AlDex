@@ -492,13 +492,22 @@ def render_bgm(track_path: str, volume: float = 0.35) -> None:
   a.volume = VOL;
 
   if (a.dataset.src !== SRC) {
-    a.dataset.src = SRC;
-    a.innerHTML = "";
-    const s = document.createElement("source");
-    s.src = SRC;
-    a.appendChild(s);
-    a.load();
-  }
+      // PARA a faixa anterior
+      try { a.pause(); } catch(e) {}
+      try { a.currentTime = 0; } catch(e) {}
+    
+      // limpa fontes antigas e descarrega
+      a.innerHTML = "";
+      a.removeAttribute("src");
+      a.load();
+    
+      // carrega a nova faixa
+      a.dataset.src = SRC;
+      const s = document.createElement("source");
+      s.src = SRC;
+      a.appendChild(s);
+      a.load();
+    }
 
   async function tryPlay() {
     try {
