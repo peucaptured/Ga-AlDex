@@ -55,6 +55,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 # Utils
 # ----------------------------
 def _norm(s: str) -> str:
+    import re
+    import unicodedata
+
     s = (s or "").strip().lower()
     s = unicodedata.normalize("NFKD", s)
     s = "".join(ch for ch in s if not unicodedata.combining(ch))
@@ -2653,15 +2656,30 @@ def render_compendium_ginasios() -> None:
             st.session_state["comp_gym_focus"] = "__visao__"
             st.rerun()
 
-        opts = ["__visao__", "lider", "vice"]
-        labels2 = {"__visao__": "Visão", "lider": "Líder", "vice": "Vice-líder"}
-        focus = st.radio(
+        focus_options = ["Visão", "Líder", "Vice-líder"]
+        focus_map = {
+            "Visão": "__visao__",
+            "Líder": "lider",
+            "Vice-líder": "vice",
+        }
+        reverse_focus_map = {v: k for k, v in focus_map.items()}
+        
+        current_label = reverse_focus_map.get(focus_now, "Visão")
+        
+        focus_label = st.selectbox(
             "Foco",
-            opts,
-            index=opts.index(focus_now) if focus_now in opts else 0,
-            key="comp_gym_focus_pick",
-            format_func=lambda v: labels2.get(v, v),
+            options=focus_options,
+            index=focus_options.index(current_label),
+            key="comp_gym_focus_sel",
+            label_visibility="collapsed",
         )
+        
+        new_focus = focus_map[focus_label]
+        
+        if new_focus != st.session_state["comp_gym_focus"]:
+            st.session_state["comp_gym_focus"] = new_focus
+            st.rerun()
+
         if focus != st.session_state["comp_gym_focus"]:
             st.session_state["comp_gym_focus"] = focus
             st.rerun()
