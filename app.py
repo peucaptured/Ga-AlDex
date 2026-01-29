@@ -3517,6 +3517,9 @@ def render_intro_screen() -> None:
             url.searchParams.set("intro", "1");
             root.location.replace(url.toString());
           }
+          setTimeout(() => {
+              triggerIntro();
+            }, 5000);
     
           function focusHiddenInput(){
             try{
