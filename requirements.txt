@@ -15,5 +15,7 @@ scikit-learn
 reportlab
 PyPDF2
 python-docx
+numpy
 
 st-click-detector
+
