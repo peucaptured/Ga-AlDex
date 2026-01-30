@@ -3436,11 +3436,50 @@ def _npc_pokemon_ids_to_names(ids: list[str]) -> list[str]:
         names.append(pid_str)
     return names
 
+def _npc_user_pokemon_names(user_data: dict) -> list[str]:
+    caught = user_data.get("caught") or []
+    if not isinstance(caught, list):
+        caught = []
+
+    names: list[str] = []
+    if caught:
+        for pid in caught:
+            pid_str = str(pid).strip()
+            if not pid_str:
+                continue
+            if pid_str.startswith("EXT:"):
+                names.append(pid_str.replace("EXT:", "").strip())
+                continue
+            if pid_str.isdigit():
+                if df is not None:
+                    row = df[df["Nº"].astype(str) == pid_str]
+                    if not row.empty:
+                        names.append(str(row.iloc[0]["Nome"]))
+                        continue
+                names.append(pid_str)
+                continue
+            names.append(pid_str)
+        return names
+
+    raw = user_data.get("npc_pokemons")
+    if isinstance(raw, list):
+        cleaned = []
+        for p in raw:
+            ps = str(p).strip()
+            if ps:
+                cleaned.append(ps)
+        if cleaned:
+            return cleaned
+
+    return names
+
 def _ensure_npc_user_payload(npc_name: str, npc_obj: dict) -> dict:
-    npc_ids = _npc_pokemon_names_to_ids(_npc_pokemon_list(npc_obj))
+    npc_names = _npc_pokemon_list(npc_obj)
+    npc_ids = _npc_pokemon_names_to_ids(npc_names)
     payload = get_empty_user_data()
     payload["caught"] = npc_ids
     payload["seen"] = npc_ids.copy()
+    payload["npc_pokemons"] = npc_names
     payload["npc_user"] = True
     payload["npc_name"] = npc_name
     return payload
@@ -3489,26 +3528,33 @@ def _sync_npc_users_and_overrides(npc_map: dict[str, dict]) -> dict[str, dict]:
         if not isinstance(data, dict) or not data.get("npc_user"):
             continue
 
-        npc_ids = data.get("caught") or []
-        if not npc_ids:
-            fallback_ids = _npc_pokemon_names_to_ids(_npc_pokemon_list(npc_obj))
+        npc_names = _npc_user_pokemon_names(data)
+        if not npc_names:
+            fallback_names = _npc_pokemon_list(npc_obj)
+            fallback_ids = _npc_pokemon_names_to_ids(fallback_names)
             if fallback_ids:
                 data["caught"] = fallback_ids
                 data["seen"] = list(dict.fromkeys((data.get("seen") or []) + fallback_ids))
+                data["npc_pokemons"] = fallback_names
                 try:
                     if entry.get("row"):
                         sheet.update_cell(entry["row"], 2, json.dumps(data))
                 except Exception:
                     pass
-                npc_ids = data.get("caught") or []
+                npc_names = fallback_names
 
-        npc_names = _npc_pokemon_ids_to_names(npc_ids)
         if npc_names:
+            if data.get("npc_pokemons") != npc_names:
+                data["npc_pokemons"] = npc_names
+                try:
+                    if entry.get("row"):
+                        sheet.update_cell(entry["row"], 2, json.dumps(data))
+                except Exception:
+                    pass
             npc_obj["pokemons"] = npc_names
             npc_obj["pokemons_conhecidos"] = npc_names
 
     return npc_map
-
 def render_login_menu(trainer_name: str, user_data: dict):
     caught_count = len(user_data.get("caught", []) or [])
     badge_count = int(user_data.get("badges", 0) or 0)
@@ -5318,6 +5364,16 @@ if st.sidebar.button("🚪 Sair (Logout)"):
     del st.session_state['trainer_name']
     st.rerun()
 
+if trainer_name == "Ezenek":
+    if st.sidebar.button("🔄 Atualizar NPCs"):
+        try:
+            comp_data = comp_load()
+            comp_data["npcs"] = _sync_npc_users_and_overrides(comp_data.get("npcs") or {})
+            st.session_state["npc_sync_overrides"] = comp_data.get("npcs") or {}
+            st.sidebar.success("NPCs atualizados.")
+        except Exception as e:
+            st.sidebar.error(f"Falha ao atualizar NPCs: {e}")
+
 if st.sidebar.button("🔄 Recarregar Excel"):
     st.session_state['df_data'], st.session_state['cols_map'] = load_excel_data()
     st.rerun()
@@ -6848,7 +6904,9 @@ def comp_load() -> dict:
                 if not dst["sections"].get(sec):
                     dst["sections"][sec] = obj["sections"][sec]
 
-    data["npcs"] = _sync_npc_users_and_overrides(data.get("npcs") or {})
+    if "npc_sync_overrides" in st.session_state:
+        data["npcs"] = st.session_state["npc_sync_overrides"]
+        
     return data
 
 
