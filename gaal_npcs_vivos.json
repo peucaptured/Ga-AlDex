@@ -1054,7 +1054,7 @@
         "Ginásio": "Ginásio Local\n\nLíder: Roxie\n\nTipo: Veneno\n\nEm Kobicha, o ginásio é ponto de encontro e válvula de escape: jovens estudam, treinam e transformam rivalidades em algo que parece mais justo do que a disputa por terras. O ar tem o peso de laboratório e oficina ao mesmo tempo — um lugar onde a coragem se testa e a reputação se constrói."
       }
     },
-    "Condessa Pixie de Laverre": {
+    "Pixie": {
       "ocupacao": "Líder de Ginásio de Gamborre",
       "idade": "38 anos",
       "origem": "Kalos",
@@ -1087,22 +1087,6 @@
       "sections": {
         "História": "",
         "Ginásio": "Tipo: Fada  |  Líder: Pixie  |  Vice-líder: Lancelot\n\nO ginásio de Gamborre virou parte do projeto de reconstrução. Entre ruínas e jardins planejados, a cidade tenta costurar um medievo elegante com o contemporâneo. Pixie trata cada vitória como prova de que Gamborre pode voltar a ser grande; Lancelot, veterano de Galar, mantém a disciplina dos desafios e dá ao local a reputação de não perdoar erros táticos."
-      }
-    },
-    "Victória": {
-      "ocupacao": "Líder de Ginásio de Malva",
-      "idade": "41 anos",
-      "origem": "Ga'Al",
-      "status": "Ativo",
-      "img": "",
-      "pokemons": [
-        "Drampa",
-        "Hydregon",
-        "Dragonite"
-      ],
-      "sections": {
-        "História": "Nichos ecológicos e sobre como eles se desenvolvem\n\nPesquisa: Nichos ecológicos e sobre como eles se desenvolvem",
-        "Ginásio": "Líder: Vitória  |  Tipo: Dragão  |  Localização: Malva (núcleo urbano).\n\nVitória conduz o ginásio como extensão do seu método: cada batalha é, ao mesmo tempo, confronto e aula. Ela costuma anunciar o que pretende fazer para observar a reação do desafiante e, ao final, entrega um relatório direto sobre decisões, tempo de troca e leitura de campo — um estilo que atrai treinadores sérios e irrita quem espera espetáculo fácil.\n\nDurante a expansão da Team Keneze no Baixo Deserto, Vitória ganhou respeito por agir onde outros recuavam: ao encontrar pessoas marcadas, oferecia água, comida, tratamento médico e acompanhamento psicológico, e buscava reinseri-las com dignidade. Para sustentar isso em uma cidade de receita irregular, contraiu empréstimos com a Associação de Batalha; hoje, o endividamento é uma sombra constante sobre o cargo. Seu vice, Draco, carrega devoção quase religiosa à líder — e a condição de que só será ‘oficial’ quando conseguir derrotá-la em batalha reconhecida virou história repetida em filas de inscrição."
       }
     },
     "Vittorio \"Ace\" Moretti": {
@@ -1148,7 +1132,7 @@
       }
     },
     "Clay": {
-      "ocupacao": "Treinadora de Obsidian",
+      "ocupacao": "Vice Líder de Ginásio de Obsidian",
       "idade": "24",
       "origem": "Obsidian",
       "status": "Ativo",
