@@ -3308,11 +3308,242 @@ def render_public_log_fragment(db, rid):
                     st.write(f"🔹 **{by}** ({et}): {pl}") # 
 
 
+import os, json, math
+from PIL import Image
+import streamlit as st
+
 FLOOR_PREFIXES = ("agua", "areia", "grama", "pedra", "terra", "slope")
+
+def _is_blueish(r, g, b):
+    # "água" tende a ter B alto e G >= R
+    return (b > 90) and (b > r + 20) and (b > g + 10)
+
+def _brightness(r, g, b):
+    return (0.2126*r + 0.7152*g + 0.0722*b)
+
+def _tile_stats(tile: Image.Image):
+    # retorna métricas úteis p/ classificar
+    px = tile.convert("RGBA").getdata()
+    total = 0
+    blue = 0
+    br_sum = 0.0
+    r_sum = g_sum = b_sum = 0.0
+
+    for r, g, b, a in px:
+        if a < 10:
+            continue
+        total += 1
+        r_sum += r; g_sum += g; b_sum += b
+        br_sum += _brightness(r, g, b)
+        if _is_blueish(r, g, b):
+            blue += 1
+
+    if total == 0:
+        return {"blue_frac": 0.0, "avg": (0,0,0), "bright": 0.0}
+
+    return {
+        "blue_frac": blue / total,
+        "avg": (r_sum/total, g_sum/total, b_sum/total),
+        "bright": br_sum / total
+    }
+
+def _edge_blue_score(tile: Image.Image, band=4):
+    """
+    Mede "quão água" é cada borda (N,E,S,W) olhando uma faixa de pixels.
+    Retorna 4 floats em [0..1].
+    """
+    im = tile.convert("RGBA")
+    w, h = im.size
+    pix = im.load()
+
+    def score_region(x0, y0, x1, y1):
+        total = 0
+        blue = 0
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                r, g, b, a = pix[x, y]
+                if a < 10:
+                    continue
+                total += 1
+                if _is_blueish(r, g, b):
+                    blue += 1
+        return (blue / total) if total else 0.0
+
+    top    = score_region(0, 0, w, min(band, h))
+    bottom = score_region(0, max(0, h-band), w, h)
+    left   = score_region(0, 0, min(band, w), h)
+    right  = score_region(max(0, w-band), 0, w, h)
+    return (top, right, bottom, left)  # N, E, S, W
+
+def _classify(tile: Image.Image):
+    stt = _tile_stats(tile)
+    blue = stt["blue_frac"]
+    r, g, b = stt["avg"]
+    bright = stt["bright"]
+
+    # Heurística simples, mas funciona bem com atlas desse tipo:
+    if blue > 0.55:
+        # água: separa deep vs shallow pelo brilho
+        return "water_shallow" if bright > 120 else "water_deep"
+
+    # não-água: separa por cor média
+    if g > r + 20 and g > b:
+        return "grass"
+    if r > g + 15 and r > b + 10:
+        return "dirt"
+    if r > 140 and g > 120 and b < 140:
+        return "sand"
+    if abs(r-g) < 15 and abs(g-b) < 15 and bright < 140:
+        return "rock"
+
+    return "detail"
+
+def _pick_best_shore_tiles(all_tiles):
+    """
+    Cria um dicionário shore_variants[mask] = [tile_img, tile_img, ...]
+    mask usa bits N,E,S,W (1 = vizinho é terra; 0 = vizinho é água)
+    """
+    shore_candidates = []
+    deep_candidates = []
+    shallow_candidates = []
+
+    for t in all_tiles:
+        cat = t["cat"]
+        edges = t["edges"]  # N,E,S,W blue scores
+
+        if cat.startswith("water"):
+            # é água; se todas bordas bem "água", é candidato a miolo
+            if all(e > 0.75 for e in edges):
+                (shallow_candidates if cat == "water_shallow" else deep_candidates).append(t)
+            else:
+                shore_candidates.append(t)
+
+    # se o atlas não tiver muitos shore tiles, usa os "não tão perfeitos"
+    if len(shore_candidates) < 8:
+        shore_candidates = [t for t in all_tiles if t["cat"].startswith("water")]
+
+    shore_variants = {m: [] for m in range(16)}
+
+    # para cada máscara, escolhe os melhores tiles por "match" das bordas
+    for m in range(16):
+        scored = []
+        for t in shore_candidates:
+            n,e,s,w = t["edges"]
+            # Queremos:
+            #  - onde m tem bit=1 (terra), borda deve ser MENOS água (1-score)
+            #  - onde m tem bit=0 (água), borda deve ser MAIS água (score)
+            target = [
+                (1-n) if (m & 1) else n,         # N
+                (1-e) if (m & 2) else e,         # E
+                (1-s) if (m & 4) else s,         # S
+                (1-w) if (m & 8) else w,         # W
+            ]
+            match = sum(target) / 4.0
+            scored.append((match, t))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        # pega top 3 para variação
+        shore_variants[m] = [x[1] for x in scored[:3]]
+
+    return deep_candidates, shallow_candidates, shore_variants
 
 @st.cache_resource
 def load_map_assets():
-    base_path = "Assets/Texturas"
+    # Seus arquivos (como você falou)
+    atlas_png  = "Assets/tiles 1024.png"
+    atlas_json = "Assets/atlas_more_detail_1024.json"
+
+    # Fallback: se não achar, usa o sistema antigo
+    base_path_old = "Assets/Texturas"
+
+    # =========================================================
+    # 1) MODO ATLAS (recomendado)
+    # =========================================================
+    if os.path.exists(atlas_png) and os.path.exists(atlas_json):
+        sheet = Image.open(atlas_png).convert("RGBA")
+        data = json.load(open(atlas_json, "r", encoding="utf-8"))
+        frames = data.get("frames", {})
+
+        # recorta todos os tiles (tile_000..tile_224)
+        all_tiles = []
+        for tile_name, fr in frames.items():
+            x, y, w, h = int(fr["x"]), int(fr["y"]), int(fr["w"]), int(fr["h"])
+            tile = sheet.crop((x, y, x+w, y+h)).convert("RGBA")
+
+            cat = _classify(tile)
+            edges = _edge_blue_score(tile, band=max(2, w // 10))
+
+            all_tiles.append({
+                "id": tile_name,
+                "img": tile,
+                "cat": cat,
+                "edges": edges,
+            })
+
+        # monta o autotile de água (deep/shallow/shore por máscara)
+        deep_tiles, shallow_tiles, shore_by_mask = _pick_best_shore_tiles(all_tiles)
+
+        # salva um JSON de labels (opcional, mas você pediu)
+        labels_out = {
+            "meta": {
+                "atlas_png": atlas_png,
+                "atlas_json": atlas_json,
+                "note": "labels gerados automaticamente por heurística"
+            },
+            "tiles": {}
+        }
+        for t in all_tiles:
+            labels_out["tiles"][t["id"]] = {
+                "category": t["cat"],
+                "edge_blue": [round(v, 3) for v in t["edges"]],
+            }
+
+        try:
+            with open("Assets/atlas_labels.json", "w", encoding="utf-8") as f:
+                json.dump(labels_out, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass  # se não tiver permissão de escrita, só ignora
+
+        # Agora devolvemos assets como seu código espera: dict[str, PIL.Image]
+        assets = {}
+
+        # --- água "miolo" (variantes) ---
+        # keys com "__" viram variantes automaticamente no seu render (floor_variants)
+        for i, t in enumerate(deep_tiles[:8]):  # limita pra não explodir memória
+            img = t["img"].resize((TILE_SIZE, TILE_SIZE), Image.Resampling.NEAREST)
+            assets[f"agua_deep__v{i:02d}"] = img
+
+        for i, t in enumerate(shallow_tiles[:8]):
+            img = t["img"].resize((TILE_SIZE, TILE_SIZE), Image.Resampling.NEAREST)
+            assets[f"agua_shallow__v{i:02d}"] = img
+
+        # --- água bordas por máscara 0..15 (N,E,S,W) ---
+        for m in range(16):
+            variants = shore_by_mask.get(m, [])
+            for i, t in enumerate(variants):
+                img = t["img"].resize((TILE_SIZE, TILE_SIZE), Image.Resampling.NEAREST)
+                assets[f"agua_shore_{m:02d}__v{i:02d}"] = img
+
+        # --- chão básico: pega algumas amostras por categoria ---
+        def take(cat, base_key, limit=12):
+            picks = [t for t in all_tiles if t["cat"] == cat][:limit]
+            for i, t in enumerate(picks):
+                img = t["img"].resize((TILE_SIZE, TILE_SIZE), Image.Resampling.NEAREST)
+                assets[f"{base_key}__v{i:02d}"] = img
+
+        take("grass", "grama_1", 18)
+        take("dirt",  "terra_1", 18)
+        take("sand",  "areia_1", 18)
+        take("rock",  "pedra_1", 18)
+
+        # objetos/detalhes (se quiser usar depois)
+        take("detail", "detail", 30)
+
+        return assets
+
+    # =========================================================
+    # 2) FALLBACK (seu modo antigo com vários PNGs)
+    # =========================================================
     asset_names = [
         "agua_1", "agua_2", "agua_3", "areia_1", "areia_2", "areia_3",
         "brush_1", "brush_2", "estalagmite_1", "grama_1", "grama_2", "grama_3",
@@ -3320,6 +3551,16 @@ def load_map_assets():
         "slope_1", "slope_2", "slope_3", "slope_4", "terra_1", "terra_2", "terra_3",
         "tree_1", "tree_2", "tree_3", "wall_1"
     ]
+
+    assets = {}
+    for name in asset_names:
+        path = f"{base_path_old}/{name}.png"
+        if os.path.exists(path):
+            img = Image.open(path).convert("RGBA")
+            if img.size != (TILE_SIZE, TILE_SIZE):
+                img = img.resize((TILE_SIZE, TILE_SIZE), Image.Resampling.NEAREST)
+            assets[name] = img
+    return assets
 
     def pick_solid_color(img: Image.Image) -> tuple[int, int, int]:
         counts = {}
@@ -4832,16 +5073,20 @@ def draw_tile_asset(img, r, c, tiles, assets, rng):
     asset_key = None
 
     # LÓGICA DE SELEÇÃO DE ASSET
-    if t == "water":
-        # Verifica se há terra/grama/areia ao redor (Margem)
-        is_shore = False
-        for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
+    if t_type == "water" or t_type == "sea":
+    # máscara N,E,S,W (1 = vizinho é terra; 0 = vizinho é água)
+        land_mask = 0
+        for bit, (dr, dc) in enumerate([(-1,0), (0,1), (1,0), (0,-1)]):  # N,E,S,W
             nr, nc = r + dr, c + dc
             if 0 <= nr < grid and 0 <= nc < grid:
                 if tiles[nr][nc] not in ["water", "sea"]:
-                    is_shore = True
-                    break
-        asset_key = "agua_2" if is_shore else rng.choice(["agua_1", "agua_3"])
+                    land_mask |= (1 << bit)
+    
+        # escolhe base: miolo ou borda
+        if land_mask == 0:
+            asset_to_draw = "agua_deep"   # vai pegar variantes agua_deep__v..
+        else:
+            asset_to_draw = f"agua_shore_{land_mask:02d}"  # agua_shore_XX__v..
 
     elif t == "grass":
         asset_key = rng.choice(["grama_1", "grama_2", "grama_3"])
@@ -4927,14 +5172,20 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
             asset_to_draw = None
             
             if t_type == "water" or t_type == "sea":
-                # Lógica de Suavização: Se houver terra vizinha, usa agua_2 (margem)
-                is_margin = False
-                for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
-                    if 0 <= r+dr < grid and 0 <= c+dc < grid:
-                        if tiles[r+dr][c+dc] not in ["water", "sea"]:
-                            is_margin = True
-                            break
-                asset_to_draw = "agua_2" if is_margin else rng.choice(["agua_1", "agua_3"])
+                # máscara N,E,S,W (1 = vizinho é terra; 0 = vizinho é água)
+                land_mask = 0
+                for bit, (dr, dc) in enumerate([(-1,0), (0,1), (1,0), (0,-1)]):  # N,E,S,W
+                    nr, nc = r + dr, c + dc
+                    if 0 <= nr < grid and 0 <= nc < grid:
+                        if tiles[nr][nc] not in ["water", "sea"]:
+                            land_mask |= (1 << bit)
+            
+                # 0 = água cercada de água (miolo). !=0 = borda/canto conforme máscara
+                if land_mask == 0:
+                    asset_to_draw = "agua_deep"  # vai pegar variantes agua_deep__v..
+                else:
+                    asset_to_draw = f"agua_shore_{land_mask:02d}"  # agua_shore_XX__v..
+
             
             elif t_type in ["sand", "stone", "dirt", "grass"]:
                 # Variação aleatória do próprio chão
