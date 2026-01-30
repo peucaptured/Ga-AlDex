@@ -2849,9 +2849,12 @@ def render_compendium_ginasios() -> None:
     ex_list = clean
     
     # 3 colunas igual Locais
-    st.markdown("<div class='ds-gym-shell'>", unsafe_allow_html=True)
+    lore_html = "".join(lore_html_parts) or "<div class='ds-history'>(Sem lore cadastrada)</div>"
+    st.markdown(f"<div class='ds-lore-scroll'>{lore_html}</div>", unsafe_allow_html=True)
+    
+    st.markdown("</div>", unsafe_allow_html=True)  # fecha ds-gym-shell
 
-    col_left, col_center, col_right = st.columns([1.05, 1.35, 2.15], gap="large")
+
 
     # ============================
     # ESQUERDA: seletor + pokémons
@@ -9122,8 +9125,6 @@ body:has(.ds-home),
             st.markdown(f"<div class='ds-lore-scroll'>{lore_html}</div>", unsafe_allow_html=True)
 
 
-            # Conteúdo rolável (fecha)
-            st.markdown("</div>", unsafe_allow_html=True)  # ds-lore-scroll
 
         st.markdown("</div>", unsafe_allow_html=True)  # ds-loc-shell
 
