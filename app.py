@@ -3603,6 +3603,28 @@ def _sync_npc_users_and_overrides(npc_map: dict[str, dict]) -> dict[str, dict]:
 def render_login_menu(trainer_name: str, user_data: dict):
     caught_count = len(user_data.get("caught", []) or [])
     badge_count = int(user_data.get("badges", 0) or 0)
+    profile = user_data.get("trainer_profile", {})
+    chosen_avatar, chosen_path = get_selected_trainer_avatar(user_data)
+    avatar_src = comp_img_data_uri(chosen_path) if chosen_path else ""
+    badge_dir = os.path.join("Assets", "insignias")
+    badge_files = []
+    if os.path.isdir(badge_dir):
+        badge_files = [
+            f
+            for f in os.listdir(badge_dir)
+            if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
+        ]
+    badge_paths = {os.path.splitext(f)[0]: os.path.join(badge_dir, f) for f in badge_files}
+    selected_badges = profile.get("badges", [])
+    badge_srcs = [
+        comp_img_data_uri(badge_paths[badge_key])
+        for badge_key in selected_badges
+        if badge_paths.get(badge_key)
+    ]
+    party_ids = [str(p) for p in (user_data.get("party") or [])]
+    party_sprites = [
+        pokemon_pid_to_image(pid, mode="sprite", shiny=False) for pid in party_ids
+    ]
 
     st.markdown(
         """
@@ -3713,6 +3735,66 @@ def render_login_menu(trainer_name: str, user_data: dict):
             border: 2px solid #166534;
             box-shadow: inset 0 -2px 0 rgba(0,0,0,0.2);
         }
+        .fr-login-profile {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+            align-items: flex-start;
+        }
+        .fr-login-profile-col {
+            flex: 1;
+        }
+        .fr-login-profile-title {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+            color: #1f3b73;
+        }
+        .fr-login-avatar {
+            width: 72px;
+            height: 72px;
+            border: 2px solid #3f3f8f;
+            border-radius: 10px;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 -2px 0 rgba(0,0,0,0.15);
+        }
+        .fr-login-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated;
+        }
+        .fr-login-badges,
+        .fr-login-party {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .fr-login-badges img {
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            border: 1px solid rgba(15,23,42,0.35);
+            background: #ffffff;
+            padding: 2px;
+        }
+        .fr-login-party img {
+            width: 40px;
+            height: 40px;
+            image-rendering: pixelated;
+            border-radius: 8px;
+            border: 2px solid #1f3b73;
+            background: #ffffff;
+            padding: 2px;
+        }
+        .fr-login-empty {
+            font-size: 9px;
+            color: #475569;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -3735,6 +3817,29 @@ def render_login_menu(trainer_name: str, user_data: dict):
         st.rerun()
 
     st.markdown("<div class='fr-login-wrap'><div class='fr-login-layout'>", unsafe_allow_html=True)
+    badges_html = (
+        "".join(
+            f"<img src='{badge_src}' alt='Insígnia'>"
+            for badge_src in badge_srcs
+            if badge_src
+        )
+        if badge_srcs
+        else "<div class='fr-login-empty'>Sem insígnias</div>"
+    )
+    avatar_html = (
+        f"<div class='fr-login-avatar'><img src='{avatar_src}' alt='Avatar do treinador'></div>"
+        if avatar_src
+        else "<div class='fr-login-empty'>Sem avatar</div>"
+    )
+    party_html = (
+        "".join(
+            f"<img src='{sprite}' alt='Pokémon da party'>"
+            for sprite in party_sprites
+            if sprite
+        )
+        if party_sprites
+        else "<div class='fr-login-empty'>Party vazia</div>"
+    )
     st.markdown(
         f"""
         <div id='fr_continue_card' class='fr-login-card fr-login-continue-card'>
@@ -3752,6 +3857,22 @@ def render_login_menu(trainer_name: str, user_data: dict):
                     <div class='fr-login-value'>{len(user_data.get("seen", []))}</div>
                     <div class='fr-login-label'>BADGES</div>
                     <div class='fr-login-value'>{badge_count}</div>
+                </div>
+                <div class='fr-login-profile'>
+                    <div class='fr-login-profile-col'>
+                        <div class='fr-login-profile-title'>Avatar</div>
+                        {avatar_html}
+                    </div>
+                    <div class='fr-login-profile-col'>
+                        <div class='fr-login-profile-title'>Insígnias</div>
+                        <div class='fr-login-badges'>
+                            {badges_html}
+                        </div>
+                    </div>
+                </div>
+                <div class='fr-login-profile-title' style='margin-top: 10px;'>Party</div>
+                <div class='fr-login-party'>
+                    {party_html}
                 </div>
             </div>
         </div>
