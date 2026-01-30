@@ -576,6 +576,13 @@ except Exception:
 def load_move_db(excel_path: str) -> "MoveDB":
     return MoveDB.from_excel(excel_path, sheet_name="Golpes_MM")
 
+def _comp_mtime(p: str) -> float:
+    try:
+        return os.path.getmtime(p) if p and os.path.exists(p) else 0.0
+    except Exception:
+        return 0.0
+
+
 def render_move_creator(
     excel_path: str,
     state_key_prefix: str = "mc",
@@ -6337,11 +6344,6 @@ def load_compendium_gym_data_json(
     return {"gyms": gyms, "npcs_extra": npcs_extra}
     
     
-    def _comp_mtime(p: str) -> float:
-        try:
-            return os.path.getmtime(p) if p and os.path.exists(p) else 0.0
-        except Exception:
-            return 0.0
 
 
 
