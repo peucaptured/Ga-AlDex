@@ -11009,172 +11009,245 @@ if page == "Trainer Hub (Meus Pokémons)":
         user_data.setdefault("trainer_profile", {})
         profile = user_data["trainer_profile"]
 
-        uploaded_photo = st.file_uploader(
-            "Envie uma foto para recortar e buscar o seu avatar",
-            type=["png", "jpg", "jpeg", "webp"],
-            key="trainer_photo_upload",
-        )
+        if "show_trainer_uploader" not in st.session_state:
+            st.session_state["show_trainer_uploader"] = False
+        if "show_trainer_badges" not in st.session_state:
+            st.session_state["show_trainer_badges"] = False
 
-        cropped_image = None
-    if uploaded_photo is not None:
-        try:
-            raw_bytes = uploaded_photo.getvalue()
-            raw_image = Image.open(io.BytesIO(raw_bytes))
-            cropped_image = crop_center_square(raw_image)
-            st.image(cropped_image, caption="Pré-visualização (recorte central)", width=260)
-        except Exception:
-            st.error("Não foi possível ler essa imagem. Tente outro arquivo.")
+        storage_path = profile.get("photo_storage_path")
+        photo_bytes = download_storage_bytes(storage_path) if storage_path else None
+        if (not photo_bytes) and profile.get("photo_thumb_b64"):
+            try:
+                photo_bytes = base64.b64decode(profile["photo_thumb_b64"])
+            except Exception:
+                photo_bytes = None
 
-        c_photo_actions = st.columns([1, 1, 2])
-        
-        with c_photo_actions[0]:
-            if st.button("💾 Salvar foto", disabled=cropped_image is None):
-                # --- gera PNG cheio (para o Storage) ---
-                buffer_full = io.BytesIO()
-                cropped_image.convert("RGB").save(buffer_full, format="PNG")
-        
-                # --- gera thumb pequeno (para UI rápida / cabe no Sheets) ---
-                thumb = cropped_image.copy()
-                thumb.thumbnail((96, 96), Image.Resampling.LANCZOS)
-                buffer_thumb = io.BytesIO()
-                thumb.convert("RGB").save(buffer_thumb, format="PNG")
-        
-                # --- sobe a foto cheia pro Firebase Storage ---
-                db, bucket = init_firebase()
-                storage_path = f"trainer_photos/{safe_doc_id(trainer_name)}/profile.png"
-                upload_png_to_storage(bucket, buffer_full.getvalue(), storage_path)
-        
-                # --- salva só o path + thumb no user_data (Sheets não estoura) ---
-                profile["photo_storage_path"] = storage_path
-                profile["photo_thumb_b64"] = base64.b64encode(buffer_thumb.getvalue()).decode("utf-8")
-        
-                # nunca mais salvar a foto cheia em base64 no Sheets
-                profile.pop("photo_b64", None)
-        
-                profile["photo_updated_at"] = str(datetime.now())
-                save_data_cloud(trainer_name, user_data)
-        
-                st.success("Foto salva! Agora vamos sugerir avatares.")
-                st.rerun()
-        
-        with c_photo_actions[1]:
-            if st.button("🗑️ Remover foto"):
-                # apaga do Storage também
-                db, bucket = init_firebase()
-                old_path = profile.get("photo_storage_path")
-                if old_path:
-                    try:
-                        bucket.blob(old_path).delete()
-                    except Exception:
-                        pass
-        
-                profile.pop("photo_storage_path", None)
-                profile.pop("photo_b64", None)
-                profile.pop("photo_thumb_b64", None)
-                profile.pop("photo_updated_at", None)
-        
-                save_data_cloud(trainer_name, user_data)
-                st.success("Foto removida.")
-                st.rerun()
-        st.markdown("---")
-        st.subheader("🎭 Avatares sugeridos")
-        
-        catalog = build_trainer_avatar_catalog()
-        index_entries = build_trainer_avatar_index()
-        
-        if not catalog or not index_entries:
-            st.warning("Nenhum avatar encontrado na pasta trainer.")
-        else:
-            # carrega foto (Storage > thumb fallback)
-            photo_bytes = None
-            storage_path = profile.get("photo_storage_path")
-            if storage_path:
-                photo_bytes = download_storage_bytes(storage_path)
-        
-            if (not photo_bytes) and profile.get("photo_thumb_b64"):
-                try:
-                    photo_bytes = base64.b64decode(profile["photo_thumb_b64"])
-                except Exception:
-                    photo_bytes = None
-        
-            suggestions = []
-            best_default_by_base = {}
-        
-            if photo_bytes:
-                try:
-                    photo_img = Image.open(io.BytesIO(photo_bytes))
-                    suggestions, best_default_by_base = suggest_bases_and_best_skins(
-                        photo_img,
-                        index_entries,
-                        top_bases=5,
-                        per_base_limit=1,
-                    )
-                except Exception:
-                    suggestions, best_default_by_base = [], {}
-        
-            if not suggestions:
-                st.info("Sugestão inicial baseada na pasta trainer.")
-                suggestions = list(catalog.keys())[:5]
-                best_default_by_base = {}
-        
-            chosen_avatar = profile.get("avatar_choice")
-            cols = st.columns(min(5, len(suggestions)))
-        
-            for idx, base in enumerate(suggestions):
-                items = catalog.get(base, [])
-                if not items:
-                    continue
-        
-                names = [item["name"] for item in items]
-        
-                # default: (1) escolhido antes, (2) melhor skin sugerida para a base, (3) primeiro
-                default_name = chosen_avatar if chosen_avatar in names else best_default_by_base.get(base)
-                default_idx = names.index(default_name) if default_name in names else 0
-        
-                with cols[idx]:
-                    st.markdown(f"**{base.title()}**")
-                    selected_skin = st.selectbox(
-                        "Skin",
-                        names,
-                        index=default_idx,
-                        key=f"trainer_skin_{base}",
-                    )
-                    sel_path = next((i["path"] for i in items if i["name"] == selected_skin), items[0]["path"])
-                    st.image(sel_path, width=120)
-        
-                    if st.button("✅ Escolher", key=f"trainer_pick_{base}"):
-                        profile["avatar_choice"] = selected_skin
-                        profile["avatar_base"] = base
-                        save_data_cloud(trainer_name, user_data)
-                        st.success(f"Avatar selecionado: {selected_skin}.")
-                        st.rerun()
-        
-        
-
-
-        st.markdown("---")
-        st.subheader("🧵 Skins do personagem escolhido")
         chosen_avatar, chosen_path = get_selected_trainer_avatar(user_data)
-        if chosen_avatar and chosen_path:
-            chosen_base = profile.get("avatar_base") or _trainer_avatar_base(chosen_avatar)
-            base_items = catalog.get(chosen_base, [])
-            base_names = [item["name"] for item in base_items]
-            current_idx = base_names.index(chosen_avatar) if chosen_avatar in base_names else 0
-            st.image(chosen_path, width=140, caption=f"Atual: {chosen_avatar}")
-            new_skin = st.selectbox(
-                "Trocar skin (mesmo personagem)",
-                base_names,
-                index=current_idx,
-                key="trainer_skin_swap",
+        badge_dir = os.path.join("Assets", "insignias")
+        badge_files = []
+        if os.path.isdir(badge_dir):
+            badge_files = sorted(
+                f
+                for f in os.listdir(badge_dir)
+                if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
             )
-            if st.button("🔁 Atualizar skin"):
-                profile["avatar_choice"] = new_skin
-                profile["avatar_base"] = chosen_base
-                save_data_cloud(trainer_name, user_data)
-                st.success("Skin atualizada!")
-                st.rerun()
-        else:
-            st.info("Escolha um avatar nas sugestões acima para liberar as skins.")
+        badge_options = [os.path.splitext(f)[0] for f in badge_files]
+        badge_paths = {
+            os.path.splitext(f)[0]: os.path.join(badge_dir, f) for f in badge_files
+        }
+        selected_badges = profile.get("badges", [])
+
+        top_col_left, top_col_right = st.columns([2, 1])
+        with top_col_left:
+            st.markdown("#### 🖼️ Foto enviada")
+            if photo_bytes:
+                st.image(photo_bytes, width=220)
+            else:
+                st.info("Nenhuma foto enviada.")
+
+            st.markdown("#### 🎭 Avatar escolhido")
+            if chosen_avatar and chosen_path:
+                st.image(chosen_path, width=160, caption=chosen_avatar)
+            else:
+                st.info("Ainda não há avatar selecionado.")
+
+        with top_col_right:
+            st.markdown("#### 🏅 Insígnias")
+            if selected_badges:
+                badge_cols = st.columns(min(4, len(selected_badges)))
+                for idx, badge_key in enumerate(selected_badges):
+                    badge_path = badge_paths.get(badge_key)
+                    if not badge_path:
+                        continue
+                    with badge_cols[idx % len(badge_cols)]:
+                        st.image(badge_path, width=70)
+            else:
+                st.info("Nenhuma insígnia adicionada.")
+
+        action_cols = st.columns(2)
+        with action_cols[0]:
+            if st.button("📤 Enviar foto e construir avatar"):
+                st.session_state["show_trainer_uploader"] = True
+        with action_cols[1]:
+            if st.button("🏅 Adicionar insígnias"):
+                st.session_state["show_trainer_badges"] = True
+
+        if st.session_state["show_trainer_badges"]:
+            st.markdown("---")
+            st.subheader("🏅 Minhas insígnias")
+            if not badge_options:
+                st.info("Nenhuma insígnia encontrada em Assets/insignias.")
+            else:
+                badge_pick = st.multiselect(
+                    "Selecione suas insígnias",
+                    options=badge_options,
+                    default=selected_badges,
+                    key="trainer_badge_select",
+                )
+                if st.button("💾 Salvar insígnias", key="trainer_badge_save"):
+                    profile["badges"] = badge_pick
+                    save_data_cloud(trainer_name, user_data)
+                    st.success("Insígnias atualizadas!")
+                    st.rerun()
+
+        if st.session_state["show_trainer_uploader"]:
+            st.markdown("---")
+            st.subheader("📷 Enviar foto e sugerir avatar")
+            uploaded_photo = st.file_uploader(
+                "Envie uma foto para recortar e buscar o seu avatar",
+                type=["png", "jpg", "jpeg", "webp"],
+                key="trainer_photo_upload",
+            )
+
+            cropped_image = None
+            if uploaded_photo is not None:
+                try:
+                    raw_bytes = uploaded_photo.getvalue()
+                    raw_image = Image.open(io.BytesIO(raw_bytes))
+                    cropped_image = crop_center_square(raw_image)
+                    st.image(cropped_image, caption="Pré-visualização (recorte central)", width=260)
+                except Exception:
+                    st.error("Não foi possível ler essa imagem. Tente outro arquivo.")
+
+            c_photo_actions = st.columns([1, 1, 2])
+
+            with c_photo_actions[0]:
+                if st.button("💾 Salvar foto", disabled=cropped_image is None):
+                    # --- gera PNG cheio (para o Storage) ---
+                    buffer_full = io.BytesIO()
+                    cropped_image.convert("RGB").save(buffer_full, format="PNG")
+
+                    # --- gera thumb pequeno (para UI rápida / cabe no Sheets) ---
+                    thumb = cropped_image.copy()
+                    thumb.thumbnail((96, 96), Image.Resampling.LANCZOS)
+                    buffer_thumb = io.BytesIO()
+                    thumb.convert("RGB").save(buffer_thumb, format="PNG")
+
+                    # --- sobe a foto cheia pro Firebase Storage ---
+                    db, bucket = init_firebase()
+                    storage_path = f"trainer_photos/{safe_doc_id(trainer_name)}/profile.png"
+                    upload_png_to_storage(bucket, buffer_full.getvalue(), storage_path)
+
+                    # --- salva só o path + thumb no user_data (Sheets não estoura) ---
+                    profile["photo_storage_path"] = storage_path
+                    profile["photo_thumb_b64"] = base64.b64encode(buffer_thumb.getvalue()).decode("utf-8")
+
+                    # nunca mais salvar a foto cheia em base64 no Sheets
+                    profile.pop("photo_b64", None)
+
+                    profile["photo_updated_at"] = str(datetime.now())
+                    save_data_cloud(trainer_name, user_data)
+
+                    st.success("Foto salva! Agora vamos sugerir avatares.")
+                    st.rerun()
+
+            with c_photo_actions[1]:
+                if st.button("🗑️ Remover foto"):
+                    # apaga do Storage também
+                    db, bucket = init_firebase()
+                    old_path = profile.get("photo_storage_path")
+                    if old_path:
+                        try:
+                            bucket.blob(old_path).delete()
+                        except Exception:
+                            pass
+
+                    profile.pop("photo_storage_path", None)
+                    profile.pop("photo_b64", None)
+                    profile.pop("photo_thumb_b64", None)
+                    profile.pop("photo_updated_at", None)
+
+                    save_data_cloud(trainer_name, user_data)
+                    st.success("Foto removida.")
+                    st.rerun()
+
+            st.markdown("---")
+            st.subheader("🎭 Avatares sugeridos")
+
+            catalog = build_trainer_avatar_catalog()
+            index_entries = build_trainer_avatar_index()
+
+            if not catalog or not index_entries:
+                st.warning("Nenhum avatar encontrado na pasta trainer.")
+            else:
+                suggestions = []
+                best_default_by_base = {}
+
+                if photo_bytes:
+                    try:
+                        photo_img = Image.open(io.BytesIO(photo_bytes))
+                        suggestions, best_default_by_base = suggest_bases_and_best_skins(
+                            photo_img,
+                            index_entries,
+                            top_bases=5,
+                            per_base_limit=1,
+                        )
+                    except Exception:
+                        suggestions, best_default_by_base = [], {}
+
+                if not suggestions:
+                    st.info("Sugestão inicial baseada na pasta trainer.")
+                    suggestions = list(catalog.keys())[:5]
+                    best_default_by_base = {}
+
+                chosen_avatar = profile.get("avatar_choice")
+                cols = st.columns(min(5, len(suggestions)))
+
+                for idx, base in enumerate(suggestions):
+                    items = catalog.get(base, [])
+                    if not items:
+                        continue
+
+                    names = [item["name"] for item in items]
+
+                    # default: (1) escolhido antes, (2) melhor skin sugerida para a base, (3) primeiro
+                    default_name = chosen_avatar if chosen_avatar in names else best_default_by_base.get(base)
+                    default_idx = names.index(default_name) if default_name in names else 0
+
+                    with cols[idx]:
+                        st.markdown(f"**{base.title()}**")
+                        selected_skin = st.selectbox(
+                            "Skin",
+                            names,
+                            index=default_idx,
+                            key=f"trainer_skin_{base}",
+                        )
+                        sel_path = next(
+                            (i["path"] for i in items if i["name"] == selected_skin),
+                            items[0]["path"],
+                        )
+                        st.image(sel_path, width=120)
+
+                        if st.button("✅ Escolher", key=f"trainer_pick_{base}"):
+                            profile["avatar_choice"] = selected_skin
+                            profile["avatar_base"] = base
+                            save_data_cloud(trainer_name, user_data)
+                            st.success(f"Avatar selecionado: {selected_skin}.")
+                            st.rerun()
+
+            st.markdown("---")
+            st.subheader("🧵 Skins do personagem escolhido")
+            chosen_avatar, chosen_path = get_selected_trainer_avatar(user_data)
+            if chosen_avatar and chosen_path:
+                chosen_base = profile.get("avatar_base") or _trainer_avatar_base(chosen_avatar)
+                base_items = catalog.get(chosen_base, [])
+                base_names = [item["name"] for item in base_items]
+                current_idx = base_names.index(chosen_avatar) if chosen_avatar in base_names else 0
+                st.image(chosen_path, width=140, caption=f"Atual: {chosen_avatar}")
+                new_skin = st.selectbox(
+                    "Trocar skin (mesmo personagem)",
+                    base_names,
+                    index=current_idx,
+                    key="trainer_skin_swap",
+                )
+                if st.button("🔁 Atualizar skin"):
+                    profile["avatar_choice"] = new_skin
+                    profile["avatar_base"] = chosen_base
+                    save_data_cloud(trainer_name, user_data)
+                    st.success("Skin atualizada!")
+                    st.rerun()
+            else:
+                st.info("Escolha um avatar nas sugestões acima para liberar as skins.")
 
     # ==========================
     # CRIAÇÃO DE 
