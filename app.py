@@ -3640,16 +3640,18 @@ def render_login_menu(trainer_name: str, user_data: dict):
         }
         .fr-login-layout {
             display: flex;
-            align-items: flex-start;
-            gap: 16px;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 18px;
         }
         .fr-login-card {
             flex: 1;
-            border: 4px solid #3f3f8f;
+            position: relative;
+            border: 4px solid #1f2a6b;
             border-radius: 14px;
-            background: linear-gradient(180deg, #f5f5f5 0%, #e9e9e9 100%);
+            background: linear-gradient(180deg, #f8fbff 0%, #dbe7ff 100%);
             padding: 14px 16px;
-            box-shadow: 0 6px 0 rgba(0,0,0,0.35);
+            box-shadow: 0 8px 0 rgba(11, 23, 64, 0.4);
         }
         .fr-login-title {
             text-transform: uppercase;
@@ -3658,11 +3660,14 @@ def render_login_menu(trainer_name: str, user_data: dict):
             margin-bottom: 10px;
         }
         .fr-login-info {
-            border: 3px solid #6b7280;
+            border: 3px solid #3b4a86;
             border-radius: 10px;
-            background: #f8fafc;
+            background: linear-gradient(180deg, #fefeff 0%, #e2ecff 100%);
             padding: 10px 12px;
-            box-shadow: inset 0 0 0 2px #cbd5f5;
+            box-shadow: inset 0 0 0 2px #b6c7ff;
+        }
+        .fr-login-info-empty {
+            min-height: 150px;
         }
         .fr-login-grid {
             display: grid;
@@ -3691,9 +3696,9 @@ def render_login_menu(trainer_name: str, user_data: dict):
             text-transform: uppercase;
             font-size: 9px;
             font-weight: 700;
-            border: 3px solid #4b5563;
-            color: #111827;
-            background: linear-gradient(180deg, #e5e7eb 0%, #cbd5e1 100%);
+            border: 3px solid #293356;
+            color: #0f172a;
+            background: linear-gradient(180deg, #eef3ff 0%, #c8d7ff 100%);
             box-shadow: 0 4px 0 rgba(0,0,0,0.35), inset 0 -3px 0 rgba(0,0,0,0.18);
             border-radius: 12px;
         }
@@ -3709,8 +3714,8 @@ def render_login_menu(trainer_name: str, user_data: dict):
             font-size: 10px;
             padding: 10px 14px;
             border-radius: 6px;
-            background: linear-gradient(180deg, #d4d4d8 0%, #a1a1aa 100%);
-            border: 3px solid #5b6470;
+            background: linear-gradient(180deg, #f3f4ff 0%, #a7b7ff 100%);
+            border: 3px solid #3c4a88;
             box-shadow: 0 4px 0 rgba(0,0,0,0.35), inset 0 -3px 0 rgba(0,0,0,0.25);
         }
         .fr-login-title {
@@ -3725,6 +3730,10 @@ def render_login_menu(trainer_name: str, user_data: dict):
         .fr-login-continue-card .fr-login-label,
         .fr-login-continue-card .fr-login-value {
             color: #0b2d6b;
+        }
+        .fr-login-new-game-card,
+        .fr-login-new-game-card .fr-login-title {
+            color: #10203f;
         }
         .fr-login-continue-badge {
             display: inline-flex;
@@ -3758,7 +3767,7 @@ def render_login_menu(trainer_name: str, user_data: dict):
         .fr-login-avatar {
             width: 72px;
             height: 72px;
-            border: 2px solid #3f3f8f;
+            border: 2px solid #2f3a87;
             border-radius: 10px;
             background: #ffffff;
             display: flex;
@@ -3798,6 +3807,14 @@ def render_login_menu(trainer_name: str, user_data: dict):
         .fr-login-empty {
             font-size: 9px;
             color: #475569;
+        }
+        .fr-login-card-link {
+            position: absolute;
+            inset: 0;
+            z-index: 4;
+            opacity: 0;
+            background: transparent;
+            border: none;
         }
         </style>
         """,
@@ -3879,12 +3896,20 @@ def render_login_menu(trainer_name: str, user_data: dict):
                     {party_html}
                 </div>
             </div>
+            <a class='fr-login-card-link' href='?action=continue' target='_self' aria-label='Continuar jogo'></a>
+        </div>
+        <div id='fr_new_game_card' class='fr-login-card fr-login-new-game-card'>
+            <div class='fr-login-title'>
+                <span>New Game</span>
+            </div>
+            <div class='fr-login-info fr-login-info-empty'></div>
+            <a class='fr-login-card-link' href='?action=new_game' target='_self' aria-label='Novo jogo'></a>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-        # --- MENU + BOTÃO CONFIRMAR AO LADO (SEM click-detector) ---
+    # --- MENU + BOTÃO CONFIRMAR AO LADO (SEM click-detector) ---
     menu_col, confirm_col = st.columns([7, 1], gap="small")
 
     with menu_col:
@@ -3895,6 +3920,9 @@ def render_login_menu(trainer_name: str, user_data: dict):
             key="fr_login_action",
             label_visibility="collapsed",
         )
+        if st.button("Mystery Gift", key="fr_mystery_gift"):
+            st.session_state["mystery_gift_prompt"] = True
+            st.session_state["mystery_gift_confirmed"] = False
 
     with confirm_col:
         if st.button("Confirmar", type="primary", key="fr_login_confirm"):
@@ -3907,6 +3935,21 @@ def render_login_menu(trainer_name: str, user_data: dict):
                 st.session_state["confirm_new_game"] = True
                 st.rerun()
 
+    if st.session_state.get("mystery_gift_prompt"):
+        st.info("Você aceita o presente de Ezenek?")
+        gift_cols = st.columns([1, 1], gap="small")
+        with gift_cols[0]:
+            if st.button("Confirmar presente", type="primary", key="fr_mystery_gift_confirm"):
+                st.session_state["mystery_gift_confirmed"] = True
+                st.session_state["mystery_gift_prompt"] = False
+                st.rerun()
+        with gift_cols[1]:
+            if st.button("Cancelar", key="fr_mystery_gift_cancel"):
+                st.session_state["mystery_gift_prompt"] = False
+                st.rerun()
+
+    if st.session_state.get("mystery_gift_confirmed"):
+        st.success("Ezenek virá até você, aguarde.")
 
 
     if st.session_state.get("confirm_new_game"):
