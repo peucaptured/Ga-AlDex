@@ -2658,6 +2658,28 @@ def render_compendium_ginasios() -> None:
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-track,
           div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-track{
             background: rgba(255,255,255,0.06);
+        /* ESQUERDA com altura fixa + scroll interno */
+        div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left),
+        div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left){
+          height: 78vh;
+          overflow-y: auto;
+          overflow-x: hidden;
+          padding-right: 8px;
+        }
+        
+        /* scrollbar discreto (esquerda) */
+        div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left)::-webkit-scrollbar,
+        div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left)::-webkit-scrollbar{ width: 8px; }
+        
+        div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left)::-webkit-scrollbar-thumb,
+        div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left)::-webkit-scrollbar-thumb{
+          background: rgba(255,215,0,0.18);
+          border-radius: 10px;
+        }
+        div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left)::-webkit-scrollbar-track,
+        div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left)::-webkit-scrollbar-track{
+          background: rgba(255,255,255,0.06);
+        }
           }
         </style>
         """,
@@ -2847,12 +2869,41 @@ def render_compendium_ginasios() -> None:
         seen.add(nk)
         clean.append(nm)
     ex_list = clean
+    # 3 colunas igual Locais
+    lore_html_parts = []
+    
+    # Visão / Lore do ginásio (o texto principal)
+    narr = (g.get("narrative") or "").strip()
+    if narr:
+        lore_html_parts.append(_section_html("Visão", narr))
+    
+    # Seções do staff (opcional)
+    # (se você tiver textos em meta/staff)
+    if isinstance(meta, dict):
+        if meta.get("observacao"):
+            lore_html_parts.append(_section_html("Observação", meta.get("observacao")))
+        if meta.get("arena_extra"):
+            lore_html_parts.append(_section_html("Arena/Extra", meta.get("arena_extra")))
+        if meta.get("localizacao"):
+            lore_html_parts.append(_section_html("Localização", meta.get("localizacao")))
+    
+    # Se quiser mostrar ex-líderes como texto
+    if ex_list:
+        lore_html_parts.append(_section_html("Ex-líderes", ", ".join(ex_list)))
+    
+    # Se quiser mostrar líder/vice como texto (além dos cards)
+    if lider_nm:
+        lore_html_parts.append(_section_html("Líder", lider_nm))
+    if vice_nm:
+        lore_html_parts.append(_section_html("Vice-líder", vice_nm))
+
     
     # 3 colunas igual Locais
     lore_html = "".join(lore_html_parts) or "<div class='ds-history'>(Sem lore cadastrada)</div>"
     st.markdown(f"<div class='ds-lore-scroll'>{lore_html}</div>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)  # fecha ds-gym-shell
+
     
-    st.markdown("</div>", unsafe_allow_html=True)  # fecha ds-gym-shell
 
 
 
@@ -8879,6 +8930,28 @@ body:has(.ds-home),
               height: 78vh;
               min-height: 0;
               overflow: hidden;
+            }
+            /* ESQUERDA com altura fixa + scroll interno */
+            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-left),
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-left){
+              height: 78vh;
+              overflow-y: auto;
+              overflow-x: hidden;
+              padding-right: 8px;
+            }
+            
+            /* scrollbar discreto (esquerda) */
+            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-left)::-webkit-scrollbar,
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-left)::-webkit-scrollbar{ width: 8px; }
+            
+            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-left)::-webkit-scrollbar-thumb,
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-left)::-webkit-scrollbar-thumb{
+              background: rgba(255,215,0,0.18);
+              border-radius: 10px;
+            }
+            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-left)::-webkit-scrollbar-track,
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-left)::-webkit-scrollbar-track{
+              background: rgba(255,255,255,0.06);
             }
             
             /* área rolável da lore (não explode o frame) */
