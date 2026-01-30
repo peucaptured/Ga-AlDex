@@ -5005,7 +5005,7 @@ def get_pokemon_sprite_url(p_id: str, shiny: bool = False) -> str:
         return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/{n}.png"
     return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{n}.png"
 
-TRAINER_AVATAR_DIR = Path("treinadores")
+TRAINER_AVATAR_DIR = Path("trainer")
 
 def _trainer_avatar_base(name: str) -> str:
     return (name or "").split("_")[0].strip().lower()
@@ -10839,7 +10839,7 @@ if page == "Trainer Hub (Meus Pokémons)":
 
         catalog = build_trainer_avatar_catalog()
         if not catalog:
-            st.warning("Nenhum avatar encontrado na pasta treinadores.")
+            st.warning("Nenhum avatar encontrado na pasta trainer.")
         else:
             photo_b64 = profile.get("photo_b64")
             suggestions = []
