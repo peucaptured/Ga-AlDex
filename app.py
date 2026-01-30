@@ -2702,9 +2702,30 @@ def render_compendium_ginasios() -> None:
     def _gym_staff(g: dict) -> tuple[str, str]:
         meta = g.get("meta") or {}
         staff = g.get("staff") or {}
+    
         lider = (meta.get("lider") or staff.get("lider") or "").strip()
         vice  = (meta.get("vice_lider") or meta.get("vice-lider") or staff.get("vice_lider") or staff.get("vice") or "").strip()
+    
+        # --- Fallback: inferir por "ocupacao" nos NPCs ---
+        if (not lider or not vice):
+            city = (meta.get("cidade") or meta.get("city") or "").strip() or g.get("city") or ""
+            city_n = _norm(city)
+    
+            for nm, npc in (npcs or {}).items():
+                if not isinstance(npc, dict):
+                    continue
+                occ_n = _norm(npc.get("ocupacao") or "")
+                # líder (não confunde com vice)
+                if not lider and occ_n.startswith("lider_de_ginasio_de_") and occ_n.endswith(city_n):
+                    lider = nm
+                # vice
+                if not vice and occ_n.startswith("vice_lider_de_ginasio_de_") and occ_n.endswith(city_n):
+                    vice = nm
+                if lider and vice:
+                    break
+    
         return lider, vice
+
 
     def _collect_gym_pokemons(lider_nm: str, vice_nm: str, g: dict) -> list[str]:
         seen = set()
