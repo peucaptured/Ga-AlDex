@@ -4105,10 +4105,6 @@ if "trainer_name" not in st.session_state:
 user_data = st.session_state['user_data']
 trainer_name = st.session_state['trainer_name']
 
-if st.session_state.get("show_login_menu"):
-    render_login_menu(trainer_name, user_data)
-    st.stop()
-
 # --- FUNÇÕES DO APP ---
 import random
 
@@ -5783,6 +5779,10 @@ if 'df_data' not in st.session_state:
 
 df = st.session_state['df_data']
 cols_map = st.session_state.get('cols_map', {})
+
+if st.session_state.get("show_login_menu"):
+    render_login_menu(trainer_name, user_data)
+    st.stop()
 
 # --- INTERFACE PRINCIPAL ---
 
