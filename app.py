@@ -2562,7 +2562,6 @@ def render_compendium_ginasios() -> None:
             unsafe_allow_html=True,
         )
         return
-
     st.markdown(
         """
         <style>
@@ -2576,8 +2575,9 @@ def render_compendium_ginasios() -> None:
           div[data-testid="stAppViewContainer"]:has(.ds-gym-shell){
             overflow: hidden !important;
           }
-          .ds-frame-marker{ display:none; }
-
+          .ds-frame-marker{
+            display: none;
+          }
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left),
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-center),
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right),
@@ -2592,7 +2592,6 @@ def render_compendium_ginasios() -> None:
             position: relative;
             box-sizing: border-box;
           }
-
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left)::after,
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-center)::after,
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right)::after,
@@ -2606,17 +2605,14 @@ def render_compendium_ginasios() -> None:
             border-radius: 10px;
             pointer-events: none;
           }
-
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left) .comp-divider,
           div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left) .comp-divider{
             margin: 14px 0 14px 0 !important;
           }
-
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"],
           div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"]{
             width: 100% !important;
           }
-
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"] > div,
           div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"] > div{
             background: rgba(0,0,0,0.25) !important;
@@ -2625,7 +2621,6 @@ def render_compendium_ginasios() -> None:
             padding: 6px 10px !important;
             box-shadow: 0 0 18px rgba(255,215,0,0.06) !important;
           }
-
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"] *,
           div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left) div[data-testid="stSelectbox"] *{
             font-family: "DarkSouls", serif !important;
@@ -2633,8 +2628,6 @@ def render_compendium_ginasios() -> None:
             text-transform: uppercase !important;
             color: rgba(255,255,255,0.82) !important;
           }
-
-          /* DIREITA: scroll interno do lore */
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right),
           div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right){
             display: flex;
@@ -2650,6 +2643,11 @@ def render_compendium_ginasios() -> None:
             overflow-y: auto;
             padding-right: 8px;
           }
+          .ds-gym-shell .ds-lore-scroll{
+            max-height: calc(78vh - 140px);
+            overflow-y: auto;
+            overscroll-behavior: contain;
+          }
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar,
           div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar{ width: 8px; }
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-thumb,
@@ -2659,26 +2657,6 @@ def render_compendium_ginasios() -> None:
           }
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-track,
           div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-track{
-            background: rgba(255,255,255,0.06);
-          }
-
-          /* ESQUERDA: altura fixa + scroll interno */
-          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left),
-          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left){
-            height: 78vh;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding-right: 8px;
-          }
-          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left)::-webkit-scrollbar,
-          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left)::-webkit-scrollbar{ width: 8px; }
-          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left)::-webkit-scrollbar-thumb,
-          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left)::-webkit-scrollbar-thumb{
-            background: rgba(255,215,0,0.18);
-            border-radius: 10px;
-          }
-          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-left)::-webkit-scrollbar-track,
-          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-left)::-webkit-scrollbar-track{
             background: rgba(255,255,255,0.06);
           }
         </style>
@@ -2724,28 +2702,8 @@ def render_compendium_ginasios() -> None:
     def _gym_staff(g: dict) -> tuple[str, str]:
         meta = g.get("meta") or {}
         staff = g.get("staff") or {}
-    
         lider = (meta.get("lider") or staff.get("lider") or "").strip()
         vice  = (meta.get("vice_lider") or meta.get("vice-lider") or staff.get("vice_lider") or staff.get("vice") or "").strip()
-    
-        # --- Fallback: inferir por "ocupacao" nos NPCs ---
-        if (not lider or not vice):
-            city = (meta.get("cidade") or meta.get("city") or "").strip() or g.get("city") or ""
-            city_n = _norm(city)
-    
-            for nm, npc in (npcs or {}).items():
-                if not isinstance(npc, dict):
-                    continue
-                occ_n = _norm(npc.get("ocupacao") or "")
-                # líder (não confunde com vice)
-                if not lider and occ_n.startswith("lider_de_ginasio_de_") and occ_n.endswith(city_n):
-                    lider = nm
-                # vice
-                if not vice and occ_n.startswith("vice_lider_de_ginasio_de_") and occ_n.endswith(city_n):
-                    vice = nm
-                if lider and vice:
-                    break
-    
         return lider, vice
 
     def _collect_gym_pokemons(lider_nm: str, vice_nm: str, g: dict) -> list[str]:
@@ -2874,13 +2832,13 @@ def render_compendium_ginasios() -> None:
 
     col_left, col_center, col_right = st.columns([1.05, 1.35, 2.15], gap="large")
 
-
     # ============================
     # ESQUERDA: seletor + pokémons
     # ============================
     with col_left:
         st.markdown("<div class='ds-frame-marker ds-gym-left'></div>", unsafe_allow_html=True)
         st.markdown("<div class='ds-name'>GINÁSIOS</div>", unsafe_allow_html=True)
+
         # label: se a chave for cidade -> mostra só cidade; senão "Líder — Cidade"
         label_map = {}
         for k in gym_keys:
@@ -3116,33 +3074,10 @@ def render_compendium_ginasios() -> None:
                         continue
                     _push_gym_section(k, v)
         
-    lore_html_parts = []
-
-    narr = (g.get("narrative") or "").strip()
-    if narr:
-        lore_html_parts.append(_section_html("Visão", narr))
-
-    if isinstance(meta, dict):
-        if meta.get("observacao"):
-            lore_html_parts.append(_section_html("Observação", meta.get("observacao")))
-        if meta.get("arena_extra"):
-            lore_html_parts.append(_section_html("Arena/Extra", meta.get("arena_extra")))
-        if meta.get("localizacao"):
-            lore_html_parts.append(_section_html("Localização", meta.get("localizacao")))
-
-    if ex_list:
-        lore_html_parts.append(_section_html("Ex-líderes", ", ".join(ex_list)))
-
-    if lider_nm:
-        lore_html_parts.append(_section_html("Líder", lider_nm))
-    if vice_nm:
-        lore_html_parts.append(_section_html("Vice-líder", vice_nm))
-
-    lore_html = "".join(lore_html_parts) or "<div class='ds-history'>(Sem lore cadastrada)</div>"
-    st.markdown(f"<div class='ds-lore-scroll'>{lore_html}</div>", unsafe_allow_html=True)
-
-# === FECHA O SHELL ===
-st.markdown("</div>", unsafe_allow_html=True)
+        # --------- AQUI SÓ RENDERIZA (UMA VEZ) ---------
+        lore_html = "".join(lore_html_parts) or "<div class='ds-history'>(Sem lore cadastrada)</div>"
+        st.markdown(f"<div class='ds-lore-scroll'>{lore_html}</div>", unsafe_allow_html=True)
+        
 
 
 
