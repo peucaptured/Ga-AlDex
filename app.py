@@ -11447,8 +11447,16 @@ elif page == "Criação Guiada de Fichas":
                 with sub_tabs[3]:
                     st.markdown("#### 📦 Golpes confirmados nesta ficha")
                     if st.session_state.get("cg_moves"):
-                        stats_now = st.session_state.get("cg_draft", {}).get("stats", {})
-                        np_value = int(st.session_state.get("cg_np", 0) or 0)
+                        stats_fallback = st.session_state.get("cg_draft", {}).get("stats", {})
+                        stats_now = {
+                            "stgr": int(st.session_state.get("cg_stgr", stats_fallback.get("stgr", 0)) or 0),
+                            "int": int(st.session_state.get("cg_int", stats_fallback.get("int", 0)) or 0),
+                            "dodge": int(st.session_state.get("cg_dodge", stats_fallback.get("dodge", 0)) or 0),
+                            "parry": int(st.session_state.get("cg_parry", stats_fallback.get("parry", 0)) or 0),
+                            "thg": int(st.session_state.get("cg_thg", stats_fallback.get("thg", 0)) or 0),
+                            "fortitude": int(st.session_state.get("cg_fortitude", stats_fallback.get("fortitude", 0)) or 0),
+                            "will": int(st.session_state.get("cg_will", stats_fallback.get("will", 0)) or 0),
+                        }                        np_value = int(st.session_state.get("cg_np", 0) or 0)
 
                         for i, m_gv in enumerate(list(st.session_state["cg_moves"]), start=1):
                             c1, c2, c3 = st.columns([6, 2, 1], vertical_alignment="center")
@@ -11468,6 +11476,16 @@ elif page == "Criação Guiada de Fichas":
                                     f"{i}. **{m_gv.get('name','Golpe')}** ({rank_label}) — "
                                     f"PP: {pp_here} | Acerto {accuracy} | Mod. acerto {mod_acerto} (2xNP = {target_total})"
                                 )
+                                with st.expander("Descrição do golpe", expanded=False):
+                                    desc_text = None
+                                    if db_moves_guided:
+                                        try:
+                                            mv_desc = db_moves_guided.get_by_name(str(m_gv.get("name") or ""))
+                                        except Exception:
+                                            mv_desc = None
+                                        if mv_desc:
+                                            desc_text = mv_desc.descricao
+                                    st.write(desc_text or "Descrição não disponível.")
                                 if m_gv.get("build"):
                                     bullets = _summarize_build(m_gv.get("build", ""))
                                     if bullets:
