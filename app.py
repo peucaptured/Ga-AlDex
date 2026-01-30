@@ -6300,7 +6300,13 @@ def load_compendium_gym_data_json(
             # tenta achar a cidade pelo padrão "ginasio_de_<cidade_norm>" dentro do texto normalizado
             city_hit = None
             for c, c_norm in cand_norm:
-                if f"ginasio_de_{c_norm}" in occ or f"ginasio_{c_norm}" in occ:
+                if (
+                    f"ginasio de {c_norm}" in occ
+                    or f"ginasio do {c_norm}" in occ
+                    or f"ginasio da {c_norm}" in occ
+                    or f"ginasio_de_{c_norm}" in occ
+                    or f"ginasio_{c_norm}" in occ
+                ):
                     city_hit = c
                     break
     
@@ -6640,9 +6646,32 @@ def comp_load() -> dict:
         # =========================
         # NPCs gerais (Vivos + Mortos + Extras)
         # =========================
+        import re as _re
+
+        def _keycanon(x: str) -> str:
+            # normaliza e remove pontuação/aspas para dedupe
+            x = _norm(x)
+            x = x.replace("“", '"').replace("”", '"').replace("’", "'").replace("‘", "'")
+            x = _re.sub(r"[^a-z0-9 ]+", "", x)
+            x = _re.sub(r"\s+", " ", x).strip()
+            return x
+        
         npcs_gerais = {}
         npcs_gerais.update(data.get("npcs", {}) or {})
-        npcs_gerais.update(bundle.get("npcs_extra", {}) or {})
+        
+        extras = (bundle.get("npcs_extra", {}) or {})
+        for nm, obj in extras.items():
+            k = _keycanon(nm)
+            hit = None
+            for existing in npcs_gerais.keys():
+                if _keycanon(existing) == k:
+                    hit = existing
+                    break
+            if hit:
+                npcs_gerais[hit] = obj
+            else:
+                npcs_gerais[nm] = obj
+        
 
     else:
         # ----------------------------
