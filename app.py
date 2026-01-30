@@ -8222,6 +8222,19 @@ body:has(.ds-home),
             padding: 28px 28px 26px 28px;
             min-height: 0px;     /* deixa crescer pelo conteúdo */
           }
+          .ds-npc-panel.right{
+            display: flex;
+            flex-direction: column;
+            height: 78vh;
+            min-height: 0;
+            overflow: hidden;
+          }
+          .ds-npc-panel.right .ds-frame{
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            padding-right: 8px;
+          }
           .ds-npc-panel.left{
           background: transparent !important;
           background-image: none !important;
@@ -8887,6 +8900,18 @@ body:has(.ds-home),
               overflow-y: auto;
               padding-right: 8px;
             }
+            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-loc-right-content,
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-loc-right-content{
+              display: flex;
+              flex-direction: column;
+              height: 100%;
+              min-height: 0;
+            }
+            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-loc-right-content .ds-lore-scroll,
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-loc-right-content .ds-lore-scroll{
+              flex: 1 1 auto;
+              min-height: 0;
+            }
             .ds-loc-shell .ds-lore-scroll{
               max-height: calc(78vh - 140px);
               overflow-y: auto;
@@ -9051,6 +9076,7 @@ body:has(.ds-home),
             sl_now = st.session_state.get("comp_loc_sublocal") or "__visao__"
 
             st.markdown("<div class='ds-frame-marker ds-loc-right'></div>", unsafe_allow_html=True)
+            st.markdown("<div class='ds-loc-right-content'>", unsafe_allow_html=True)
 
             st.markdown("<div class='ds-name'>LOCAIS</div>", unsafe_allow_html=True)
 
@@ -9121,6 +9147,7 @@ body:has(.ds-home),
 
             lore_html = "".join(lore_html_parts) or "<div class='ds-history'>(Sem lore cadastrada)</div>"
             st.markdown(f"<div class='ds-lore-scroll'>{lore_html}</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
 
 
