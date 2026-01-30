@@ -4823,18 +4823,32 @@ def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name, room, ef
         # Borda
         draw.rectangle([x, y, x + TILE_SIZE - 1, y + TILE_SIZE - 1], outline=border_color, width=4)
 
-        pid = str(p.get("pid", ""))
-        is_p_shiny = p.get("shiny", False) #
-        url = pokemon_pid_to_image(pid, mode="sprite", shiny=is_p_shiny)
+        sprite = None
+        if p.get("kind") == "trainer":
+            avatar_name = p.get("avatar")
+            avatar_lookup = build_trainer_avatar_lookup()
+            avatar_info = avatar_lookup.get(avatar_name) if avatar_name else None
+            avatar_path = avatar_info.get("path") if avatar_info else None
 
-        if url not in local_cache:
-            local_cache[url] = fetch_image_pil(url)
+            if avatar_path:
+                if avatar_path not in local_cache:
+                    local_cache[avatar_path] = load_trainer_avatar_image(avatar_path)
+                sprite = local_cache[avatar_path]
+        else:
+            pid = str(p.get("pid", ""))
+            is_p_shiny = p.get("shiny", False)
+            url = pokemon_pid_to_image(pid, mode="sprite", shiny=is_p_shiny)
 
-        sprite = local_cache[url]
-        if sprite is None: continue
+            if url not in local_cache:
+                local_cache[url] = fetch_image_pil(url)
+            sprite = local_cache[url]
+
+        if sprite is None:
+            continue
 
         sp = sprite.copy()
-        sp.thumbnail((TILE_SIZE, TILE_SIZE), Image.Resampling.LANCZOS)
+        max_size = int(TILE_SIZE * 0.75) if p.get("kind") == "trainer" else TILE_SIZE
+        sp.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
         
         x0 = x + (TILE_SIZE - sp.size[0]) // 2
         y0 = y + (TILE_SIZE - sp.size[1]) // 2
@@ -4990,6 +5004,110 @@ def get_pokemon_sprite_url(p_id: str, shiny: bool = False) -> str:
     if shiny:
         return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/{n}.png"
     return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{n}.png"
+
+TRAINER_AVATAR_DIR = Path("static/treinadores")
+
+def _trainer_avatar_base(name: str) -> str:
+    return (name or "").split("_")[0].strip().lower()
+
+@st.cache_data(show_spinner=False)
+def list_trainer_avatar_paths() -> list[Path]:
+    if not TRAINER_AVATAR_DIR.exists():
+        return []
+    return sorted([p for p in TRAINER_AVATAR_DIR.glob("*.png") if p.is_file()])
+
+@st.cache_data(show_spinner=False)
+def build_trainer_avatar_catalog() -> dict[str, list[dict]]:
+    catalog: dict[str, list[dict]] = {}
+    for path in list_trainer_avatar_paths():
+        name = path.stem
+        base = _trainer_avatar_base(name)
+        catalog.setdefault(base, []).append({
+            "name": name,
+            "path": str(path),
+            "base": base,
+        })
+    return catalog
+
+@st.cache_data(show_spinner=False)
+def build_trainer_avatar_lookup() -> dict[str, dict]:
+    catalog = build_trainer_avatar_catalog()
+    lookup = {}
+    for items in catalog.values():
+        for item in items:
+            lookup[item["name"]] = item
+    return lookup
+
+def crop_center_square(image: Image.Image) -> Image.Image:
+    w, h = image.size
+    size = min(w, h)
+    left = (w - size) // 2
+    top = (h - size) // 2
+    return image.crop((left, top, left + size, top + size))
+
+def image_fingerprint(image: Image.Image, size: int = 16) -> list[float]:
+    img = image.convert("RGB").resize((size, size), Image.Resampling.LANCZOS)
+    pixels = list(img.getdata())
+    return [channel / 255.0 for pixel in pixels for channel in pixel]
+
+@st.cache_data(show_spinner=False)
+def avatar_fingerprint_for_path(path: str) -> list[float] | None:
+    try:
+        img = Image.open(path).convert("RGB")
+    except Exception:
+        return None
+    return image_fingerprint(img)
+
+@st.cache_data(show_spinner=False)
+def build_avatar_base_vectors() -> dict[str, list[float]]:
+    catalog = build_trainer_avatar_catalog()
+    base_vectors: dict[str, list[float]] = {}
+    for base, items in catalog.items():
+        vectors = []
+        for item in items:
+            vec = avatar_fingerprint_for_path(item["path"])
+            if vec:
+                vectors.append(vec)
+        if vectors:
+            base_vectors[base] = [sum(vals) / len(vals) for vals in zip(*vectors)]
+    return base_vectors
+
+def pick_similar_avatar_bases(image: Image.Image, limit: int = 5) -> list[str]:
+    base_vectors = build_avatar_base_vectors()
+    if not base_vectors:
+        return []
+    target_vec = image_fingerprint(image)
+    scored = []
+    for base, vec in base_vectors.items():
+        dist = sum((a - b) ** 2 for a, b in zip(target_vec, vec))
+        scored.append((dist, base))
+    scored.sort(key=lambda item: item[0])
+    return [base for _, base in scored[:limit]]
+
+@st.cache_data(show_spinner=False)
+def load_trainer_avatar_image(path: str) -> Image.Image | None:
+    try:
+        return Image.open(path).convert("RGBA")
+    except Exception:
+        return None
+
+def get_selected_trainer_avatar(user_data: dict) -> tuple[str | None, str | None]:
+    profile = user_data.get("trainer_profile", {})
+    choice = profile.get("avatar_choice")
+    if not choice:
+        return None, None
+    lookup = build_trainer_avatar_lookup()
+    avatar = lookup.get(choice)
+    if not avatar:
+        return choice, None
+    return choice, avatar.get("path")
+
+def get_trainer_photo_thumb(user_data: dict) -> str | None:
+    profile = user_data.get("trainer_profile", {})
+    thumb_b64 = profile.get("photo_thumb_b64")
+    if not thumb_b64:
+        return None
+    return f"data:image/png;base64,{thumb_b64}"
 
 
     
@@ -10091,7 +10209,9 @@ if page == "Trainer Hub (Meus Pokémons)":
     # ----------------------------
     # Tabs do Hub
     # ----------------------------
-    t_main, t_wish, t_seen = st.tabs(["🎮 Equipe & BOX", "🌟 Lista de Interesses", "👁️ Pokédex (Vistos)"])
+    t_main, t_wish, t_seen, t_trainer = st.tabs(
+        ["🎮 Equipe & BOX", "🌟 Lista de Interesses", "👁️ Pokédex (Vistos)", "🧑‍🎤 Meu Treinador"]
+    )
 
     # ==========================
     # TAB PRINCIPAL: BOX + PARTY
@@ -10663,6 +10783,127 @@ if page == "Trainer Hub (Meus Pokémons)":
         st.markdown("### Progresso da Pokédex")
         st.progress(min(vistos / total, 1.0) if total else 0.0)
         st.write(f"**{vistos}** de **{total}** Pokémons registrados.")
+
+    # ==========================
+    # TAB: MEU TREINADOR
+    # ==========================
+    with t_trainer:
+        st.subheader("📸 Meu Treinador")
+        user_data.setdefault("trainer_profile", {})
+        profile = user_data["trainer_profile"]
+
+        uploaded_photo = st.file_uploader(
+            "Envie uma foto para recortar e buscar o seu avatar",
+            type=["png", "jpg", "jpeg", "webp"],
+            key="trainer_photo_upload",
+        )
+
+        cropped_image = None
+        if uploaded_photo is not None:
+            try:
+                raw_bytes = uploaded_photo.getvalue()
+                raw_image = Image.open(io.BytesIO(raw_bytes))
+                cropped_image = crop_center_square(raw_image)
+                st.image(cropped_image, caption="Pré-visualização (recorte central)", width=260)
+            except Exception:
+                st.error("Não foi possível ler essa imagem. Tente outro arquivo.")
+
+        c_photo_actions = st.columns([1, 1, 2])
+        with c_photo_actions[0]:
+            if st.button("💾 Salvar foto", disabled=cropped_image is None):
+                buffer_full = io.BytesIO()
+                cropped_image.convert("RGB").save(buffer_full, format="PNG")
+
+                thumb = cropped_image.copy()
+                thumb.thumbnail((96, 96), Image.Resampling.LANCZOS)
+                buffer_thumb = io.BytesIO()
+                thumb.convert("RGB").save(buffer_thumb, format="PNG")
+
+                profile["photo_b64"] = base64.b64encode(buffer_full.getvalue()).decode("utf-8")
+                profile["photo_thumb_b64"] = base64.b64encode(buffer_thumb.getvalue()).decode("utf-8")
+                profile["photo_updated_at"] = str(datetime.now())
+                save_data_cloud(trainer_name, user_data)
+                st.success("Foto salva! Agora vamos sugerir avatares.")
+                st.rerun()
+        with c_photo_actions[1]:
+            if st.button("🗑️ Remover foto"):
+                profile.pop("photo_b64", None)
+                profile.pop("photo_thumb_b64", None)
+                profile.pop("photo_updated_at", None)
+                save_data_cloud(trainer_name, user_data)
+                st.success("Foto removida.")
+                st.rerun()
+
+        st.markdown("---")
+        st.subheader("🎭 Avatares sugeridos")
+
+        catalog = build_trainer_avatar_catalog()
+        if not catalog:
+            st.warning("Nenhum avatar encontrado na pasta static/treinadores.")
+        else:
+            photo_b64 = profile.get("photo_b64")
+            suggestions = []
+            if photo_b64:
+                try:
+                    photo_img = Image.open(io.BytesIO(base64.b64decode(photo_b64)))
+                    suggestions = pick_similar_avatar_bases(crop_center_square(photo_img), limit=5)
+                except Exception:
+                    suggestions = []
+            if not suggestions:
+                st.info("Envie e salve uma foto para gerar 5 sugestões automáticas.")
+                suggestions = list(catalog.keys())[:5]
+
+            chosen_avatar = profile.get("avatar_choice")
+            cols = st.columns(min(5, len(suggestions)))
+            for idx, base in enumerate(suggestions):
+                items = catalog.get(base, [])
+                if not items:
+                    continue
+                names = [item["name"] for item in items]
+                if chosen_avatar in names:
+                    default_idx = names.index(chosen_avatar)
+                else:
+                    default_idx = 0
+                with cols[idx]:
+                    st.markdown(f"**{base.title()}**")
+                    selected_skin = st.selectbox(
+                        "Skin",
+                        names,
+                        index=default_idx,
+                        key=f"trainer_skin_{base}",
+                    )
+                    sel_path = next((i["path"] for i in items if i["name"] == selected_skin), items[0]["path"])
+                    st.image(sel_path, width=120)
+                    if st.button("✅ Escolher", key=f"trainer_pick_{base}"):
+                        profile["avatar_choice"] = selected_skin
+                        profile["avatar_base"] = base
+                        save_data_cloud(trainer_name, user_data)
+                        st.success(f"Avatar selecionado: {selected_skin}.")
+                        st.rerun()
+
+        st.markdown("---")
+        st.subheader("🧵 Skins do personagem escolhido")
+        chosen_avatar, chosen_path = get_selected_trainer_avatar(user_data)
+        if chosen_avatar and chosen_path:
+            chosen_base = profile.get("avatar_base") or _trainer_avatar_base(chosen_avatar)
+            base_items = catalog.get(chosen_base, [])
+            base_names = [item["name"] for item in base_items]
+            current_idx = base_names.index(chosen_avatar) if chosen_avatar in base_names else 0
+            st.image(chosen_path, width=140, caption=f"Atual: {chosen_avatar}")
+            new_skin = st.selectbox(
+                "Trocar skin (mesmo personagem)",
+                base_names,
+                index=current_idx,
+                key="trainer_skin_swap",
+            )
+            if st.button("🔁 Atualizar skin"):
+                profile["avatar_choice"] = new_skin
+                profile["avatar_base"] = chosen_base
+                save_data_cloud(trainer_name, user_data)
+                st.success("Skin atualizada!")
+                st.rerun()
+        else:
+            st.info("Escolha um avatar nas sugestões acima para liberar as skins.")
 
     # ==========================
     # CRIAÇÃO DE 
@@ -12043,6 +12284,8 @@ elif page == "PvP – Arena Tática":
 
         if "last_click_processed" not in st.session_state:
             st.session_state["last_click_processed"] = None
+        if "placing_trainer" not in st.session_state:
+            st.session_state["placing_trainer"] = None
 
         # --- 1. SINCRONIZAÇÃO DE DADOS ---
         current_party = user_data.get("party") or []
@@ -12132,7 +12375,17 @@ elif page == "PvP – Arena Tática":
         # Definição da Função de Renderização da Coluna (DEFINIDA ANTES DE USAR)
         # Definição da Função de Renderização da Coluna (MELHORADA)
         def render_player_column(p_name, p_label, is_me):
-            st.markdown(f"### {p_label}")
+            if is_me:
+                photo_data = get_trainer_photo_thumb(user_data)
+                if photo_data:
+                    st.markdown(
+                        f"### <img src='{photo_data}' style='width:32px;height:32px;object-fit:cover;border-radius:6px;margin-right:6px;vertical-align:middle;'> {p_label}",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown(f"### {p_label}")
+            else:
+                st.markdown(f"### {p_label}")
             
             # Busca party e estado público
             p_doc_data = db.collection("rooms").document(rid).collection("public_state").document("players").get().to_dict() or {}
@@ -12141,6 +12394,7 @@ elif page == "PvP – Arena Tática":
             # Variáveis de Estado de Ação
             moving_piece_id = st.session_state.get("moving_piece_id")
             placing_pid = st.session_state.get("placing_pid")
+            placing_trainer = st.session_state.get("placing_trainer")
             
             state = get_state(db, rid)
             all_pieces = state.get("pieces") or []
@@ -12150,7 +12404,56 @@ elif page == "PvP – Arena Tática":
                 st.caption("Aguardando...")
                 return
         
-            p_pieces_on_board = [p for p in all_pieces if p.get("owner") == p_name]
+            trainer_piece = next(
+                (p for p in all_pieces if p.get("owner") == p_name and p.get("kind") == "trainer"),
+                None,
+            )
+            p_pieces_on_board = [
+                p for p in all_pieces if p.get("owner") == p_name and p.get("kind") != "trainer"
+            ]
+
+            if is_me:
+                st.markdown("#### 🙂 Meu Avatar")
+                avatar_choice, avatar_path = get_selected_trainer_avatar(user_data)
+                if avatar_path:
+                    st.image(avatar_path, width=96)
+                else:
+                    st.caption("Escolha um avatar na aba Meu Treinador.")
+
+                is_busy = (moving_piece_id is not None) or (placing_pid is not None) or placing_trainer
+
+                if placing_trainer:
+                    st.info("Clique no mapa para posicionar seu avatar.")
+                    if st.button("🔙 Cancelar avatar", key="cancel_place_trainer"):
+                        st.session_state["placing_trainer"] = None
+                        st.rerun()
+                else:
+                    if trainer_piece:
+                        c_avatar_1, c_avatar_2, c_avatar_3 = st.columns(3)
+                        with c_avatar_1:
+                            if st.button("🚶 Mover", key="move_trainer", disabled=is_busy):
+                                st.session_state["moving_piece_id"] = trainer_piece.get("id")
+                                st.session_state["placing_pid"] = None
+                                st.session_state["placing_trainer"] = None
+                                st.rerun()
+                        with c_avatar_2:
+                            trainer_revealed = trainer_piece.get("revealed", True)
+                            if st.button("👁️" if trainer_revealed else "✅", key="toggle_trainer"):
+                                trainer_piece["revealed"] = not trainer_revealed
+                                upsert_piece(db, rid, trainer_piece)
+                                st.rerun()
+                        with c_avatar_3:
+                            if st.button("❌", key="remove_trainer"):
+                                delete_piece(db, rid, trainer_piece.get("id"))
+                                if st.session_state.get("moving_piece_id") == trainer_piece.get("id"):
+                                    st.session_state["moving_piece_id"] = None
+                                st.rerun()
+                    else:
+                        if st.button("📍 Colocar avatar", key="place_trainer", disabled=not avatar_choice or is_busy):
+                            st.session_state["placing_trainer"] = True
+                            st.session_state["placing_pid"] = None
+                            st.session_state["moving_piece_id"] = None
+                            st.rerun()
         
             for i, pid in enumerate(party_list):
                 # 1. Agora recuperamos 5 valores (incluindo p_form)
@@ -12259,7 +12562,7 @@ elif page == "PvP – Arena Tática":
                                 # Botões de Ação Principal
                                 if cur_hp > 0:
                                     # Bloqueia botões se outra ação estiver ocorrendo
-                                    is_busy = (moving_piece_id is not None) or (placing_pid is not None)
+                                    is_busy = (moving_piece_id is not None) or (placing_pid is not None) or placing_trainer
                                     
                                     if is_on_map:
                                         if st.button("🚶 Mover", key=f"m_{p_name}_{pid}_{i}", disabled=is_busy, use_container_width=True):
@@ -12347,6 +12650,14 @@ elif page == "PvP – Arena Tática":
         player_pieces_map = {name: [] for name in all_players}
 
         for p in all_pieces:
+            if p.get("kind") == "trainer":
+                if p.get("owner") == trainer_name:
+                    pieces_to_draw.append(p)
+                elif p.get("revealed", True):
+                    pieces_to_draw.append(p)
+                if p.get("owner") in player_pieces_map:
+                    player_pieces_map[p.get("owner")].append(p)
+                continue
             # 1. Captura a forma (5ª variável) do banco de dados
             hp_check, _, _, _, p_form = get_poke_data(p.get("owner"), p.get("pid"))
             
@@ -12842,6 +13153,7 @@ elif page == "PvP – Arena Tática":
                 ppid = st.session_state.get("placing_pid")
                 peff = st.session_state.get("placing_effect")
                 moving_piece_id = st.session_state.get("moving_piece_id")
+                placing_trainer = st.session_state.get("placing_trainer")
 
                 if peff:
                     curr = state.get("effects") or []
@@ -12872,6 +13184,37 @@ elif page == "PvP – Arena Tática":
                     mark_pid_seen(db, rid, ppid)
                     add_public_event(db, rid, "piece_placed", trainer_name, {"pid": ppid, "to": [row, col]})
                     st.session_state.pop("placing_pid", None)
+                    st.rerun()
+                elif placing_trainer:
+                    s_now = get_state(db, rid)
+                    all_p = s_now.get("pieces") or []
+                    avatar_choice = user_data.get("trainer_profile", {}).get("avatar_choice")
+                    existing_trainer = next(
+                        (p for p in all_p if p.get("owner") == trainer_name and p.get("kind") == "trainer"),
+                        None,
+                    )
+                    if avatar_choice:
+                        if existing_trainer:
+                            existing_trainer["row"] = row
+                            existing_trainer["col"] = col
+                            existing_trainer["avatar"] = avatar_choice
+                            existing_trainer["revealed"] = True
+                            upsert_piece(db, rid, existing_trainer)
+                        else:
+                            new_id = str(uuid.uuid4())[:8]
+                            new_piece = {
+                                "id": new_id,
+                                "kind": "trainer",
+                                "avatar": avatar_choice,
+                                "owner": trainer_name,
+                                "row": row,
+                                "col": col,
+                                "revealed": True,
+                                "status": "active",
+                            }
+                            upsert_piece(db, rid, new_piece)
+                        add_public_event(db, rid, "trainer_placed", trainer_name, {"to": [row, col]})
+                    st.session_state["placing_trainer"] = None
                     st.rerun()
                 elif moving_piece_id and is_player:
                     s_now = get_state(db, rid)
