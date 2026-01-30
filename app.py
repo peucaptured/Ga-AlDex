@@ -9482,11 +9482,18 @@ if page == "Pokédex (Busca)":
             .carousel-item img { width: 54px; height: 54px; image-rendering: pixelated; }
         </style>
         
-        <div class="pokedex-footer-carousel">
+        <div class="pokedex-footer-carousel" id="pokedex-footer-carousel">
             REPLACE_ME
         </div>
-        
- 
+        <script>
+             const carousel = document.getElementById("pokedex-footer-carousel");
+            if (carousel) {
+                carousel.addEventListener("wheel", (event) => {
+                    event.preventDefault();
+                    carousel.scrollLeft += event.deltaY;
+                }, { passive: false });
+            }
+        </script>
         '''
         
         final_carousel_html = html_template.replace("REPLACE_ME", all_items_string)
@@ -9521,124 +9528,61 @@ if page == "Pokédex (Busca)":
             )
             st.markdown("<div class='pokedex-grid-note'>Clique em um Pokémon para ver os detalhes.</div>", unsafe_allow_html=True)
 
-            from st_click_detector import click_detector
+            grid_cols = 6 # Reduzi para 6 para as bordas não ficarem espremidas
+            rows = list(filtered_df.iterrows())
 
-            items_html_list = []
-            grid_id_map = {}
-            for idx, (_, row_g) in enumerate(filtered_df.iterrows()):
-                dex_num = str(row_g["Nº"])
-                p_name = row_g["Nome"]
-                sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
+            st.markdown("<div class='pokedex-grid'>", unsafe_allow_html=True)
+            for start in range(0, len(rows), grid_cols):
+                cols = st.columns(grid_cols)
+                for col, (index, row_g) in zip(cols, rows[start : start + grid_cols]):
+                    dex_num = str(row_g["Nº"])
+                    p_name = row_g["Nome"]
 
-                is_caught = dex_num in user_data.get("caught", [])
-                is_seen = dex_num in user_data.get("seen", [])
-                is_wished = dex_num in user_data.get("wishlist", [])
+                    # 1. Gera o link da imagem
+                    sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
 
-                if is_caught:
-                    status_class = "dex-frame--caught"
-                elif is_wished:
-                    status_class = "dex-frame--wish"
-                elif is_seen:
-                    status_class = "dex-frame--seen"
-                else:
-                    status_class = "dex-frame--default"
+                    # 2. Define o status
+                    is_caught = dex_num in user_data.get("caught", [])
+                    is_seen = dex_num in user_data.get("seen", [])
+                    is_wished = dex_num in user_data.get("wishlist", [])
 
-                safe_id = f"dex_{idx}"
-                grid_id_map[safe_id] = dex_num
+                    if is_caught:
+                        status_class = "dex-frame--caught"
+                        icon = "✅"
+                    elif is_wished:
+                        status_class = "dex-frame--wish"
+                        icon = "⭐"
+                    elif is_seen:
+                        status_class = "dex-frame--seen"
+                        icon = "👁️"
+                    else:
+                        status_class = "dex-frame--default"
+                        icon = ""
 
-                item_node = (
-                    f'<a href="javascript:void(0)" id="{safe_id}" class="dex-card-link" aria-label="{p_name}">'
-                    f'  <div class="dex-card-frame {status_class}">'
-                    f'    <img src="{sprite_url}" class="dex-sprite-img" alt="{p_name}">'
-                    "  </div>"
-                    "</a>"
-                )
-                items_html_list.append(item_node)
+                    display_name = f"{icon} {p_name}".strip()
 
-            grid_html = """
-            <style>
-              .pokedex-grid {
-                display: grid;
-                grid-template-columns: repeat(6, 1fr);
-                gap: 10px;
-                row-gap: 14px;
-                padding: 16px;
-                border-radius: 16px;
-                border: 1px solid rgba(148, 163, 184, 0.35);
-                background: rgba(15, 23, 42, 0.55);
-                box-shadow: inset 0 0 12px rgba(15, 23, 42, 0.45);
-              }
-              
-              .dex-card-link {
-                display: block;
-                text-decoration: none;
-                color: inherit;
-                cursor: pointer;
-              }
+                    with col:
+                        # 3. Renderiza a MOLDURA + IMAGEM usando HTML puro
+                        # Isso garante que a imagem fique DENTRO da borda colorida
+                        html_card = (
+                            f'<div class="dex-card-frame {status_class}">\n'
+                            f'    <img src="{sprite_url}" class="dex-sprite-img" alt="{p_name}">\n'
+                            "</div>"
+                        )
+                        st.markdown(html_card, unsafe_allow_html=True)
 
-              .dex-card-frame {
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                height: 110px;
-                width: 100%;
-                border-radius: 12px;
-                margin-bottom: 8px;
-                transition: transform 0.2s ease;
-                background: rgba(15, 23, 42, 0.6);
-                position: relative;
-              }
+                        # 4. Botão de interação fica logo abaixo
+                        st.button(
+                            display_name,
+                            key=f"dex_btn_{dex_num}_{index}",
+                            help=f"#{dex_num} • {p_name}",
+                            on_click=select_pokedex_entry,
+                            args=(dex_num,),
+                            use_container_width=True, # Faz o botão alinhar com a moldura
+                        )
+            st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-              .dex-card-frame:hover {
-                transform: scale(1.02);
-              }
-
-              .dex-sprite-img {
-                max-width: 80px;
-                max-height: 80px;
-                width: auto;
-                height: auto;
-                object-fit: contain;
-                image-rendering: pixelated;
-                filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
-                z-index: 1;
-              }
-
-              .dex-frame--caught {
-                border: 2px solid #00ff41;
-                box-shadow: 0 0 12px rgba(0, 255, 65, 0.25), inset 0 0 15px rgba(0, 60, 20, 0.6);
-                background: rgba(0, 60, 20, 0.4);
-              }
-
-              .dex-frame--seen {
-                border: 2px solid #00d0ff;
-                box-shadow: 0 0 12px rgba(0, 208, 255, 0.25), inset 0 0 15px rgba(0, 40, 60, 0.6);
-                background: rgba(0, 40, 60, 0.4);
-              }
-
-              .dex-frame--wish {
-                border: 2px solid #ffd700;
-                box-shadow: 0 0 12px rgba(255, 215, 0, 0.25), inset 0 0 15px rgba(60, 50, 0, 0.6);
-                background: rgba(60, 50, 0, 0.4);
-              }
-
-              .dex-frame--default {
-                border: 2px solid rgba(255, 255, 255, 0.15);
-                background: rgba(255, 255, 255, 0.03);
-              }
-            </style>
-            <div class="pokedex-grid">
-            REPLACE_ME
-            </div>
-            """
-            final_grid_html = grid_html.replace("REPLACE_ME", "".join(items_html_list))
-            clicked_grid_id = click_detector(final_grid_html)
-
-            if clicked_grid_id is not None:
-                selected_pid = grid_id_map.get(str(clicked_grid_id))
-                if selected_pid and selected_pid != st.session_state.get("pokedex_selected"):
-                    st.session_state["pokedex_selected"] = selected_pid
-                    st.rerun()
 
 # ==============================================================================
 # PÁGINA 2: TRAINER HUB
