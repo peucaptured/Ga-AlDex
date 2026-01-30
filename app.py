@@ -5165,9 +5165,11 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
             t_type = tiles[r][c]
 
             # --- CAMADA 1: O CHÃO SEMPRE PRESENTE ---
+            # --- CAMADA 1: O CHÃO SEMPRE PRESENTE ---
             # Colamos a grama ou pedra base primeiro em TODOS os tiles
-            img.paste(assets[base_floor], (x, y))
-
+            base_choices = floor_variants.get(base_floor, [base_floor])
+            base_choice = rng.choice(base_choices)
+            img.alpha_composite(assets[base_choice], (x, y))
             # --- CAMADA 2: TERRENOS ESPECÍFICOS E TRANSIÇÃO ---
             asset_to_draw = None
             
