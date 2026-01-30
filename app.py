@@ -9349,7 +9349,6 @@ body:has(.ds-home),
              div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-loc-right-content{
                display: flex;
                flex-direction: column;
-               height: 100%;
                min-height: 0;
              }
             
@@ -9386,12 +9385,14 @@ body:has(.ds-home),
             }
             
             .ds-loc-right-content .ds-lore-scroll{
-              flex: 1 1 auto;
-              min-height: 0;
-              overflow-y: auto;
+              /* não depende do flex/wrapper do Streamlit */
+              max-height: calc(78vh - 210px);
+              overflow-y: auto !important;
             
+              /* evita "vazar" pro scroll da página */
               overscroll-behavior: contain;
-              scrollbar-gutter: stable;
+            
+              padding-right: 8px;
             }
             div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar-track,
             div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar-track{
