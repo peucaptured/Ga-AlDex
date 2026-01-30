@@ -8221,19 +8221,7 @@ body:has(.ds-home),
             background-size:100% 100%;
             padding: 28px 28px 26px 28px;
             min-height: 0px;     /* deixa crescer pelo conteúdo */
-          }
-          .ds-npc-panel.right{
-            display: flex;
-            flex-direction: column;
-            height: 78vh;
-            min-height: 0;
-            overflow: hidden;
-          }
-          .ds-npc-panel.right .ds-frame{
-            flex: 1 1 auto;
-            min-height: 0;
-            overflow-y: auto;
-            padding-right: 8px;
+
           }
           .ds-npc-panel.left{
           background: transparent !important;
