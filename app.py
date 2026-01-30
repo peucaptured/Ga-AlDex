@@ -7357,25 +7357,84 @@ def _render_city_dossier(city_name: str, city_obj: dict, npcs: dict[str, dict], 
             st.markdown(f"**Observação:** {meta.get('observacao')}")
         st.markdown("</div>", unsafe_allow_html=True)
 
-        lider = (meta.get("lider") or staff.get("lider") or "").strip()
-        vice = (meta.get("vice_lider") or meta.get("vice-lider") or staff.get("vice_lider") or "").strip()
 
+        lider = (staff.get("lider") or meta.get("lider") or "").strip()
+        vice  = (staff.get("vice") or staff.get("vice_lider") or meta.get("vice_lider") or meta.get("vice-lider") or "").strip()
+        
+        def _canon_name(x: str) -> str:
+            if not x:
+                return ""
+            return (x.replace("“", '"').replace("”", '"')
+                     .replace("’", "'").replace("‘", "'")
+                     .strip())
+        
+        def _norm_key(x: str) -> str:
+            try:
+                return _norm(x)
+            except Exception:
+                return str(x).strip().lower()
+        
+        def _norm_light(x: str) -> str:
+            x = (x or "").strip().lower()
+            x = x.replace("“", '"').replace("”", '"').replace("’", "'").replace("‘", "'")
+            x = _re.sub(r"\s+", " ", x)
+            return x
+        
+        lider = _canon_name(lider)
+        vice  = _canon_name(vice)
+        
+        def _find_npc(name: str):
+            if not name:
+                return None
+            name2 = _canon_name(name)
+            if name2 in npcs:
+                return name2, npcs[name2]
+            if name2 in staff_npcs:
+                return name2, staff_npcs[name2]
+        
+            k = _norm_key(name2)
+            for d in (npcs, staff_npcs):
+                for nm, obj in d.items():
+                    if _norm_key(nm) == k:
+                        return nm, obj
+            return None
+        
+        # -------- fallback: inferir líder/vice pelos NPCs (ocupacao) --------
+        city_hit_name = (g.get("name") or g.get("city") or "").strip() if isinstance(g, dict) else ""
+        if not city_hit_name:
+            city_hit_name = city_name  # usa a cidade atual do compendium
+        
+        c_light = _norm_light(city_hit_name)
+        
+        if (not lider or not vice) and c_light:
+            for nm, obj in npcs.items():
+                occ = _norm_light(obj.get("ocupacao") or "")
+                if not lider and ("lider de ginasio de" in occ and f"ginasio de {c_light}" in occ):
+                    lider = nm
+                if not vice and ("vice lider" in occ and f"ginasio de {c_light}" in occ):
+                    vice = nm
+        
+        # -------- cards (fora do for/if) --------
         def person_card(role_label: str, name: str):
             if not name:
                 return
-            npc_obj = npcs.get(name) or staff_npcs.get(name) or {}
+            hit = _find_npc(name)
+            npc_obj = (hit[1] if hit else {})
+            shown_name = (hit[0] if hit else name)
+        
             st.markdown('<div class="comp-card">', unsafe_allow_html=True)
             cA, cB = st.columns([0.65, 1.35], gap="large")
             with cA:
-                imgp = comp_find_image(name)
+                imgp = comp_find_image(shown_name)  # usa a chave real encontrada
                 if imgp:
                     st.image(imgp, use_container_width=True)
                 else:
                     st.caption("🖼️ (sem retrato)")
             with cB:
-                st.markdown(f"### {role_label}: {name}")
+                st.markdown(f"### {role_label}: {shown_name}")
                 if npc_obj.get("ocupacao"):
                     st.caption(npc_obj.get("ocupacao"))
+        
                 pokes = npc_obj.get("pokemons") or []
                 if pokes:
                     st.markdown("**Pokémons (sprites):**")
@@ -7386,25 +7445,26 @@ def _render_city_dossier(city_name: str, city_obj: dict, npcs: dict[str, dict], 
                             if spr:
                                 st.image(spr, width=56)
                             st.caption(pnm)
-                if name in npcs:
-                    if st.button("Abrir NPC", key=f"open_gym_npc_{_stem_key(city_name)}_{_stem_key(name)}"):
+        
+                if shown_name in npcs:
+                    if st.button("Abrir NPC", key=f"open_gym_npc_{_stem_key(city_name)}_{_stem_key(shown_name)}"):
                         st.session_state["comp_axis"] = "🧑‍🤝‍🧑 NPCs"
-                        st.session_state["comp_npc_selected"] = name
-                        _touch_recent("comp_recent_npcs", name)
+                        st.session_state["comp_npc_selected"] = shown_name
+                        _touch_recent("comp_recent_npcs", shown_name)
                         st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
-
+        
         if lider or vice:
             colL, colV = st.columns(2, gap="large")
             with colL:
                 person_card("🏅 Líder", lider)
             with colV:
                 person_card("🥈 Vice", vice)
-
-        # narrativa/observações do ginásio
+        
         if (g.get("narrative") or "").strip():
             with st.expander("📜 Detalhes do Ginásio (texto)", expanded=False):
                 st.markdown((g.get("narrative") or "").strip())
+
 
 
     # Seções (modo operação: seletor)
