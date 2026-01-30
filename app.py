@@ -2667,15 +2667,17 @@ def render_compendium_ginasios() -> None:
             flex-direction: column;
           }
 
-          /* agora sim: a lore vira a área rolável */
-          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll,
-          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll{
-            flex: 1 1 auto;
-            min-height: 0;
-            overflow-y: auto;
-            padding-right: 8px;
-            overscroll-behavior: contain;
-          }
+            /* agora sim: a lore vira a área rolável (modo “bruto”, não depende do flex do Streamlit) */
+            div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll,
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll{
+              max-height: calc(78vh - 210px);
+              overflow-y: auto !important;
+            
+              padding-right: 8px;
+              overscroll-behavior: contain;
+              scrollbar-gutter: stable;
+            }
+
 
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar,
           div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar{ width: 8px; }
