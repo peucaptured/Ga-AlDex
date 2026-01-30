@@ -9482,7 +9482,7 @@ if page == "Pokédex (Busca)":
             .carousel-item img { width: 54px; height: 54px; image-rendering: pixelated; }
         </style>
         
-        <div class="pokedex-footer-carousel" id="pokedex-footer-carousel">
+        <div class="pokedex-footer-carousel" id="pokedex-footer-carousel" tabindex="0">
             REPLACE_ME
         </div>
         <script>
@@ -9490,7 +9490,8 @@ if page == "Pokédex (Busca)":
             if (carousel) {
                 carousel.addEventListener("wheel", (event) => {
                     event.preventDefault();
-                    carousel.scrollLeft += event.deltaY;
+                    const delta = Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+                    carousel.scrollLeft += delta;
                 }, { passive: false });
             }
         </script>
