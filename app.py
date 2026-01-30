@@ -2636,18 +2636,34 @@ def render_compendium_ginasios() -> None:
             min-height: 0;
             overflow: hidden;
           }
+
+          /* 🔧 O st.markdown cria um stMarkdownContainer intermediário.
+             Ele precisa ocupar o “resto” do painel para a lore poder rolar. */
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) div[data-testid="stMarkdownContainer"]:has(.ds-lore-scroll),
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) div[data-testid="stMarkdownContainer"]:has(.ds-lore-scroll){
+            flex: 1 1 auto;
+            min-height: 0;
+          }
+
+          /* wrapper interno do markdown precisa ter altura */
+          div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) div[data-testid="stMarkdownContainer"]:has(.ds-lore-scroll) > div,
+          div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) div[data-testid="stMarkdownContainer"]:has(.ds-lore-scroll) > div{
+            height: 100%;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+          }
+
+          /* agora sim: a lore vira a área rolável */
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll,
           div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll{
             flex: 1 1 auto;
             min-height: 0;
             overflow-y: auto;
             padding-right: 8px;
-          }
-          .ds-gym-shell .ds-lore-scroll{
-            max-height: calc(78vh - 140px);
-            overflow-y: auto;
             overscroll-behavior: contain;
           }
+
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar,
           div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar{ width: 8px; }
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-thumb,
@@ -9016,31 +9032,40 @@ body:has(.ds-home),
               background: rgba(255,255,255,0.06);
             }
             
-            /* área rolável da lore (não explode o frame) */
-            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll,
-            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll{
-              flex: 1 1 auto;
-              min-height: 0;
-              overflow-y: auto;
-              padding-right: 8px;
-            }
-            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-loc-right-content,
-            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-loc-right-content{
-              display: flex;
-              flex-direction: column;
-              height: 100%;
-              min-height: 0;
-            }
-            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-loc-right-content .ds-lore-scroll,
-            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-loc-right-content .ds-lore-scroll{
-              flex: 1 1 auto;
-              min-height: 0;
-            }
-            .ds-loc-shell .ds-lore-scroll{
-              max-height: calc(78vh - 140px);
-              overflow-y: auto;
-              overscroll-behavior: contain;
-            }
+             /* 🔧 stMarkdownContainer que contém a lore precisa virar o item flex “principal” */
+             div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) div[data-testid="stMarkdownContainer"]:has(.ds-loc-right-content),
+             div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) div[data-testid="stMarkdownContainer"]:has(.ds-loc-right-content){
+               flex: 1 1 auto;
+               min-height: 0;
+               overflow: hidden;
+             }
+
+             /* wrapper interno do markdown precisa ter altura */
+             div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) div[data-testid="stMarkdownContainer"]:has(.ds-loc-right-content) > div,
+             div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) div[data-testid="stMarkdownContainer"]:has(.ds-loc-right-content) > div{
+               height: 100%;
+               min-height: 0;
+             }
+
+             /* conteúdo da direita vira uma coluna com altura real */
+             div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-loc-right-content,
+             div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-loc-right-content{
+               display: flex;
+               flex-direction: column;
+               height: 100%;
+               min-height: 0;
+             }
+
+             /* área rolável da lore */
+             div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll,
+             div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll{
+               flex: 1 1 auto;
+               min-height: 0;
+               overflow-y: auto;
+               padding-right: 8px;
+               overscroll-behavior: contain;
+             }
+
             
             /* scrollbar discreto */
             div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar,
