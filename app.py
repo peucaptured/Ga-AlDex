@@ -42,7 +42,6 @@ from streamlit.errors import StreamlitAPIException
 # move_db.py
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
-import re
 import unicodedata
 
 import pandas as pd
@@ -54,7 +53,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 # Utils
 # ----------------------------
 def _norm(s: str) -> str:
-    import re
     import unicodedata
 
     s = (s or "").strip().lower()
@@ -1262,6 +1260,22 @@ def upload_pdf_to_storage(bucket, pdf_bytes: bytes, storage_path: str):
     blob.upload_from_string(pdf_bytes, content_type="application/pdf")
     return storage_path
 
+def upload_png_to_storage(bucket, png_bytes: bytes, storage_path: str):
+    blob = bucket.blob(storage_path)
+    blob.upload_from_string(png_bytes, content_type="image/png")
+    return storage_path
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def download_storage_bytes(storage_path: str) -> bytes | None:
+    if not storage_path:
+        return None
+    try:
+        _, bucket = init_firebase()
+        return bucket.blob(storage_path).download_as_bytes()
+    except Exception:
+        return None
+
+
 def save_sheet_to_firestore(db, trainer_name: str, sheet_payload: dict, sheet_id=None):
     trainer_id = safe_doc_id(trainer_name)
 
@@ -1886,7 +1900,6 @@ def _cg_recalculate_pp(move_data: dict, rank: int, db_moves: Optional["MoveDB"])
 import math
 from io import BytesIO
 
-import re
 
 REGION_ALIASES = {
     "alola": "alola", "alolan": "alola", "a": "alola",
@@ -2671,6 +2684,17 @@ def render_compendium_ginasios() -> None:
             background: rgba(255,215,0,0.18);
             border-radius: 10px;
           }
+          /* 🔧 Streamlit coloca um wrapper interno dentro da coluna.
+           Ele precisa virar flex e ter 100% de altura, senão a .ds-lore-scroll não ganha altura real. */
+        div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) > div,
+        div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) > div{
+          display: flex !important;
+          flex-direction: column !important;
+          height: 100% !important;
+          min-height: 0 !important;
+        }
+
+          
           div[data-testid="column"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-track,
           div[data-testid="stColumn"]:has(.ds-frame-marker.ds-gym-right) .ds-lore-scroll::-webkit-scrollbar-track{
             background: rgba(255,255,255,0.06);
@@ -3383,12 +3407,17 @@ def register_new_user(name, password):
 def save_data_cloud(trainer_name, data):
     try:
         sheet = get_google_sheet()
-        json_str = json.dumps(data)
-        
+
+        # ✅ limpeza preventiva: remove campos que estouram a célula
+        prof = (data or {}).get("trainer_profile")
+        if isinstance(prof, dict):
+            prof.pop("photo_b64", None)  # nunca mais salvar foto cheia no Sheets
+
+        # ✅ reduz tamanho do JSON
+        json_str = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+
         row_num = find_user_row(sheet, trainer_name)
-        
         if row_num:
-            # Atualiza apenas a coluna 2 (Dados) dessa linha
             sheet.update_cell(row_num, 2, json_str)
             return True
         else:
@@ -5044,6 +5073,151 @@ def build_trainer_avatar_catalog() -> dict[str, list[dict]]:
             "base": base,
         })
     return catalog
+
+import io
+import numpy as np
+from PIL import Image
+
+def _crop_center_square(img: Image.Image) -> Image.Image:
+    w, h = img.size
+    s = min(w, h)
+    left = (w - s) // 2
+    top = (h - s) // 2
+    return img.crop((left, top, left + s, top + s))
+
+def _feature_from_image(img: Image.Image, size: int = 96) -> np.ndarray:
+    """
+    Feature robusta: histograma HSV (cor) + histograma de bordas (forma).
+    Usa alpha (se tiver) para ignorar fundo transparente.
+    Retorna vetor L2-normalizado.
+    """
+    img = _crop_center_square(img.convert("RGBA")).resize((size, size), Image.Resampling.LANCZOS)
+    arr = np.asarray(img).astype(np.float32)  # (H,W,4)
+    alpha = arr[..., 3] / 255.0
+
+    mask = alpha > 0.15
+    if mask.sum() < (size * size) * 0.10:
+        mask = np.ones((size, size), dtype=bool)
+
+    # HSV (PIL)
+    hsv = np.asarray(img.convert("RGB").convert("HSV")).astype(np.float32)
+    h = (hsv[..., 0] / 255.0)[mask]
+    s = (hsv[..., 1] / 255.0)[mask]
+    v = (hsv[..., 2] / 255.0)[mask]
+
+    # bins: H 12 / S 4 / V 4
+    hist_hsv, _ = np.histogramdd(
+        np.stack([h, s, v], axis=1),
+        bins=(12, 4, 4),
+        range=((0, 1), (0, 1), (0, 1)),
+    )
+    hist_hsv = hist_hsv.flatten().astype(np.float32)
+    hist_hsv /= (hist_hsv.sum() + 1e-8)
+
+    # BORDAS (gradientes simples)
+    rgb = arr[..., :3]
+    gray = (0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2]) / 255.0
+    gray = gray.astype(np.float32)
+
+    gx = np.zeros_like(gray)
+    gy = np.zeros_like(gray)
+    gx[:, 1:-1] = gray[:, 2:] - gray[:, :-2]
+    gy[1:-1, :] = gray[2:, :] - gray[:-2, :]
+
+    mag = np.sqrt(gx * gx + gy * gy)
+    ang = (np.arctan2(gy, gx) + np.pi) / (2 * np.pi)  # 0..1
+
+    mag = mag[mask]
+    ang = ang[mask]
+
+    hist_edge = np.zeros((8,), dtype=np.float32)
+    if mag.size > 0:
+        idx = np.clip((ang * 8).astype(int), 0, 7)
+        np.add.at(hist_edge, idx, mag)
+        hist_edge /= (hist_edge.sum() + 1e-8)
+
+    feat = np.concatenate([hist_hsv, hist_edge], axis=0).astype(np.float32)
+    feat /= (np.linalg.norm(feat) + 1e-8)
+    return feat
+
+@st.cache_data(show_spinner=False)
+def build_trainer_avatar_index() -> list[dict]:
+    """
+    Usa seu catalog (base/name/path) e acrescenta feat para cada skin.
+    Cacheado => custo pago uma vez (mesmo com 1200 imagens).
+    """
+    catalog = build_trainer_avatar_catalog()
+    entries: list[dict] = []
+
+    for base, items in catalog.items():
+        for it in items:
+            path = it["path"]
+            name = it["name"]
+            try:
+                img = Image.open(path)
+                img.load()
+                feat = _feature_from_image(img, size=96)
+            except Exception:
+                continue
+
+            entries.append({
+                "base": base,
+                "name": name,
+                "path": path,
+                "feat": feat,
+            })
+
+    return entries
+
+def suggest_bases_and_best_skins(
+    photo_img: Image.Image,
+    index_entries: list[dict],
+    top_bases: int = 5,
+    per_base_limit: int = 1,
+) -> tuple[list[str], dict[str, str]]:
+    """
+    Retorna:
+      bases_sugeridas: [base1, base2, ...]
+      best_skin_by_base: {base: skin_name}
+    """
+    if not index_entries:
+        return [], {}
+
+    q = _feature_from_image(photo_img, size=96)
+
+    feats = np.stack([e["feat"] for e in index_entries], axis=0)
+    sims = feats @ q  # cosine similarity
+    # maior sim = melhor
+
+    # pega os top candidatos globais, mas garante diversidade por base
+    order = np.argsort(-sims)  # desc
+    picked_per_base: dict[str, int] = {}
+    best_skin_by_base: dict[str, str] = {}
+    best_sim_by_base: dict[str, float] = {}
+
+    for i in order:
+        e = index_entries[int(i)]
+        b = e["base"]
+        s = float(sims[int(i)])
+
+        if picked_per_base.get(b, 0) >= per_base_limit:
+            continue
+
+        picked_per_base[b] = picked_per_base.get(b, 0) + 1
+
+        # guarda a melhor skin por base
+        if (b not in best_sim_by_base) or (s > best_sim_by_base[b]):
+            best_sim_by_base[b] = s
+            best_skin_by_base[b] = e["name"]
+
+        # para quando já tivermos bases suficientes
+        if len(best_sim_by_base) >= top_bases:
+            break
+
+    bases_sugeridas = sorted(best_sim_by_base.keys(), key=lambda b: -best_sim_by_base[b])
+    return bases_sugeridas, best_skin_by_base
+
+
 
 @st.cache_data(show_spinner=False)
 def build_trainer_avatar_lookup() -> dict[str, dict]:
@@ -8872,11 +9046,13 @@ body:has(.ds-home),
                 padding: 0 24px 12px 24px;
                 box-sizing: border-box;
               }
-              html:has(.ds-loc-shell),
-              body:has(.ds-loc-shell),
-              div[data-testid="stAppViewContainer"]:has(.ds-loc-shell){
-                overflow: hidden !important;
-              }
+                html:has(.ds-loc-shell),
+                body:has(.ds-loc-shell),
+                div[data-testid="stAppViewContainer"]:has(.ds-loc-shell),
+                section.main:has(.ds-loc-shell),
+                div[data-testid="stMain"]:has(.ds-loc-shell){
+                  overflow: hidden !important;
+                }
               .ds-frame-marker{
                 display: none;
               }
@@ -9063,7 +9239,6 @@ body:has(.ds-home),
                min-height: 0;
                overflow-y: auto;
                padding-right: 8px;
-               overscroll-behavior: contain;
              }
 
             
@@ -9075,9 +9250,24 @@ body:has(.ds-home),
               background: rgba(255,215,0,0.18);
               border-radius: 10px;
             }
+            /* Fallback robusto (independente dos wrappers do Streamlit) */
+            .ds-loc-right-content{
+              height: 78vh;
+              min-height: 0;
+              display: flex;
+              flex-direction: column;
+            }
+            
+            .ds-loc-right-content .ds-lore-scroll{
+              flex: 1 1 auto;
+              min-height: 0;
+              overflow-y: auto;
+            }
+
             div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar-track,
             div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar-track{
               background: rgba(255,255,255,0.06);
+              
             }
 
             </style>
@@ -9585,6 +9775,8 @@ if page == "Pokédex (Busca)":
     }
     </style>
     """, unsafe_allow_html=True)
+
+
 if page == "Pokédex (Busca)":
     dex_param = st.query_params.get("dex", None)
     if dex_param:
@@ -10824,71 +11016,121 @@ if page == "Trainer Hub (Meus Pokémons)":
         )
 
         cropped_image = None
-        if uploaded_photo is not None:
-            try:
-                raw_bytes = uploaded_photo.getvalue()
-                raw_image = Image.open(io.BytesIO(raw_bytes))
-                cropped_image = crop_center_square(raw_image)
-                st.image(cropped_image, caption="Pré-visualização (recorte central)", width=260)
-            except Exception:
-                st.error("Não foi possível ler essa imagem. Tente outro arquivo.")
+    if uploaded_photo is not None:
+        try:
+            raw_bytes = uploaded_photo.getvalue()
+            raw_image = Image.open(io.BytesIO(raw_bytes))
+            cropped_image = crop_center_square(raw_image)
+            st.image(cropped_image, caption="Pré-visualização (recorte central)", width=260)
+        except Exception:
+            st.error("Não foi possível ler essa imagem. Tente outro arquivo.")
 
         c_photo_actions = st.columns([1, 1, 2])
+        
         with c_photo_actions[0]:
             if st.button("💾 Salvar foto", disabled=cropped_image is None):
+                # --- gera PNG cheio (para o Storage) ---
                 buffer_full = io.BytesIO()
                 cropped_image.convert("RGB").save(buffer_full, format="PNG")
-
+        
+                # --- gera thumb pequeno (para UI rápida / cabe no Sheets) ---
                 thumb = cropped_image.copy()
                 thumb.thumbnail((96, 96), Image.Resampling.LANCZOS)
                 buffer_thumb = io.BytesIO()
                 thumb.convert("RGB").save(buffer_thumb, format="PNG")
-
-                profile["photo_b64"] = base64.b64encode(buffer_full.getvalue()).decode("utf-8")
+        
+                # --- sobe a foto cheia pro Firebase Storage ---
+                db, bucket = init_firebase()
+                storage_path = f"trainer_photos/{safe_doc_id(trainer_name)}/profile.png"
+                upload_png_to_storage(bucket, buffer_full.getvalue(), storage_path)
+        
+                # --- salva só o path + thumb no user_data (Sheets não estoura) ---
+                profile["photo_storage_path"] = storage_path
                 profile["photo_thumb_b64"] = base64.b64encode(buffer_thumb.getvalue()).decode("utf-8")
+        
+                # nunca mais salvar a foto cheia em base64 no Sheets
+                profile.pop("photo_b64", None)
+        
                 profile["photo_updated_at"] = str(datetime.now())
                 save_data_cloud(trainer_name, user_data)
+        
                 st.success("Foto salva! Agora vamos sugerir avatares.")
                 st.rerun()
+        
         with c_photo_actions[1]:
             if st.button("🗑️ Remover foto"):
+                # apaga do Storage também
+                db, bucket = init_firebase()
+                old_path = profile.get("photo_storage_path")
+                if old_path:
+                    try:
+                        bucket.blob(old_path).delete()
+                    except Exception:
+                        pass
+        
+                profile.pop("photo_storage_path", None)
                 profile.pop("photo_b64", None)
                 profile.pop("photo_thumb_b64", None)
                 profile.pop("photo_updated_at", None)
+        
                 save_data_cloud(trainer_name, user_data)
                 st.success("Foto removida.")
                 st.rerun()
-
         st.markdown("---")
         st.subheader("🎭 Avatares sugeridos")
-
+        
         catalog = build_trainer_avatar_catalog()
-        if not catalog:
+        index_entries = build_trainer_avatar_index()
+        
+        if not catalog or not index_entries:
             st.warning("Nenhum avatar encontrado na pasta trainer.")
         else:
-            photo_b64 = profile.get("photo_b64")
-            suggestions = []
-            if photo_b64:
+            # carrega foto (Storage > thumb fallback)
+            photo_bytes = None
+            storage_path = profile.get("photo_storage_path")
+            if storage_path:
+                photo_bytes = download_storage_bytes(storage_path)
+        
+            if (not photo_bytes) and profile.get("photo_thumb_b64"):
                 try:
-                    photo_img = Image.open(io.BytesIO(base64.b64decode(photo_b64)))
-                    suggestions = pick_similar_avatar_bases(crop_center_square(photo_img), limit=5)
+                    photo_bytes = base64.b64decode(profile["photo_thumb_b64"])
                 except Exception:
-                    suggestions = []
+                    photo_bytes = None
+        
+            suggestions = []
+            best_default_by_base = {}
+        
+            if photo_bytes:
+                try:
+                    photo_img = Image.open(io.BytesIO(photo_bytes))
+                    suggestions, best_default_by_base = suggest_bases_and_best_skins(
+                        photo_img,
+                        index_entries,
+                        top_bases=5,
+                        per_base_limit=1,
+                    )
+                except Exception:
+                    suggestions, best_default_by_base = [], {}
+        
             if not suggestions:
                 st.info("Sugestão inicial baseada na pasta trainer.")
-                suggestions = list(catalog.keys())[:1]
-
+                suggestions = list(catalog.keys())[:5]
+                best_default_by_base = {}
+        
             chosen_avatar = profile.get("avatar_choice")
             cols = st.columns(min(5, len(suggestions)))
+        
             for idx, base in enumerate(suggestions):
                 items = catalog.get(base, [])
                 if not items:
                     continue
+        
                 names = [item["name"] for item in items]
-                if chosen_avatar in names:
-                    default_idx = names.index(chosen_avatar)
-                else:
-                    default_idx = 0
+        
+                # default: (1) escolhido antes, (2) melhor skin sugerida para a base, (3) primeiro
+                default_name = chosen_avatar if chosen_avatar in names else best_default_by_base.get(base)
+                default_idx = names.index(default_name) if default_name in names else 0
+        
                 with cols[idx]:
                     st.markdown(f"**{base.title()}**")
                     selected_skin = st.selectbox(
@@ -10899,12 +11141,16 @@ if page == "Trainer Hub (Meus Pokémons)":
                     )
                     sel_path = next((i["path"] for i in items if i["name"] == selected_skin), items[0]["path"])
                     st.image(sel_path, width=120)
+        
                     if st.button("✅ Escolher", key=f"trainer_pick_{base}"):
                         profile["avatar_choice"] = selected_skin
                         profile["avatar_base"] = base
                         save_data_cloud(trainer_name, user_data)
                         st.success(f"Avatar selecionado: {selected_skin}.")
                         st.rerun()
+        
+        
+
 
         st.markdown("---")
         st.subheader("🧵 Skins do personagem escolhido")
