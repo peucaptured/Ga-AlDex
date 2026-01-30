@@ -8475,24 +8475,23 @@ body:has(.ds-home),
 
             
         # --- COLUNA DIREITA ---
-        # --- COLUNA DIREITA ---
         with right:
-            st.markdown("<div class='ds-npc-panel right'>", unsafe_allow_html=True)
-        
             sel = st.session_state.get("comp_selected_npc")
             if not sel:
-                st.markdown(
+                panel_html = (
+                    "<div class='ds-npc-panel right'>"
                     "<div class='ds-frame'>"
                     "<div class='ds-name' style='font-size:30px;'>NENHUM NPC SELECIONADO</div>"
-                    "</div>",
-                    unsafe_allow_html=True,
+                    "</div>"
+                    "</div>"
                 )
+                st.markdown(panel_html, unsafe_allow_html=True)
             else:
                 npc = npcs_gerais.get(sel, {}) or {}
                 ocupacao = npc.get("ocupacao", "")
                 idade = npc.get("idade", "")
                 status = npc.get("status", "")
-        
+
                 # retrato grande (base64 p/ garantir)
                 portrait_b64 = ""
                 portrait_path = None
@@ -8500,7 +8499,7 @@ body:has(.ds-home),
                     portrait_path = comp_find_image(sel)
                 except Exception:
                     portrait_path = None
-        
+
                 ext = "png"
                 if portrait_path and os.path.exists(portrait_path):
                     try:
@@ -8512,17 +8511,17 @@ body:has(.ds-home),
                     except Exception:
                         portrait_b64 = ""
                         ext = "png"
-        
+
                 # sprites dos pokemons (usa mapa oficial)
                 pokemons = npc.get("pokemons") or npc.get("pokemons_conhecidos") or []
                 if not isinstance(pokemons, list):
                     pokemons = []
-        
+
                 try:
                     name_map = get_official_pokemon_map() or {}
                 except Exception:
                     name_map = {}
-        
+
                 sprite_imgs = []
                 for pkm in pokemons:
                     try:
@@ -8531,13 +8530,13 @@ body:has(.ds-home),
                         url = ""
                     if url:
                         sprite_imgs.append(url)
-        
+
                 # história
                 historia = ""
                 secs = npc.get("sections") or {}
                 if isinstance(secs, dict):
                     historia = secs.get("História") or secs.get("Historia") or ""
-        
+
                 # highlight busca na história
                 q2 = st.session_state.get("ds_npc_search", "").strip()
                 h_html = ""
@@ -8551,7 +8550,7 @@ body:has(.ds-home),
                         h_html += f"<p>{safe}</p>"
                 else:
                     h_html = "<p>(Sem história cadastrada)</p>"
-        
+
                 meta_parts = []
                 if ocupacao:
                     meta_parts.append(str(ocupacao))
@@ -8560,19 +8559,19 @@ body:has(.ds-home),
                 if idade:
                     meta_parts.append(f"IDADE: {idade}")
                 meta_line = " | ".join(meta_parts) if meta_parts else ""
-        
+
                 portrait_html = ""
                 if portrait_b64:
                     portrait_html = f"<div class='ds-portrait'><img src='data:image/{ext};base64,{portrait_b64}' /></div>"
-        
+
                 sprites_html = ""
                 if sprite_imgs:
                     sprites_html = "<div class='ds-sprites'>" + "".join(
                         f"<img src='{u}' alt='sprite'/>" for u in sprite_imgs
                     ) + "</div>"
-        
-                st.markdown(
-                    f"""
+
+                panel_html = f"""
+                <div class="ds-npc-panel right">
                     <div class="ds-frame">
                         <div class="ds-name">{sel}</div>
                         <div class="ds-meta">{meta_line}</div>
@@ -8581,11 +8580,9 @@ body:has(.ds-home),
                         <div class="ds-section-title">História</div>
                         <div class="ds-history">{h_html}</div>
                     </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-        
-            st.markdown("</div>", unsafe_allow_html=True)
+                </div>
+                """
+                st.markdown(panel_html, unsafe_allow_html=True)
         
         return
 
@@ -9064,15 +9061,9 @@ body:has(.ds-home),
             sl_now = st.session_state.get("comp_loc_sublocal") or "__visao__"
 
             st.markdown("<div class='ds-frame-marker ds-loc-right'></div>", unsafe_allow_html=True)
-            st.markdown("<div class='ds-loc-right-content'>", unsafe_allow_html=True)
-
-            st.markdown("<div class='ds-name'>LOCAIS</div>", unsafe_allow_html=True)
-
             crumb = f"{reg_now} — {city_now}"
             if sl_now and sl_now != "__visao__":
                 crumb += f" — {sl_now}"
-            st.markdown(f"<div class='ds-meta'>{crumb}</div>", unsafe_allow_html=True)
-            st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
 
             cobj = cities.get(city_now) or {}
             secs = (cobj.get("sections") or {}) if isinstance(cobj.get("sections"), dict) else {}
@@ -9084,10 +9075,10 @@ body:has(.ds-home),
             except Exception:
                 tags = []
 
+            chips_html = ""
             if tags:
                 chips = " ".join([f"<span class='comp-chip'>{t}</span>" for t in tags])
-                st.markdown(f"<div style='text-align:center'>{chips}</div>", unsafe_allow_html=True)
-                st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+                chips_html = f"<div style='text-align:center'>{chips}</div><div class='comp-divider'></div>"
 
 
             # Conteúdo rolável (abre)
@@ -9134,8 +9125,17 @@ body:has(.ds-home),
                 _push_loc_section(sl_now, txt)
 
             lore_html = "".join(lore_html_parts) or "<div class='ds-history'>(Sem lore cadastrada)</div>"
-            st.markdown(f"<div class='ds-lore-scroll'>{lore_html}</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+
+            right_html = f"""
+            <div class='ds-loc-right-content'>
+              <div class='ds-name'>LOCAIS</div>
+              <div class='ds-meta'>{crumb}</div>
+              <div class='comp-divider'></div>
+              {chips_html}
+              <div class='ds-lore-scroll'>{lore_html}</div>
+            </div>
+            """
+            st.markdown(right_html, unsafe_allow_html=True)
 
 
 
