@@ -6236,17 +6236,53 @@ def load_compendium_gym_data_json(
                 gyms[city] = {"meta": meta, "staff": {}, "staff_npcs": {}, "narrative": narrative}
 
     # 2) Staff via ginasios.json (NPCs)
+
     if ginasios_path and os.path.exists(ginasios_path):
-        jg = _json_read(ginasios_path)
-        for nm, npc in (jg.get("npcs") or {}).items():
+        jg = _json_read(ginasios_path) or {}
+    
+        npcs_src = jg.get("npcs") or {}
+    
+        # aceita tanto {"npcs": { "Nome": {...} }} quanto {"npcs": [ {...}, {...} ]}
+        it = []
+        if isinstance(npcs_src, list):
+            for i, npc in enumerate(npcs_src):
+                if not isinstance(npc, dict):
+                    continue
+                nm = (npc.get("name") or npc.get("nome") or "").strip()
+                if not nm:
+                    nm = f"npc_{i}"
+                it.append((nm, npc))
+        elif isinstance(npcs_src, dict):
+            for nm, npc in npcs_src.items():
+                if not isinstance(npc, dict):
+                    continue
+                nm2 = str(nm).strip()
+                if not nm2:
+                    continue
+                it.append((nm2, npc))
+    
+        # candidatos de cidade (reusa cities do bloco 1 se já existir; sem reler JSON)
+        cand = set((gyms or {}).keys())
+        try:
+            cand.update((cities or {}).keys())  # 'cities' já carregado no bloco 1
+        except Exception:
+            pass
+        cand_list = list(cand)
+    
+        # pré-normaliza para match rápido e consistente
+        cand_norm = [(c, _norm(c)) for c in cand_list]
+        cand_norm = [(c, cn) for (c, cn) in cand_norm if cn]
+    
+        for nm, npc in it:
             if not isinstance(npc, dict):
                 continue
+    
             npcs_extra[nm] = npc
-
+    
             # tenta vincular a um ginásio/cidade pelo texto de ocupação
             occ_raw = npc.get("ocupacao") or ""
             occ = _norm(occ_raw)
-
+    
             # papel (líder / vice / ex)
             role = "staff"
             if ("ex" in occ and "lider" in occ):
@@ -6255,57 +6291,39 @@ def load_compendium_gym_data_json(
                 role = "vice"
             elif "lider" in occ:
                 role = "lider"
-
+    
             # tenta achar a cidade pelo padrão "ginasio_de_<cidade_norm>" dentro do texto normalizado
             city_hit = None
-            cand = list((gyms or {}).keys())
-            if locais_path and os.path.exists(locais_path):
-                try:
-                    cities = (_json_read(locais_path).get("cities") or {})
-                    cand.extend(list(cities.keys()))
-                except Exception:
-                    pass
-
-            # dedupe preservando ordem
-            seen = set()
-            cand2 = []
-            for c in cand:
-                ck = _norm(c)
-                if ck and ck not in seen:
-                    seen.add(ck)
-                    cand2.append(c)
-
-            for c in cand2:
-                c_norm = _norm(c)
-                if not c_norm:
-                    continue
+            for c, c_norm in cand_norm:
                 if f"ginasio_de_{c_norm}" in occ or f"ginasio_{c_norm}" in occ:
                     city_hit = c
                     break
-
+    
             # heurística: ex-líder sem cidade explícita -> tenta inferir pelas seções (histórico/ginásio)
             if not city_hit and role == "ex_lider":
                 secs = npc.get("sections") or {}
-                # prioriza chaves mais úteis se existirem
-                blob = ""
+                blob_parts = []
+    
                 for kk in ("Ginásio", "Ginasio", "Histórico", "Historico", "História", "Historia"):
-                    if secs.get(kk):
-                        blob += " " + str(secs.get(kk))
-                if not blob:
-                    blob = " ".join(str(v) for v in secs.values() if v)
-                blob_n = _norm(blob)
-                for c in cand2:
-                    c_norm = _norm(c)
+                    v = secs.get(kk)
+                    if v:
+                        blob_parts.append(str(v))
+    
+                if not blob_parts and isinstance(secs, dict):
+                    blob_parts = [str(v) for v in secs.values() if v]
+    
+                blob_n = _norm(" ".join(blob_parts))
+                for c, c_norm in cand_norm:
                     if c_norm and c_norm in blob_n:
                         city_hit = c
                         break
-
+    
             if not city_hit:
                 continue
-
+    
             g = gyms.setdefault(city_hit, {"meta": {}, "staff": {}, "staff_npcs": {}, "narrative": ""})
             staff = g.setdefault("staff", {})
-
+    
             if role == "ex_lider":
                 staff.setdefault("ex_lideres", [])
                 if nm not in staff["ex_lideres"]:
@@ -6314,18 +6332,19 @@ def load_compendium_gym_data_json(
                 staff["vice"] = nm
             elif role == "lider":
                 staff["lider"] = nm
-
+    
             g.setdefault("staff_npcs", {})
             g["staff_npcs"][nm] = npc
-
+    
     return {"gyms": gyms, "npcs_extra": npcs_extra}
+    
+    
+    def _comp_mtime(p: str) -> float:
+        try:
+            return os.path.getmtime(p) if p and os.path.exists(p) else 0.0
+        except Exception:
+            return 0.0
 
-
-def _comp_mtime(p: str) -> float:
-    try:
-        return os.path.getmtime(p) if p and os.path.exists(p) else 0.0
-    except Exception:
-        return 0.0
 
 
 
@@ -9486,13 +9505,24 @@ if page == "Pokédex (Busca)":
             REPLACE_ME
         </div>
         <script>
-             const carousel = document.getElementById("pokedex-footer-carousel");
+            const carousel = document.getElementById("pokedex-footer-carousel");
             if (carousel) {
                 carousel.addEventListener("wheel", (event) => {
                     event.preventDefault();
                     const delta = Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
                     carousel.scrollLeft += delta;
                 }, { passive: false });
+
+                const centerActiveItem = () => {
+                    const activeItem = carousel.querySelector(".carousel-item-active");
+                    if (!activeItem) return;
+                    const targetLeft =
+                        activeItem.offsetLeft - (carousel.clientWidth - activeItem.offsetWidth) / 2;
+                    carousel.scrollLeft = Math.max(0, targetLeft);
+                };
+
+                requestAnimationFrame(centerActiveItem);
+                window.addEventListener("resize", centerActiveItem);
             }
         </script>
         '''
