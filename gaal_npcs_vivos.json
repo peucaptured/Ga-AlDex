@@ -224,9 +224,9 @@
       }
     },
     "Clementina “Vovó” Joy": {
-      "ocupacao": "Líder de Ginásio de Sinoper (Normal)",
-      "idade": "68 Anos",
-      "origem": "",
+      "ocupacao": "Líder de Ginásio de Sinoper",
+      "idade": "68",
+      "origem": "Desconhecido (Ex-Oficial Joy)",
       "status": "Ativo",
       "img": "",
       "pokemons": [
@@ -237,7 +237,7 @@
       ],
       "sections": {
         "História": "Clementina já viu muita gente chamar a própria exaustão de vocação. Ela foi Joy por décadas — daquelas que sabem, pelo jeito que a pessoa respira, se a febre vai subir ou baixar. Só que Ga’Al mudou a natureza do que significa ‘cuidar’. Quando o mundo começou a desandar de vez, ela entendeu uma coisa simples: não existe cura onde não existe comida.\n\nFoi assim que Sinoper ganhou uma fazenda antes de ganhar fama. A Fazenda Comum nasceu de mãos sujas de terra, estufas remendadas, pomar que resistiu ao vento, e regras que parecem gentis até você perceber que são firmes: aqui se reparte, aqui se trabalha, aqui não se usa ninguém como degrau. O lugar tem cheiro de barro molhado, palha seca, chá quente e antisséptico — como se Clementina tivesse misturado hospital e campo num mesmo coração.\n\nA cidade, porém, carrega um corte recente. Erick, o antigo líder do ginásio, tentou ‘salvar’ Sinoper expulsando treinadores e fechando portas, convencido de que o caos tinha nome estrangeiro. A mancha ficou. Quando Clementina assumiu, assumiu também a tarefa invisível: desfazer o medo sem trazer a ingenuidade de volta. Reabrir sem se entregar. Acolher sem permitir abuso.\n\nO ginásio dela é um celeiro reformado, nada de estádio brilhante. A batalha ali é como a própria vida rural: desgaste, controle, resistência, gestão de recursos. Clementina ensina novatos a usar itens, a respeitar status, a não se desesperar quando a luta estica. E a gentileza faz parte do método — mas é uma gentileza com coluna. Quem confunde isso com fraqueza perde, não por humilhação, mas por cansaço.\n\nWigglytuff é o afago que vira muralha. Bibarel é trabalho que não para. Miltank é sustento. Kangaskhan é abrigo. Clementina não romantiza Ga’Al — ela organiza o que dá, planta o que dá, cura o que dá. E, quando alguém pergunta por que ainda insiste, ela costuma responder com a mesma calma de sempre: ‘porque alguém precisa ficar para que os outros tenham para onde voltar’.",
-        "Ginásio": ""
+        "Ginásio": "Líder: Clementina “Vovó” Joy  |  Tipo: Normal (tema: cuidado e agricultura)  |  Localização: Centro da vila (celeiro reformado).\n\nClementina é uma antiga Enfermeira Joy aposentada do serviço ativo há décadas. Em vez de permanecer na linha de frente médica, ela concluiu que curar o mundo pós-apocalíptico de Ga’Al passa por garantir que as pessoas tenham o que comer e onde dormir. Por isso, ajudou a consolidar a Fazenda Comum e defende a partilha como princípio — e, desde que assumiu o ginásio, carrega também uma missão silenciosa: desfazer a desconfiança deixada por Erick e restaurar a reputação da vila como lugar seguro para viajantes.\n\nSeu ginásio não é um estádio tecnológico: funciona em um celeiro reformado com aroma de palha seca, chá quente e antisséptico. Clementina educa treinadores novatos em resistência, uso estratégico de itens e controle de status. A gentileza faz parte do método — mas não confunda gentileza com fraqueza: quem se afoba aqui perde para o desgaste."
       }
     },
     "Daniela": {
@@ -293,7 +293,7 @@
       }
     },
     "Draco": {
-      "ocupacao": "Vice-líder de Malva",
+      "ocupacao": "Vice Líder de Ginásio de Malva",
       "idade": "21 Anos",
       "origem": "",
       "status": "Ativo",
@@ -1105,23 +1105,6 @@
         "Ginásio": "Líder: Vitória  |  Tipo: Dragão  |  Localização: Malva (núcleo urbano).\n\nVitória conduz o ginásio como extensão do seu método: cada batalha é, ao mesmo tempo, confronto e aula. Ela costuma anunciar o que pretende fazer para observar a reação do desafiante e, ao final, entrega um relatório direto sobre decisões, tempo de troca e leitura de campo — um estilo que atrai treinadores sérios e irrita quem espera espetáculo fácil.\n\nDurante a expansão da Team Keneze no Baixo Deserto, Vitória ganhou respeito por agir onde outros recuavam: ao encontrar pessoas marcadas, oferecia água, comida, tratamento médico e acompanhamento psicológico, e buscava reinseri-las com dignidade. Para sustentar isso em uma cidade de receita irregular, contraiu empréstimos com a Associação de Batalha; hoje, o endividamento é uma sombra constante sobre o cargo. Seu vice, Draco, carrega devoção quase religiosa à líder — e a condição de que só será ‘oficial’ quando conseguir derrotá-la em batalha reconhecida virou história repetida em filas de inscrição."
       }
     },
-    "Clementina \"Vovó\" Joy": {
-      "ocupacao": "Líder de Ginásio de Sinoper",
-      "idade": "68 anos",
-      "origem": "",
-      "status": "Ativo",
-      "img": "",
-      "pokemons": [
-        "Wigglytuff",
-        "Bibarel",
-        "Miltank",
-        "Kangaskhan"
-      ],
-      "sections": {
-        "História": "",
-        "Ginásio": "Líder: Clementina “Vovó” Joy  |  Tipo: Normal (tema: cuidado e agricultura)  |  Localização: Centro da vila (celeiro reformado).\n\nClementina é uma antiga Enfermeira Joy aposentada do serviço ativo há décadas. Em vez de permanecer na linha de frente médica, ela concluiu que curar o mundo pós-apocalíptico de Ga’Al passa por garantir que as pessoas tenham o que comer e onde dormir. Por isso, ajudou a consolidar a Fazenda Comum e defende a partilha como princípio — e, desde que assumiu o ginásio, carrega também uma missão silenciosa: desfazer a desconfiança deixada por Erick e restaurar a reputação da vila como lugar seguro para viajantes.\n\nSeu ginásio não é um estádio tecnológico: funciona em um celeiro reformado com aroma de palha seca, chá quente e antisséptico. Clementina educa treinadores novatos em resistência, uso estratégico de itens e controle de status. A gentileza faz parte do método — mas não confunda gentileza com fraqueza: quem se afoba aqui perde para o desgaste."
-      }
-    },
     "Vittorio \"Ace\" Moretti": {
       "ocupacao": "Líder de Ginásio de Liberty",
       "idade": "",
@@ -1201,7 +1184,7 @@
       }
     },
     "Grassa": {
-      "ocupacao": "Ex-Ranger",
+      "ocupacao": "Vice Líder de Ginásio de Dainise",
       "idade": "25",
       "origem": "",
       "status": "Ativo",
@@ -1215,6 +1198,34 @@
       "sections": {
         "História": "Grassa foi Ranger — e não qualquer uma. Entre patrulhas e missões, sempre se destacou pela firmeza em batalha, como se a disciplina do corpo fosse um idioma que ela falasse desde cedo. Mas a vida de Ranger cobra silêncio, e Grassa tinha dentro de si um barulho que pedia arena.\n\nRita viu isso antes de todo mundo. As duas chegaram a um acordo simples e perigoso: Grassa pediria exoneração e, em troca, poderia lutar no ginásio de Rita — não como ornamento, mas como parte viva do desafio.\n\nDesde então, Grassa carrega a marca de quem saiu da ordem sem virar desertora: um passo fora da fila, mas ainda com a coluna reta. Ela treina como quem afia lâmina, e cada vitória é menos sobre aplauso e mais sobre manter acesa a própria escolha.",
         "Ginásio": "No ginásio de Rita, Grassa atua como combatente recorrente: um teste real para desafiantes e um lembrete de que a floresta também sabe ferir."
+      }
+    },
+    "Vitória": {
+      "ocupacao": "Líder de Ginásio de Malva",
+      "idade": "41",
+      "origem": "Ga'Al",
+      "status": "Ativo",
+      "img": "",
+      "pokemons": [
+        "Drampa",
+        "Hydreigon",
+        "Dragonite"
+      ],
+      "sections": {
+        "História": "Há líderes que fazem do ginásio um altar de vitória. Vitória faz dele uma sala de aula.\n\nEm Malva, ela recebe cada desafiante como quem recebe um aluno: observa primeiro, pergunta depois, e só então põe o peso dos dragões sobre o tabuleiro. Durante as batalhas, não esconde o próximo golpe — anuncia. Não por arrogância, mas por método: quer ver como o outro reage quando o perigo tem nome e hora. E, quando a luta termina, entrega um relatório pessoal, frio o suficiente para doer e preciso o bastante para mudar alguém.\n\nSeu brilho, porém, nasceu onde a luz não costuma alcançar. No Baixo Deserto, durante a ocupação da Team Keneze, Vitória trabalhou com agentes locais para localizar e identificar membros da equipe. Quando encontrava marcados, não os deixava apodrecer sob o estigma: levava-os para uma zona isolada e oferecia água, comida, tratamento médico e acompanhamento psicológico — de graça. Para sustentar esse padrão numa cidade de receita irregular, Malva se endividou. E a dívida, como uma sombra, começou a ameaçar o cargo que ela carrega como quase devoção.\n\nNa juventude, foi treinada por Isac Umbra e chegou à Liga como pupila promissora. Mas caiu cedo, eliminada por Felícia nas primeiras rodadas. Endossada pelo Campeão, conseguiu o posto de líder e abandonou os torneios — não por medo, mas por escolha: ensinar parecia mais urgente do que vencer.\n\nMesmo assim, Ga'Al não perdoa. Nos ataques da Team Keneze, seu Hydreigon — presente do antigo mentor — foi assassinado. No lugar da perda, uma marca nasceu nela. Com o fim da Team, dizem que talvez não signifique ameaça… mas em Ga'Al, o 'talvez' é sempre uma lâmina.\n\nPesquisa: Nichos ecológicos e sobre como eles se desenvolvem.",
+        "Ginásio": "Líder: Vitória  |  Tipo: Dragão  |  Localização: Malva (núcleo urbano)."
+      }
+    },
+    "Shintaro": {
+      "ocupacao": "Treinador (competidor do Torneio de Gamborre)",
+      "idade": "",
+      "origem": "Aspargo",
+      "status": "Ativo",
+      "img": "",
+      "pokemons": [],
+      "sections": {
+        "História": "O nome de Shintaro ganhou força em Gamborre antes mesmo de ele saber o que fazer com isso. No torneio, lutou como quem tinha algo a provar — e foi o bastante para acender a 'nova onda' de Aspargo. Entre os que assistiam estava Dandara, amiga de infância que decidiu partir ao ver o amigo chegar longe.\n\nDepois, vieram os dias escuros no Farol de Obsidian: um Bronzong o arrancou do mundo, levando-o para uma outra dimensão. Não se sabe quanto tempo passou lá dentro — só que ele voltou diferente: mais silencioso, mais atento às falhas do espaço. Quando conseguiu escapar, foi a tempo de resgatar Dandara, encontrada desacordada e gravemente ferida.\n\nDesde então, Shintaro caminha como quem carrega uma promessa: não deixar que o próximo desaparecimento seja definitivo.",
+        "Ginásio": ""
       }
     }
   }
