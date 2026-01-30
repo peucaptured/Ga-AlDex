@@ -10875,8 +10875,8 @@ if page == "Trainer Hub (Meus Pokémons)":
                 except Exception:
                     suggestions = []
             if not suggestions:
-                st.info("Envie e salve uma foto para gerar 5 sugestões automáticas.")
-                suggestions = list(catalog.keys())[:5]
+                st.info("Sugestão inicial baseada na pasta trainer.")
+                suggestions = list(catalog.keys())[:1]
 
             chosen_avatar = profile.get("avatar_choice")
             cols = st.columns(min(5, len(suggestions)))
