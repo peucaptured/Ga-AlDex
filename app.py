@@ -26,7 +26,6 @@ from advantages_engine import suggest_advantages
 import queue
 import threading
 import time
-import streamlit.components.v1 as components
 import mimetypes
 from pathlib import Path
 from streamlit.runtime import scriptrunner # <--- IMPORTANTE: Importar o módulo inteiro
@@ -445,6 +444,8 @@ class MoveDB:
 @st.cache_data(show_spinner=False)
 def _audio_data_uri(path_str: str) -> str:
     p = Path(path_str)
+    if not p.exists():
+        return ""
     data = p.read_bytes()
     mime, _ = mimetypes.guess_type(str(p))
     if not mime:
@@ -454,9 +455,6 @@ def _audio_data_uri(path_str: str) -> str:
     
 @st.cache_data(show_spinner=False)
 def comp_img_data_uri(path_str: str) -> str:
-    from pathlib import Path
-    import base64, mimetypes
-
     p = Path(path_str)
     if not p.exists():
         return ""
