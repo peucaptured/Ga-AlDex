@@ -3604,8 +3604,12 @@ def render_login_menu(trainer_name: str, user_data: dict):
     caught_count = len(user_data.get("caught", []) or [])
     badge_count = int(user_data.get("badges", 0) or 0)
     profile = user_data.get("trainer_profile", {})
-    chosen_avatar, chosen_path = get_selected_trainer_avatar(user_data)
-    avatar_src = comp_img_data_uri(chosen_path) if chosen_path else ""
+    avatar_choice = profile.get("avatar_choice")
+    avatar_src = ""
+    if avatar_choice:
+        avatar_path = Path("trainer") / f"{avatar_choice}.png"
+        if avatar_path.exists():
+            avatar_src = comp_img_data_uri(str(avatar_path))
     badge_dir = os.path.join("Assets", "insignias")
     badge_files = []
     if os.path.isdir(badge_dir):
