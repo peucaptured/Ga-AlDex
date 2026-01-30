@@ -11456,7 +11456,8 @@ elif page == "Criação Guiada de Fichas":
                             "thg": int(st.session_state.get("cg_thg", stats_fallback.get("thg", 0)) or 0),
                             "fortitude": int(st.session_state.get("cg_fortitude", stats_fallback.get("fortitude", 0)) or 0),
                             "will": int(st.session_state.get("cg_will", stats_fallback.get("will", 0)) or 0),
-                        }                        np_value = int(st.session_state.get("cg_np", 0) or 0)
+                        }                        
+                        np_value = int(st.session_state.get("cg_np", 0) or 0)
 
                         for i, m_gv in enumerate(list(st.session_state["cg_moves"]), start=1):
                             c1, c2, c3 = st.columns([6, 2, 1], vertical_alignment="center")
