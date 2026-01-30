@@ -11426,7 +11426,19 @@ elif page == "Criação Guiada de Fichas":
                             with c1:
                                 accuracy = int(m_gv.get("accuracy", 0) or 0)
                                 pp_here = m_gv.get("pp_cost")
-                                st.write(f"{i}. **{m_gv.get('name','Golpe')}** (Rank {m_gv.get('rank','—')}) — PP: {pp_here} | Acerto {accuracy}")
+                                base_rank = int(m_gv.get("rank", 0) or 0)
+                                based_label, stat_val = _move_stat_value(m_gv.get("meta") or {}, stats_now)
+                                final_rank = base_rank + int(stat_val)
+                                mod_acerto = accuracy + final_rank
+                                target_total = 2 * int(np_value)
+                                if based_label == "—":
+                                    rank_label = f"Rank final {final_rank}"
+                                else:
+                                    rank_label = f"Rank final {final_rank} (Base {base_rank} + {based_label} {stat_val})"
+                                st.write(
+                                    f"{i}. **{m_gv.get('name','Golpe')}** ({rank_label}) — "
+                                    f"PP: {pp_here} | Acerto {accuracy} | Mod. acerto {mod_acerto} (2xNP = {target_total})"
+                                )
                                 if m_gv.get("build"):
                                     bullets = _summarize_build(m_gv.get("build", ""))
                                     if bullets:
