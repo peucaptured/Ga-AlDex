@@ -3385,6 +3385,130 @@ def save_data_cloud(trainer_name, data):
 def get_empty_user_data():
     return {"seen": [], "caught": [], "party": [], "notes": {}}
 
+def _npc_pokemon_list(npc_obj: dict) -> list[str]:
+    pokes = npc_obj.get("pokemons") or npc_obj.get("pokemons_conhecidos") or []
+    if isinstance(pokes, str):
+        pokes = [p.strip() for p in re.split(r"[;,/|\n]+", pokes) if p.strip()]
+    if not isinstance(pokes, list):
+        return []
+    out = []
+    for p in pokes:
+        ps = str(p).strip()
+        if ps:
+            out.append(ps)
+    return out
+
+def _npc_pokemon_names_to_ids(pokes: list[str]) -> list[str]:
+    seen = set()
+    out: list[str] = []
+    name_map = api_name_map or {}
+    for p in pokes:
+        pid = get_pid_from_name(p, name_map)
+        if pid:
+            key = str(pid)
+        else:
+            key = f"EXT:{p}"
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(key)
+    return out
+
+def _npc_pokemon_ids_to_names(ids: list[str]) -> list[str]:
+    if not ids:
+        return []
+    names = []
+    for pid in ids:
+        pid_str = str(pid).strip()
+        if not pid_str:
+            continue
+        if pid_str.startswith("EXT:"):
+            names.append(pid_str.replace("EXT:", "").strip())
+            continue
+        if df is not None:
+            row = df[df["Nº"].astype(str) == pid_str]
+            if not row.empty:
+                names.append(str(row.iloc[0]["Nome"]))
+                continue
+        else:
+            names.append(pid_str)
+            continue
+        names.append(pid_str)
+    return names
+
+def _ensure_npc_user_payload(npc_name: str, npc_obj: dict) -> dict:
+    npc_ids = _npc_pokemon_names_to_ids(_npc_pokemon_list(npc_obj))
+    payload = get_empty_user_data()
+    payload["caught"] = npc_ids
+    payload["seen"] = npc_ids.copy()
+    payload["npc_user"] = True
+    payload["npc_name"] = npc_name
+    return payload
+
+def _sync_npc_users_and_overrides(npc_map: dict[str, dict]) -> dict[str, dict]:
+    try:
+        sheet = get_google_sheet()
+    except Exception:
+        return npc_map
+
+    try:
+        rows = sheet.get_all_values()
+    except Exception:
+        return npc_map
+
+    user_rows: dict[str, dict] = {}
+    for idx, row in enumerate(rows, start=1):
+        if not row:
+            continue
+        name = (row[0] or "").strip()
+        if not name:
+            continue
+        data = {}
+        if len(row) > 1 and row[1]:
+            try:
+                data = json.loads(row[1])
+            except Exception:
+                data = {}
+        user_rows[name] = {"row": idx, "data": data, "password": row[2] if len(row) > 2 else ""}
+
+    for npc_name, npc_obj in (npc_map or {}).items():
+        entry = user_rows.get(npc_name)
+        if entry is None:
+            payload = _ensure_npc_user_payload(npc_name, npc_obj)
+            try:
+                sheet.append_row([npc_name, json.dumps(payload), "1"])
+                user_rows[npc_name] = {"row": None, "data": payload, "password": "1"}
+            except Exception:
+                continue
+            entry = user_rows.get(npc_name)
+
+        if not entry:
+            continue
+
+        data = entry.get("data") or {}
+        if not isinstance(data, dict) or not data.get("npc_user"):
+            continue
+
+        npc_ids = data.get("caught") or []
+        if not npc_ids:
+            fallback_ids = _npc_pokemon_names_to_ids(_npc_pokemon_list(npc_obj))
+            if fallback_ids:
+                data["caught"] = fallback_ids
+                data["seen"] = list(dict.fromkeys((data.get("seen") or []) + fallback_ids))
+                try:
+                    if entry.get("row"):
+                        sheet.update_cell(entry["row"], 2, json.dumps(data))
+                except Exception:
+                    pass
+                npc_ids = data.get("caught") or []
+
+        npc_names = _npc_pokemon_ids_to_names(npc_ids)
+        if npc_names:
+            npc_obj["pokemons"] = npc_names
+            npc_obj["pokemons_conhecidos"] = npc_names
+
+    return npc_map
+
 def render_login_menu(trainer_name: str, user_data: dict):
     caught_count = len(user_data.get("caught", []) or [])
     badge_count = int(user_data.get("badges", 0) or 0)
@@ -6724,6 +6848,7 @@ def comp_load() -> dict:
                 if not dst["sections"].get(sec):
                     dst["sections"][sec] = obj["sections"][sec]
 
+    data["npcs"] = _sync_npc_users_and_overrides(data.get("npcs") or {})
     return data
 
 
