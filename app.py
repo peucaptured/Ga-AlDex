@@ -4079,6 +4079,11 @@ def render_intro_screen() -> None:
 # --- INTRO / LOGIN ---
 # --- INTRO / LOGIN ---
 if not st.session_state.get("intro_done", False):
+    action_param = st.query_params.get("action")
+
+    if action_param:
+        st.session_state["intro_done"] = True
+        st.rerun()
 
     intro_action = st.query_params.get("intro")
     if isinstance(intro_action, list):
@@ -5253,34 +5258,56 @@ def _crop_center_square(img: Image.Image) -> Image.Image:
 
 def _feature_from_image(img: Image.Image, size: int = 96) -> np.ndarray:
     """
-    Feature robusta: histograma HSV (cor) + histograma de bordas (forma).
-    Usa alpha (se tiver) para ignorar fundo transparente.
+    Feature MAIS discriminativa:
+      - HSV (cor): histograma 3D (H/S/V) + média/desvio
+      - Forma: HOG simplificado em grade (4x4 células, 9 bins)
+    Para fotos (sem alpha), usa máscara radial pra reduzir influência do fundo.
     Retorna vetor L2-normalizado.
     """
-    img = _crop_center_square(img.convert("RGBA")).resize((size, size), Image.Resampling.LANCZOS)
-    arr = np.asarray(img).astype(np.float32)  # (H,W,4)
+    # 1) normaliza e redimensiona
+    img_rgba = _crop_center_square(img.convert("RGBA")).resize((size, size), Image.Resampling.LANCZOS)
+    arr = np.asarray(img_rgba).astype(np.float32)  # (H,W,4)
     alpha = arr[..., 3] / 255.0
 
-    mask = alpha > 0.15
+    # 2) máscara: sprite (tem transparência) vs foto (sem transparência)
+    if float(alpha.min()) < 0.98:
+        mask = alpha > 0.15
+    else:
+        # FOTO: corta bordas externas (fundo) com máscara radial
+        yy, xx = np.mgrid[0:size, 0:size].astype(np.float32)
+        cx = (size - 1) * 0.5
+        cy = (size - 1) * 0.5
+        xx = (xx - cx) / cx
+        yy = (yy - cy) / cy
+        r = np.sqrt(xx * xx + yy * yy)
+        mask = r <= 0.85  # mantém “miolo” do retrato
+
     if mask.sum() < (size * size) * 0.10:
         mask = np.ones((size, size), dtype=bool)
 
-    # HSV (PIL)
-    hsv = np.asarray(img.convert("RGB").convert("HSV")).astype(np.float32)
+    # 3) HSV hist (mais fino) + stats
+    rgb_u8 = arr[..., :3].clip(0, 255).astype(np.uint8)
+    hsv = np.asarray(Image.fromarray(rgb_u8, mode="RGB").convert("HSV")).astype(np.float32)
     h = (hsv[..., 0] / 255.0)[mask]
     s = (hsv[..., 1] / 255.0)[mask]
     v = (hsv[..., 2] / 255.0)[mask]
 
-    # bins: H 12 / S 4 / V 4
+    # histograma 3D (H 16 / S 5 / V 5) = 400 dims
     hist_hsv, _ = np.histogramdd(
         np.stack([h, s, v], axis=1),
-        bins=(12, 4, 4),
+        bins=(16, 5, 5),
         range=((0, 1), (0, 1), (0, 1)),
     )
     hist_hsv = hist_hsv.flatten().astype(np.float32)
     hist_hsv /= (hist_hsv.sum() + 1e-8)
 
-    # BORDAS (gradientes simples)
+    # stats simples (média e desvio)
+    hsv_stats = np.array(
+        [h.mean(), s.mean(), v.mean(), h.std(), s.std(), v.std()],
+        dtype=np.float32,
+    )
+
+    # 4) gradientes (bordas)
     rgb = arr[..., :3]
     gray = (0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2]) / 255.0
     gray = gray.astype(np.float32)
@@ -5293,16 +5320,39 @@ def _feature_from_image(img: Image.Image, size: int = 96) -> np.ndarray:
     mag = np.sqrt(gx * gx + gy * gy)
     ang = (np.arctan2(gy, gx) + np.pi) / (2 * np.pi)  # 0..1
 
-    mag = mag[mask]
-    ang = ang[mask]
+    # 5) HOG simplificado em grade (4x4 células, 9 bins)
+    cells = 4
+    bins = 9
+    cell = size // cells
+    hog = np.zeros((cells, cells, bins), dtype=np.float32)
 
-    hist_edge = np.zeros((8,), dtype=np.float32)
-    if mag.size > 0:
-        idx = np.clip((ang * 8).astype(int), 0, 7)
-        np.add.at(hist_edge, idx, mag)
-        hist_edge /= (hist_edge.sum() + 1e-8)
+    for cy in range(cells):
+        for cx in range(cells):
+            y0, y1 = cy * cell, (cy + 1) * cell
+            x0, x1 = cx * cell, (cx + 1) * cell
 
-    feat = np.concatenate([hist_hsv, hist_edge], axis=0).astype(np.float32)
+            m = mask[y0:y1, x0:x1]
+            if m.sum() <= 0:
+                continue
+
+            mag_c = mag[y0:y1, x0:x1][m]
+            ang_c = ang[y0:y1, x0:x1][m]
+            idx = np.clip((ang_c * bins).astype(np.int32), 0, bins - 1)
+
+            hist = np.zeros((bins,), dtype=np.float32)
+            np.add.at(hist, idx, mag_c)
+            hist /= (hist.sum() + 1e-8)
+            hog[cy, cx, :] = hist
+
+    hog = hog.flatten().astype(np.float32)
+
+    # 6) junta com pesos (evita “borda dominar tudo”)
+    feat = np.concatenate([
+        0.70 * hist_hsv,
+        0.25 * hog,
+        0.15 * hsv_stats,
+    ], axis=0).astype(np.float32)
+
     feat /= (np.linalg.norm(feat) + 1e-8)
     return feat
 
@@ -5341,11 +5391,6 @@ def suggest_bases_and_best_skins(
     top_bases: int = 5,
     per_base_limit: int = 1,
 ) -> tuple[list[str], dict[str, str]]:
-    """
-    Retorna:
-      bases_sugeridas: [base1, base2, ...]
-      best_skin_by_base: {base: skin_name}
-    """
     if not index_entries:
         return [], {}
 
@@ -5353,10 +5398,13 @@ def suggest_bases_and_best_skins(
 
     feats = np.stack([e["feat"] for e in index_entries], axis=0)
     sims = feats @ q  # cosine similarity
-    # maior sim = melhor
 
-    # pega os top candidatos globais, mas garante diversidade por base
-    order = np.argsort(-sims)  # desc
+    # ✅ desempate determinístico (muda por foto, mas não fica “aleatório”)
+    seed = int.from_bytes(hashlib.blake2b(q.tobytes(), digest_size=8).digest(), "big")
+    rng = np.random.default_rng(seed)
+    sims = sims + rng.normal(0.0, 1e-6, size=sims.shape).astype(np.float32)
+
+    order = np.argsort(-sims)
     picked_per_base: dict[str, int] = {}
     best_skin_by_base: dict[str, str] = {}
     best_sim_by_base: dict[str, float] = {}
@@ -5371,18 +5419,15 @@ def suggest_bases_and_best_skins(
 
         picked_per_base[b] = picked_per_base.get(b, 0) + 1
 
-        # guarda a melhor skin por base
         if (b not in best_sim_by_base) or (s > best_sim_by_base[b]):
             best_sim_by_base[b] = s
             best_skin_by_base[b] = e["name"]
 
-        # para quando já tivermos bases suficientes
         if len(best_sim_by_base) >= top_bases:
             break
 
     bases_sugeridas = sorted(best_sim_by_base.keys(), key=lambda b: -best_sim_by_base[b])
     return bases_sugeridas, best_skin_by_base
-
 
 
 @st.cache_data(show_spinner=False)
