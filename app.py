@@ -4619,7 +4619,7 @@ def list_public_events(db, rid: str, limit: int = 30):
 # MAPA TÁTICO (3.1 / 3.2 / 3.3)
 # =========================
 
-TILE_SIZE = 96
+TILE_SIZE = 88
 
 THEMES = {
     "cave_water": {"base": "rock", "border": "wall"},
@@ -13572,9 +13572,8 @@ elif page == "PvP – Arena Tática":
             st.warning("Sem mapa.")
             st.stop()
 
-        # Proporção [1.8, 5, 1.8] ou [2, 6, 2] é o "ponto doce"
-        # Mantém o mapa grande (~60-65% da tela) mas dá fôlego para as laterais
-        c_me, c_map, c_opps = st.columns([1.8, 5, 1.8])
+        # Proporção [1.8, 4.6, 1.8] dá leve redução do mapa e mantém fôlego nas laterais
+        c_me, c_map, c_opps = st.columns([1.8, 4.6, 1.8])
 
         with c_me:
             render_player_column(trainer_name, "🎒 Sua Equipe", is_me=True)
