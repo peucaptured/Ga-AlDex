@@ -9231,15 +9231,21 @@ body:has(.ds-home),
                height: 100%;
                min-height: 0;
              }
-
-             /* área rolável da lore */
-             div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll,
-             div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll{
-               flex: 1 1 auto;
-               min-height: 0;
-               overflow-y: auto;
-               padding-right: 8px;
-             }
+            
+            /* área rolável da lore */
+            div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll,
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll{
+              flex: 1 1 auto;
+              min-height: 0;
+              overflow-y: auto;
+              padding-right: 8px;
+            
+              /* impede o scroll de “vazar” pro scroll principal */
+              overscroll-behavior: contain;
+            
+              /* opcional: mantém espaço do scrollbar estável */
+              scrollbar-gutter: stable;
+            }
 
             
             /* scrollbar discreto */
@@ -9262,8 +9268,10 @@ body:has(.ds-home),
               flex: 1 1 auto;
               min-height: 0;
               overflow-y: auto;
+            
+              overscroll-behavior: contain;
+              scrollbar-gutter: stable;
             }
-
             div[data-testid="column"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar-track,
             div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-right) .ds-lore-scroll::-webkit-scrollbar-track{
               background: rgba(255,255,255,0.06);
@@ -12764,7 +12772,7 @@ elif page == "PvP – Arena Tática":
                 else:
                     st.caption("Escolha um avatar na aba Meu Treinador.")
 
-                is_busy = (moving_piece_id is not None) or (placing_pid is not None) or placing_trainer
+                is_busy = (moving_piece_id is not None) or (placing_pid is not None) or bool(placing_trainer)
 
                 if placing_trainer:
                     st.info("Clique no mapa para posicionar seu avatar.")
@@ -12906,7 +12914,7 @@ elif page == "PvP – Arena Tática":
                                 # Botões de Ação Principal
                                 if cur_hp > 0:
                                     # Bloqueia botões se outra ação estiver ocorrendo
-                                    is_busy = (moving_piece_id is not None) or (placing_pid is not None) or placing_trainer
+                                    is_busy = (moving_piece_id is not None) or (placing_pid is not None) or bool(placing_trainer)
                                     
                                     if is_on_map:
                                         if st.button("🚶 Mover", key=f"m_{p_name}_{pid}_{i}", disabled=is_busy, use_container_width=True):
