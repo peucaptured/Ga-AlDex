@@ -8332,11 +8332,21 @@ body:has(.ds-home),
         render_ds_tools_nav(st.session_state["comp_view"])
 
         cities: dict = (comp_data.get("cities") or {})
-        regions_meta: dict = (comp_data.get("regions") or {})
-
+        
+        # "regions" pode vir como dict (antigo) OU list[str] (novo)
+        regions_raw = (comp_data.get("regions") or {})
+        if isinstance(regions_raw, dict):
+            regions_meta = regions_raw
+        elif isinstance(regions_raw, list):
+            # lista de nomes -> vira dict só pra compatibilizar com o resto do código
+            regions_meta = {str(r).strip(): {} for r in regions_raw if str(r).strip()}
+        else:
+            regions_meta = {}
+        
         if not isinstance(cities, dict) or not cities:
             st.error("Não encontrei cidades em Ga'Al.")
             return
+    
 
         # ----------------------------
         # Helpers locais
