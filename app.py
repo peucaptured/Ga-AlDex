@@ -6822,6 +6822,27 @@ def comp_load() -> dict:
             loc_j, _comp_mtime(loc_j),
             gin_j, _comp_mtime(gin_j),
         ) if (loc_j or gin_j) else {"gyms": {}, "npcs_extra": {}}
+
+        # =========================
+        # OVERRIDES FIXOS (STAFF)
+        # =========================
+        vice_overrides = {
+            "Dainise": "Grassa",
+            "Obsidian": "Clay",
+        }
+
+        gyms_bundle = (bundle.get("gyms") or {})
+        for city, vice_name in vice_overrides.items():
+            g = gyms_bundle.get(city)
+            if not isinstance(g, dict):
+                continue
+
+            g.setdefault("staff", {})
+
+            # só força se estiver vazio (pra não sobrescrever JSON/meta quando você corrigir depois)
+            meta = (g.get("meta") or {})
+            if not (g["staff"].get("vice_lider") or meta.get("vice_lider") or meta.get("vice-lider")):
+                g["staff"]["vice_lider"] = vice_name
     
         # =========================
         # NPCs gerais (Vivos + Mortos + Extras)
