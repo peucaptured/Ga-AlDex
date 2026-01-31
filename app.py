@@ -5222,7 +5222,7 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
                 img.alpha_composite(assets[base_choice], (x, y))
             # --- CAMADA 2: TERRENOS ESPECÍFICOS E TRANSIÇÃO ---
             asset_to_draw = None
-            
+
             if t_type == "water" or t_type == "sea":
                 # máscara N,E,S,W (1 = vizinho é terra; 0 = vizinho é água)
                 land_mask = 0
@@ -5231,24 +5231,42 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
                     if 0 <= nr < grid and 0 <= nc < grid:
                         if tiles[nr][nc] not in ["water", "sea"]:
                             land_mask |= (1 << bit)
-            
-                # 0 = água cercada de água (miolo). !=0 = borda/canto conforme máscara
-                if land_mask == 0:
-                    asset_to_draw = "agua_deep"  # vai pegar variantes agua_deep__v..
-                else:
-                    asset_to_draw = f"agua_shore_{land_mask:02d}"  # agua_shore_XX__v..
 
-            
-            elif t_type in ["sand", "stone", "dirt", "grass"]:
-                # Variação aleatória do próprio chão
-                prefix = {"sand":"areia", "stone":"pedra", "dirt":"terra", "grass":"grama"}[t_type]
-                asset_to_draw = f"{prefix}_{rng.randint(1,3)}"
+                if land_mask == 0:
+                    asset_to_draw = "agua_deep"
+                else:
+                    asset_to_draw = f"agua_shore_{land_mask:02d}"
+
+            else:
+                # >>> FIX: use SOMENTE chaves que existem no modo atlas (…_1 com variantes __v..)
+                floor_by_type = {
+                    "grass": "grama_1",
+                    "flower": "grama_1",
+                    "bush": "grama_1",
+                    "tree": "grama_1",
+
+                    "dirt": "terra_1",
+                    "path": "terra_1",
+                    "trail": "terra_1",
+                    "rut": "terra_1",
+
+                    "sand": "areia_1",
+
+                    "stone": "pedra_1",
+                    "rock": "pedra_1",
+                    "slope1": "pedra_1",
+                    "slope2": "pedra_1",
+                    "peak": "pedra_1",
+                    "stalagmite": "pedra_1",
+                }
+                asset_to_draw = floor_by_type.get(t_type)
 
             if asset_to_draw:
                 choices = floor_variants.get(asset_to_draw, [asset_to_draw])
                 asset_choice = rng.choice(choices)
                 if asset_choice in assets:
                     img.alpha_composite(assets[asset_choice], (x, y))
+
 
             # --- CAMADA 3: OBJETOS (Árvores e Rochas em vários mapas) ---
             obj_asset = None
