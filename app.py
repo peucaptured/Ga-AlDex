@@ -4139,18 +4139,67 @@ def render_login_menu(trainer_name: str, user_data: dict):
                     {party_html}
                 </div>
             </div>
-            <a class='fr-login-card-link' href='?action=continue' target='_self' aria-label='Continuar jogo'></a>
+
         </div>
         <div id='fr_new_game_card' class='fr-login-card fr-login-new-game-card'>
             <div class='fr-login-title'>
                 <span>New Game</span>
             </div>
             <div class='fr-login-info fr-login-info-empty'></div>
-            <a class='fr-login-card-link' href='?action=new_game' target='_self' aria-label='Novo jogo'></a>
+
         </div>
         """,
         unsafe_allow_html=True,
     )
+    continue_clicked = st.button("Continuar jogo", key="fr_continue_card_button")
+    new_game_clicked = st.button("Novo jogo", key="fr_new_game_card_button")
+
+    if continue_clicked:
+        st.session_state["show_login_menu"] = False
+        st.session_state["nav_to"] = "Pokédex (Busca)"
+        st.rerun()
+
+    if new_game_clicked:
+        st.session_state["confirm_new_game"] = True
+        st.rerun()
+
+    components.html(
+        """
+        <script>
+        (function () {
+            const parentDoc = window.parent && window.parent.document ? window.parent.document : document;
+
+            function hookCard(cardId, buttonText) {
+                const card = parentDoc.getElementById(cardId);
+                if (!card) return;
+
+                const buttons = Array.from(parentDoc.querySelectorAll("button"));
+                const targetButton = buttons.find((btn) => btn.innerText.trim() === buttonText);
+                if (!targetButton) return;
+
+                targetButton.style.display = "none";
+                card.style.cursor = "pointer";
+                card.setAttribute("role", "button");
+                card.setAttribute("tabindex", "0");
+
+                const trigger = () => targetButton.click();
+                card.addEventListener("click", trigger);
+                card.addEventListener("keydown", (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        trigger();
+                    }
+                });
+            }
+
+            hookCard("fr_continue_card", "Continuar jogo");
+            hookCard("fr_new_game_card", "Novo jogo");
+        })();
+        </script>
+        """,
+        height=0,
+    )
+
 
     # --- MENU + BOTÃO CONFIRMAR AO LADO (SEM click-detector) ---
     menu_col, confirm_col = st.columns([7, 1], gap="small")
