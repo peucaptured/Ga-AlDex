@@ -5169,7 +5169,8 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
             # Colamos a grama ou pedra base primeiro em TODOS os tiles
             base_choices = floor_variants.get(base_floor, [base_floor])
             base_choice = rng.choice(base_choices)
-            img.alpha_composite(assets[base_choice], (x, y))
+            if base_choice in assets:
+                img.alpha_composite(assets[base_choice], (x, y))
             # --- CAMADA 2: TERRENOS ESPECÍFICOS E TRANSIÇÃO ---
             asset_to_draw = None
             
@@ -5194,10 +5195,11 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
                 prefix = {"sand":"areia", "stone":"pedra", "dirt":"terra", "grass":"grama"}[t_type]
                 asset_to_draw = f"{prefix}_{rng.randint(1,3)}"
 
-            if asset_to_draw in assets:
+            if asset_to_draw:
                 choices = floor_variants.get(asset_to_draw, [asset_to_draw])
                 asset_choice = rng.choice(choices)
-                img.alpha_composite(assets[asset_choice], (x, y))
+                if asset_choice in assets:
+                    img.alpha_composite(assets[asset_choice], (x, y))
 
             # --- CAMADA 3: OBJETOS (Árvores e Rochas em vários mapas) ---
             obj_asset = None
