@@ -6518,8 +6518,20 @@ def _build_image_index(roots: tuple[str, ...]) -> dict[str, dict]:
     return {"by_key": by_key, "keys": sorted(by_key.keys())}
 
 
-def comp_find_image(name: str) -> str | None:
-    roots = tuple(_comp_base_dirs())
+def _filter_roots(roots: list[str], exclude_dirs: set[str] | None = None) -> list[str]:
+    if not exclude_dirs:
+        return roots
+    trimmed = []
+    for root in roots:
+        parts = {part.lower() for part in Path(root).parts}
+        if parts.isdisjoint(exclude_dirs):
+            trimmed.append(root)
+    return trimmed
+
+
+def comp_find_image(name: str, exclude_dirs: set[str] | None = None) -> str | None:
+    roots = _filter_roots(_comp_base_dirs(), exclude_dirs)
+    roots = tuple(roots)
     idx = _build_image_index(roots)
     by_key = idx.get("by_key", {})
     all_keys = idx.get("keys", [])
@@ -6560,6 +6572,10 @@ def comp_find_image(name: str) -> str | None:
             return p
 
     return None
+
+
+def comp_find_npc_image(name: str) -> str | None:
+    return comp_find_image(name, exclude_dirs={"trainer", "treinadores"})
 
 
 # ----------------------------
@@ -8440,7 +8456,7 @@ def _render_city_dossier(city_name: str, city_obj: dict, npcs: dict[str, dict], 
 
 
 def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[str, dict], gyms: dict[str, dict] | None = None) -> None:
-    img = comp_find_image(nm)
+    img = comp_find_npc_image(nm)
 
     st.markdown('<div class="comp-hero">', unsafe_allow_html=True)
     hA, hB = st.columns([1, 1.6], gap="large")
@@ -9310,7 +9326,7 @@ body:has(.ds-home),
     
                     img_path = None
                     try:
-                        img_path = comp_find_image(nome)
+                        img_path = comp_find_npc_image(nome)
                     except:
                         pass
     
@@ -9362,7 +9378,7 @@ body:has(.ds-home),
                 portrait_b64 = ""
                 portrait_path = None
                 try:
-                    portrait_path = comp_find_image(sel)
+                    portrait_path = comp_find_npc_image(sel)
                 except Exception:
                     portrait_path = None
 
