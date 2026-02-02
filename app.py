@@ -9563,18 +9563,20 @@ def render_compendium_page() -> None:
     
 /* HOME (igual app 35) */
 .ds-home {{
-    min-height: 74vh;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    gap: 16px;
-    padding: 12vh 0 0 0;
+    gap: 12px;
+    padding: 6vh 0 140px 0;
+    overflow: hidden;
 }}
 .ds-logo{{
   width: min(78vw, 760px);
   height: auto;
   display: block;
+  margin-top: -15vh;
   filter: drop-shadow(0 0 18px rgba(0,0,0,0.75));
 }}
 .ds-title {{
@@ -9586,10 +9588,7 @@ def render_compendium_page() -> None:
     margin: 0;
 }}
 .ds-press {{
-    position: fixed;
-    left: 50%;
-    bottom: 230px;
-    transform: translateX(-50%);
+    position: static;
     width: 100%;
     pointer-events: none;
     text-align: center;
@@ -9597,7 +9596,7 @@ def render_compendium_page() -> None:
     font-size: 14px;
     letter-spacing: 0.34em;
     text-transform: uppercase;
-    margin: 0;
+    margin: 0 0 12px 0;
 }}
 @keyframes dsBlink {{
     0%, 48% {{ opacity: 0.10; }}
@@ -10959,7 +10958,7 @@ body:has(.ds-home),
         html_home = (
             "<div class='ds-home'>"
             f"<img class='ds-logo' src='{logo_src}' alt=\"Ga'Al\" />"
-            "<div class='ds-press ds-blink'>PRESS ANY BUTTON</div>"
+            "<div class='ds-press ds-blink'>Press Any Button</div>"
             "</div>"
         )
     
