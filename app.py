@@ -9567,10 +9567,9 @@ def render_compendium_page() -> None:
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 16px;
-    padding: 10px 0 0 0;
-    transform: translateY(-24px);
+    padding: 12vh 0 0 0;
 }}
 .ds-logo{{
   width: min(78vw, 760px);
@@ -9587,13 +9586,18 @@ def render_compendium_page() -> None:
     margin: 0;
 }}
 .ds-press {{
+    position: fixed;
+    left: 50%;
+    bottom: 230px;
+    transform: translateX(-50%);
+    width: 100%;
+    pointer-events: none;
     text-align: center;
     color: var(--ds-faint);
     font-size: 14px;
     letter-spacing: 0.34em;
     text-transform: uppercase;
-    margin: -32px 0 0 0;
-    transform: translateY(-12px);
+    margin: 0;
 }}
 @keyframes dsBlink {{
     0%, 48% {{ opacity: 0.10; }}
@@ -10632,20 +10636,21 @@ body:has(.ds-home),
               overflow-y: auto;
               overflow-x: hidden;
               padding-right: 8px;
+              scrollbar-width: none;
+              -ms-overflow-style: none;
             }
             
             /* scrollbar discreto (esquerda) */
             div[data-testid="column"]:has(.ds-frame-marker.ds-loc-left)::-webkit-scrollbar,
-            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-left)::-webkit-scrollbar{ width: 8px; }
+            div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-left)::-webkit-scrollbar{ width: 0; height: 0; }
             
             div[data-testid="column"]:has(.ds-frame-marker.ds-loc-left)::-webkit-scrollbar-thumb,
             div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-left)::-webkit-scrollbar-thumb{
-              background: rgba(255,215,0,0.18);
-              border-radius: 10px;
+              background: transparent;
             }
             div[data-testid="column"]:has(.ds-frame-marker.ds-loc-left)::-webkit-scrollbar-track,
             div[data-testid="stColumn"]:has(.ds-frame-marker.ds-loc-left)::-webkit-scrollbar-track{
-              background: rgba(255,255,255,0.06);
+              background: transparent;
             }
             
              /* 🔧 stMarkdownContainer que contém a lore precisa virar o item flex “principal” */
