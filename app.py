@@ -3312,7 +3312,7 @@ import os, json, math
 from PIL import Image
 import streamlit as st
 
-FLOOR_PREFIXES = ("agua", "areia", "grama", "pedra", "terra", "slope", "neve", "cave")
+FLOOR_PREFIXES = ("agua", "areia", "grama", "pedra", "terra", "slope")
 
 def _is_blueish(r, g, b):
     # "água" tende a ter B alto e G >= R
@@ -3447,370 +3447,8 @@ def _pick_best_shore_tiles(all_tiles):
 
     return deep_candidates, shallow_candidates, shore_variants
 
-
-# =========================================================
-# CORE_OUTDOOR (TSX) -> assets dict (rápido e com variações)
-# =========================================================
-
-def _resolve_asset_path_local(rel_path: str) -> str:
-    """Resolve caminhos do Assets tanto em dev local quanto em Streamlit Cloud."""
-    # 1) relativo ao CWD (raiz do repo, comum no Streamlit Cloud)
-    if os.path.exists(rel_path):
-        return rel_path
-    # 2) relativo ao diretório deste arquivo
-    try:
-        here = os.path.dirname(__file__)
-        cand = os.path.join(here, rel_path)
-        if os.path.exists(cand):
-            return cand
-    except Exception:
-        pass
-    return rel_path  # deixa falhar lá embaixo (vai cair no fallback)
-
-def _parse_tsx(tsx_path: str) -> dict:
-    import xml.etree.ElementTree as ET
-    tsx_path = _resolve_asset_path_local(tsx_path)
-    root = ET.parse(tsx_path).getroot()
-    img = root.find("image")
-    return {
-        "tilewidth": int(root.attrib.get("tilewidth", 16)),
-        "tileheight": int(root.attrib.get("tileheight", 16)),
-        "columns": int(root.attrib.get("columns", 1)),
-        "tilecount": int(root.attrib.get("tilecount", 0)),
-        "image_source": img.attrib.get("source", "") if img is not None else "",
-        "tsx_dir": os.path.dirname(tsx_path),
-    }
-
-def _alpha_coverage(tile: Image.Image) -> float:
-    im = tile.convert("RGBA")
-    a = im.getchannel("A")
-    # cobertura aproximada (bem rápida p/ tiles 16x16)
-    total = im.size[0] * im.size[1]
-    non0 = sum(1 for v in a.getdata() if v > 10)
-    return non0 / total if total else 0.0
-
-def _classify_core(tile: Image.Image) -> str:
-    """Classificação estendida: grass/sand/dirt/rock + water + snow + cave."""
-    stt = _tile_stats(tile)
-    blue = stt["blue_frac"]
-    r, g, b = stt["avg"]
-    bright = stt["bright"]
-
-    # água
-    if blue > 0.55:
-        return "water_shallow" if bright > 120 else "water_deep"
-
-    # neve/gelo (muito claro e pouco saturado)
-    if bright > 200 and abs(r - g) < 18 and abs(g - b) < 18:
-        return "snow"
-
-    # caverna (escuro e pouco saturado)
-    if bright < 90 and abs(r - g) < 18 and abs(g - b) < 18:
-        return "cave"
-
-    # fallback "terra/areia/grama/pedra"
-    cat = _classify(tile)
-    return cat
-
-def _border_contrast_score(tile: Image.Image, border: int = 2) -> float:
-    """0..1 (maior = mais 'flat'). Compara bordas vs centro; tiles de cliff/edge tendem a ter contraste alto."""
-    im = tile.convert("RGBA")
-    w, h = im.size
-    b = max(1, min(border, w // 4, h // 4))
-    px = list(im.getdata())
-    def avg_region(x0, y0, x1, y1):
-        s = [0, 0, 0]
-        n = 0
-        for y in range(y0, y1):
-            for x in range(x0, x1):
-                r, g, bb, a = px[y * w + x]
-                if a < 10:
-                    continue
-                s[0] += r; s[1] += g; s[2] += bb
-                n += 1
-        if n == 0:
-            return (0, 0, 0)
-        return (s[0] / n, s[1] / n, s[2] / n)
-
-    center = avg_region(b, b, w - b, h - b)
-
-    # bordas: top, bottom, left, right
-    borders = [
-        avg_region(0, 0, w, b),
-        avg_region(0, h - b, w, h),
-        avg_region(0, 0, b, h),
-        avg_region(w - b, 0, w, h),
-    ]
-
-    # delta médio normalizado (0..~1)
-    def dist(c1, c2):
-        return (abs(c1[0] - c2[0]) + abs(c1[1] - c2[1]) + abs(c1[2] - c2[2])) / (3 * 255)
-
-    d = sum(dist(center, br) for br in borders) / 4.0
-    # flatness = 1 - contraste (clamp)
-    return max(0.0, min(1.0, 1.0 - d))
-
-
-def _pick_best_land_floors(candidates: list[Image.Image], want: int, border: int = 2) -> list[Image.Image]:
-    """Escolhe pisos 'planos' primeiro para evitar tiles de borda/cliff virarem chão."""
-    scored = []
-    for t in candidates:
-        cov = _alpha_coverage(t)
-        if cov < 0.92:
-            continue
-        flat = _border_contrast_score(t, border=border)
-        # penaliza tiles com buracos escuros (muito preto) -> geralmente 'pits' / recortes
-        stt = _tile_stats(t)
-        dark = stt.get("dark_frac", 0.0)
-        score = flat - 0.75 * dark
-        scored.append((score, t))
-    scored.sort(key=lambda x: x[0], reverse=True)
-    out = [t for _, t in scored[:want]]
-    # fallback: se não teve o suficiente, completa sem score
-    if len(out) < want:
-        for t in candidates:
-            if t not in out:
-                out.append(t)
-            if len(out) >= want:
-                break
-    return out
-
-
-def _build_assets_from_core_tilesets(tile_size_out: int) -> dict[str, Image.Image]:
-    """Constrói assets a partir de core_outdoor*.tsx evitando tiles de borda como piso."""
-    # procura nos caminhos mais comuns
-    tsx_triplet = [
-        "Assets/core_outdoor.tsx",
-        "Assets/core_outdoor_nature.tsx",
-        "Assets/core_outdoor_water.tsx",
-        "core_outdoor.tsx",
-        "core_outdoor_nature.tsx",
-        "core_outdoor_water.tsx",
-    ]
-
-    # pega um conjunto válido (3 arquivos)
-    candidates = []
-    for i in range(0, len(tsx_triplet), 3):
-        trip = tsx_triplet[i:i+3]
-        if len(trip) < 3:
-            continue
-        if all(os.path.exists(_resolve_asset_path_local(p)) for p in trip):
-            candidates.append(trip)
-    if not candidates:
-        return {}
-
-    tsx_trip = candidates[0]
-    parsed = [_parse_tsx(p) for p in tsx_trip]
-
-    sheets = []
-    for meta in parsed:
-        img_path = os.path.join(meta["tsx_dir"], meta["image_source"])
-        img_path = _resolve_asset_path_local(img_path)
-        if not os.path.exists(img_path):
-            return {}
-        sheets.append(Image.open(img_path).convert("RGBA"))
-
-    # pools brutos
-    floors_raw = {"grass": [], "sand": [], "dirt": [], "rock": [], "snow": [], "cave": []}
-    objs = {"tree": [], "bush": [], "flower": [], "rock_prop": [], "wall": [], "stalagmite": [], "peak": []}
-    water_tiles = []
-
-    # quotas finais (o que você usa no render)
-    floor_quota = {"grass": 28, "sand": 26, "dirt": 26, "rock": 28, "snow": 22, "cave": 22}
-    obj_quota = {"tree": 14, "bush": 10, "flower": 16, "rock_prop": 10, "wall": 10, "stalagmite": 8, "peak": 6}
-    water_quota_total = 1200
-
-    def want_any_obj():
-        return any(len(objs[k]) < obj_quota[k] for k in objs)
-
-    # --------
-    # 1) pisos + objetos (core_outdoor + nature)
-    # --------
-    for sheet, meta in [(sheets[0], parsed[0]), (sheets[1], parsed[1])]:
-        tw, th = meta["tilewidth"], meta["tileheight"]
-        cols = meta["columns"]
-        count = meta["tilecount"]
-
-        for tid in range(count):
-            if (all(len(floors_raw[k]) >= floor_quota[k] * 5 for k in floors_raw) and not want_any_obj()):
-                break
-
-            x = (tid % cols) * tw
-            y = (tid // cols) * th
-            tile = sheet.crop((x, y, x + tw, y + th))
-            cov = _alpha_coverage(tile)
-            if cov < 0.20:
-                continue
-
-            cat = _classify_core(tile)
-
-            # pisos sólidos (quase opacos): guardamos bruto para filtrar depois
-            if cov > 0.92 and cat in floors_raw:
-                floors_raw[cat].append(tile)
-                continue
-
-            if not want_any_obj():
-                continue
-
-            # objetos: heurística por bbox/altura + cor
-            stt = _tile_stats(tile)
-            r, g, b = stt["avg"]
-            bright = stt["bright"]
-            bbox = tile.getchannel("A").getbbox()
-            if not bbox:
-                continue
-            bw, bh = bbox[2] - bbox[0], bbox[3] - bbox[1]
-            rel_h = bh / max(1, th)
-            rel_w = bw / max(1, tw)
-
-            # trees: altos, bastante verde, cobertura moderada
-            if (
-                len(objs["tree"]) < obj_quota["tree"]
-                and g > r + 12 and g > b + 8
-                and 0.25 < cov < 0.90
-                and rel_h > 0.65
-                and rel_w > 0.40
-            ):
-                objs["tree"].append(tile)
-                continue
-
-            # bush: médio/baixo, verde, mais compacto
-            if (
-                len(objs["bush"]) < obj_quota["bush"]
-                and g > r + 10 and g > b + 6
-                and 0.18 < cov < 0.75
-                and 0.25 < rel_h < 0.70
-            ):
-                objs["bush"].append(tile)
-                continue
-
-            # flower: bem claro/colorido e pequeno
-            if (
-                len(objs["flower"]) < obj_quota["flower"]
-                and bright > 150
-                and 0.10 < cov < 0.65
-                and rel_h < 0.55
-            ):
-                objs["flower"].append(tile)
-                continue
-
-            # rochas de prop / picos / cave stuff
-            if cat in ["rock", "cave"] and len(objs["rock_prop"]) < obj_quota["rock_prop"] and cov < 0.95:
-                objs["rock_prop"].append(tile)
-                continue
-            if cat == "cave" and bright < 120 and len(objs["stalagmite"]) < obj_quota["stalagmite"]:
-                objs["stalagmite"].append(tile)
-                continue
-            if cat == "rock" and bright < 140 and len(objs["peak"]) < obj_quota["peak"] and cov < 0.95:
-                objs["peak"].append(tile)
-                continue
-            if cat == "cave" and cov > 0.55 and bright < 110 and len(objs["wall"]) < obj_quota["wall"]:
-                objs["wall"].append(tile)
-                continue
-
-    # --------
-    # 2) água (core_outdoor_water) -> autotile shore por máscara
-    # --------
-    sheet = sheets[2]
-    meta = parsed[2]
-    tw, th = meta["tilewidth"], meta["tileheight"]
-    cols = meta["columns"]
-    count = meta["tilecount"]
-    for tid in range(count):
-        if len(water_tiles) >= water_quota_total:
-            break
-        x = (tid % cols) * tw
-        y = (tid // cols) * th
-        tile = sheet.crop((x, y, x + tw, y + th))
-        cov = _alpha_coverage(tile)
-        if cov < 0.35:
-            continue
-        cat = _classify_core(tile)
-        if not cat.startswith("water"):
-            continue
-        edges = _edge_blue_score(tile, band=max(2, tw // 4))
-        water_tiles.append({"id": f"w{tid}", "img": tile, "cat": cat, "edges": edges})
-
-    deep_tiles, shallow_tiles, shore_by_mask = _pick_best_shore_tiles(water_tiles)
-
-    # --------
-    # 3) filtra pisos: pega os 'mais planos' primeiro
-    # --------
-    floors = {}
-    for k in floors_raw:
-        floors[k] = _pick_best_land_floors(floors_raw[k], want=floor_quota[k], border=max(1, tw // 8))
-
-    # --------
-    # 4) monta assets no formato do render atual
-    # --------
-    assets: dict[str, Image.Image] = {}
-
-    def _resize(tile: Image.Image) -> Image.Image:
-        if tile.size != (tile_size_out, tile_size_out):
-            return tile.resize((tile_size_out, tile_size_out), Image.Resampling.NEAREST)
-        return tile
-
-    def add_floor(base_key: str, pool: list[Image.Image], limit: int):
-        if not pool:
-            return
-        assets[base_key] = _resize(pool[0])
-        for i, t in enumerate(pool[:limit]):
-            assets[f"{base_key}__v{i:02d}"] = _resize(t)
-
-    add_floor("grama_1", floors["grass"], 24)
-    add_floor("areia_1", floors["sand"], 24)
-    add_floor("terra_1", floors["dirt"], 24)
-    add_floor("pedra_1", floors["rock"], 24)
-    add_floor("neve_1", floors["snow"], 20)
-    add_floor("cave_1", floors["cave"], 20)
-
-    # água miolo
-    if deep_tiles:
-        assets["agua_deep"] = _resize(deep_tiles[0]["img"])
-        for i, t in enumerate(deep_tiles[:8]):
-            assets[f"agua_deep__v{i:02d}"] = _resize(t["img"])
-    if shallow_tiles:
-        assets["agua_shallow"] = _resize(shallow_tiles[0]["img"])
-        for i, t in enumerate(shallow_tiles[:8]):
-            assets[f"agua_shallow__v{i:02d}"] = _resize(t["img"])
-
-    for m in range(16):
-        variants = shore_by_mask.get(m, [])
-        if not variants:
-            continue
-        assets[f"agua_shore_{m:02d}"] = _resize(variants[0]["img"])
-        for i, t in enumerate(variants[:3]):
-            assets[f"agua_shore_{m:02d}__v{i:02d}"] = _resize(t["img"])
-
-    def add_obj_keys(keys: list[str], pool: list[Image.Image]):
-        for k, t in zip(keys, pool):
-            assets[k] = _resize(t)
-
-    add_obj_keys(["tree_1", "tree_2", "tree_3"], objs["tree"][:3])
-    add_obj_keys(["brush_1", "brush_2"], objs["bush"][:2])
-    if objs["flower"]:
-        assets["flower"] = _resize(objs["flower"][0])
-    add_obj_keys(["rochas", "rochas_2"], objs["rock_prop"][:2])
-    if objs["wall"]:
-        assets["wall_1"] = _resize(objs["wall"][0])
-    if objs["stalagmite"]:
-        assets["estalagmite_1"] = _resize(objs["stalagmite"][0])
-    if objs["peak"]:
-        assets["pico_1"] = _resize(objs["peak"][0])
-
-    return assets
-
-
 @st.cache_resource
-
 def load_map_assets():
-    # =========================================================
-    # 0) MODO TSX (core_outdoor*.tsx) — recomendado pra você agora
-    # =========================================================
-    core_assets = _build_assets_from_core_tilesets(TILE_SIZE)
-    if core_assets:
-        return core_assets
-
     # Seus arquivos (como você falou)
     atlas_png  = "Assets/tiles 1024.png"
     atlas_json = "Assets/atlas_more_detail_1024.json"
@@ -5287,20 +4925,9 @@ THEMES = {
     "river": {"base": "grass", "border": "tree"},
     "sea_coast": {"base": "sand", "border": "sea"},
     "center_lake": {"base": "grass", "border": "tree"},
-
-# --- BIOMAS (novos) ---
-"biome_grass": {"base": "grass", "border": "bush"},
-"biome_forest": {"base": "grass", "border": "tree"},
-"biome_meadow": {"base": "grass", "border": "flower"},
-"biome_desert": {"base": "sand", "border": "rock"},
-"biome_mountain": {"base": "stone", "border": "peak"},
-"biome_snow": {"base": "snow", "border": "rock"},
-"biome_water": {"base": "sand", "border": "sea"},
-"biome_cave": {"base": "cave", "border": "wall"},
-"biome_mix": {"base": "grass", "border": "tree"},
 }
 
-def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_water: bool = False):
+def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool = False):
     # REGRA: Bloqueia água em 6x6, exceto se o tema tiver "water", "river", "lake" ou "sea" no nome
     themes_com_agua = ["water", "river", "lake", "sea", "coast"]
     if grid <= 6 and not any(word in theme_key.lower() for word in themes_com_agua):
@@ -5475,276 +5102,7 @@ def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_wat
                     tiles[rr][cc2] = ("water" if not no_water else "stone")
 
    
-    
-    elif theme_key == "biome_grass":
-        # Campos / Rotas gramadas: várias gramas + trilha + detalhes
-        for r in range(1, grid - 1):
-            for c in range(1, grid - 1):
-                if inside(r, c):
-                    tiles[r][c] = "grass" if rng.random() > 0.10 else "bush"
-
-        # trilha serpenteando
-        if rng.random() > 0.25:
-            r0 = rng.randint(2, grid - 3)
-            for c in range(1, grid - 1):
-                if inside(r0, c) and tiles[r0][c] != "tree":
-                    tiles[r0][c] = "trail"
-                r0 = max(1, min(grid - 2, r0 + rng.choice([-1, 0, 1])))
-
-        # flores leves
-        for _ in range(rng.randint(grid, grid * 2)):
-            rr = rng.randint(1, grid - 2)
-            cc = rng.randint(1, grid - 2)
-            if inside(rr, cc) and tiles[rr][cc] == "grass" and rng.random() > 0.55:
-                tiles[rr][cc] = "flower"
-
-    elif theme_key == "biome_forest":
-        # Floresta: densidade variando (bush/tree), bordas e clareiras
-        for r in range(1, grid - 1):
-            for c in range(1, grid - 1):
-                if inside(r, c):
-                    tiles[r][c] = "grass" if rng.random() > 0.20 else "bush"
-
-        # densidade por faixa (cria regiões mais fechadas)
-        bands = rng.randint(2, 4)
-        for _ in range(bands):
-            c0 = rng.randint(1, grid - 2)
-            for r in range(1, grid - 1):
-                if inside(r, c0) and rng.random() > 0.40:
-                    tiles[r][c0] = "tree"
-
-        # árvores espalhadas
-        trees = rng.randint(grid * 2, grid * 3)
-        for _ in range(trees):
-            rr = rng.randint(1, grid - 2)
-            cc = rng.randint(1, grid - 2)
-            if inside(rr, cc) and tiles[rr][cc] in ["grass", "bush"] and rng.random() > 0.35:
-                tiles[rr][cc] = "tree"
-
-        # caminho opcional
-        if rng.random() > 0.30:
-            r = rng.randint(2, grid - 3)
-            for c in range(1, grid - 1):
-                if inside(r, c) and tiles[r][c] != "tree":
-                    tiles[r][c] = "path"
-
-        # poça opcional (se permitido)
-        if not no_water and rng.random() > 0.60:
-            cr = rng.randint(2, grid - 3)
-            cc = rng.randint(2, grid - 3)
-            rad = 1 if grid <= 8 else 2
-            for rr in range(cr - rad, cr + rad + 1):
-                for cc2 in range(cc - rad, cc + rad + 1):
-                    if inside(rr, cc2) and rng.random() > 0.25:
-                        tiles[rr][cc2] = "water"
-
-    elif theme_key == "biome_meadow":
-        # Meadow / campo florido: MUITAS flores e plantas
-        for r in range(1, grid - 1):
-            for c in range(1, grid - 1):
-                if inside(r, c):
-                    tiles[r][c] = "grass"
-
-        # grandes manchas de flores
-        clusters = rng.randint(2, 4)
-        for _ in range(clusters):
-            cr = rng.randint(2, grid - 3)
-            cc = rng.randint(2, grid - 3)
-            rad = rng.randint(1, 2)
-            for rr in range(cr - rad, cr + rad + 1):
-                for cc2 in range(cc - rad, cc + rad + 1):
-                    if inside(rr, cc2) and rng.random() > 0.30:
-                        tiles[rr][cc2] = "flower"
-
-        # ainda mais flores espalhadas
-        for _ in range(rng.randint(grid * 2, grid * 4)):
-            rr = rng.randint(1, grid - 2)
-            cc = rng.randint(1, grid - 2)
-            if inside(rr, cc) and tiles[rr][cc] == "grass" and rng.random() > 0.45:
-                tiles[rr][cc] = "flower"
-
-        # alguns arbustos
-        for _ in range(rng.randint(grid, grid * 2)):
-            rr = rng.randint(1, grid - 2)
-            cc = rng.randint(1, grid - 2)
-            if inside(rr, cc) and tiles[rr][cc] == "grass" and rng.random() > 0.65:
-                tiles[rr][cc] = "bush"
-
-    elif theme_key == "biome_desert":
-        # Deserto / árido: areia + variações de chão seco
-        for r in range(1, grid - 1):
-            for c in range(1, grid - 1):
-                if inside(r, c):
-                    tiles[r][c] = "sand" if rng.random() > 0.12 else "dirt"
-
-        # pedregulho/rochas
-        for _ in range(rng.randint(grid, grid * 2)):
-            rr = rng.randint(1, grid - 2)
-            cc = rng.randint(1, grid - 2)
-            if inside(rr, cc) and rng.random() > 0.55:
-                tiles[rr][cc] = "rock"
-
-        # oásis rarinho
-        if not no_water and rng.random() > 0.75:
-            cr = rng.randint(2, grid - 3)
-            cc = rng.randint(2, grid - 3)
-            for rr in range(cr - 1, cr + 2):
-                for cc2 in range(cc - 1, cc + 2):
-                    if inside(rr, cc2) and rng.random() > 0.15:
-                        tiles[rr][cc2] = "water"
-
-    elif theme_key == "biome_mountain":
-        # Montanha / rochoso: pedra/pedregulho + "cliffs" (simulados) + picos
-        for r in range(1, grid - 1):
-            for c in range(1, grid - 1):
-                if inside(r, c):
-                    tiles[r][c] = "stone" if rng.random() > 0.30 else "rock"
-
-        # trilha/estrada estreita
-        if rng.random() > 0.35:
-            c0 = rng.randint(2, grid - 3)
-            for r in range(1, grid - 1):
-                if inside(r, c0) and rng.random() > 0.15:
-                    tiles[r][c0] = "trail"
-                c0 = max(1, min(grid - 2, c0 + rng.choice([-1, 0, 1])))
-
-        # picos
-        for _ in range(rng.randint(1, 3)):
-            rr = rng.randint(2, grid - 3)
-            cc = rng.randint(2, grid - 3)
-            tiles[rr][cc] = "peak"
-
-    elif theme_key == "biome_snow":
-        # Neve / gelo: tiles brancos + variações
-        for r in range(1, grid - 1):
-            for c in range(1, grid - 1):
-                if inside(r, c):
-                    tiles[r][c] = "snow"
-
-        # manchas de pedra/rocha pra quebrar o branco
-        for _ in range(rng.randint(grid, grid * 2)):
-            rr = rng.randint(1, grid - 2)
-            cc = rng.randint(1, grid - 2)
-            if inside(rr, cc) and rng.random() > 0.60:
-                tiles[rr][cc] = "rock"
-
-    elif theme_key == "biome_water":
-        # Água: rio/lago/mar + costa (os edges vêm do render)
-        # base areia/grama na margem
-        for r in range(1, grid - 1):
-            for c in range(1, grid - 1):
-                if inside(r, c):
-                    tiles[r][c] = "sand" if rng.random() > 0.30 else "grass"
-
-        # escolhe entre rio ou lago
-        if rng.random() > 0.5:
-            # rio serpenteando
-            r0 = rng.randint(1, grid - 2)
-            width = 2 if grid >= 10 else 1
-            for c in range(1, grid - 1):
-                for w in range(width):
-                    rr = r0 + w
-                    if 1 <= rr <= grid - 2:
-                        tiles[rr][c] = "water"
-                r0 = max(1, min(grid - 2 - (width - 1), r0 + rng.choice([-1, 0, 1])))
-        else:
-            # lago no centro
-            cr = grid // 2
-            cc = grid // 2
-            rad = 2 if grid >= 10 else 1
-            for rr in range(cr - rad, cr + rad + 1):
-                for cc2 in range(cc - rad, cc + rad + 1):
-                    if inside(rr, cc2) and (abs(rr - cr) + abs(cc2 - cc) <= rad + 1):
-                        tiles[rr][cc2] = "water"
-
-        # costa tipo mar em um lado (opcional)
-        if rng.random() > 0.65:
-            for r in range(grid):
-                tiles[r][0] = "sea"
-                if grid > 4:
-                    tiles[r][1] = "sea" if rng.random() > 0.35 else "sand"
-
-    elif theme_key == "biome_cave":
-        # Caverna: chão escuro + paredes na borda + stalagmites + pool
-        for r in range(grid):
-            for c in range(grid):
-                if r == 0 or c == 0 or r == grid - 1 or c == grid - 1:
-                    tiles[r][c] = "wall"
-                elif inside(r, c):
-                    tiles[r][c] = "cave"
-
-        # stalagmites
-        for _ in range(rng.randint(grid, grid * 2)):
-            rr = rng.randint(1, grid - 2)
-            cc = rng.randint(1, grid - 2)
-            if inside(rr, cc) and tiles[rr][cc] == "cave" and rng.random() > 0.55:
-                tiles[rr][cc] = "stalagmite"
-
-        # poça subterrânea
-        if not no_water and rng.random() > 0.35:
-            cr = rng.randint(2, grid - 3)
-            cc = rng.randint(2, grid - 3)
-            rad = 1 if grid <= 8 else 2
-            for rr in range(cr - rad, cr + rad + 1):
-                for cc2 in range(cc - rad, cc + rad + 1):
-                    if inside(rr, cc2) and rng.random() > 0.25:
-                        tiles[rr][cc2] = "water"
-
-    elif theme_key == "biome_mix":
-        # Mix: patches de biomas + 1 rio (bom pra rotas longas)
-        biomes = ["grass", "forest", "meadow", "desert", "mountain", "snow", "cave"]
-        centers = []
-        for _ in range(rng.randint(3, 5)):
-            centers.append((rng.randint(1, grid - 2), rng.randint(1, grid - 2), rng.choice(biomes)))
-
-        def nearest_biome(rr, cc):
-            best = None
-            best_d = 1e9
-            for r0, c0, b0 in centers:
-                d = (r0 - rr) * (r0 - rr) + (c0 - cc) * (c0 - cc)
-                if d < best_d:
-                    best_d = d
-                    best = b0
-            return best or "grass"
-
-        for r in range(1, grid - 1):
-            for c in range(1, grid - 1):
-                if not inside(r, c):
-                    continue
-                b0 = nearest_biome(r, c)
-                if b0 == "grass":
-                    tiles[r][c] = "grass"
-                elif b0 == "forest":
-                    tiles[r][c] = "bush" if rng.random() > 0.30 else "grass"
-                    if rng.random() > 0.65:
-                        tiles[r][c] = "tree"
-                elif b0 == "meadow":
-                    tiles[r][c] = "flower" if rng.random() > 0.55 else "grass"
-                elif b0 == "desert":
-                    tiles[r][c] = "sand" if rng.random() > 0.20 else "dirt"
-                elif b0 == "mountain":
-                    tiles[r][c] = "stone" if rng.random() > 0.35 else "rock"
-                elif b0 == "snow":
-                    tiles[r][c] = "snow" if rng.random() > 0.15 else "rock"
-                elif b0 == "cave":
-                    tiles[r][c] = "cave" if rng.random() > 0.10 else "rock"
-
-        # rio atravessando (se permitido)
-        if not no_water:
-            r0 = rng.randint(1, grid - 2)
-            width = 2 if grid >= 10 else 1
-            for c in range(1, grid - 1):
-                for w in range(width):
-                    rr = r0 + w
-                    if 1 <= rr <= grid - 2:
-                        tiles[rr][c] = "water"
-                # margens
-                if r0 - 1 >= 1 and rng.random() > 0.35 and tiles[r0 - 1][c] not in ["tree", "wall"]:
-                    tiles[r0 - 1][c] = "sand"
-                if r0 + width <= grid - 2 and rng.random() > 0.35 and tiles[r0 + width][c] not in ["tree", "wall"]:
-                    tiles[r0 + width][c] = "sand"
-                r0 = max(1, min(grid - 2 - (width - 1), r0 + rng.choice([-1, 0, 1])))
-# --- limpeza final: garante zero água se no_water=True ---
+    # --- limpeza final: garante zero água se no_water=True ---
     if no_water:
         for r in range(grid):
             for c in range(grid):
@@ -5756,283 +5114,79 @@ def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_wat
 
     return tiles, seed
 
-
-def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool = False):
-    """Gerador principal (com respawn). Floresta recebe geração mais coerente; demais temas usam o legado.
-
-    - 'Respawn' aqui = reroll automático até cumprir regras mínimas (conectividade + densidade).
-    - Mantém retorno (tiles, seed) e os mesmos tipos de tiles.
-    """
-    tkey = (theme_key or "").lower()
-
-    # regra extra: em 6x6, evita água salvo temas explicitamente aquáticos
-    if grid <= 6 and not any(w in tkey for w in ["water", "river", "lake", "sea", "coast"]):
-        no_water = True
-
-    # usa seed reprodutível
-    if seed is None:
-        seed = random.randint(1, 999999999)
-
-    # só troca o algoritmo na floresta (e biome_forest)
-    if tkey not in ["forest", "biome_forest"]:
-        return _gen_tiles_legacy(grid, theme_key, seed=seed, no_water=no_water)
-
-    def inside(r, c):
-        return 1 <= r <= grid - 2 and 1 <= c <= grid - 2
-
-    def is_blocking(tt: str) -> bool:
-        return tt in ["tree", "wall", "peak", "stalagmite", "sea", "water"]
-
-    def bfs_connected(start, tiles):
-        from collections import deque
-        q = deque([start])
-        seen = {start}
-        while q:
-            r, c = q.popleft()
-            for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
-                nr, nc = r + dr, c + dc
-                if 0 <= nr < grid and 0 <= nc < grid and (nr, nc) not in seen:
-                    if not is_blocking(tiles[nr][nc]):
-                        seen.add((nr, nc))
-                        q.append((nr, nc))
-        return seen
-
-    def carve_disk(tiles, cr, cc, rad, tt):
-        for r in range(cr - rad, cr + rad + 1):
-            for c in range(cc - rad, cc + rad + 1):
-                if inside(r, c) and (r - cr) * (r - cr) + (c - cc) * (c - cc) <= rad * rad + rad:
-                    tiles[r][c] = tt
-
-    def carve_path_polyline(tiles, pts, width=1, tt="path"):
-        for (r0, c0), (r1, c1) in zip(pts, pts[1:]):
-            steps = max(abs(r1 - r0), abs(c1 - c0), 1)
-            for i in range(steps + 1):
-                r = int(round(r0 + (r1 - r0) * (i / steps)))
-                c = int(round(c0 + (c1 - c0) * (i / steps)))
-                for dr in range(-width, width + 1):
-                    for dc in range(-width, width + 1):
-                        rr, cc = r + dr, c + dc
-                        if inside(rr, cc) and tiles[rr][cc] not in ["water", "sea"]:
-                            tiles[rr][cc] = tt
-
-    def gen_forest_once(rng: random.Random):
-        tiles = [["grass" for _ in range(grid)] for _ in range(grid)]
-
-        # 1) noise inicial de árvores
-        dense = 0.42 if tkey == "forest" else 0.50
-        p_tree = max(0.20, min(0.62, dense))
-        mask = [[0 for _ in range(grid)] for _ in range(grid)]
-        for r in range(1, grid - 1):
-            for c in range(1, grid - 1):
-                if inside(r, c):
-                    mask[r][c] = 1 if rng.random() < p_tree else 0
-
-        # 2) cellular automata -> clusters
-        def neigh(r, c):
-            s = 0
-            for dr in (-1, 0, 1):
-                for dc in (-1, 0, 1):
-                    if dr == 0 and dc == 0:
-                        continue
-                    rr, cc = r + dr, c + dc
-                    if 0 <= rr < grid and 0 <= cc < grid:
-                        s += mask[rr][cc]
-            return s
-
-        iters = 2 if grid <= 8 else 3
-        for _ in range(iters):
-            newm = [[0 for _ in range(grid)] for _ in range(grid)]
-            for r in range(1, grid - 1):
-                for c in range(1, grid - 1):
-                    if not inside(r, c):
-                        continue
-                    n = neigh(r, c)
-                    if mask[r][c] == 1:
-                        newm[r][c] = 1 if n >= 3 else 0
-                    else:
-                        newm[r][c] = 1 if n >= 5 else 0
-            mask = newm
-
-        # aplica
-        for r in range(1, grid - 1):
-            for c in range(1, grid - 1):
-                tiles[r][c] = "tree" if mask[r][c] else "grass"
-
-        # 3) clareiras (spawn) + caminho conectando
-        left = (grid // 2, 2)
-        right = (grid // 2, grid - 3)
-        rad_clear = 1 if grid <= 6 else 2
-        carve_disk(tiles, left[0], left[1], rad_clear, "grass")
-        carve_disk(tiles, right[0], right[1], rad_clear, "grass")
-
-        width = 1 if grid <= 8 else 2
-        mid = (rng.randint(2, grid - 3), rng.randint(2, grid - 3))
-        carve_path_polyline(tiles, [left, mid, right], width=width, tt="path")
-
-        # 4) suaviza entorno do caminho (evita gargalos)
-        for r in range(1, grid - 1):
-            for c in range(1, grid - 1):
-                if tiles[r][c] == "tree":
-                    near_path = any(
-                        0 <= r + dr < grid and 0 <= c + dc < grid and tiles[r + dr][c + dc] == "path"
-                        for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]
-                    )
-                    if near_path and rng.random() > 0.35:
-                        tiles[r][c] = "bush"
-
-        # 5) detalhes leves (não poluir)
-        for r in range(1, grid - 1):
-            for c in range(1, grid - 1):
-                if tiles[r][c] == "grass":
-                    if rng.random() < 0.10:
-                        tiles[r][c] = "bush"
-                    elif rng.random() < 0.03:
-                        tiles[r][c] = "flower"
-
-        # 6) água opcional bem contida
-        if (not no_water) and grid >= 8 and rng.random() > 0.82:
-            cr = rng.randint(2, grid - 3)
-            cc = rng.randint(2, grid - 3)
-            rad = 1 if grid <= 10 else 2
-            carve_disk(tiles, cr, cc, rad, "water")
-            for r in range(cr - rad - 1, cr + rad + 2):
-                for c in range(cc - rad - 1, cc + rad + 2):
-                    if inside(r, c) and tiles[r][c] != "water" and (abs(r - cr) + abs(c - cc)) <= rad + 2:
-                        if rng.random() > 0.35:
-                            tiles[r][c] = "sand"
-
-        # limpeza final se no_water
-        if no_water:
-            for r in range(grid):
-                for c in range(grid):
-                    if tiles[r][c] == "water":
-                        tiles[r][c] = "path"
-                    if tiles[r][c] == "sea":
-                        tiles[r][c] = "sand"
-
-        return tiles, left, right
-
-    def validate_forest(tiles, left, right) -> bool:
-        conn = bfs_connected(left, tiles)
-        if right not in conn:
-            return False
-
-        total = (grid - 2) * (grid - 2)
-        trees = sum(1 for r in range(1, grid - 1) for c in range(1, grid - 1) if tiles[r][c] == "tree")
-        walk = sum(1 for r in range(1, grid - 1) for c in range(1, grid - 1) if not is_blocking(tiles[r][c]))
-
-        tree_ratio = trees / max(1, total)
-        walk_ratio = walk / max(1, total)
-
-        # floresta precisa "parecer floresta" e ainda ser jogável
-        if tree_ratio < 0.18:
-            return False
-        if walk_ratio < 0.35:
-            return False
-        return True
-
-    # respawn/retry
-    MAX_TRIES = 35
-    for k in range(MAX_TRIES):
-        rng = random.Random(int(seed) + k * 9973)
-        tiles, left, right = gen_forest_once(rng)
-        if validate_forest(tiles, left, right):
-            return tiles, int(seed) + k * 9973
-
-    # fallback: devolve o último mesmo se não passou (evita travar)
-    return tiles, int(seed)
-
 def draw_tile_asset(img, r, c, tiles, assets, rng):
-    """Desenha 1 tile (utilitário). Mantido por compatibilidade; usa a mesma lógica do render_map_png."""
     grid = len(tiles)
-    t_type = tiles[r][c]
+    t = tiles[r][c]
     x, y = c * TILE_SIZE, r * TILE_SIZE
+    
+    asset_key = None
 
-    # pick variante rápida (se existir)
-    def pick(base_key: str) -> str | None:
-        if base_key in assets:
-            # tenta variantes __v
-            variants = [k for k in assets.keys() if k.startswith(base_key + "__v")]
-            if variants:
-                return rng.choice(variants)
-            return base_key
-        # tenta variantes mesmo sem base
-        variants = [k for k in assets.keys() if k.startswith(base_key + "__v")]
-        return rng.choice(variants) if variants else None
-
-    # chão base
-    under = {
-        "water": "areia_1",
-        "sea": "areia_1",
-        "grass": "grama_1",
-        "tree": "grama_1",
-        "bush": "grama_1",
-        "flower": "grama_1",
-        "path": "terra_1",
-        "trail": "terra_1",
-        "rut": "terra_1",
-        "dirt": "terra_1",
-        "sand": "areia_1",
-        "stone": "pedra_1",
-        "rock": "pedra_1",
-        "snow": "neve_1",
-        "cave": "cave_1",
-        "wall": "cave_1",
-        "stalagmite": "cave_1",
-        "peak": "pedra_1",
-    }.get(t_type, "grama_1")
-
-    k_under = pick(under)
-    if k_under:
-        img.alpha_composite(assets[k_under], (x, y))
-
-    # camada 2: piso específico / água shore
-    asset_to_draw = None
-    if t_type in ["water", "sea"]:
+    # LÓGICA DE SELEÇÃO DE ASSET
+    if t_type == "water" or t_type == "sea":
+    # máscara N,E,S,W (1 = vizinho é terra; 0 = vizinho é água)
         land_mask = 0
-        for bit, (dr, dc) in enumerate([(-1,0), (0,1), (1,0), (0,-1)]):
+        for bit, (dr, dc) in enumerate([(-1,0), (0,1), (1,0), (0,-1)]):  # N,E,S,W
             nr, nc = r + dr, c + dc
             if 0 <= nr < grid and 0 <= nc < grid:
                 if tiles[nr][nc] not in ["water", "sea"]:
                     land_mask |= (1 << bit)
-        asset_to_draw = "agua_deep" if land_mask == 0 else f"agua_shore_{land_mask:02d}"
+    
+        # escolhe base: miolo ou borda
+        if land_mask == 0:
+            asset_to_draw = "agua_deep"   # vai pegar variantes agua_deep__v..
+        else:
+            asset_to_draw = f"agua_shore_{land_mask:02d}"  # agua_shore_XX__v..
+
+    elif t == "grass":
+        asset_key = rng.choice(["grama_1", "grama_2", "grama_3"])
+    
+    elif t == "sand":
+        asset_key = rng.choice(["areia_1", "areia_2", "areia_3"])
+
+    elif t == "tree":
+        asset_key = rng.choice(["tree_1", "tree_2", "tree_3"])
+
+    elif t == "rock":
+        asset_key = "rochas" if rng.random() > 0.5 else "rochas_2"
+
+    elif t.startswith("slope"):
+        # Mapeia slope1/slope2 do gerador para os assets slope_1 a slope_4
+        # Exemplo: slope1 -> slope_1 (subida), slope2 -> slope_2 (descida)
+        asset_key = t.replace("slope", "slope_") 
+
+    elif t == "stone":
+        asset_key = rng.choice(["pedra_1", "pedra_2", "pedra_3"])
+
+    # Fallbacks genéricos para outros nomes
     else:
-        asset_to_draw = {
-            "grass": "grama_1",
+        mapping = {
+            "wall": "wall_1",
+            "stalagmite": "estalagmite_1",
+            "peak": "pico_1",
             "dirt": "terra_1",
-            "path": "terra_1",
-            "trail": "terra_1",
-            "rut": "terra_1",
-            "sand": "areia_1",
-            "stone": "pedra_1",
-            "rock": "pedra_1",
-            "snow": "neve_1",
-            "cave": "cave_1",
-        }.get(t_type)
+            "bush": "brush_1"
+        }
+        asset_key = mapping.get(t, "terra_1")
 
-    if asset_to_draw:
-        k = pick(asset_to_draw)
-        if k:
-            img.alpha_composite(assets[k], (x, y))
+    # DESENHO NA IMAGEM
+    if asset_key in assets:
+        tile_img = assets[asset_key]
+        img.paste(tile_img, (x, y), tile_img)
+        
 
-    # camada 3: objetos
-    obj = None
-    if t_type == "tree":
-        obj = rng.choice([k for k in ["tree_1", "tree_2", "tree_3"] if k in assets] or [])
-    elif t_type == "bush":
-        obj = rng.choice([k for k in ["brush_1", "brush_2"] if k in assets] or [])
-    elif t_type == "flower":
-        obj = "flower" if "flower" in assets else None
-    elif t_type == "stalagmite":
-        obj = "estalagmite_1" if "estalagmite_1" in assets else None
-    elif t_type == "peak":
-        obj = "pico_1" if "pico_1" in assets else None
-    elif t_type == "wall":
-        obj = "wall_1" if "wall_1" in assets else None
+# ==========================================
+# 🛠️ CORREÇÃO: FUNÇÕES DE DESENHO (CACHE + EFEITOS)
+# ==========================================
 
-    if obj:
-        img.alpha_composite(assets[obj], (x, y))
-    return img
+@st.cache_data(show_spinner=False)
+def fetch_image_pil(url: str) -> Image.Image | None:
+    try:
+        r = requests.get(url, timeout=5)
+        r.raise_for_status()
+        img = Image.open(BytesIO(r.content)).convert("RGBA")
+        return img
+    except Exception:
+        return None
 
 @st.cache_data(show_spinner=False)
 def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid: bool = True):
@@ -6047,65 +5201,21 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
         if base.startswith(FLOOR_PREFIXES):
             floor_variants.setdefault(base, []).append(key)
 
-    # 1) Definimos o "Chão Base" do tema para não haver buracos pretos
-    # Obs: em biomas/mix, o chão base varia por tile (não é uma cor única no mapa inteiro).
+    # 1. Definimos o "Chão Base" do tema para não haver buracos pretos
     theme_floors = {
-        "forest": "grama_1",
-        "cave_water": "pedra_1",
-        "mountain_slopes": "pedra_1",
-        "plains": "grama_1",
-        "dirt": "terra_1",
-        "river": "grama_1",
-        "sea_coast": "areia_1",
-        "center_lake": "grama_1",
+        "forest": "grama_1", "cave_water": "pedra_1", "mountain_slopes": "pedra_1",
+        "plains": "grama_1", "dirt": "terra_1", "sea_coast": "areia_1"
+    }
+    base_floor = theme_floors.get(theme_key, "grama_1")
 
-        # --- BIOMAS ---
-        "biome_grass": "grama_1",
-        "biome_forest": "grama_1",
-        "biome_meadow": "grama_1",
-        "biome_desert": "areia_1",
-        "biome_mountain": "pedra_1",
-        "biome_snow": "neve_1",
-        "biome_water": "areia_1",
-        "biome_cave": "cave_1",
-        "biome_mix": "grama_1",
-        }
     for r in range(grid):
         for c in range(grid):
             x, y = c * TILE_SIZE, r * TILE_SIZE
-            t_type = tiles[r][c]            # --- CAMADA 1: O CHÃO SEMPRE PRESENTE ---
+            t_type = tiles[r][c]
+
             # --- CAMADA 1: O CHÃO SEMPRE PRESENTE ---
-            # Colamos o chão base primeiro em TODOS os tiles (evita "buracos" pretos).
-            # Em biomas/mix, o chão base depende do tipo do tile.
-            base_floor = theme_floors.get(theme_key, "grama_1")
-            if theme_key.startswith("biome_"):
-                base_under_by_type = {
-                    # água usa areia/grama por baixo (não aparece muito, mas ajuda)
-                    "water": "areia_1",
-                    "sea": "areia_1",
-
-                    # pisos
-                    "grass": "grama_1",
-                    "sand": "areia_1",
-                    "dirt": "terra_1",
-                    "stone": "pedra_1",
-                    "rock": "pedra_1",
-                    "snow": "neve_1",
-                    "cave": "cave_1",
-
-                    # overlays/objetos (chão por baixo)
-                    "tree": "grama_1",
-                    "bush": "grama_1",
-                    "flower": "grama_1",
-                    "path": "terra_1",
-                    "trail": "terra_1",
-                    "rut": "terra_1",
-                    "stalagmite": "cave_1",
-                    "peak": "pedra_1",
-                    "wall": "cave_1",
-                }
-                base_floor = base_under_by_type.get(t_type, base_floor)
-
+            # --- CAMADA 1: O CHÃO SEMPRE PRESENTE ---
+            # Colamos a grama ou pedra base primeiro em TODOS os tiles
             base_choices = floor_variants.get(base_floor, [base_floor])
             base_choice = rng.choice(base_choices)
             if base_choice in assets:
@@ -6148,11 +5258,6 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
                     "slope2": "pedra_1",
                     "peak": "pedra_1",
                     "stalagmite": "pedra_1",
-
-                    # neve/caverna
-                    "snow": "neve_1",
-                    "cave": "cave_1",
-                    "wall": "cave_1",
                 }
                 asset_to_draw = floor_by_type.get(t_type)
 
@@ -6171,12 +5276,6 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
                 obj_asset = "estalagmite_1"
             elif t_type == "peak":
                 obj_asset = "pico_1"
-            elif t_type == "bush":
-                obj_asset = rng.choice(["brush_1", "brush_2"])
-            elif t_type == "flower":
-                obj_asset = "flower"
-            elif t_type == "wall":
-                obj_asset = "wall_1"
             
             # Adiciona ROCHAS aleatórias em qualquer terreno (conforme pedido)
             # 10% de chance de aparecer uma rocha de detalhe em tiles de chão
@@ -15065,18 +14164,7 @@ elif page == "PvP – Arena Tática":
                 "dirt": "Terra Batida",
                 "river": "Rio",
                 "sea_coast": "Costa Marítima",
-                "center_lake": "Lago Central",
-
-                # --- BIOMAS (novos) ---
-                "biome_grass": "Bioma: Campos / Rotas gramadas",
-                "biome_forest": "Bioma: Floresta (densidade)",
-                "biome_meadow": "Bioma: Meadow / Campo florido",
-                "biome_desert": "Bioma: Deserto / Árido",
-                "biome_mountain": "Bioma: Montanha / Rochoso",
-                "biome_snow": "Bioma: Neve / Gelo",
-                "biome_water": "Bioma: Água (rio/lago/mar)",
-                "biome_cave": "Bioma: Caverna / Dungeon",
-                "biome_mix": "Bioma: Mix (rotas variadas)",
+                "center_lake": "Lago Central"
             }
     
             # ==========================================
