@@ -4139,67 +4139,18 @@ def render_login_menu(trainer_name: str, user_data: dict):
                     {party_html}
                 </div>
             </div>
-
+            <a class='fr-login-card-link' href='?action=continue' target='_self' aria-label='Continuar jogo'></a>
         </div>
         <div id='fr_new_game_card' class='fr-login-card fr-login-new-game-card'>
             <div class='fr-login-title'>
                 <span>New Game</span>
             </div>
             <div class='fr-login-info fr-login-info-empty'></div>
-
+            <a class='fr-login-card-link' href='?action=new_game' target='_self' aria-label='Novo jogo'></a>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    continue_clicked = st.button("Continuar jogo", key="fr_continue_card_button")
-    new_game_clicked = st.button("Novo jogo", key="fr_new_game_card_button")
-
-    if continue_clicked:
-        st.session_state["show_login_menu"] = False
-        st.session_state["nav_to"] = "Pokédex (Busca)"
-        st.rerun()
-
-    if new_game_clicked:
-        st.session_state["confirm_new_game"] = True
-        st.rerun()
-
-    components.html(
-        """
-        <script>
-        (function () {
-            const parentDoc = window.parent && window.parent.document ? window.parent.document : document;
-
-            function hookCard(cardId, buttonText) {
-                const card = parentDoc.getElementById(cardId);
-                if (!card) return;
-
-                const buttons = Array.from(parentDoc.querySelectorAll("button"));
-                const targetButton = buttons.find((btn) => btn.innerText.trim() === buttonText);
-                if (!targetButton) return;
-
-                targetButton.style.display = "none";
-                card.style.cursor = "pointer";
-                card.setAttribute("role", "button");
-                card.setAttribute("tabindex", "0");
-
-                const trigger = () => targetButton.click();
-                card.addEventListener("click", trigger);
-                card.addEventListener("keydown", (event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        trigger();
-                    }
-                });
-            }
-
-            hookCard("fr_continue_card", "Continuar jogo");
-            hookCard("fr_new_game_card", "Novo jogo");
-        })();
-        </script>
-        """,
-        height=0,
-    )
-
 
     # --- MENU + BOTÃO CONFIRMAR AO LADO (SEM click-detector) ---
     menu_col, confirm_col = st.columns([7, 1], gap="small")
@@ -5214,15 +5165,12 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
             t_type = tiles[r][c]
 
             # --- CAMADA 1: O CHÃO SEMPRE PRESENTE ---
-            # --- CAMADA 1: O CHÃO SEMPRE PRESENTE ---
             # Colamos a grama ou pedra base primeiro em TODOS os tiles
-            base_choices = floor_variants.get(base_floor, [base_floor])
-            base_choice = rng.choice(base_choices)
-            if base_choice in assets:
-                img.alpha_composite(assets[base_choice], (x, y))
+            img.paste(assets[base_floor], (x, y))
+
             # --- CAMADA 2: TERRENOS ESPECÍFICOS E TRANSIÇÃO ---
             asset_to_draw = None
-
+            
             if t_type == "water" or t_type == "sea":
                 # máscara N,E,S,W (1 = vizinho é terra; 0 = vizinho é água)
                 land_mask = 0
@@ -5231,42 +5179,23 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
                     if 0 <= nr < grid and 0 <= nc < grid:
                         if tiles[nr][nc] not in ["water", "sea"]:
                             land_mask |= (1 << bit)
-
+            
+                # 0 = água cercada de água (miolo). !=0 = borda/canto conforme máscara
                 if land_mask == 0:
-                    asset_to_draw = "agua_deep"
+                    asset_to_draw = "agua_deep"  # vai pegar variantes agua_deep__v..
                 else:
-                    asset_to_draw = f"agua_shore_{land_mask:02d}"
+                    asset_to_draw = f"agua_shore_{land_mask:02d}"  # agua_shore_XX__v..
 
-            else:
-                # >>> FIX: use SOMENTE chaves que existem no modo atlas (…_1 com variantes __v..)
-                floor_by_type = {
-                    "grass": "grama_1",
-                    "flower": "grama_1",
-                    "bush": "grama_1",
-                    "tree": "grama_1",
+            
+            elif t_type in ["sand", "stone", "dirt", "grass"]:
+                # Variação aleatória do próprio chão
+                prefix = {"sand":"areia", "stone":"pedra", "dirt":"terra", "grass":"grama"}[t_type]
+                asset_to_draw = f"{prefix}_{rng.randint(1,3)}"
 
-                    "dirt": "terra_1",
-                    "path": "terra_1",
-                    "trail": "terra_1",
-                    "rut": "terra_1",
-
-                    "sand": "areia_1",
-
-                    "stone": "pedra_1",
-                    "rock": "pedra_1",
-                    "slope1": "pedra_1",
-                    "slope2": "pedra_1",
-                    "peak": "pedra_1",
-                    "stalagmite": "pedra_1",
-                }
-                asset_to_draw = floor_by_type.get(t_type)
-
-            if asset_to_draw:
+            if asset_to_draw in assets:
                 choices = floor_variants.get(asset_to_draw, [asset_to_draw])
                 asset_choice = rng.choice(choices)
-                if asset_choice in assets:
-                    img.alpha_composite(assets[asset_choice], (x, y))
-
+                img.alpha_composite(assets[asset_choice], (x, y))
 
             # --- CAMADA 3: OBJETOS (Árvores e Rochas em vários mapas) ---
             obj_asset = None
@@ -6518,20 +6447,8 @@ def _build_image_index(roots: tuple[str, ...]) -> dict[str, dict]:
     return {"by_key": by_key, "keys": sorted(by_key.keys())}
 
 
-def _filter_roots(roots: list[str], exclude_dirs: set[str] | None = None) -> list[str]:
-    if not exclude_dirs:
-        return roots
-    trimmed = []
-    for root in roots:
-        parts = {part.lower() for part in Path(root).parts}
-        if parts.isdisjoint(exclude_dirs):
-            trimmed.append(root)
-    return trimmed
-
-
-def comp_find_image(name: str, exclude_dirs: set[str] | None = None) -> str | None:
-    roots = _filter_roots(_comp_base_dirs(), exclude_dirs)
-    roots = tuple(roots)
+def comp_find_image(name: str) -> str | None:
+    roots = tuple(_comp_base_dirs())
     idx = _build_image_index(roots)
     by_key = idx.get("by_key", {})
     all_keys = idx.get("keys", [])
@@ -6572,10 +6489,6 @@ def comp_find_image(name: str, exclude_dirs: set[str] | None = None) -> str | No
             return p
 
     return None
-
-
-def comp_find_npc_image(name: str) -> str | None:
-    return comp_find_image(name, exclude_dirs={"trainer", "treinadores"})
 
 
 # ----------------------------
@@ -8456,7 +8369,7 @@ def _render_city_dossier(city_name: str, city_obj: dict, npcs: dict[str, dict], 
 
 
 def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[str, dict], gyms: dict[str, dict] | None = None) -> None:
-    img = comp_find_npc_image(nm)
+    img = comp_find_image(nm)
 
     st.markdown('<div class="comp-hero">', unsafe_allow_html=True)
     hA, hB = st.columns([1, 1.6], gap="large")
@@ -9326,7 +9239,7 @@ body:has(.ds-home),
     
                     img_path = None
                     try:
-                        img_path = comp_find_npc_image(nome)
+                        img_path = comp_find_image(nome)
                     except:
                         pass
     
@@ -9378,7 +9291,7 @@ body:has(.ds-home),
                 portrait_b64 = ""
                 portrait_path = None
                 try:
-                    portrait_path = comp_find_npc_image(sel)
+                    portrait_path = comp_find_image(sel)
                 except Exception:
                     portrait_path = None
 
