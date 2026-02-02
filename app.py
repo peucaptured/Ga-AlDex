@@ -7364,11 +7364,14 @@ def _stem_key(s: str) -> str:
 
 
 @st.cache_data(show_spinner=False)
-def _build_image_index(roots: tuple[str, ...]) -> dict[str, dict]:
+def _build_image_index(roots: tuple[str, ...], exclude_dirs: tuple[str, ...] | None = None) -> dict[str, dict]:
     exts = {".png", ".jpg", ".jpeg", ".webp"}
     by_key: dict[str, str] = {}
+    exclude = {d.lower() for d in (exclude_dirs or ())}
     for root in roots:
-        for dirpath, _, files in os.walk(root):
+        for dirpath, dirnames, files in os.walk(root):
+            if exclude:
+                dirnames[:] = [d for d in dirnames if d.lower() not in exclude]
             for fn in files:
                 ext = os.path.splitext(fn)[1].lower()
                 if ext not in exts:
@@ -7399,10 +7402,16 @@ def _filter_roots(roots: list[str], exclude_dirs: set[str] | None = None) -> lis
     return trimmed
 
 
-def comp_find_image(name: str, exclude_dirs: set[str] | None = None) -> str | None:
-    roots = _filter_roots(_comp_base_dirs(), exclude_dirs)
+def comp_find_image(
+    name: str,
+    exclude_dirs: set[str] | None = None,
+    roots: list[str] | None = None,
+) -> str | None:
+    roots = roots or _comp_base_dirs()
+    roots = _filter_roots(roots, exclude_dirs)
     roots = tuple(roots)
-    idx = _build_image_index(roots)
+    exclude = tuple(sorted(d.lower() for d in (exclude_dirs or set())))
+    idx = _build_image_index(roots, exclude or None)
     by_key = idx.get("by_key", {})
     all_keys = idx.get("keys", [])
 
@@ -7445,7 +7454,15 @@ def comp_find_image(name: str, exclude_dirs: set[str] | None = None) -> str | No
 
 
 def comp_find_npc_image(name: str) -> str | None:
-    return comp_find_image(name, exclude_dirs={"trainer", "treinadores"})
+    try:
+        base = os.path.dirname(__file__)
+    except Exception:
+        base = os.getcwd()
+    npc_roots = [
+        os.path.join(base, "treinadores"),
+        os.path.join(os.getcwd(), "treinadores"),
+    ]
+    return comp_find_image(name, roots=npc_roots)
 
 
 # ----------------------------
