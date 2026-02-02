@@ -3803,130 +3803,32 @@ def _build_assets_from_core_tilesets(tile_size_out: int) -> dict[str, Image.Imag
 
 
 @st.cache_resource
-
 def load_map_assets():
-    # =========================================================
-    # 0) MODO TSX (core_outdoor*.tsx) — recomendado pra você agora
-    # =========================================================
-    core_assets = _build_assets_from_core_tilesets(TILE_SIZE)
-    if core_assets:
-        return core_assets
+    """Carrega tiles/objetos 1x1 a partir de PNGs em Assets/Texturas (modelo 'assets' do app.py).
 
-    # Seus arquivos (como você falou)
-    atlas_png  = "Assets/tiles 1024.png"
-    atlas_json = "Assets/atlas_more_detail_1024.json"
+    - Faz resize para TILE_SIZE (NEAREST)
+    - Para pisos (prefixos em FLOOR_PREFIXES): recorta bounding-box do alpha e normaliza (sem 'buracos' pretos)
+    - Se existirem PNGs extras na pasta, também são carregados automaticamente.
+    """
+    base_dir = _resolve_asset_path_local("Assets/Texturas")
+    assets: dict[str, Image.Image] = {}
 
-    # Fallback: se não achar, usa o sistema antigo
-    base_path_old = "Assets/Texturas"
+    # lista canônica (compatível com o app.py)
+    asset_names = ['agua_1', 'agua_2', 'agua_3', 'areia_1', 'areia_2', 'areia_3', 'grama_1', 'grama_2', 'grama_3', 'pedra_1', 'pedra_2', 'pedra_3', 'terra_1', 'terra_2', 'terra_3', 'slope_1', 'slope_2', 'slope_3', 'slope_4', 'tree_1', 'tree_2', 'tree_3', 'brush_1', 'brush_2', 'rochas', 'rochas_2', 'estalagmite_1', 'pico_1', 'wall_1', 'neve_1', 'neve_2', 'neve_3', 'cave_1', 'cave_2', 'cave_3', 'flower']
 
-    # =========================================================
-    # 1) MODO ATLAS (recomendado)
-    # =========================================================
-    if os.path.exists(atlas_png) and os.path.exists(atlas_json):
-        sheet = Image.open(atlas_png).convert("RGBA")
-        data = json.load(open(atlas_json, "r", encoding="utf-8"))
-        frames = data.get("frames", {})
-
-        # recorta todos os tiles (tile_000..tile_224)
-        all_tiles = []
-        for tile_name, fr in frames.items():
-            x, y, w, h = int(fr["x"]), int(fr["y"]), int(fr["w"]), int(fr["h"])
-            tile = sheet.crop((x, y, x+w, y+h)).convert("RGBA")
-
-            cat = _classify(tile)
-            edges = _edge_blue_score(tile, band=max(2, w // 10))
-
-            all_tiles.append({
-                "id": tile_name,
-                "img": tile,
-                "cat": cat,
-                "edges": edges,
-            })
-
-        # monta o autotile de água (deep/shallow/shore por máscara)
-        deep_tiles, shallow_tiles, shore_by_mask = _pick_best_shore_tiles(all_tiles)
-
-        # salva um JSON de labels (opcional, mas você pediu)
-        labels_out = {
-            "meta": {
-                "atlas_png": atlas_png,
-                "atlas_json": atlas_json,
-                "note": "labels gerados automaticamente por heurística"
-            },
-            "tiles": {}
-        }
-        for t in all_tiles:
-            labels_out["tiles"][t["id"]] = {
-                "category": t["cat"],
-                "edge_blue": [round(v, 3) for v in t["edges"]],
-            }
-
-        try:
-            with open("Assets/atlas_labels.json", "w", encoding="utf-8") as f:
-                json.dump(labels_out, f, ensure_ascii=False, indent=2)
-        except Exception:
-            pass  # se não tiver permissão de escrita, só ignora
-
-        # Agora devolvemos assets como seu código espera: dict[str, PIL.Image]
-        assets = {}
-
-        # --- água "miolo" (variantes) ---
-        # keys com "__" viram variantes automaticamente no seu render (floor_variants)
-        for i, t in enumerate(deep_tiles[:8]):  # limita pra não explodir memória
-            img = t["img"].resize((TILE_SIZE, TILE_SIZE), Image.Resampling.NEAREST)
-            assets[f"agua_deep__v{i:02d}"] = img
-
-        for i, t in enumerate(shallow_tiles[:8]):
-            img = t["img"].resize((TILE_SIZE, TILE_SIZE), Image.Resampling.NEAREST)
-            assets[f"agua_shallow__v{i:02d}"] = img
-
-        # --- água bordas por máscara 0..15 (N,E,S,W) ---
-        for m in range(16):
-            variants = shore_by_mask.get(m, [])
-            for i, t in enumerate(variants):
-                img = t["img"].resize((TILE_SIZE, TILE_SIZE), Image.Resampling.NEAREST)
-                assets[f"agua_shore_{m:02d}__v{i:02d}"] = img
-
-        # --- chão básico: pega algumas amostras por categoria ---
-        def take(cat, base_key, limit=12):
-            picks = [t for t in all_tiles if t["cat"] == cat][:limit]
-            for i, t in enumerate(picks):
-                img = t["img"].resize((TILE_SIZE, TILE_SIZE), Image.Resampling.NEAREST)
-                assets[f"{base_key}__v{i:02d}"] = img
-
-        take("grass", "grama_1", 18)
-        take("dirt",  "terra_1", 18)
-        take("sand",  "areia_1", 18)
-        take("rock",  "pedra_1", 18)
-
-        # objetos/detalhes (se quiser usar depois)
-        take("detail", "detail", 30)
-
-        return assets
-
-    # =========================================================
-    # 2) FALLBACK (seu modo antigo com vários PNGs)
-    # =========================================================
-    asset_names = [
-        "agua_1", "agua_2", "agua_3", "areia_1", "areia_2", "areia_3",
-        "brush_1", "brush_2", "estalagmite_1", "grama_1", "grama_2", "grama_3",
-        "pedra_1", "pedra_2", "pedra_3", "pico_1", "rochas", "rochas_2",
-        "slope_1", "slope_2", "slope_3", "slope_4", "terra_1", "terra_2", "terra_3",
-        "tree_1", "tree_2", "tree_3", "wall_1"
-    ]
-
-    assets = {}
-    for name in asset_names:
-        path = f"{base_path_old}/{name}.png"
-        if os.path.exists(path):
-            img = Image.open(path).convert("RGBA")
-            if img.size != (TILE_SIZE, TILE_SIZE):
-                img = img.resize((TILE_SIZE, TILE_SIZE), Image.Resampling.NEAREST)
-            assets[name] = img
-    return assets
+    # carrega também qualquer PNG extra encontrado na pasta (mantém compatibilidade com biomas do app(1))
+    try:
+        if os.path.isdir(base_dir):
+            for fn in os.listdir(base_dir):
+                if fn.lower().endswith(".png"):
+                    stem = os.path.splitext(fn)[0]
+                    if stem and stem not in asset_names:
+                        asset_names.append(stem)
+    except Exception:
+        pass
 
     def pick_solid_color(img: Image.Image) -> tuple[int, int, int]:
-        counts = {}
+        counts: dict[tuple[int,int,int], int] = {}
         for r, g, b, a in img.getdata():
             if a > 0:
                 counts[(r, g, b)] = counts.get((r, g, b), 0) + 1
@@ -3946,6 +3848,7 @@ def load_map_assets():
         if img.mode != "RGBA":
             img = img.convert("RGBA")
         alpha = img.getchannel("A")
+        # se houver transparência: preenche com a cor dominante, para evitar buracos pretos ao compor
         if alpha.getextrema()[0] < 255:
             solid = pick_solid_color(img)
             base = Image.new("RGBA", img.size, (*solid, 255))
@@ -3953,19 +3856,28 @@ def load_map_assets():
             img = base
         return img
 
-    assets = {}
+    # compatibilidade Pillow (Resampling pode não existir em versões antigas)
+    _resampling = getattr(Image, "Resampling", Image)
+    resample_nearest = getattr(_resampling, "NEAREST", Image.NEAREST)
+
     for name in asset_names:
-        path = f"{base_path}/{name}.png"
-        if os.path.exists(path):
+        path = os.path.join(base_dir, f"{name}.png")
+        if not os.path.exists(path):
+            continue
+        try:
             img = Image.open(path).convert("RGBA")
             if name.startswith(FLOOR_PREFIXES):
                 img = crop_to_alpha(img)
             if img.size != (TILE_SIZE, TILE_SIZE):
-                img = img.resize((TILE_SIZE, TILE_SIZE), Image.Resampling.NEAREST)
+                img = img.resize((TILE_SIZE, TILE_SIZE), resample_nearest)
             if name.startswith(FLOOR_PREFIXES):
                 img = normalize_floor(img)
             assets[name] = img
+        except Exception:
+            continue
+
     return assets
+
 
 def authenticate_user(name, password):
     try:
@@ -6037,20 +5949,27 @@ def draw_tile_asset(img, r, c, tiles, assets, rng):
 
 @st.cache_data(show_spinner=False)
 def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid: bool = True):
+    """Renderiza o grid de tiles em uma imagem (modelo 'assets' do app.py).
+
+    Diferença vs tileset/tsx/atlas:
+    - aqui só usamos `load_map_assets()` (PNG 1x1 em Assets/Texturas)
+    - escolhemos variações por prefixo e compomos camadas (chão -> transições -> objetos -> grid)
+    """
     grid = len(tiles)
-    # Criamos a imagem base. RGBA é essencial para a transparência das árvores
     img = Image.new("RGBA", (grid * TILE_SIZE, grid * TILE_SIZE))
-    assets = load_map_assets() # Carrega seus PNGs 64x64
+    assets = load_map_assets()
     rng = random.Random(int(seed or 0) + 1337)
-    floor_variants = {}
+
+    # Indexa variações: chave base -> [chaves variantes]
+    floor_variants: dict[str, list[str]] = {}
     for key in assets:
         base = key.split("__", 1)[0]
         if base.startswith(FLOOR_PREFIXES):
             floor_variants.setdefault(base, []).append(key)
 
-    # 1) Definimos o "Chão Base" do tema para não haver buracos pretos
-    # Obs: em biomas/mix, o chão base varia por tile (não é uma cor única no mapa inteiro).
+    # Chão base por tema (se a chave não existir nos assets, faz fallback seguro)
     theme_floors = {
+        # temas originais
         "forest": "grama_1",
         "cave_water": "pedra_1",
         "mountain_slopes": "pedra_1",
@@ -6060,7 +5979,7 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
         "sea_coast": "areia_1",
         "center_lake": "grama_1",
 
-        # --- BIOMAS ---
+        # biomas do app(1) (se existirem PNGs correspondentes)
         "biome_grass": "grama_1",
         "biome_forest": "grama_1",
         "biome_meadow": "grama_1",
@@ -6070,129 +5989,97 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
         "biome_water": "areia_1",
         "biome_cave": "cave_1",
         "biome_mix": "grama_1",
-        }
+    }
+    base_floor = theme_floors.get(theme_key, "grama_1")
+
+    # Fallback seguro se o asset não existir
+    if base_floor not in assets:
+        for candidate in ["grama_1", "terra_1", "pedra_1", "areia_1"]:
+            if candidate in assets:
+                base_floor = candidate
+                break
+        else:
+            # último recurso: qualquer tile existente
+            if assets:
+                base_floor = next(iter(assets.keys()))
+            else:
+                return img.convert("RGB")
+
     for r in range(grid):
         for c in range(grid):
             x, y = c * TILE_SIZE, r * TILE_SIZE
-            t_type = tiles[r][c]            # --- CAMADA 1: O CHÃO SEMPRE PRESENTE ---
-            # --- CAMADA 1: O CHÃO SEMPRE PRESENTE ---
-            # Colamos o chão base primeiro em TODOS os tiles (evita "buracos" pretos).
-            # Em biomas/mix, o chão base depende do tipo do tile.
-            base_floor = theme_floors.get(theme_key, "grama_1")
-            if theme_key.startswith("biome_"):
-                base_under_by_type = {
-                    # água usa areia/grama por baixo (não aparece muito, mas ajuda)
-                    "water": "areia_1",
-                    "sea": "areia_1",
+            t_type = tiles[r][c]
 
-                    # pisos
-                    "grass": "grama_1",
-                    "sand": "areia_1",
-                    "dirt": "terra_1",
-                    "stone": "pedra_1",
-                    "rock": "pedra_1",
-                    "snow": "neve_1",
-                    "cave": "cave_1",
+            # --- CAMADA 1: CHÃO SEMPRE PRESENTE ---
+            img.paste(assets[base_floor], (x, y))
 
-                    # overlays/objetos (chão por baixo)
-                    "tree": "grama_1",
-                    "bush": "grama_1",
-                    "flower": "grama_1",
-                    "path": "terra_1",
-                    "trail": "terra_1",
-                    "rut": "terra_1",
-                    "stalagmite": "cave_1",
-                    "peak": "pedra_1",
-                    "wall": "cave_1",
-                }
-                base_floor = base_under_by_type.get(t_type, base_floor)
-
-            base_choices = floor_variants.get(base_floor, [base_floor])
-            base_choice = rng.choice(base_choices)
-            if base_choice in assets:
-                img.alpha_composite(assets[base_choice], (x, y))
-            # --- CAMADA 2: TERRENOS ESPECÍFICOS E TRANSIÇÃO ---
+            # --- CAMADA 2: TERRENO / TRANSIÇÃO ---
             asset_to_draw = None
 
-            if t_type == "water" or t_type == "sea":
-                # máscara N,E,S,W (1 = vizinho é terra; 0 = vizinho é água)
-                land_mask = 0
-                for bit, (dr, dc) in enumerate([(-1,0), (0,1), (1,0), (0,-1)]):  # N,E,S,W
+            if t_type in ("water", "sea"):
+                # Suaviza margem: se houver terra vizinha, usa agua_2 (margem)
+                is_margin = False
+                for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
                     nr, nc = r + dr, c + dc
                     if 0 <= nr < grid and 0 <= nc < grid:
-                        if tiles[nr][nc] not in ["water", "sea"]:
-                            land_mask |= (1 << bit)
-
-                if land_mask == 0:
-                    asset_to_draw = "agua_deep"
+                        if tiles[nr][nc] not in ("water", "sea"):
+                            is_margin = True
+                            break
+                if is_margin and "agua_2" in assets:
+                    asset_to_draw = "agua_2"
                 else:
-                    asset_to_draw = f"agua_shore_{land_mask:02d}"
+                    pool = [k for k in ["agua_1", "agua_3"] if k in assets]
+                    asset_to_draw = rng.choice(pool) if pool else ("agua_2" if "agua_2" in assets else None)
 
-            else:
-                # >>> FIX: use SOMENTE chaves que existem no modo atlas (…_1 com variantes __v..)
-                floor_by_type = {
-                    "grass": "grama_1",
-                    "flower": "grama_1",
-                    "bush": "grama_1",
-                    "tree": "grama_1",
-
-                    "dirt": "terra_1",
-                    "path": "terra_1",
-                    "trail": "terra_1",
-                    "rut": "terra_1",
-
-                    "sand": "areia_1",
-
-                    "stone": "pedra_1",
-                    "rock": "pedra_1",
-                    "slope1": "pedra_1",
-                    "slope2": "pedra_1",
-                    "peak": "pedra_1",
-                    "stalagmite": "pedra_1",
-
-                    # neve/caverna
-                    "snow": "neve_1",
-                    "cave": "cave_1",
-                    "wall": "cave_1",
+            elif t_type in ("sand", "stone", "dirt", "grass", "snow", "cave"):
+                prefix_map = {
+                    "sand": "areia",
+                    "stone": "pedra",
+                    "dirt": "terra",
+                    "grass": "grama",
+                    "snow": "neve",
+                    "cave": "cave",
                 }
-                asset_to_draw = floor_by_type.get(t_type)
+                pref = prefix_map[t_type]
+                # tenta 1..3; se não existir, cai no _1
+                candidate = f"{pref}_{rng.randint(1,3)}"
+                if candidate in assets:
+                    asset_to_draw = candidate
+                elif f"{pref}_1" in assets:
+                    asset_to_draw = f"{pref}_1"
 
-            if asset_to_draw:
+            # aplica variação se existir
+            if asset_to_draw and asset_to_draw in assets:
                 choices = floor_variants.get(asset_to_draw, [asset_to_draw])
                 asset_choice = rng.choice(choices)
-                if asset_choice in assets:
-                    img.alpha_composite(assets[asset_choice], (x, y))
+                img.alpha_composite(assets[asset_choice], (x, y))
 
-
-            # --- CAMADA 3: OBJETOS (Árvores e Rochas em vários mapas) ---
+            # --- CAMADA 3: OBJETOS ---
             obj_asset = None
             if t_type == "tree":
-                obj_asset = rng.choice(["tree_1", "tree_2", "tree_3"])
+                pool = [k for k in ["tree_1", "tree_2", "tree_3"] if k in assets]
+                obj_asset = rng.choice(pool) if pool else None
             elif t_type == "stalagmite":
-                obj_asset = "estalagmite_1"
+                obj_asset = "estalagmite_1" if "estalagmite_1" in assets else None
             elif t_type == "peak":
-                obj_asset = "pico_1"
-            elif t_type == "bush":
-                obj_asset = rng.choice(["brush_1", "brush_2"])
+                obj_asset = "pico_1" if "pico_1" in assets else None
             elif t_type == "flower":
-                obj_asset = "flower"
-            elif t_type == "wall":
-                obj_asset = "wall_1"
-            
-            # Adiciona ROCHAS aleatórias em qualquer terreno (conforme pedido)
-            # 10% de chance de aparecer uma rocha de detalhe em tiles de chão
-            if t_type in ["grass", "stone", "dirt", "sand"] and rng.random() < 0.10:
-                obj_asset = rng.choice(["rochas", "rochas_2"])
-            elif t_type == "rock": # Se o tile for nominalmente rocha
-                obj_asset = rng.choice(["rochas", "rochas_2"])
+                obj_asset = "flower" if "flower" in assets else None
 
-            if obj_asset in assets:
+            # rochas aleatórias em pisos
+            if t_type in ("grass", "stone", "dirt", "sand", "snow", "cave") and rng.random() < 0.10:
+                pool = [k for k in ["rochas", "rochas_2"] if k in assets]
+                obj_asset = rng.choice(pool) if pool else obj_asset
+            elif t_type == "rock":
+                pool = [k for k in ["rochas", "rochas_2"] if k in assets]
+                obj_asset = rng.choice(pool) if pool else obj_asset
+
+            if obj_asset and obj_asset in assets:
                 img.alpha_composite(assets[obj_asset], (x, y))
 
     # --- CAMADA 4: GRID TÁTICO FINO ---
     if show_grid:
         draw = ImageDraw.Draw(img)
-        # Cor branca com baixa opacidade (40/255) para ser sutil
         grid_color = (255, 255, 255, 40)
         for i in range(grid + 1):
             pos = i * TILE_SIZE
@@ -6200,6 +6087,7 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
             draw.line([(pos, 0), (pos, grid * TILE_SIZE)], fill=grid_color, width=1)
 
     return img.convert("RGB")
+
 
 def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name, room, effects=None, show_grid: bool = True):
     
