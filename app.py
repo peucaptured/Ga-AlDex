@@ -9564,16 +9564,19 @@ def render_compendium_page() -> None:
 /* HOME (igual app 35) */
 .ds-home {{
     height: 100vh;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
     gap: 12px;
-    padding: 30vh 0 0 0;   /* posiciona o logo + 'Press Any Button' como no menu */
+    padding: 10vh 0 220px 0; /* topo (logo/press) + reserva para o menu fixo */
     overflow: hidden;
 }}
+
 .ds-logo{{
   width: min(78vw, 760px);
+  max-height: 34vh;  /* impede a logo de descer e colidir com o menu */
   height: auto;
   display: block;
   margin: 0;
