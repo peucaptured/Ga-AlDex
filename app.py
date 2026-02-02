@@ -9563,20 +9563,20 @@ def render_compendium_page() -> None:
     
 /* HOME (igual app 35) */
 .ds-home {{
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
     gap: 12px;
-    padding: 6vh 0 140px 0;
+    padding: 30vh 0 0 0;   /* posiciona o logo + 'Press Any Button' como no menu */
     overflow: hidden;
 }}
 .ds-logo{{
   width: min(78vw, 760px);
   height: auto;
   display: block;
-  margin-top: -15vh;
+  margin: 0;
   filter: drop-shadow(0 0 18px rgba(0,0,0,0.75));
 }}
 .ds-title {{
@@ -9677,8 +9677,13 @@ def render_compendium_page() -> None:
 /* Trava scroll apenas na HOME do compendium */
 html:has(.ds-home),
 body:has(.ds-home),
-[data-testid="stAppViewContainer"]:has(.ds-home) {{
+[data-testid="stAppViewContainer"]:has(.ds-home),
+section.main:has(.ds-home),
+div[data-testid="stMain"]:has(.ds-home),
+div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
     overflow: hidden !important;
+    height: 100vh !important;
+    overscroll-behavior: none !important;
 }}
 /* Esconde o bolinha padrão do radio */
 [data-testid="stAppViewContainer"]:has(.ds-home) div[role="radiogroup"] input {{ display: none !important; }}
