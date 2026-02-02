@@ -6370,78 +6370,120 @@ def _crop_center_square(img: Image.Image) -> Image.Image:
 
 def _feature_from_image(img: Image.Image, size: int = 96) -> np.ndarray:
     """
-    Feature MAIS discriminativa:
-      - HSV (cor): histograma 3D (H/S/V) + média/desvio
-      - Forma: HOG simplificado em grade (4x4 células, 9 bins)
-    Para fotos (sem alpha), usa máscara radial pra reduzir influência do fundo.
+    Feature mais robusta para fotos e sprites:
+      - Cor: HSV hist + stats (global e centro)
+      - Forma: HOG multi-célula + hist de magnitude
+      - Textura/mascara: silhueta suavizada
+      - Iluminação: stats em LAB
+    Para fotos (sem alpha), reduz fundo por máscara radial + distância da borda.
     Retorna vetor L2-normalizado.
     """
     # 1) normaliza e redimensiona
     img_rgba = _crop_center_square(img.convert("RGBA")).resize((size, size), Image.Resampling.LANCZOS)
     arr = np.asarray(img_rgba).astype(np.float32)  # (H,W,4)
     alpha = arr[..., 3] / 255.0
+    rgb = arr[..., :3]
 
     # 2) máscara: sprite (tem transparência) vs foto (sem transparência)
     if float(alpha.min()) < 0.98:
-        mask = alpha > 0.15
+        mask = alpha > 0.10
     else:
-        # FOTO: corta bordas externas (fundo) com máscara radial
         yy, xx = np.mgrid[0:size, 0:size].astype(np.float32)
         cx = (size - 1) * 0.5
         cy = (size - 1) * 0.5
         xx = (xx - cx) / cx
         yy = (yy - cy) / cy
         r = np.sqrt(xx * xx + yy * yy)
-        mask = r <= 0.85  # mantém “miolo” do retrato
+        radial = r <= 0.88
 
-    if mask.sum() < (size * size) * 0.10:
+        border = np.concatenate([
+            rgb[0, :, :],
+            rgb[-1, :, :],
+            rgb[:, 0, :],
+            rgb[:, -1, :],
+        ], axis=0)
+        bg = np.median(border, axis=0)
+        dist = np.sqrt(((rgb - bg) ** 2).sum(axis=2))
+        color_fg = dist > 18.0
+        mask = radial & color_fg
+
+    if mask.sum() < (size * size) * 0.08:
         mask = np.ones((size, size), dtype=bool)
 
-    # 3) HSV hist (mais fino) + stats
-    rgb_u8 = arr[..., :3].clip(0, 255).astype(np.uint8)
+    # 3) HSV hist + stats (global e centro)
+    rgb_u8 = rgb.clip(0, 255).astype(np.uint8)
     hsv = np.asarray(Image.fromarray(rgb_u8, mode="RGB").convert("HSV")).astype(np.float32)
-    h = (hsv[..., 0] / 255.0)[mask]
-    s = (hsv[..., 1] / 255.0)[mask]
-    v = (hsv[..., 2] / 255.0)[mask]
+    h = (hsv[..., 0] / 255.0)
+    s = (hsv[..., 1] / 255.0)
+    v = (hsv[..., 2] / 255.0)
 
-    # histograma 3D (H 16 / S 5 / V 5) = 400 dims
-    hist_hsv, _ = np.histogramdd(
-        np.stack([h, s, v], axis=1),
-        bins=(16, 5, 5),
-        range=((0, 1), (0, 1), (0, 1)),
-    )
-    hist_hsv = hist_hsv.flatten().astype(np.float32)
-    hist_hsv /= (hist_hsv.sum() + 1e-8)
+    def _masked_hist(hh, ss, vv, m, bins=(12, 4, 4)) -> np.ndarray:
+        vals = np.stack([hh[m], ss[m], vv[m]], axis=1)
+        hist, _ = np.histogramdd(
+            vals,
+            bins=bins,
+            range=((0, 1), (0, 1), (0, 1)),
+        )
+        hist = hist.flatten().astype(np.float32)
+        return hist / (hist.sum() + 1e-8)
 
-    # stats simples (média e desvio)
+    hist_hsv = _masked_hist(h, s, v, mask, bins=(12, 4, 4))
+
+    mid = size // 2
+    span = int(size * 0.30)
+    y0, y1 = max(0, mid - span), min(size, mid + span)
+    x0, x1 = max(0, mid - span), min(size, mid + span)
+    center_mask = mask[y0:y1, x0:x1]
+    if center_mask.sum() < 25:
+        center_mask = np.ones_like(center_mask, dtype=bool)
+    center_hist = _masked_hist(h[y0:y1, x0:x1], s[y0:y1, x0:x1], v[y0:y1, x0:x1], center_mask, bins=(8, 3, 3))
+
     hsv_stats = np.array(
-        [h.mean(), s.mean(), v.mean(), h.std(), s.std(), v.std()],
+        [
+            h[mask].mean(),
+            s[mask].mean(),
+            v[mask].mean(),
+            h[mask].std(),
+            s[mask].std(),
+            v[mask].std(),
+        ],
         dtype=np.float32,
     )
 
-    # 4) gradientes (bordas)
-    rgb = arr[..., :3]
+    # 4) LAB stats (iluminação e contraste)
+    lab = np.asarray(Image.fromarray(rgb_u8, mode="RGB").convert("LAB")).astype(np.float32)
+    lab_scaled = lab / np.array([255.0, 255.0, 255.0], dtype=np.float32)
+    lab_stats = np.array(
+        [
+            lab_scaled[..., 0][mask].mean(),
+            lab_scaled[..., 1][mask].mean(),
+            lab_scaled[..., 2][mask].mean(),
+            lab_scaled[..., 0][mask].std(),
+            lab_scaled[..., 1][mask].std(),
+            lab_scaled[..., 2][mask].std(),
+        ],
+        dtype=np.float32,
+    )
+
+    # 5) gradientes (bordas)
     gray = (0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2]) / 255.0
     gray = gray.astype(np.float32)
-
     gx = np.zeros_like(gray)
     gy = np.zeros_like(gray)
     gx[:, 1:-1] = gray[:, 2:] - gray[:, :-2]
     gy[1:-1, :] = gray[2:, :] - gray[:-2, :]
-
     mag = np.sqrt(gx * gx + gy * gy)
-    ang = (np.arctan2(gy, gx) + np.pi) / (2 * np.pi)  # 0..1
+    ang = (np.arctan2(gy, gx) + np.pi) / (2 * np.pi)
 
-    # 5) HOG simplificado em grade (4x4 células, 9 bins)
-    cells = 4
-    bins = 9
+    cells = 5
+    bins = 8
     cell = size // cells
     hog = np.zeros((cells, cells, bins), dtype=np.float32)
 
     for cy in range(cells):
         for cx in range(cells):
-            y0, y1 = cy * cell, (cy + 1) * cell
-            x0, x1 = cx * cell, (cx + 1) * cell
+            y0, y1 = cy * cell, min(size, (cy + 1) * cell)
+            x0, x1 = cx * cell, min(size, (cx + 1) * cell)
 
             m = mask[y0:y1, x0:x1]
             if m.sum() <= 0:
@@ -6458,11 +6500,29 @@ def _feature_from_image(img: Image.Image, size: int = 96) -> np.ndarray:
 
     hog = hog.flatten().astype(np.float32)
 
-    # 6) junta com pesos (evita “borda dominar tudo”)
+    mag_hist, _ = np.histogram(
+        mag[mask],
+        bins=6,
+        range=(0, mag.max() + 1e-6),
+        density=False,
+    )
+    mag_hist = mag_hist.astype(np.float32)
+    mag_hist /= (mag_hist.sum() + 1e-8)
+
+    # 6) silhueta (mask downsample)
+    mask_u8 = (mask.astype(np.uint8) * 255)
+    mask_img = Image.fromarray(mask_u8, mode="L").resize((16, 16), Image.Resampling.BILINEAR)
+    mask_feat = (np.asarray(mask_img).astype(np.float32) / 255.0).flatten()
+
+    # 7) junta com pesos
     feat = np.concatenate([
-        0.70 * hist_hsv,
-        0.25 * hog,
-        0.15 * hsv_stats,
+        0.55 * hist_hsv,
+        0.20 * center_hist,
+        0.20 * hog,
+        0.10 * mag_hist,
+        0.10 * hsv_stats,
+        0.10 * lab_stats,
+        0.20 * mask_feat,
     ], axis=0).astype(np.float32)
 
     feat /= (np.linalg.norm(feat) + 1e-8)
@@ -6516,29 +6576,49 @@ def suggest_bases_and_best_skins(
     rng = np.random.default_rng(seed)
     sims = sims + rng.normal(0.0, 1e-6, size=sims.shape).astype(np.float32)
 
-    order = np.argsort(-sims)
-    picked_per_base: dict[str, int] = {}
+    base_feats: dict[str, list[np.ndarray]] = {}
+    for entry in index_entries:
+        base_feats.setdefault(entry["base"], []).append(entry["feat"])
+
+    base_scores: dict[str, float] = {}
     best_skin_by_base: dict[str, str] = {}
     best_sim_by_base: dict[str, float] = {}
 
-    for i in order:
-        e = index_entries[int(i)]
-        b = e["base"]
-        s = float(sims[int(i)])
+    for base, feats_list in base_feats.items():
+        base_stack = np.stack(feats_list, axis=0)
+        centroid = base_stack.mean(axis=0)
+        centroid /= (np.linalg.norm(centroid) + 1e-8)
+        centroid_sim = float(centroid @ q)
 
-        if picked_per_base.get(b, 0) >= per_base_limit:
+        idxs = [i for i, e in enumerate(index_entries) if e["base"] == base]
+        if idxs:
+            base_sims = sims[idxs]
+            top_idx = idxs[int(np.argmax(base_sims))]
+            top_sim = float(sims[top_idx])
+            best_sim_by_base[base] = top_sim
+            best_skin_by_base[base] = index_entries[top_idx]["name"]
+
+            k = max(1, min(per_base_limit, base_sims.size))
+            topk = np.sort(base_sims)[-k:]
+            top_sim_agg = float(topk.mean())
+        else:
+            top_sim_agg = centroid_sim
+
+        base_scores[base] = 0.60 * centroid_sim + 0.40 * top_sim_agg
+
+    ranked_bases = sorted(base_scores.items(), key=lambda item: -item[1])
+    bases_sugeridas = [b for b, _ in ranked_bases[:top_bases]]
+
+    # preenche melhor skin para bases sugeridas (por segurança)
+    for base in bases_sugeridas:
+        if base in best_skin_by_base:
             continue
+        base_idxs = [i for i, e in enumerate(index_entries) if e["base"] == base]
+        if not base_idxs:
+            continue
+        top_idx = base_idxs[int(np.argmax(sims[base_idxs]))]
+        best_skin_by_base[base] = index_entries[top_idx]["name"]
 
-        picked_per_base[b] = picked_per_base.get(b, 0) + 1
-
-        if (b not in best_sim_by_base) or (s > best_sim_by_base[b]):
-            best_sim_by_base[b] = s
-            best_skin_by_base[b] = e["name"]
-
-        if len(best_sim_by_base) >= top_bases:
-            break
-
-    bases_sugeridas = sorted(best_sim_by_base.keys(), key=lambda b: -best_sim_by_base[b])
     return bases_sugeridas, best_skin_by_base
 
 
