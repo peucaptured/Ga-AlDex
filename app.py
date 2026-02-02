@@ -2385,13 +2385,14 @@ def stop_pvp_sync_listener():
 
 
 def render_ds_tools_nav(selected_view: str):
-    opts = ["Menu", "NPCs", "Ginásios", "Locais", "Sair"]
+    opts = ["Menu", "NPCs", "Ginásios", "Locais", "Sessões", "Sair"]
 
     to_view = {
         "Menu": "home",
         "NPCs": "npcs",
         "Ginásios": "ginasios",
         "Locais": "locais",
+        "Sessões": "sessoes",
         "Sair": "sair",
     }
     from_view = {v: k for k, v in to_view.items()}
@@ -3035,6 +3036,18 @@ def render_compendium_ginasios() -> None:
             crumb = title + (" — Visão" if focus_now == "__visao__" else (" — Líder" if focus_now == "lider" else " — Vice-líder"))
         st.markdown(f"<div class='ds-meta'>{crumb}</div>", unsafe_allow_html=True)
         st.markdown("<div class='comp-divider'></div>", unsafe_allow_html=True)
+
+        active_sid = st.session_state.get("comp_session_active_id")
+        if active_sid and gym_now:
+            if st.button("➕ Adicionar à sessão atual", key=f"add_gym_session_{_stem_key(gym_now)}"):
+                if add_entity_to_active_session(
+                    "gyms",
+                    gym_now,
+                    "travel",
+                    f"Ginásio visitado: {gym_now}",
+                    {"gym": gym_now},
+                ):
+                    st.success(f"{gym_now} adicionado à sessão {active_sid}.")
     
         # Lore com scroll: render em 1 markdown só (não pode “abrir div” num markdown e renderizar depois)
         # ... você já está dentro do with col_right:
@@ -7193,6 +7206,7 @@ COMP_REGIOES_PRINCIPAIS = [
 #   "npcs": {"Dra. Tulsi": ["Cientista","Ranger"]}
 # }
 COMP_TAGS_JSON = "compendium_tags.json"
+COMP_SESSIONS_JSON = "compendium_sessions.json"
 
 
 # ----------------------------
@@ -8689,6 +8703,131 @@ def comp_load() -> dict:
     return data
 
 
+# ----------------------------
+# SESSION TRACKER (JSON)
+# ----------------------------
+def _session_now_iso() -> str:
+    return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+
+
+def _sessions_default_payload() -> dict:
+    return {
+        "meta": {"schema": 1, "updated_at": _session_now_iso()},
+        "sessions": {},
+    }
+
+
+def _sessions_file_path() -> str:
+    resolved = _resolve_asset_path(COMP_SESSIONS_JSON)
+    if resolved and os.path.exists(resolved):
+        return resolved
+    return os.path.join(os.getcwd(), COMP_SESSIONS_JSON)
+
+
+def load_sessions_data() -> dict:
+    path = _sessions_file_path()
+    if not os.path.exists(path):
+        return _sessions_default_payload()
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return _sessions_default_payload()
+
+    if not isinstance(data, dict):
+        return _sessions_default_payload()
+    data.setdefault("meta", {})
+    data.setdefault("sessions", {})
+    data["meta"].setdefault("schema", 1)
+    data["meta"].setdefault("updated_at", _session_now_iso())
+    if not isinstance(data["sessions"], dict):
+        data["sessions"] = {}
+    return data
+
+
+def save_sessions_data(data: dict) -> None:
+    if not isinstance(data, dict):
+        return
+    data.setdefault("meta", {})
+    data.setdefault("sessions", {})
+    data["meta"]["updated_at"] = _session_now_iso()
+
+    path = _sessions_file_path()
+    folder = os.path.dirname(path) or os.getcwd()
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M")
+    backup_path = os.path.join(folder, f"compendium_sessions_backup_{ts}.json")
+
+    payload = json.dumps(data, ensure_ascii=False, indent=2)
+    try:
+        with open(backup_path, "w", encoding="utf-8") as backup:
+            backup.write(payload)
+    except Exception:
+        pass
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(payload)
+
+
+def _session_id_from_number(number: int) -> str:
+    return f"S{int(number):04d}"
+
+
+def _session_label(session_id: str, session: dict) -> str:
+    num = session.get("number")
+    title = (session.get("title") or "").strip() or "Sem título"
+    date = (session.get("date") or "").strip()
+    base = f"{session_id}"
+    if isinstance(num, int) or (isinstance(num, str) and str(num).isdigit()):
+        base = f"S{int(num):04d}"
+    suffix = f" — {title}"
+    if date:
+        suffix += f" ({date})"
+    return base + suffix
+
+
+def _ensure_session_links(session: dict) -> dict:
+    session.setdefault("links", {})
+    session["links"].setdefault("npcs", [])
+    session["links"].setdefault("places", [])
+    session["links"].setdefault("gyms", [])
+    session["links"].setdefault("items", [])
+    return session
+
+
+def _add_entity_to_session(session: dict, link_key: str, entity_id: str) -> None:
+    _ensure_session_links(session)
+    if entity_id and entity_id not in session["links"].get(link_key, []):
+        session["links"][link_key].append(entity_id)
+
+
+def _append_session_event(session: dict, event: dict) -> None:
+    session.setdefault("events", [])
+    if isinstance(event, dict):
+        session["events"].append(event)
+
+
+def add_entity_to_active_session(link_key: str, entity_id: str, event_type: str, text: str, refs: dict) -> bool:
+    active_sid = st.session_state.get("comp_session_active_id")
+    if not active_sid or not entity_id:
+        return False
+    sessions_data = load_sessions_data()
+    sessions = sessions_data.get("sessions", {}) or {}
+    session = sessions.get(active_sid)
+    if not isinstance(session, dict):
+        return False
+    _add_entity_to_session(session, link_key, entity_id)
+    _append_session_event(
+        session,
+        {
+            "t": datetime.utcnow().strftime("%H:%M"),
+            "type": event_type,
+            "text": text,
+            "refs": refs,
+        },
+    )
+    save_sessions_data(sessions_data)
+    return True
+
 
 # ----------------------------
 # INFERÊNCIA DE TAGS + MENCÕES
@@ -9501,6 +9640,262 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
         st.markdown(v)
 
 
+def render_compendium_sessions(comp_data: dict) -> None:
+    st.markdown("## 📒 Tracker de Sessões")
+    sessions_data = load_sessions_data()
+    sessions = sessions_data.get("sessions", {}) or {}
+
+    npcs = sorted((comp_data.get("npcs") or {}).keys())
+    cities = sorted((comp_data.get("cities") or {}).keys())
+    gyms = sorted((comp_data.get("gyms") or {}).keys())
+
+    def _sorted_session_items() -> list[tuple[str, dict]]:
+        def _sort_key(item: tuple[str, dict]):
+            sid, sess = item
+            date = sess.get("date") or ""
+            num = sess.get("number") or 0
+            return (date, int(num) if str(num).isdigit() else 0, sid)
+        return sorted(sessions.items(), key=_sort_key)
+
+    items_sorted = _sorted_session_items()
+    default_number = 1
+    if items_sorted:
+        nums = [s.get("number") for _, s in items_sorted if str(s.get("number")).isdigit()]
+        if nums:
+            default_number = max(int(n) for n in nums) + 1
+
+    with st.expander("➕ Nova Sessão", expanded=not bool(items_sorted)):
+        with st.form("session_create_form"):
+            col_a, col_b = st.columns(2)
+            with col_a:
+                number = st.number_input("Número da sessão", min_value=1, value=default_number, step=1)
+                date_val = st.date_input("Data", value=datetime.utcnow().date())
+            with col_b:
+                title = st.text_input("Título")
+                tags_raw = st.text_input("Tags (separadas por vírgula)")
+            submitted = st.form_submit_button("Criar sessão")
+
+        if submitted:
+            sid = _session_id_from_number(int(number))
+            if sid in sessions:
+                st.error(f"Já existe a sessão {sid}.")
+            else:
+                sessions[sid] = {
+                    "number": int(number),
+                    "date": str(date_val),
+                    "title": title.strip(),
+                    "summary": "",
+                    "tags": [t.strip() for t in tags_raw.split(",") if t.strip()],
+                    "links": {"npcs": [], "places": [], "gyms": [], "items": []},
+                    "events": [],
+                    "flags": {},
+                }
+                save_sessions_data(sessions_data)
+                st.session_state["comp_session_selected"] = sid
+                st.success(f"Sessão {sid} criada.")
+                st.rerun()
+
+    if not sessions:
+        st.info("Nenhuma sessão registrada ainda.")
+        return
+
+    options = [sid for sid, _ in items_sorted]
+    labels = {sid: _session_label(sid, sess) for sid, sess in items_sorted}
+    default_sid = st.session_state.get("comp_session_selected") or options[0]
+    if default_sid not in sessions:
+        default_sid = options[0]
+
+    sel_label = labels.get(default_sid, default_sid)
+    chosen_label = st.selectbox("Sessão atual", [labels[sid] for sid in options], index=[labels[sid] for sid in options].index(sel_label))
+    selected_sid = next(sid for sid, label in labels.items() if label == chosen_label)
+    st.session_state["comp_session_selected"] = selected_sid
+
+    active_sid = st.session_state.get("comp_session_active_id")
+    col_set, col_info = st.columns([1, 2])
+    with col_set:
+        if st.button("✅ Definir como sessão ativa", key="set_active_session"):
+            st.session_state["comp_session_active_id"] = selected_sid
+            st.success(f"Sessão ativa: {selected_sid}")
+    with col_info:
+        if active_sid:
+            st.caption(f"Sessão ativa atual: {active_sid}")
+        else:
+            st.caption("Nenhuma sessão ativa definida.")
+
+    session = sessions.get(selected_sid, {})
+    _ensure_session_links(session)
+
+    tabs = st.tabs(["Resumo", "Eventos", "Entidades", "Flags", "Timeline", "Sessões"])
+
+    with tabs[0]:
+        with st.form("session_summary_form"):
+            summary = st.text_area("Resumo da sessão", value=session.get("summary") or "", height=140)
+            tags_raw = st.text_input("Tags", value=", ".join(session.get("tags") or []))
+            st.markdown("**Links rápidos (IDs do compendium):**")
+            col_n, col_p = st.columns(2)
+            with col_n:
+                link_npcs = st.multiselect("NPCs", npcs, default=session["links"].get("npcs", []))
+                link_items = st.multiselect("Itens", [], default=session["links"].get("items", []))
+            with col_p:
+                link_places = st.multiselect("Locais", cities, default=session["links"].get("places", []))
+                link_gyms = st.multiselect("Ginásios", gyms, default=session["links"].get("gyms", []))
+            save_summary = st.form_submit_button("Salvar resumo")
+
+        if save_summary:
+            session["summary"] = summary.strip()
+            session["tags"] = [t.strip() for t in tags_raw.split(",") if t.strip()]
+            session["links"]["npcs"] = link_npcs
+            session["links"]["places"] = link_places
+            session["links"]["gyms"] = link_gyms
+            session["links"]["items"] = link_items
+            save_sessions_data(sessions_data)
+            st.success("Resumo atualizado.")
+
+    with tabs[1]:
+        st.markdown("### ⚡ Adicionar evento rápido")
+        event_types = {
+            "battle": "Batalha",
+            "reveal": "Revelação",
+            "travel": "Viagem",
+            "loot": "Item",
+            "npc": "NPC apareceu",
+            "quest": "Quest",
+        }
+        st.session_state.setdefault("sess_event_type", "battle")
+        st.session_state.setdefault("sess_event_text", "")
+
+        col_type, col_time = st.columns([1.6, 1])
+        with col_type:
+            ev_type = st.selectbox("Tipo", list(event_types.keys()), index=list(event_types.keys()).index(st.session_state["sess_event_type"]))
+        with col_time:
+            ev_time = st.text_input("Hora (HH:MM)", value=datetime.utcnow().strftime("%H:%M"))
+
+        ev_text = st.text_input("Descrição do evento", value=st.session_state["sess_event_text"])
+        st.session_state["sess_event_type"] = ev_type
+        st.session_state["sess_event_text"] = ev_text
+        col_r1, col_r2, col_r3, col_r4 = st.columns(4)
+        with col_r1:
+            ref_npc = st.selectbox("Ref NPC", [""] + npcs, index=0)
+        with col_r2:
+            ref_place = st.selectbox("Ref Local", [""] + cities, index=0)
+        with col_r3:
+            ref_gym = st.selectbox("Ref Ginásio", [""] + gyms, index=0)
+        with col_r4:
+            ref_item = st.text_input("Ref Item (ID)")
+
+        if st.button("Adicionar evento", key="add_event_button"):
+            refs = {}
+            if ref_npc:
+                refs["npc"] = ref_npc
+                _add_entity_to_session(session, "npcs", ref_npc)
+            if ref_place:
+                refs["place"] = ref_place
+                _add_entity_to_session(session, "places", ref_place)
+            if ref_gym:
+                refs["gym"] = ref_gym
+                _add_entity_to_session(session, "gyms", ref_gym)
+            if ref_item:
+                refs["item"] = ref_item
+                _add_entity_to_session(session, "items", ref_item)
+
+            _append_session_event(
+                session,
+                {
+                    "t": ev_time.strip(),
+                    "type": ev_type,
+                    "text": ev_text.strip(),
+                    "refs": refs,
+                },
+            )
+            save_sessions_data(sessions_data)
+            st.success("Evento adicionado.")
+            st.rerun()
+
+        st.markdown("### 📜 Eventos registrados")
+        icon_map = {
+            "battle": "⚔️",
+            "reveal": "🔎",
+            "travel": "🗺️",
+            "loot": "🎁",
+            "npc": "🧑",
+            "quest": "📜",
+        }
+        for ev in session.get("events", []):
+            icon = icon_map.get(ev.get("type"), "•")
+            ref_txt = ""
+            if ev.get("refs"):
+                ref_txt = " — refs: " + ", ".join(f"{k}:{v}" for k, v in ev["refs"].items())
+            st.markdown(f"{icon} **{ev.get('t','')}** {ev.get('text','')}{ref_txt}")
+
+    with tabs[2]:
+        st.markdown("### 🔗 Entidades vinculadas")
+        st.markdown("**NPCs:** " + (", ".join(session["links"].get("npcs", [])) or "—"))
+        st.markdown("**Locais:** " + (", ".join(session["links"].get("places", [])) or "—"))
+        st.markdown("**Ginásios:** " + (", ".join(session["links"].get("gyms", [])) or "—"))
+        st.markdown("**Itens:** " + (", ".join(session["links"].get("items", [])) or "—"))
+
+        st.markdown("### 🔎 Buscar por entidade")
+        entity_type = st.selectbox("Tipo", ["NPC", "Local", "Ginásio", "Item"])
+        if entity_type == "NPC":
+            entity_id = st.selectbox("NPC", npcs)
+            link_key = "npcs"
+        elif entity_type == "Local":
+            entity_id = st.selectbox("Local", cities)
+            link_key = "places"
+        elif entity_type == "Ginásio":
+            entity_id = st.selectbox("Ginásio", gyms)
+            link_key = "gyms"
+        else:
+            entity_id = st.text_input("Item (ID)")
+            link_key = "items"
+
+        if entity_id:
+            matched = []
+            for sid, sess in sessions.items():
+                links = (sess.get("links") or {}).get(link_key, [])
+                if entity_id in links:
+                    matched.append(_session_label(sid, sess))
+            if matched:
+                st.markdown("**Aparece nas sessões:**")
+                for line in matched:
+                    st.markdown(f"- {line}")
+            else:
+                st.caption("Nenhuma sessão encontrada para essa entidade.")
+
+    with tabs[3]:
+        st.markdown("### 🚩 Flags")
+        flags = session.get("flags") or {}
+        with st.form("session_flags_form"):
+            new_flags = {}
+            for key, val in flags.items():
+                new_flags[key] = st.checkbox(key, value=bool(val), key=f"flag_{selected_sid}_{key}")
+            new_key = st.text_input("Novo flag")
+            new_val = st.checkbox("Ativo", value=True, key=f"flag_new_{selected_sid}")
+            save_flags = st.form_submit_button("Salvar flags")
+
+        if save_flags:
+            flags.update(new_flags)
+            if new_key.strip():
+                flags[new_key.strip()] = bool(new_val)
+            session["flags"] = flags
+            save_sessions_data(sessions_data)
+            st.success("Flags atualizadas.")
+
+    with tabs[4]:
+        st.markdown("### 🕒 Timeline global")
+        for sid, sess in items_sorted:
+            line = _session_label(sid, sess)
+            st.markdown(f"- {line}")
+
+    with tabs[5]:
+        st.markdown("### 📋 Lista de sessões")
+        tag_filter = st.text_input("Filtrar por tag")
+        for sid, sess in items_sorted:
+            tags = sess.get("tags") or []
+            if tag_filter and tag_filter not in tags:
+                continue
+            st.markdown(f"- {_session_label(sid, sess)}")
+
 @st.cache_data
 def get_font_base64(font_path):
     """Lê o arquivo de fonte e converte para base64 para uso no CSS."""
@@ -10277,6 +10672,17 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
                 )
                 st.markdown(panel_html, unsafe_allow_html=True)
             else:
+                active_sid = st.session_state.get("comp_session_active_id")
+                if active_sid:
+                    if st.button("➕ Adicionar à sessão atual", key=f"add_npc_session_{_stem_key(sel)}"):
+                        if add_entity_to_active_session(
+                            "npcs",
+                            sel,
+                            "npc",
+                            f"NPC apareceu: {sel}",
+                            {"npc": sel},
+                        ):
+                            st.success(f"{sel} adicionado à sessão {active_sid}.")
                 npc = npcs_gerais.get(sel, {}) or {}
                 ocupacao = npc.get("ocupacao", "")
                 idade = npc.get("idade", "")
@@ -10383,6 +10789,11 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
     elif st.session_state["comp_view"] == "ginasios":
         render_ds_tools_nav(st.session_state["comp_view"])
         render_compendium_ginasios()
+        return
+
+    if st.session_state["comp_view"] == "sessoes":
+        render_ds_tools_nav(st.session_state["comp_view"])
+        render_compendium_sessions(comp_data)
         return
     
 
@@ -10890,6 +11301,20 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
             if sl_now and sl_now != "__visao__":
                 crumb += f" — {sl_now}"
 
+            active_sid = st.session_state.get("comp_session_active_id")
+            if active_sid and city_now:
+                place_id = sl_now if sl_now != "__visao__" else city_now
+                label = f"{place_id}" if sl_now == "__visao__" else f"{sl_now} ({city_now})"
+                if st.button("➕ Adicionar à sessão atual", key=f"add_loc_session_{_stem_key(place_id)}"):
+                    if add_entity_to_active_session(
+                        "places",
+                        place_id,
+                        "travel",
+                        f"Local visitado: {label}",
+                        {"place": place_id},
+                    ):
+                        st.success(f"{label} adicionado à sessão {active_sid}.")
+
             cobj = cities.get(city_now) or {}
             secs = (cobj.get("sections") or {}) if isinstance(cobj.get("sections"), dict) else {}
 
@@ -10984,7 +11409,7 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
 
         tab_key = st.radio(
             "Compendium Tabs",
-            ["__home__", "npcs", "ginasios", "locais", "sair"],  # <-- placeholder
+            ["__home__", "npcs", "ginasios", "locais", "sessoes", "sair"],  # <-- placeholder
             index=0,
             horizontal=True,
             label_visibility="collapsed",
@@ -10994,6 +11419,7 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
                 "npcs": "NPCs",
                 "ginasios": "Ginásios",
                 "locais": "Locais",
+                "sessoes": "Sessões",
                 "sair": "Sair",
             }[v],
         )
