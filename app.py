@@ -3964,9 +3964,19 @@ def _npc_pokemon_list(npc_obj: dict) -> list[str]:
 def _npc_pokemon_names_to_ids(pokes: list[str]) -> list[str]:
     seen = set()
     out: list[str] = []
-    name_map = api_name_map or {}
+    local_df = st.session_state.get("df_data") if "df_data" in st.session_state else df
     for p in pokes:
-        pid = get_pid_from_name(p, name_map)
+        pid = None
+        if local_df is not None and "Nome" in local_df.columns and "Nº" in local_df.columns:
+            pname = str(p).strip()
+            if pname:
+                lowered = pname.lower()
+                hit = local_df[local_df["Nome"].astype(str).str.strip().str.lower() == lowered]
+                if hit.empty:
+                    norm = normalize_text(pname)
+                    hit = local_df[local_df["Nome"].astype(str).apply(normalize_text) == norm]
+                if not hit.empty:
+                    pid = str(hit.iloc[0]["Nº"]).strip().replace("#", "")
         if pid:
             key = str(pid)
         else:
