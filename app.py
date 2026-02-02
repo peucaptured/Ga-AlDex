@@ -12546,10 +12546,24 @@ if page == "Trainer Hub (Meus Pokémons)":
         if st.session_state["show_trainer_uploader"]:
             st.markdown("---")
             st.subheader("📷 Enviar foto e sugerir avatar")
+            upload_limit = 3
+            today = datetime.now().strftime("%Y-%m-%d")
+            upload_state = profile.get("photo_uploads", {})
+            last_upload_date = upload_state.get("date")
+            upload_count = int(upload_state.get("count", 0) or 0) if last_upload_date == today else 0
+            remaining_uploads = max(0, upload_limit - upload_count)
+            upload_limit_reached = upload_count >= upload_limit
+
+            if upload_limit_reached:
+                st.warning("Você atingiu o limite de 3 uploads de foto hoje. Tente novamente amanhã.")
+            else:
+                st.caption(f"Uploads restantes hoje: {remaining_uploads} de {upload_limit}.")
+
             uploaded_photo = st.file_uploader(
                 "Envie uma foto para recortar e buscar o seu avatar",
                 type=["png", "jpg", "jpeg", "webp"],
                 key="trainer_photo_upload",
+                disabled=upload_limit_reached,
             )
 
             cropped_image = None
@@ -12565,7 +12579,10 @@ if page == "Trainer Hub (Meus Pokémons)":
             c_photo_actions = st.columns([1, 1, 2])
 
             with c_photo_actions[0]:
-                if st.button("💾 Salvar foto", disabled=cropped_image is None):
+                if st.button("💾 Salvar foto", disabled=cropped_image is None or upload_limit_reached):
+                    if upload_limit_reached:
+                        st.warning("Limite diário atingido. Aguarde até amanhã para enviar outra foto.")
+                        st.stop()
                     # --- gera PNG cheio (para o Storage) ---
                     buffer_full = io.BytesIO()
                     cropped_image.convert("RGB").save(buffer_full, format="PNG")
@@ -12589,6 +12606,10 @@ if page == "Trainer Hub (Meus Pokémons)":
                     profile.pop("photo_b64", None)
 
                     profile["photo_updated_at"] = str(datetime.now())
+                    profile["photo_uploads"] = {
+                        "date": today,
+                        "count": upload_count + 1,
+                    }
                     save_data_cloud(trainer_name, user_data)
 
                     st.success("Foto salva! Agora vamos sugerir avatares.")
@@ -12623,60 +12644,77 @@ if page == "Trainer Hub (Meus Pokémons)":
             if not catalog or not index_entries:
                 st.warning("Nenhum avatar encontrado na pasta trainer.")
             else:
-                suggestions = []
+                similar_bases = []
+                random_bases = []
                 best_default_by_base = {}
 
                 if photo_bytes:
                     try:
                         photo_img = Image.open(io.BytesIO(photo_bytes))
-                        suggestions, best_default_by_base = suggest_bases_and_best_skins(
+                        similar_bases, best_default_by_base = suggest_bases_and_best_skins(
                             photo_img,
                             index_entries,
                             top_bases=5,
                             per_base_limit=1,
                         )
                     except Exception:
-                        suggestions, best_default_by_base = [], {}
+                        similar_bases, best_default_by_base = [], {}
 
-                if not suggestions:
-                    st.info("Sugestão inicial baseada na pasta trainer.")
-                    suggestions = list(catalog.keys())[:5]
-                    best_default_by_base = {}
+                available_bases = list(catalog.keys())
+                random_pool = [base for base in available_bases if base not in similar_bases]
+                if random_pool:
+                    random_bases = random.sample(random_pool, k=min(5, len(random_pool)))
+
+                if not similar_bases:
+                    st.info("Envie uma foto para ver sugestões parecidas com o seu sprite.")
 
                 chosen_avatar = profile.get("avatar_choice")
-                cols = st.columns(min(5, len(suggestions)))
 
-                for idx, base in enumerate(suggestions):
-                    items = catalog.get(base, [])
-                    if not items:
-                        continue
+                def render_avatar_suggestions(section_id: str, title: str, bases: list[str], best_defaults: dict[str, str]):
+                    if not bases:
+                        return
+                    st.markdown(f"**{title}**")
+                    cols = st.columns(min(5, len(bases)))
+                    for idx, base in enumerate(bases):
+                        items = catalog.get(base, [])
+                        if not items:
+                            continue
+                        names = [item["name"] for item in items]
+                        default_name = chosen_avatar if chosen_avatar in names else best_defaults.get(base)
+                        default_idx = names.index(default_name) if default_name in names else 0
+                        with cols[idx]:
+                            st.markdown(f"**{base.title()}**")
+                            selected_skin = st.selectbox(
+                                "Skin",
+                                names,
+                                index=default_idx,
+                                key=f"trainer_skin_{section_id}_{base}",
+                            )
+                            sel_path = next(
+                                (i["path"] for i in items if i["name"] == selected_skin),
+                                items[0]["path"],
+                            )
+                            st.image(sel_path, width=120)
 
-                    names = [item["name"] for item in items]
+                            if st.button("✅ Escolher", key=f"trainer_pick_{section_id}_{base}"):
+                                profile["avatar_choice"] = selected_skin
+                                profile["avatar_base"] = base
+                                save_data_cloud(trainer_name, user_data)
+                                st.success(f"Avatar selecionado: {selected_skin}.")
+                                st.rerun()
 
-                    # default: (1) escolhido antes, (2) melhor skin sugerida para a base, (3) primeiro
-                    default_name = chosen_avatar if chosen_avatar in names else best_default_by_base.get(base)
-                    default_idx = names.index(default_name) if default_name in names else 0
-
-                    with cols[idx]:
-                        st.markdown(f"**{base.title()}**")
-                        selected_skin = st.selectbox(
-                            "Skin",
-                            names,
-                            index=default_idx,
-                            key=f"trainer_skin_{base}",
-                        )
-                        sel_path = next(
-                            (i["path"] for i in items if i["name"] == selected_skin),
-                            items[0]["path"],
-                        )
-                        st.image(sel_path, width=120)
-
-                        if st.button("✅ Escolher", key=f"trainer_pick_{base}"):
-                            profile["avatar_choice"] = selected_skin
-                            profile["avatar_base"] = base
-                            save_data_cloud(trainer_name, user_data)
-                            st.success(f"Avatar selecionado: {selected_skin}.")
-                            st.rerun()
+                render_avatar_suggestions(
+                    "similar",
+                    "Sugestões parecidas com o seu sprite",
+                    similar_bases,
+                    best_default_by_base,
+                )
+                render_avatar_suggestions(
+                    "random",
+                    "Sugestões aleatórias",
+                    random_bases,
+                    {},
+                )
 
             st.markdown("---")
             st.subheader("🧵 Skins do personagem escolhido")
