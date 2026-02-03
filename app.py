@@ -29,6 +29,7 @@ import threading
 import time
 import mimetypes
 from pathlib import Path
+from biome_generator import BiomeGenerator
 from streamlit.runtime import scriptrunner # <--- IMPORTANTE: Importar o módulo inteiro
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 from streamlit.errors import StreamlitAPIException
@@ -5236,6 +5237,35 @@ THEMES = {
 "biome_mix": {"base": "grass", "border": "tree"},
 }
 
+@st.cache_resource(show_spinner=False)
+def get_biome_generator():
+    return BiomeGenerator()
+
+def map_theme_to_biome(theme_key: str, no_water: bool) -> str:
+    key = (theme_key or "").lower().strip()
+    if key in ["forest", "biome_forest"]:
+        return "forest"
+    if key in ["plains", "biome_grass", "biome_meadow", "biome_mix"]:
+        return "prairie"
+    if key in ["dirt"]:
+        return "dirt"
+    if key in ["biome_desert"]:
+        return "desert"
+    if key in ["cave_water", "biome_cave"]:
+        return "cave"
+    if key in ["mountain_slopes", "biome_mountain", "biome_snow"]:
+        return "dirt"
+    if key in ["river", "center_lake"]:
+        return "prairie" if no_water else "river"
+    if key in ["sea_coast", "biome_water"]:
+        return "desert" if no_water else "sea"
+    return "prairie" if no_water else "prairie"
+
+def generate_biome_seed(seed: int | None = None) -> int:
+    if seed is not None:
+        return int(seed)
+    return random.randint(1, 999999999)
+
 def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_water: bool = False):
     # REGRA: Bloqueia água em 6x6, exceto se o tema tiver "water", "river", "lake" ou "sea" no nome
     themes_com_agua = ["water", "river", "lake", "sea", "coast"]
@@ -6112,10 +6142,33 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
     return img.convert("RGB")
 
 
-def render_map_with_pieces(tiles, theme_key, seed, pieces, viewer_name, room, effects=None, show_grid: bool = True):
+@st.cache_data(show_spinner=False)
+def render_biome_map_png(grid: int, theme_key: str, seed: int, no_water: bool, show_grid: bool = True):
+    biome = map_theme_to_biome(theme_key, no_water)
+    generator = get_biome_generator()
+    img = generator.generate(
+        biome=biome,
+        grid_w=grid,
+        grid_h=grid,
+        tile_px=TILE_SIZE,
+        seed=int(seed or 0),
+    ).convert("RGBA")
+
+    if show_grid:
+        draw = ImageDraw.Draw(img)
+        grid_color = (255, 255, 255, 40)
+        for i in range(grid + 1):
+            pos = i * TILE_SIZE
+            draw.line([(0, pos), (grid * TILE_SIZE, pos)], fill=grid_color, width=1)
+            draw.line([(pos, 0), (pos, grid * TILE_SIZE)], fill=grid_color, width=1)
+
+    return img.convert("RGB")
+
+
+def render_map_with_pieces(grid, theme_key, seed, no_water, pieces, viewer_name, room, effects=None, show_grid: bool = True):
     
     # 1. Base do Mapa (Cacheada)␊
-    img = render_map_png(tiles, theme_key, seed, show_grid=show_grid).convert("RGBA")
+    img = render_biome_map_png(grid, theme_key, seed, no_water, show_grid=show_grid).convert("RGBA")
     draw = ImageDraw.Draw(img)
     
     # 2. CAMADA DE EFEITOS (Agora usando Imagens Reais)
@@ -14608,8 +14661,7 @@ elif page == "PvP – Arena Tática":
         # --- 2. CARREGAMENTO DO ESTADO ---
         state = get_state(db, rid)
         seed = state.get("seed")
-        tiles_packed = state.get("tilesPacked")
-        tiles = unpack_tiles(tiles_packed) if tiles_packed else None
+        no_water_state = bool(state.get("noWater", False))
         
         all_pieces = state.get("pieces") or []
         seen_pids = state.get("seen") or []
@@ -15324,7 +15376,7 @@ elif page == "PvP – Arena Tática":
         # =========================
         # 7. LAYOUT DAS COLUNAS (EQUILIBRADO PARA 4 JOGADORES)
         # =========================
-        if not tiles:
+        if seed is None:
             st.warning("Sem mapa.")
             st.stop()
 
@@ -15375,8 +15427,8 @@ elif page == "PvP – Arena Tática":
             state_updated_at = state.get("updatedAt")
             map_signature = json.dumps({
                 "seed": seed,
-                "tiles": tiles_packed,
                 "theme": theme_key,
+                "noWater": no_water_state,
                 "pieces": pieces_to_draw,
                 "effects": field_effects,
                 "grid": show_grid,
@@ -15385,9 +15437,10 @@ elif page == "PvP – Arena Tática":
             if st.session_state.get("map_cache_sig") != map_signature:
                 st.session_state["map_cache_sig"] = map_signature
                 st.session_state["map_cache_img"] = render_map_with_pieces(
-                    tiles,
+                    grid,
                     theme_key,
                     seed,
+                    no_water_state,
                     pieces_to_draw,
                     trainer_name,
                     room,
@@ -15685,30 +15738,28 @@ elif page == "PvP – Arena Tática":
                     grid = int(room.get("gridSize") or 6)
                     theme_key = room.get("theme") or "cave_water"
                     seed = state.get("seed")
-                    packed = state.get("tilesPacked")
-                    tiles = unpack_tiles(packed) if packed else None
+                    no_water_state = bool(state.get("noWater", False))
                     all_pieces = state.get("pieces") or []
                     pieces = visible_pieces_for(room, trainer_name, all_pieces)
                     
                     role = get_role(room, trainer_name)
                     is_player = role in ["owner", "challenger"]
                     
-                    no_water = st.checkbox("🚫 Gerar sem água", value=bool(state.get("noWater", False)), disabled=not is_player)
+                    no_water = st.checkbox("🚫 Gerar sem água", value=no_water_state, disabled=not is_player)
                     
-                    if not tiles:
+                    if seed is None:
                         if st.button("🗺️ Gerar mapa (pixel art)", disabled=not is_player):
-                            tiles, seed = gen_tiles(grid, theme_key, seed=None, no_water=no_water)
-                            packed = pack_tiles(tiles)
+                            seed = generate_biome_seed()
                             state_ref.set({
                                 "gridSize": grid, "theme": theme_key, "seed": seed, 
-                                "tilesPacked": packed, "noWater": bool(no_water),
+                                "tilesPacked": None, "noWater": bool(no_water),
                                 "updatedAt": firestore.SERVER_TIMESTAMP,
                             }, merge=True)
                             st.session_state["pvp_view"] = "battle"
                             st.rerun()
                     else:
                         show_grid = st.checkbox("Mostrar grade tática", value=False, key=f"show_grid_preview_{rid}")
-                        img = render_map_with_pieces(tiles, theme_key, seed, pieces, trainer_name, room, show_grid=show_grid)
+                        img = render_map_with_pieces(grid, theme_key, seed, no_water_state, pieces, trainer_name, room, show_grid=show_grid)
                         st.image(img, caption="Prévia do Campo")
                         
                         if st.button("⚔️ IR PARA O CAMPO DE BATALHA", type="primary"):
@@ -15716,9 +15767,8 @@ elif page == "PvP – Arena Tática":
                             st.rerun()
                         
                         if st.button("🔁 Regerar Mapa", disabled=not is_player):
-                             tiles, seed = gen_tiles(grid, theme_key, seed=None, no_water=no_water)
-                             packed = pack_tiles(tiles)
-                             state_ref.set({"seed": seed, "tilesPacked": packed, "noWater": bool(no_water)}, merge=True)
+                             seed = generate_biome_seed()
+                             state_ref.set({"seed": seed, "tilesPacked": None, "noWater": bool(no_water)}, merge=True)
                              st.rerun()
     
             
