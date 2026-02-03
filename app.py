@@ -5599,10 +5599,10 @@ def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_wat
                 tiles[rr][cc] = "rock"
 
     elif theme_key == "biome_water":
-        # Água: rio/lago/mar + costa (os edges vêm do render)
-        # Melhorado: lago em "blob" (oval irregular) + anel de margem consistente
+        # Água: rio/lago/mar + costa
+        # Melhorado: lago "blob" + rio orgânico + margem dupla (shoreline)
 
-        # base areia/grama na margem
+        # --- base (terra) ---
         for r in range(1, grid - 1):
             for c in range(1, grid - 1):
                 if inside(r, c):
@@ -5619,8 +5619,43 @@ def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_wat
                         continue
                     yield rr + dr, cc + dc
 
+        def _apply_double_shore():
+            """
+            Margem dupla:
+            - ring1: vizinho direto da água -> quase sempre areia
+            - ring2: vizinho do ring1 -> mistura areia/grama
+            """
+            ring1 = set()
+            ring2 = set()
+
+            # ring1: tudo que toca água (4-dir)
+            for rr in range(1, grid - 1):
+                for cc in range(1, grid - 1):
+                    if tiles[rr][cc] in ("water", "sea"):
+                        for nr, nc in _neighbors4(rr, cc):
+                            if 1 <= nr <= grid - 2 and 1 <= nc <= grid - 2 and inside(nr, nc):
+                                if tiles[nr][nc] not in ("water", "sea"):
+                                    ring1.add((nr, nc))
+
+            # ring2: tudo que toca ring1 (4-dir), excluindo ring1 e água
+            for rr, cc in list(ring1):
+                for nr, nc in _neighbors4(rr, cc):
+                    if 1 <= nr <= grid - 2 and 1 <= nc <= grid - 2 and inside(nr, nc):
+                        if (nr, nc) not in ring1 and tiles[nr][nc] not in ("water", "sea"):
+                            ring2.add((nr, nc))
+
+            # aplica ring1: areia quase sempre (costa)
+            for rr, cc in ring1:
+                tiles[rr][cc] = "sand" if rng.random() > 0.08 else "grass"
+
+            # aplica ring2: mistura (transição)
+            for rr, cc in ring2:
+                if (rr, cc) in ring1:
+                    continue
+                tiles[rr][cc] = "sand" if rng.random() > 0.55 else "grass"
+
         def _carve_blob_lake():
-            # centro levemente deslocado para parecer mais natural
+            # centro levemente deslocado para parecer natural
             cr = grid // 2 + rng.choice([-1, 0, 1])
             cc = grid // 2 + rng.choice([-1, 0, 1])
 
@@ -5628,84 +5663,80 @@ def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_wat
             rx = max(2, min(grid // 3, rng.randint(3, 5)))
             ry = max(2, min(grid // 3, rng.randint(3, 5)))
 
-            # máscara inicial elíptica + jitter (irregularidade)
+            # máscara elíptica + jitter
             water = [[False] * grid for _ in range(grid)]
-            for r in range(1, grid - 1):
-                for c in range(1, grid - 1):
-                    dx = (c - cc) / float(rx)
-                    dy = (r - cr) / float(ry)
+            for rr in range(1, grid - 1):
+                for cc2 in range(1, grid - 1):
+                    dx = (cc2 - cc) / float(rx)
+                    dy = (rr - cr) / float(ry)
                     d = dx * dx + dy * dy
-
-                    # jitter suave por célula (sem virar “xadrez”)
-                    jitter = (rng.random() - 0.5) * 0.25  # [-0.125..0.125]
+                    jitter = (rng.random() - 0.5) * 0.25
                     if d <= 1.0 + jitter:
-                        water[r][c] = True
+                        water[rr][cc2] = True
 
-            # 1-2 passadas de "smooth" para remover espículas
+            # smooth 1-2 passadas (remove espículas)
             for _ in range(rng.randint(1, 2)):
                 w2 = [[False] * grid for _ in range(grid)]
-                for r in range(1, grid - 1):
-                    for c in range(1, grid - 1):
+                for rr in range(1, grid - 1):
+                    for cc2 in range(1, grid - 1):
                         cnt = 0
-                        for nr, nc in _neighbors8(r, c):
+                        for nr, nc in _neighbors8(rr, cc2):
                             if 0 <= nr < grid and 0 <= nc < grid and water[nr][nc]:
                                 cnt += 1
-                        # regra: mantém/expande dependendo da densidade
-                        if water[r][c]:
-                            w2[r][c] = cnt >= 2
+                        if water[rr][cc2]:
+                            w2[rr][cc2] = cnt >= 2
                         else:
-                            w2[r][c] = cnt >= 6
+                            w2[rr][cc2] = cnt >= 6
                 water = w2
 
-            # aplica água e cria margem (anel) de areia/grama consistente
-            for r in range(1, grid - 1):
-                for c in range(1, grid - 1):
-                    if water[r][c] and inside(r, c):
-                        tiles[r][c] = "water"
+            # aplica água
+            for rr in range(1, grid - 1):
+                for cc2 in range(1, grid - 1):
+                    if water[rr][cc2] and inside(rr, cc2):
+                        tiles[rr][cc2] = "water"
 
-            # margem: todo vizinho 4-dir da água vira "sand" (ou grass às vezes)
-            for r in range(1, grid - 1):
-                for c in range(1, grid - 1):
-                    if tiles[r][c] == "water":
-                        for nr, nc in _neighbors4(r, c):
-                            if 1 <= nr <= grid - 2 and 1 <= nc <= grid - 2:
-                                if tiles[nr][nc] != "water" and tiles[nr][nc] != "sea":
-                                    tiles[nr][nc] = "sand" if rng.random() > 0.25 else "grass"
-
-        # escolhe entre rio ou lago
-        if rng.random() > 0.50:
-            # rio serpenteando (um pouco mais orgânico)
+        def _carve_river():
+            # rio serpenteando com variação de largura
             r0 = rng.randint(2, grid - 3)
-            width = 2 if grid >= 10 else 1
+            base_w = 2 if grid >= 10 else 1
+
             for c in range(1, grid - 1):
+                # varia largura de leve (1..2 ou 2..3 dependendo do grid)
+                if grid >= 12:
+                    width = base_w + (1 if rng.random() > 0.80 else 0)  # às vezes engrossa
+                else:
+                    width = base_w
+
                 for w in range(width):
                     rr = r0 + w
-                    if 1 <= rr <= grid - 2:
+                    if 1 <= rr <= grid - 2 and inside(rr, c):
                         tiles[rr][c] = "water"
 
-                # pequenos "alargamentos" ocasionais
-                if grid >= 10 and rng.random() > 0.82:
+                # alargamento pequeno ocasional
+                if grid >= 10 and rng.random() > 0.84:
                     rr = max(1, min(grid - 2, r0 + rng.choice([-1, 0, 1])))
-                    tiles[rr][c] = "water"
+                    if inside(rr, c):
+                        tiles[rr][c] = "water"
 
+                # serpenteia
                 r0 = max(1, min(grid - 2 - (width - 1), r0 + rng.choice([-1, 0, 1])))
 
-            # margem do rio
-            for r in range(1, grid - 1):
-                for c in range(1, grid - 1):
-                    if tiles[r][c] == "water":
-                        for nr, nc in _neighbors4(r, c):
-                            if inside(nr, nc) and tiles[nr][nc] not in ("water", "sea"):
-                                tiles[nr][nc] = "sand" if rng.random() > 0.25 else "grass"
+        # --- escolhe entre rio ou lago ---
+        if rng.random() > 0.50:
+            _carve_river()
         else:
             _carve_blob_lake()
 
-        # costa tipo mar em um lado (opcional)
+        # --- opcional: "mar" numa borda (costa) ---
         if rng.random() > 0.65:
-            for r in range(grid):
-                tiles[r][0] = "sea"
-                if grid > 4:
-                    tiles[r][1] = "sea" if rng.random() > 0.35 else "sand"
+            for rr in range(grid):
+                tiles[rr][0] = "sea"
+                if grid > 4 and inside(rr, 1):
+                    tiles[rr][1] = "sea" if rng.random() > 0.40 else tiles[rr][1]
+
+        # --- aplica margem dupla por cima de tudo (única regra de margem) ---
+        _apply_double_shore()
+
 
 
     elif theme_key == "biome_cave":
