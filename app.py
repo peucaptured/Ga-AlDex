@@ -5615,13 +5615,13 @@ def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_wat
     
         # 3) Clusters densos de árvore (2–4 centros)
         forest = set()
-        centers = rng.randint(2, 3) if grid <= 10 else rng.randint(3, 4)
+        centers = rng.randint(3, 4) if grid <= 10 else rng.randint(5, 7)
     
         for _ in range(centers):
             sr = rng.randint(2, grid - 3)
             sc = rng.randint(2, grid - 3)
     
-            steps = rng.randint(grid * 3, grid * 5)  # quanto maior, mais “mato fechado”
+            steps = rng.randint(grid * 5, grid * 9)  # quanto maior, mais “mato fechado”
             rr, cc = sr, sc
             for _s in range(steps):
                 if inside(rr, cc) and (rr, cc) not in clear:
@@ -5633,7 +5633,7 @@ def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_wat
                 cc = max(1, min(grid - 2, cc + dc))
     
                 # engrossa o cluster às vezes
-                if rng.random() > 0.65:
+                if rng.random() > 0.35:
                     for nr, nc in n4(rr, cc):
                         if inside(nr, nc) and (nr, nc) not in clear and rng.random() > 0.35:
                             forest.add((nr, nc))
@@ -5643,17 +5643,17 @@ def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_wat
             tiles[rr][cc] = "tree"
     
         # 5) Árvores “soltas” extra (bordas + preenchimento)
-        extra = rng.randint(grid * 2, grid * 4) if grid <= 10 else rng.randint(grid * 4, grid * 7)
+        extra = rng.randint(grid * 6, grid * 9) if grid <= 10 else rng.randint(grid * 10, grid * 16)
         for _ in range(extra):
             rr = rng.randint(1, grid - 2)
             cc = rng.randint(1, grid - 2)
             if not inside(rr, cc) or (rr, cc) in clear:
                 continue
-            if tiles[rr][cc] == "grass" and rng.random() > 0.55:
+            if tiles[rr][cc] == "grass" and rng.random() > 0.25:
                 tiles[rr][cc] = "tree"
     
         # 6) Arbustos (bush): bastante, principalmente perto de árvore
-        bushes = rng.randint(grid * 3, grid * 5) if grid <= 10 else rng.randint(grid * 5, grid * 9)
+        bushes = rng.randint(grid * 6, grid * 10) if grid <= 10 else rng.randint(grid * 10, grid * 18)
         for _ in range(bushes):
             rr = rng.randint(1, grid - 2)
             cc = rng.randint(1, grid - 2)
@@ -5668,7 +5668,7 @@ def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_wat
                     near_tree = True
                     break
     
-            p = 0.82 if near_tree else 0.50
+            p = 0.95 if near_tree else 0.50
             if rng.random() < p:
                 tiles[rr][cc] = "bush"
     
@@ -6602,13 +6602,19 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
                 asset_choice = rng.choice(choices)
                 img.alpha_composite(assets[asset_choice], (x, y))
 
-            # --- CAMADA 3: OBJETOS ---
-            obj_asset = None
             if t_type == "tree":
-                pool = [k for k in ["tree_1", "tree_2", "tree_3"] if k in assets]
+                # pega qualquer asset que pareça árvore
+                pool = [k for k in assets.keys()
+                        if k.lower().startswith("tree") and not k.lower().startswith("treetop")]
+                # fallback se seu projeto usa nomes tipo "arvore_*"
+                if not pool:
+                    pool = [k for k in assets.keys() if "tree" in k.lower() or "arvore" in k.lower()]
                 obj_asset = rng.choice(pool) if pool else None
+            
             elif t_type == "bush":
-                pool = [k for k in ["brush_1", "brush_2"] if k in assets]
+                # pega qualquer asset que pareça arbusto/moita/brush
+                pool = [k for k in assets.keys()
+                        if ("brush" in k.lower()) or ("bush" in k.lower()) or ("moita" in k.lower())]
                 obj_asset = rng.choice(pool) if pool else None
             elif t_type == "stalagmite":
                 obj_asset = "estalagmite_1" if "estalagmite_1" in assets else None
