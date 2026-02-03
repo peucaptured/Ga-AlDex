@@ -198,13 +198,16 @@ def alpha_bbox(im: Image.Image) -> Tuple[int,int,int,int]:
 # Generator
 # ----------------------------
 
+DEFAULT_ASSETS_ROOT = Path("Assets") / "map"
+
+
 class BiomeGenerator:
     """
     Generate coherent biome maps as RGBA images.
     Output tiles are ALWAYS tile_px x tile_px.
     """
 
-    def __init__(self, assets_root: str | Path):
+    def __init__(self, assets_root: str | Path = DEFAULT_ASSETS_ROOT):
         self.root = Path(assets_root)
 
         # Use water_grass tile size as raw reference (these are consistent)
@@ -725,7 +728,7 @@ class BiomeGenerator:
 
 
 def generate_to_file(
-    assets_root: str | Path,
+    assets_root: str | Path = DEFAULT_ASSETS_ROOT,
     out_png: str | Path,
     biome: str,
     grid_w: int = 32,
