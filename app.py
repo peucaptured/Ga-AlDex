@@ -15010,7 +15010,7 @@ elif page == "PvP – Arena Tática":
                 player_pieces_map[p.get("owner")].append(p)
 
         theme_key = room.get("theme", "cave_water")
-        grid = len(tiles) if tiles else 10
+        grid = int(state.get("gridSize") or room.get("gridSize") or 10)
 
         # --- 5. INTERFACE DO TOPO ---
         last_events = list_public_events(db, rid, limit=1)
