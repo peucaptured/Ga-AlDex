@@ -3817,6 +3817,103 @@ def _build_assets_from_core_tilesets(tile_size_out: int) -> dict[str, Image.Imag
 
     return assets
 
+def _pick_variant(assets: dict, base_key: str, rng):
+    """Escolhe base_key ou uma variante base_key__vXX se existir."""
+    opts = [k for k in assets.keys() if k == base_key or k.startswith(base_key + "__v")]
+    if not opts:
+        return None
+    return rng.choice(sorted(opts))
+
+def _get_rotated_asset(assets: dict, key: str, angle: int):
+    """
+    Retorna uma versão rotacionada (cacheada) do asset.
+    angle: 0, 90, 180, 270 (graus, sentido horário)
+    """
+    angle = angle % 360
+    if angle == 0:
+        return assets.get(key)
+
+    cache_key = f"{key}__rot{angle}"
+    if cache_key in assets:
+        return assets[cache_key]
+
+    img = assets.get(key)
+    if img is None:
+        return None
+
+    # PIL rotate é anti-horário; por isso usamos -angle
+    rot = img.rotate(-angle, expand=False)
+    assets[cache_key] = rot
+    return rot
+
+def _water_tile_from_landmask(assets: dict, rng, landmask: int):
+    """
+    landmask bits (padrão):
+      N=1, E=2, S=4, W=8  (vizinho é TERRA)
+    Retorna (key_base, angle) para usar water_grass coerente.
+    """
+    N, E, S, W = 1, 2, 4, 8
+
+    # miolo (sem terra encostando): water core
+    if landmask == 0:
+        # prefira shallow no lago; deep opcional
+        k = _pick_variant(assets, "agua_shallow", rng) or _pick_variant(assets, "agua_deep", rng) or "agua_1"
+        return (k, 0)
+
+    # --- 1) UMA lateral de terra (borda reta) ---
+    # usamos como "template" a borda reta com terra em CIMA: water_grass_m02_*
+    # (no seu pack, a m02 é a borda reta horizontal perfeita)
+    EDGE = "agua_shore_02"  # vindo de water_grass_m02_*
+
+    if landmask in (N, E, S, W):
+        angle = {N: 0, E: 90, S: 180, W: 270}[landmask]
+        k = _pick_variant(assets, EDGE, rng) or EDGE
+        return (k, angle)
+
+    # --- 2) DUAS laterais adjacentes (canto externo) ---
+    # templates ótimos no seu pack:
+    # - m10 parece "canto" com terra em CIMA+ESQUERDA (NW)
+    # - m11 parece "canto" com terra em CIMA+DIREITA (NE)
+    CORNER_NW = "agua_shore_10"
+    CORNER_NE = "agua_shore_11"
+
+    if landmask == (N | W):   # NW
+        k = _pick_variant(assets, CORNER_NW, rng) or CORNER_NW
+        return (k, 0)
+    if landmask == (N | E):   # NE
+        k = _pick_variant(assets, CORNER_NE, rng) or CORNER_NE
+        return (k, 0)
+    if landmask == (S | E):   # SE = NW rot 180
+        k = _pick_variant(assets, CORNER_NW, rng) or CORNER_NW
+        return (k, 180)
+    if landmask == (S | W):   # SW = NE rot 180
+        k = _pick_variant(assets, CORNER_NE, rng) or CORNER_NE
+        return (k, 180)
+
+    # --- 3) TRÊS laterais de terra (baía/cova) ---
+    # para lago ficar bonito, use tiles "cap" arredondados:
+    # m00/m01 são excelentes (terra em cima e arredondamento lateral)
+    CAP_A = "agua_shore_00"
+    CAP_B = "agua_shore_01"
+
+    if landmask == (N | E | W):     # aberto para S
+        k = _pick_variant(assets, rng.choice([CAP_A, CAP_B]), rng) or CAP_A
+        return (k, 0)
+    if landmask == (S | E | W):     # aberto para N
+        k = _pick_variant(assets, rng.choice([CAP_A, CAP_B]), rng) or CAP_A
+        return (k, 180)
+    if landmask == (N | S | W):     # aberto para E
+        k = _pick_variant(assets, rng.choice([CAP_A, CAP_B]), rng) or CAP_A
+        return (k, 270)
+    if landmask == (N | S | E):     # aberto para W
+        k = _pick_variant(assets, rng.choice([CAP_A, CAP_B]), rng) or CAP_A
+        return (k, 90)
+
+    # --- 4) casos raros (opostos / cruz) ---
+    # Para evitar borda “nonsense”, cai pra água core.
+    k = _pick_variant(assets, "agua_shallow", rng) or _pick_variant(assets, "agua_deep", rng) or "agua_1"
+    return (k, 0)
+
 
 @st.cache_resource
 def load_map_assets():
@@ -6402,14 +6499,33 @@ def draw_tile_asset(img, r, c, tiles, assets, rng):
 
     # camada 2: piso específico / água shore
     asset_to_draw = None
-    if t_type in ["water", "sea"]:
-        land_mask = 0
-        for bit, (dr, dc) in enumerate([(-1,0), (0,1), (1,0), (0,-1)]):
+    if t_type in ("water", "sea"):
+        # 1) desenha base embaixo (para água em grama, melhor grama)
+        base_under = "grama_1" if t_type == "water" else "areia_1"
+        base_choice = rng.choice([k for k in assets.keys() if k == base_under or k.startswith(base_under + "__v")] or [base_under])
+        img.alpha_composite(assets[base_choice], (x, y))
+    
+        # 2) calcula landmask (vizinho é terra?)
+        N, E, S, W = 1, 2, 4, 8
+        landmask = 0
+        for bit, (dr, dc) in [(N, (-1,0)), (E, (0,1)), (S, (1,0)), (W, (0,-1))]:
             nr, nc = r + dr, c + dc
             if 0 <= nr < grid and 0 <= nc < grid:
-                if tiles[nr][nc] not in ["water", "sea"]:
-                    land_mask |= (1 << bit)
-        asset_to_draw = "agua_deep" if land_mask == 0 else f"agua_shore_{land_mask:02d}"
+                if tiles[nr][nc] not in ("water", "sea"):
+                    landmask |= bit
+            else:
+                # borda do mapa conta como terra (fecha lago bonitinho)
+                landmask |= bit
+    
+        key, ang = _water_tile_from_landmask(assets, rng, landmask)
+        key = key or "agua_1"
+    
+        # 3) pega a imagem (variante já vem no key às vezes) e rotaciona
+        tile_img = _get_rotated_asset(assets, key, ang) or assets.get(key) or assets.get("agua_1")
+        if tile_img:
+            img.alpha_composite(tile_img, (x, y))
+    
+        continue
     else:
         asset_to_draw = {
             "grass": "grama_1",
