@@ -26,6 +26,7 @@ import math
 import numpy as np
 from PIL import Image
 from PIL import ImageEnhance
+from PIL import ImageFilter
 
 
 # ----------------------------
@@ -267,6 +268,25 @@ class BiomeGenerator:
         self._img_cache[key] = im
         return im
 
+    def _load_sprite_with_shadow(self, p: Path, tile_px: int) -> Image.Image:
+        key = (str(p), tile_px, "shadow")
+        im = self._img_cache.get(key)
+        if im is not None:
+            return im
+        base = self._load_resized(p, tile_px, force_tile=False)
+        im = self._add_sprite_shadow(base)
+        self._img_cache[key] = im
+        return im
+
+    @staticmethod
+    def _add_sprite_shadow(im: Image.Image, offset: Tuple[int, int] = (0, 1)) -> Image.Image:
+        alpha = im.split()[-1]
+        shadow_mask = alpha.filter(ImageFilter.GaussianBlur(radius=1))
+        shadow = Image.new("RGBA", im.size, (0, 0, 0, 0))
+        shadow_layer = Image.new("RGBA", im.size, (0, 0, 0, 150))
+        shadow.paste(shadow_layer, offset, shadow_mask)
+        return Image.alpha_composite(shadow, im)
+
     def _crop_atlas_tile(self, atlas: AtlasTileSet, tile: AtlasTile, tile_px: int) -> Image.Image:
         """
         Crop from atlas and force to tile_px x tile_px (prevents border artifacts).
@@ -385,7 +405,7 @@ class BiomeGenerator:
 
             occ[y0:y1, x0:x1] = True
 
-            im = self._load_resized(sp.path, tile_px, force_tile=False)
+            im = self._load_sprite_with_shadow(sp.path, tile_px)
 
             # Align pivot to bottom-center of footprint
             scale = tile_px / float(self.tile_raw_px)
