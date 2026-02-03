@@ -5270,6 +5270,112 @@ def generate_biome_seed(seed: int | None = None) -> int:
         return int(seed)
     return random.randint(1, 999999999)
 
+
+def place_forest_objects(tiles, grid, rng, inside_fn):
+    """
+    Coloca objetos de floresta em duas classes:
+    - árvores: bem espaçadas (blue-noise/Poisson disk simplificado)
+    - moitas: mais densas perto das árvores, mas sem colar nelas
+    Requer: tiles[r][c] já ter chão ('grass', 'forest_floor' etc.).
+    """
+    # Ajuste fino (padrão bom para grid 16..24)
+    tree_min_dist = 3 if grid >= 16 else 2         # distância mínima entre árvores (em tiles)
+    tree_target = int(grid * grid * 0.10)          # ~10% árvores (pode subir p/ 0.12)
+    bush_target = int(grid * grid * 0.18)          # ~18% moitas (pode subir p/ 0.22)
+    clearings = int(grid * grid * 0.10)            # ~10% clareiras (menos “parede”)
+
+    # Onde pode colocar objeto?
+    def is_walkable_floor(t):
+        # Ajuste aqui se seus nomes forem diferentes
+        return t in ("grass", "forest_floor", "sand")  # sand só se você quiser floresta costeira
+
+    # 1) gera máscara de clareiras (respiro jogável)
+    open_mask = [[False]*grid for _ in range(grid)]
+    # abre alguns "blobs" de clareira
+    for _ in range(max(1, grid // 4)):
+        cr = rng.integers(2, grid-2)
+        cc = rng.integers(2, grid-2)
+        rad = 2 if grid >= 16 else 1
+        for r in range(cr-rad, cr+rad+1):
+            for c in range(cc-rad, cc+rad+1):
+                if _in_bounds(r, c, grid) and inside_fn(r, c) and rng.random() > 0.25:
+                    open_mask[r][c] = True
+
+    # 2) Lista de candidatos (embaralhada)
+    candidates = [(r, c) for r in range(1, grid-1) for c in range(1, grid-1)
+                  if inside_fn(r, c) and is_walkable_floor(tiles[r][c]) and not open_mask[r][c]]
+    rng.shuffle(candidates)
+
+    # 3) coloca árvores com distância mínima (Poisson simplificado)
+    trees = []
+    min_d2 = tree_min_dist * tree_min_dist
+
+    for (r, c) in candidates:
+        if len(trees) >= tree_target:
+            break
+        ok = True
+        for (tr, tc) in trees:
+            if (r-tr)*(r-tr) + (c-tc)*(c-tc) < min_d2:
+                ok = False
+                break
+        if ok:
+            trees.append((r, c))
+
+    # 4) coloca moitas:
+    # - mais chance perto das árvores
+    # - evita colar em árvore (1 tile de margem)
+    bushes = set()
+    tree_set = set(trees)
+
+    # mapa “influência” por proximidade de árvore (barato: usa vizinhança 8 até raio 3)
+    influence = [[0]*grid for _ in range(grid)]
+    for tr, tc in trees:
+        for rr in range(tr-3, tr+4):
+            for cc in range(tc-3, tc+4):
+                if _in_bounds(rr, cc, grid):
+                    d2 = (rr-tr)*(rr-tr) + (cc-tc)*(cc-tc)
+                    if d2 <= 9:  # raio 3
+                        influence[rr][cc] += (10 - d2)  # mais perto = mais influência
+
+    # candidatos para moitas: inclui área aberta também, mas com chance menor
+    bush_candidates = [(r, c) for r in range(1, grid-1) for c in range(1, grid-1)
+                       if inside_fn(r, c) and is_walkable_floor(tiles[r][c])]
+
+    rng.shuffle(bush_candidates)
+
+    def near_tree_margin(r, c):
+        # não cola moita em árvore (margem 1 tile)
+        for nr, nc in _neighbors8(r, c):
+            if (nr, nc) in tree_set:
+                return True
+        return False
+
+    for (r, c) in bush_candidates:
+        if len(bushes) >= bush_target:
+            break
+        if (r, c) in tree_set:
+            continue
+        if near_tree_margin(r, c):
+            continue
+
+        # probabilidade:
+        # - perto de árvore => maior
+        # - em clareira => menor
+        inf = influence[r][c]
+        p = 0.10  # base
+        p += min(0.35, inf / 80.0)  # boost por influência (capado)
+        if open_mask[r][c]:
+            p *= 0.35  # clareira: reduz muito
+
+        if rng.random() < p:
+            bushes.add((r, c))
+
+    # 5) aplica no grid de overlay (se seu sistema usa overlay)
+    # Se você NÃO tem overlay separado, você pode marcar tiles[r][c] como "tree"/"bush"
+    # Aqui vou retornar listas para o seu render usar.
+    return trees, list(bushes), open_mask
+
+
 def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_water: bool = False):
     # REGRA: Bloqueia água em 6x6, exceto se o tema tiver "water", "river", "lake" ou "sea" no nome
     themes_com_agua = ["water", "river", "lake", "sea", "coast"]
@@ -5467,46 +5573,118 @@ def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_wat
             cc = rng.randint(1, grid - 2)
             if inside(rr, cc) and tiles[rr][cc] == "grass" and rng.random() > 0.55:
                 tiles[rr][cc] = "flower"
-
+    
     elif theme_key == "biome_forest":
-        # Floresta: densidade variando (bush/tree), bordas e clareiras
+        # Floresta (melhorada): manchas densas + clareiras + sub-bosque (bush) + caminho opcional
+    
+        # 1) Base: quase tudo grama
         for r in range(1, grid - 1):
             for c in range(1, grid - 1):
                 if inside(r, c):
-                    tiles[r][c] = "grass" if rng.random() > 0.20 else "bush"
-
-        # densidade por faixa (cria regiões mais fechadas)
-        bands = rng.randint(2, 4)
-        for _ in range(bands):
-            c0 = rng.randint(1, grid - 2)
-            for r in range(1, grid - 1):
-                if inside(r, c0) and rng.random() > 0.40:
-                    tiles[r][c0] = "tree"
-
-        # árvores espalhadas
-        trees = rng.randint(grid * 2, grid * 3)
-        for _ in range(trees):
-            rr = rng.randint(1, grid - 2)
-            cc = rng.randint(1, grid - 2)
-            if inside(rr, cc) and tiles[rr][cc] in ["grass", "bush"] and rng.random() > 0.35:
-                tiles[rr][cc] = "tree"
-
-        # caminho opcional
-        if rng.random() > 0.30:
-            r = rng.randint(2, grid - 3)
-            for c in range(1, grid - 1):
-                if inside(r, c) and tiles[r][c] != "tree":
-                    tiles[r][c] = "path"
-
-        # poça opcional (se permitido)
-        if not no_water and rng.random() > 0.60:
+                    tiles[r][c] = "grass"
+    
+        def n4(rr, cc):
+            for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
+                yield rr+dr, cc+dc
+    
+        # 2) Clareiras (2–3): regiões que inibem árvores
+        clear = set()
+        n_clear = rng.randint(1, 2) if grid <= 10 else rng.randint(2, 3)
+        for _ in range(n_clear):
             cr = rng.randint(2, grid - 3)
             cc = rng.randint(2, grid - 3)
-            rad = 1 if grid <= 8 else 2
+            rad = rng.randint(1, 2) if grid <= 10 else rng.randint(2, 3)
             for rr in range(cr - rad, cr + rad + 1):
                 for cc2 in range(cc - rad, cc + rad + 1):
-                    if inside(rr, cc2) and rng.random() > 0.25:
+                    if inside(rr, cc2) and rng.random() > 0.20:
+                        clear.add((rr, cc2))
+    
+        # 3) Clusters densos de árvore (2–4 centros)
+        forest = set()
+        centers = rng.randint(2, 3) if grid <= 10 else rng.randint(3, 4)
+    
+        for _ in range(centers):
+            sr = rng.randint(2, grid - 3)
+            sc = rng.randint(2, grid - 3)
+    
+            steps = rng.randint(grid * 3, grid * 5)  # quanto maior, mais “mato fechado”
+            rr, cc = sr, sc
+            for _s in range(steps):
+                if inside(rr, cc) and (rr, cc) not in clear:
+                    forest.add((rr, cc))
+    
+                # caminhada tendendo a formar “manchas”
+                dr, dc = rng.choice([(-1,0),(1,0),(0,-1),(0,1),(0,0)])
+                rr = max(1, min(grid - 2, rr + dr))
+                cc = max(1, min(grid - 2, cc + dc))
+    
+                # engrossa o cluster às vezes
+                if rng.random() > 0.65:
+                    for nr, nc in n4(rr, cc):
+                        if inside(nr, nc) and (nr, nc) not in clear and rng.random() > 0.35:
+                            forest.add((nr, nc))
+    
+        # 4) Aplica árvores do cluster
+        for (rr, cc) in forest:
+            tiles[rr][cc] = "tree"
+    
+        # 5) Árvores “soltas” extra (bordas + preenchimento)
+        extra = rng.randint(grid * 2, grid * 4) if grid <= 10 else rng.randint(grid * 4, grid * 7)
+        for _ in range(extra):
+            rr = rng.randint(1, grid - 2)
+            cc = rng.randint(1, grid - 2)
+            if not inside(rr, cc) or (rr, cc) in clear:
+                continue
+            if tiles[rr][cc] == "grass" and rng.random() > 0.55:
+                tiles[rr][cc] = "tree"
+    
+        # 6) Arbustos (bush): bastante, principalmente perto de árvore
+        bushes = rng.randint(grid * 3, grid * 5) if grid <= 10 else rng.randint(grid * 5, grid * 9)
+        for _ in range(bushes):
+            rr = rng.randint(1, grid - 2)
+            cc = rng.randint(1, grid - 2)
+            if not inside(rr, cc) or (rr, cc) in clear:
+                continue
+            if tiles[rr][cc] != "grass":
+                continue
+    
+            near_tree = False
+            for nr, nc in n4(rr, cc):
+                if 0 <= nr < grid and 0 <= nc < grid and tiles[nr][nc] == "tree":
+                    near_tree = True
+                    break
+    
+            p = 0.82 if near_tree else 0.50
+            if rng.random() < p:
+                tiles[rr][cc] = "bush"
+    
+        # 7) Caminho opcional: estreito, não “limpa” toda a floresta
+        if rng.random() > 0.35:
+            r = rng.randint(2, grid - 3)
+            width = 1 if grid <= 10 else rng.choice([1, 2])
+            for c in range(1, grid - 1):
+                for w in range(width):
+                    rr = r + w
+                    if inside(rr, c) and tiles[rr][c] != "water" and tiles[rr][c] != "sea":
+                        tiles[rr][c] = "path"
+                # leve serpente
+                r = max(1, min(grid - 2 - (width - 1), r + rng.choice([-1, 0, 1])))
+    
+        # 8) Poça opcional (se permitido): pequena e discreta
+        if not no_water and rng.random() > 0.70:
+            cr = rng.randint(2, grid - 3)
+            cc = rng.randint(2, grid - 3)
+            rad = 1 if grid <= 10 else 2
+            for rr in range(cr - rad, cr + rad + 1):
+                for cc2 in range(cc - rad, cc + rad + 1):
+                    if inside(rr, cc2) and (rr, cc2) not in clear and rng.random() > 0.35:
                         tiles[rr][cc2] = "water"
+    
+        # 9) Mantém clareiras: limpa árvore/arbusto nelas (no fim)
+        for (rr, cc) in clear:
+            if inside(rr, cc) and tiles[rr][cc] in ("tree", "bush"):
+                tiles[rr][cc] = "grass"
+    
 
     elif theme_key == "biome_meadow":
         # Meadow / campo florido: MUITAS flores e plantas
@@ -5612,12 +5790,22 @@ def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_wat
             for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 yield rr + dr, cc + dc
 
-        def _neighbors8(rr, cc):
+        def _neighbors8(r, c):
             for dr in (-1, 0, 1):
                 for dc in (-1, 0, 1):
                     if dr == 0 and dc == 0:
                         continue
-                    yield rr + dr, cc + dc
+                    yield r + dr, c + dc
+        
+        def _dist2(a, b):
+            (r1, c1), (r2, c2) = a, b
+            dr = r1 - r2
+            dc = c1 - c2
+            return dr*dr + dc*dc
+        
+        def _in_bounds(r, c, grid):
+            return 0 <= r < grid and 0 <= c < grid
+
 
         def _apply_double_shore():
             """
@@ -6404,6 +6592,9 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
             obj_asset = None
             if t_type == "tree":
                 pool = [k for k in ["tree_1", "tree_2", "tree_3"] if k in assets]
+                obj_asset = rng.choice(pool) if pool else None
+            elif t_type == "bush":
+                pool = [k for k in ["brush_1", "brush_2"] if k in assets]
                 obj_asset = rng.choice(pool) if pool else None
             elif t_type == "stalagmite":
                 obj_asset = "estalagmite_1" if "estalagmite_1" in assets else None
