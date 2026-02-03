@@ -128,7 +128,7 @@ class AtlasTileSet:
         tiles = data.get("tiles") or []
         self.tiles: List[AtlasTile] = []
         for t in tiles:
-            bb = t.get("atlas_bbox") or {}
+            bb = t.get("atlas_bbox") or t.get("bbox_in_atlas") or {}
             self.tiles.append(AtlasTile(
                 id=t.get("id",""),
                 row=int(t.get("row",0)),
