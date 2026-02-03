@@ -732,13 +732,22 @@ class BiomeGenerator:
                     # --- helpers robustos (não dependem de atributos existirem) ---
                     def _pick_from_list(lst, rng):
                         return rng.choice(lst) if lst else None
-                
-                    def _is_deep_path(p: str) -> bool:
-                        s = (p or "").lower()
+                                    
+                    def _norm_str(p) -> str:
+                        if p is None:
+                            return ""
+                        # se vier Path, tuple, TileRef, etc., vira string
+                        try:
+                            return str(p).lower()
+                        except Exception:
+                            return ""
+                    
+                    def _is_deep_path(p) -> bool:
+                        s = _norm_str(p)
                         return ("deep" in s) or ("_d" in s and "shallow" not in s)
-                
-                    def _is_shallow_path(p: str) -> bool:
-                        s = (p or "").lower()
+                    
+                    def _is_shallow_path(p) -> bool:
+                        s = _norm_str(p)
                         return ("shallow" in s) or ("raso" in s)
                 
                     def _pick_water_core_prefer(prefer: str, rng) -> str:
@@ -756,7 +765,7 @@ class BiomeGenerator:
                             return _pick_from_list(deep_lst, rng)
                 
                         # Se o seu water_core tiver listas internas, tenta descobrir
-                        plain_lst = getattr(self.water_core, "plain_tiles", None) or getattr(self.water_core, "tiles", None)
+                        cand = [p for p in plain_lst if isinstance(p, (str,)) or hasattr(p, "__fspath__")]
                         if isinstance(plain_lst, (list, tuple)) and plain_lst:
                             if prefer == "shallow":
                                 cand = [p for p in plain_lst if _is_shallow_path(p)]
