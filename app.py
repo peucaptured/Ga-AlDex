@@ -28,6 +28,8 @@ import queue
 import threading
 import time
 import mimetypes
+from PIL import Image, ImageDraw, ImageEnhance
+
 from pathlib import Path
 from biome_generator import BiomeGenerator
 from streamlit.runtime import scriptrunner # <--- IMPORTANTE: Importar o módulo inteiro
@@ -5598,32 +5600,105 @@ def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_wat
 
     elif theme_key == "biome_water":
         # Água: rio/lago/mar + costa (os edges vêm do render)
+        # Melhorado: lago em "blob" (oval irregular) + anel de margem consistente
+
         # base areia/grama na margem
         for r in range(1, grid - 1):
             for c in range(1, grid - 1):
                 if inside(r, c):
                     tiles[r][c] = "sand" if rng.random() > 0.30 else "grass"
 
+        def _neighbors4(rr, cc):
+            for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                yield rr + dr, cc + dc
+
+        def _neighbors8(rr, cc):
+            for dr in (-1, 0, 1):
+                for dc in (-1, 0, 1):
+                    if dr == 0 and dc == 0:
+                        continue
+                    yield rr + dr, cc + dc
+
+        def _carve_blob_lake():
+            # centro levemente deslocado para parecer mais natural
+            cr = grid // 2 + rng.choice([-1, 0, 1])
+            cc = grid // 2 + rng.choice([-1, 0, 1])
+
+            # raios do elipse (adaptam ao grid)
+            rx = max(2, min(grid // 3, rng.randint(3, 5)))
+            ry = max(2, min(grid // 3, rng.randint(3, 5)))
+
+            # máscara inicial elíptica + jitter (irregularidade)
+            water = [[False] * grid for _ in range(grid)]
+            for r in range(1, grid - 1):
+                for c in range(1, grid - 1):
+                    dx = (c - cc) / float(rx)
+                    dy = (r - cr) / float(ry)
+                    d = dx * dx + dy * dy
+
+                    # jitter suave por célula (sem virar “xadrez”)
+                    jitter = (rng.random() - 0.5) * 0.25  # [-0.125..0.125]
+                    if d <= 1.0 + jitter:
+                        water[r][c] = True
+
+            # 1-2 passadas de "smooth" para remover espículas
+            for _ in range(rng.randint(1, 2)):
+                w2 = [[False] * grid for _ in range(grid)]
+                for r in range(1, grid - 1):
+                    for c in range(1, grid - 1):
+                        cnt = 0
+                        for nr, nc in _neighbors8(r, c):
+                            if 0 <= nr < grid and 0 <= nc < grid and water[nr][nc]:
+                                cnt += 1
+                        # regra: mantém/expande dependendo da densidade
+                        if water[r][c]:
+                            w2[r][c] = cnt >= 2
+                        else:
+                            w2[r][c] = cnt >= 6
+                water = w2
+
+            # aplica água e cria margem (anel) de areia/grama consistente
+            for r in range(1, grid - 1):
+                for c in range(1, grid - 1):
+                    if water[r][c] and inside(r, c):
+                        tiles[r][c] = "water"
+
+            # margem: todo vizinho 4-dir da água vira "sand" (ou grass às vezes)
+            for r in range(1, grid - 1):
+                for c in range(1, grid - 1):
+                    if tiles[r][c] == "water":
+                        for nr, nc in _neighbors4(r, c):
+                            if 1 <= nr <= grid - 2 and 1 <= nc <= grid - 2:
+                                if tiles[nr][nc] != "water" and tiles[nr][nc] != "sea":
+                                    tiles[nr][nc] = "sand" if rng.random() > 0.25 else "grass"
+
         # escolhe entre rio ou lago
-        if rng.random() > 0.5:
-            # rio serpenteando
-            r0 = rng.randint(1, grid - 2)
+        if rng.random() > 0.50:
+            # rio serpenteando (um pouco mais orgânico)
+            r0 = rng.randint(2, grid - 3)
             width = 2 if grid >= 10 else 1
             for c in range(1, grid - 1):
                 for w in range(width):
                     rr = r0 + w
                     if 1 <= rr <= grid - 2:
                         tiles[rr][c] = "water"
+
+                # pequenos "alargamentos" ocasionais
+                if grid >= 10 and rng.random() > 0.82:
+                    rr = max(1, min(grid - 2, r0 + rng.choice([-1, 0, 1])))
+                    tiles[rr][c] = "water"
+
                 r0 = max(1, min(grid - 2 - (width - 1), r0 + rng.choice([-1, 0, 1])))
+
+            # margem do rio
+            for r in range(1, grid - 1):
+                for c in range(1, grid - 1):
+                    if tiles[r][c] == "water":
+                        for nr, nc in _neighbors4(r, c):
+                            if inside(nr, nc) and tiles[nr][nc] not in ("water", "sea"):
+                                tiles[nr][nc] = "sand" if rng.random() > 0.25 else "grass"
         else:
-            # lago no centro
-            cr = grid // 2
-            cc = grid // 2
-            rad = 2 if grid >= 10 else 1
-            for rr in range(cr - rad, cr + rad + 1):
-                for cc2 in range(cc - rad, cc + rad + 1):
-                    if inside(rr, cc2) and (abs(rr - cr) + abs(cc2 - cc) <= rad + 1):
-                        tiles[rr][cc2] = "water"
+            _carve_blob_lake()
 
         # costa tipo mar em um lado (opcional)
         if rng.random() > 0.65:
@@ -5631,6 +5706,7 @@ def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_wat
                 tiles[r][0] = "sea"
                 if grid > 4:
                     tiles[r][1] = "sea" if rng.random() > 0.35 else "sand"
+
 
     elif theme_key == "biome_cave":
         # Caverna: chão escuro + paredes na borda + stalagmites + pool
@@ -6009,6 +6085,155 @@ def draw_tile_asset(img, r, c, tiles, assets, rng):
         img.alpha_composite(assets[obj], (x, y))
     return img
 
+def _neighbors4(r, c):
+    for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
+        yield r+dr, c+dc
+
+def _is_water(t):
+    return t in ("water", "sea")
+
+def _is_land(t):
+    return t not in ("water", "sea")
+
+def _compute_water_depth(tiles, grid, max_depth=3):
+    """
+    Retorna depth[r][c] (0..max_depth):
+    0 = água encostada na terra
+    max_depth = água “profunda” (longe da margem)
+    """
+    depth = [[-1]*grid for _ in range(grid)]
+    q = []
+
+    # margem: água com vizinho terra => depth 0
+    for r in range(grid):
+        for c in range(grid):
+            if _is_water(tiles[r][c]):
+                for nr, nc in _neighbors4(r, c):
+                    if 0 <= nr < grid and 0 <= nc < grid and _is_land(tiles[nr][nc]):
+                        depth[r][c] = 0
+                        q.append((r,c))
+                        break
+
+    # BFS curta até max_depth
+    head = 0
+    while head < len(q):
+        r, c = q[head]; head += 1
+        d = depth[r][c]
+        if d >= max_depth:
+            continue
+        for nr, nc in _neighbors4(r, c):
+            if 0 <= nr < grid and 0 <= nc < grid and _is_water(tiles[nr][nc]) and depth[nr][nc] == -1:
+                depth[nr][nc] = d + 1
+                q.append((nr,nc))
+
+    # água que não foi marcada vira “profunda”
+    for r in range(grid):
+        for c in range(grid):
+            if _is_water(tiles[r][c]) and depth[r][c] == -1:
+                depth[r][c] = max_depth
+
+    return depth
+
+def _tint_sand_for_shore(tile_img: Image.Image) -> Image.Image:
+    """
+    Clareia e puxa a areia para um bege mais “branco”/suave (pra costa).
+    Aplica só em tiles de areia na borda (decidido no render).
+    """
+    im = tile_img.convert("RGBA")
+
+    # clareia
+    im = ImageEnhance.Brightness(im).enhance(1.20)
+    # reduz saturação (menos amarelo “forte”)
+    im = ImageEnhance.Color(im).enhance(0.75)
+
+    # leve puxada para bege claro (overlay)
+    overlay = Image.new("RGBA", im.size, (245, 242, 232, 60))
+    im.alpha_composite(overlay)
+    return im
+
+def _apply_water_shading_and_foam(img: Image.Image, tiles, grid: int, tile_px: int):
+    """
+    Pós-processamento:
+    - profundidade: água profunda mais escura
+    - espuma/realce na costa (linha branca interna)
+    """
+    depth = _compute_water_depth(tiles, grid, max_depth=3)
+
+    overlay = Image.new("RGBA", img.size, (0,0,0,0))
+    draw = ImageDraw.Draw(overlay)
+
+    for r in range(grid):
+        for c in range(grid):
+            t = tiles[r][c]
+            if not _is_water(t):
+                continue
+
+            x0 = c * tile_px
+            y0 = r * tile_px
+            x1 = x0 + tile_px
+            y1 = y0 + tile_px
+
+            d = depth[r][c]  # 0..3
+
+            # Escurece mais no centro do lago/área profunda
+            # (d=0 quase nada, d=3 mais escuro)
+            dark_alpha = int(18 + d * 18)  # 18..72
+            draw.rectangle([x0, y0, x1, y1], fill=(0, 20, 35, dark_alpha))
+
+            # Espuma/realce apenas se for água de margem (d==0)
+            if d == 0:
+                foam = (255, 255, 255, 85)
+                inset = max(2, tile_px // 16)  # linha interna
+                # desenha espuma nos lados onde há terra
+                for nr, nc, side in [
+                    (r-1, c, "N"),
+                    (r+1, c, "S"),
+                    (r, c-1, "W"),
+                    (r, c+1, "E"),
+                ]:
+                    if 0 <= nr < grid and 0 <= nc < grid and _is_land(tiles[nr][nc]):
+                        if side == "N":
+                            draw.line([(x0+inset, y0+inset), (x1-inset, y0+inset)], fill=foam, width=2)
+                        elif side == "S":
+                            draw.line([(x0+inset, y1-inset), (x1-inset, y1-inset)], fill=foam, width=2)
+                        elif side == "W":
+                            draw.line([(x0+inset, y0+inset), (x0+inset, y1-inset)], fill=foam, width=2)
+                        elif side == "E":
+                            draw.line([(x1-inset, y0+inset), (x1-inset, y1-inset)], fill=foam, width=2)
+
+    img.alpha_composite(overlay)
+    return img
+def _draw_tactical_grid(img: Image.Image, grid: int, tile_px: int) -> None:
+    """Grid mais 'tático': linhas finas + reforço a cada 4 + borda + vinheta leve."""
+    draw = ImageDraw.Draw(img)
+    w, h = img.size
+
+    # vinheta leve (4 "camadas" de borda suave)
+    overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    od = ImageDraw.Draw(overlay)
+    for k, alpha in enumerate([18, 14, 10, 7]):
+        inset = 10 + k * 8
+        od.rectangle([inset, inset, w - inset, h - inset], outline=(0, 0, 0, alpha), width=18)
+    img.alpha_composite(overlay)
+
+    # linhas
+    base = (255, 255, 255, 28)
+    major = (255, 255, 255, 60)
+    border = (255, 255, 255, 90)
+
+    for i in range(grid + 1):
+        pos = i * tile_px
+        is_major = (i % 4 == 0)
+
+        col = major if is_major else base
+        lw = 2 if is_major else 1
+
+        draw.line([(0, pos), (grid * tile_px, pos)], fill=col, width=lw)
+        draw.line([(pos, 0), (pos, grid * tile_px)], fill=col, width=lw)
+
+    # borda externa
+    draw.rectangle([0, 0, grid * tile_px - 1, grid * tile_px - 1], outline=border, width=2)
+
 @st.cache_data(show_spinner=False)
 def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid: bool = True):
     """Renderiza o grid de tiles em uma imagem (modelo 'assets' do app.py).
@@ -6073,8 +6298,36 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
             t_type = tiles[r][c]
 
             # --- CAMADA 1: CHÃO SEMPRE PRESENTE ---
-            img.paste(assets[base_floor], (x, y))
+            # --- CAMADA 1: CHÃO SEMPRE PRESENTE ---
+            # variação suave (evita repetição dura / xadrez)
+            base_pool = [base_floor]
+            # tenta enriquecer com variações numeradas comuns (ex.: grama_2, grama_3)
+            if base_floor.endswith("_1"):
+                alt2 = base_floor[:-2] + "_2"
+                alt3 = base_floor[:-2] + "_3"
+                if alt2 in assets: base_pool.append(alt2)
+                if alt3 in assets: base_pool.append(alt3)
 
+            # escolha determinística por célula (estável com seed)
+            cell_rng = random.Random((int(seed or 0) + 1337) * 1000003 + r * 9176 + c * 6361)
+            chosen_base = cell_rng.choice(base_pool)
+                        # --- areia de costa mais branca e coerente ---
+            if tiles[r][c] == "sand":
+                shore = False
+                for nr, nc in _neighbors4(r, c):
+                    if 0 <= nr < grid and 0 <= nc < grid and _is_water(tiles[nr][nc]):
+                        shore = True
+                        break
+
+                if shore:
+                    # Se você já desenha areia via assets, “re-pinta” a areia por cima clareada
+                    # (Se sua areia entra como tile de overlay, ajuste onde você cola ela)
+                    if "sand" in assets:
+                        sand_img = _tint_sand_for_shore(assets["sand"])
+                        img.alpha_composite(sand_img, (x, y))
+
+
+            img.paste(assets[chosen_base], (x, y))
             # --- CAMADA 2: TERRENO / TRANSIÇÃO ---
             asset_to_draw = None
 
@@ -6139,14 +6392,12 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
             if obj_asset and obj_asset in assets:
                 img.alpha_composite(assets[obj_asset], (x, y))
 
+    _apply_water_shading_and_foam(img, tiles, grid, TILE_SIZE)
+
+
     # --- CAMADA 4: GRID TÁTICO FINO ---
     if show_grid:
-        draw = ImageDraw.Draw(img)
-        grid_color = (255, 255, 255, 40)
-        for i in range(grid + 1):
-            pos = i * TILE_SIZE
-            draw.line([(0, pos), (grid * TILE_SIZE, pos)], fill=grid_color, width=1)
-            draw.line([(pos, 0), (pos, grid * TILE_SIZE)], fill=grid_color, width=1)
+        _draw_tactical_grid(img, grid, TILE_SIZE)
 
     return img.convert("RGB")
 
@@ -6164,12 +6415,7 @@ def render_biome_map_png(grid: int, theme_key: str, seed: int, no_water: bool, s
     ).convert("RGBA")
 
     if show_grid:
-        draw = ImageDraw.Draw(img)
-        grid_color = (255, 255, 255, 40)
-        for i in range(grid + 1):
-            pos = i * TILE_SIZE
-            draw.line([(0, pos), (grid * TILE_SIZE, pos)], fill=grid_color, width=1)
-            draw.line([(pos, 0), (pos, grid * TILE_SIZE)], fill=grid_color, width=1)
+        _draw_tactical_grid(img, grid, TILE_SIZE)
 
     return img.convert("RGB")
 
