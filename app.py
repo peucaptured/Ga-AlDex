@@ -5785,7 +5785,7 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool
         tiles = [["grass" for _ in range(grid)] for _ in range(grid)]
 
         # 1) noise inicial de árvores
-        dense = 0.42 if tkey == "forest" else 0.50
+        dense = 0.48 if tkey == "forest" else 0.58
         p_tree = max(0.20, min(0.62, dense))
         mask = [[0 for _ in range(grid)] for _ in range(grid)]
         for r in range(1, grid - 1):

@@ -748,10 +748,10 @@ class BiomeGenerator:
 
         # Forest: lots of trees + shrubs, no water
         if biome == "forest":
-            self._place_sprites(canvas, rng, self.forest_trees, occ, tile_px, attempts=5000, density=0.10, allowed_anchor=is_grass)
-            self._place_sprites(canvas, rng, self.forest_shrubs, occ, tile_px, attempts=3500, density=0.06, allowed_anchor=is_grass)
+            self._place_sprites(canvas, rng, self.forest_trees, occ, tile_px, attempts=6000, density=0.16, allowed_anchor=is_grass)
+            self._place_sprites(canvas, rng, self.forest_shrubs, occ, tile_px, attempts=4000, density=0.08, allowed_anchor=is_grass)
             # extra foliage
-            self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, attempts=2000, density=0.03, allowed_anchor=is_grass)
+            self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, attempts=2500, density=0.04, allowed_anchor=is_grass)
 
         # Prairie: flowers + shrubs, few trees (only if they are small)
         if biome == "prairie":
