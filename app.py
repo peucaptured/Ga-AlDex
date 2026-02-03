@@ -4204,11 +4204,11 @@ def render_login_menu(trainer_name: str, user_data: dict):
             margin-bottom: 10px;
         }
         .fr-login-info {
-            border: 3px solid #3b4a86;
+            border: 3px solid #3b5bd8;
             border-radius: 10px;
-            background: linear-gradient(180deg, #fefeff 0%, #e2ecff 100%);
+            background: linear-gradient(180deg, #f7fbff 0%, #d7e6ff 55%, #c8dcff 100%);
             padding: 10px 12px;
-            box-shadow: inset 0 0 0 2px #b6c7ff;
+            box-shadow: inset 0 0 0 2px rgba(255,255,255,0.7), inset 0 -6px 10px rgba(25,45,120,0.15);
         }
         .fr-login-info-empty {
             min-height: 150px;
@@ -4218,6 +4218,20 @@ def render_login_menu(trainer_name: str, user_data: dict):
             grid-template-columns: 1.1fr 1fr;
             gap: 8px 20px;
             font-size: 11px;
+        }
+        .fr-login-label {
+            color: #1b3d7a;
+            letter-spacing: 0.8px;
+        }
+        .fr-login-value {
+            color: #0b2d6b;
+            font-weight: 700;
+            background: rgba(255,255,255,0.65);
+            border: 1px solid rgba(59,91,216,0.35);
+            border-radius: 6px;
+            padding: 2px 6px;
+            text-align: right;
+            box-shadow: inset 0 -1px 0 rgba(0,0,0,0.1);
         }
         .fr-login-actions {
             display: flex;
