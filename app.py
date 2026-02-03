@@ -6500,27 +6500,22 @@ def draw_tile_asset(img, r, c, tiles, assets, rng):
     # camada 2: piso específico / água shore
     asset_to_draw = None
     if t_type in ("water", "sea"):
-        # 1) desenha base embaixo (para água em grama, melhor grama)
-        base_under = "grama_1" if t_type == "water" else "areia_1"
-        base_choice = rng.choice([k for k in assets.keys() if k == base_under or k.startswith(base_under + "__v")] or [base_under])
-        img.alpha_composite(assets[base_choice], (x, y))
+        # NÃO redesenha base aqui — já foi desenhada acima
     
-        # 2) calcula landmask (vizinho é terra?)
-        N, E, S, W = 1, 2, 4, 8
+        # landmask no padrão E, N, S, W  => bits 1,2,4,8
+        E, N, S, W = 1, 2, 4, 8
         landmask = 0
-        for bit, (dr, dc) in [(N, (-1,0)), (E, (0,1)), (S, (1,0)), (W, (0,-1))]:
+        for bit, (dr, dc) in [(E, (0, 1)), (N, (-1, 0)), (S, (1, 0)), (W, (0, -1))]:
             nr, nc = r + dr, c + dc
             if 0 <= nr < grid and 0 <= nc < grid:
                 if tiles[nr][nc] not in ("water", "sea"):
                     landmask |= bit
             else:
-                # borda do mapa conta como terra (fecha lago bonitinho)
                 landmask |= bit
     
         key, ang = _water_tile_from_landmask(assets, rng, landmask)
         key = key or "agua_1"
     
-        # 3) pega a imagem (variante já vem no key às vezes) e rotaciona
         tile_img = _get_rotated_asset(assets, key, ang) or assets.get(key) or assets.get("agua_1")
         if tile_img:
             img.alpha_composite(tile_img, (x, y))
@@ -6811,19 +6806,34 @@ def render_map_png(tiles: list[list[str]], theme_key: str, seed: int, show_grid:
             asset_to_draw = None
 
             if t_type in ("water", "sea"):
-                # Suaviza margem: se houver terra vizinha, usa agua_2 (margem)
-                is_margin = False
-                for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
+                # 1) base embaixo (água em grama deve ficar sobre grama, não areia)
+                base_choices = floor_variants.get(base_under, [base_under])
+                chosen_base = rng.choice(base_choices)
+                img.paste(assets[chosen_base], (x, y))
+            
+                # 2) calcula land_mask compatível com seus PNGs water_grass_mXX
+                # IMPORTANTÍSSIMO: a ordem correta no seu pack é E,N,S,W (1,2,4,8)
+                land_mask = 0
+                for bit, (dr, dc) in enumerate([(0,1), (-1,0), (1,0), (0,-1)]):  # E,N,S,W
                     nr, nc = r + dr, c + dc
                     if 0 <= nr < grid and 0 <= nc < grid:
                         if tiles[nr][nc] not in ("water", "sea"):
-                            is_margin = True
-                            break
-                if is_margin and "agua_2" in assets:
-                    asset_to_draw = "agua_2"
+                            land_mask |= (1 << bit)
+                    else:
+                        # fora do mapa conta como terra -> fecha lago bonitinho
+                        land_mask |= (1 << bit)
+            
+                # 3) escolhe tile
+                if land_mask == 0:
+                    # miolo do lago: prefira agua_shallow / agua_deep se existirem, senão cai pro velho
+                    if "agua_shallow" in assets or any(k.startswith("agua_shallow__v") for k in assets):
+                        asset_to_draw = "agua_shallow"
+                    elif "agua_deep" in assets or any(k.startswith("agua_deep__v") for k in assets):
+                        asset_to_draw = "agua_deep"
+                    else:
+                        asset_to_draw = rng.choice([k for k in ["agua_1", "agua_3", "agua_2"] if k in assets] or [None])
                 else:
-                    pool = [k for k in ["agua_1", "agua_3"] if k in assets]
-                    asset_to_draw = rng.choice(pool) if pool else ("agua_2" if "agua_2" in assets else None)
+                    asset_to_draw = f"agua_shore_{land_mask:02d}"
 
             elif t_type in ("sand", "stone", "dirt", "grass", "snow", "cave"):
                 prefix_map = {
