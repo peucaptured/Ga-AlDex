@@ -25,6 +25,7 @@ import re
 import math
 import numpy as np
 from PIL import Image
+from PIL import ImageEnhance
 
 
 # ----------------------------
@@ -220,6 +221,7 @@ class BiomeGenerator:
         self.light_dirt_atlas = AtlasTileSet(self.root / "light_dirt", "light_dirt.json")
         self.sand_atlas = AtlasTileSet(self.root / "sand", "sand.json")
         self.dark_light_trans_atlas = AtlasTileSet(self.root / "dark_grass_light_grass", "dark_grass_light_grass.json")
+        self.wet_sand_tiles, self.dry_sand_tiles = self._load_wetdry_sand()
 
         # Mask-based transitions/terrains
         self.water_grass = load_tileset(self.root / "water_grass", "water_grass", self.tile_raw_px)
@@ -289,6 +291,14 @@ class BiomeGenerator:
         if y < h-1   and fn(int(grid[y+1, x])): m |= 4
         if x > 0     and fn(int(grid[y, x-1])): m |= 8
         return m
+
+    def _load_wetdry_sand(self) -> Tuple[List[Path], List[Path]]:
+        wetdry_root = self.root / "wetdry_sand"
+        wet = sorted(wetdry_root.glob("wetdry_sand_wet_*.png"))
+        dry = sorted(wetdry_root.glob("wetdry_sand_dry_*.png"))
+        if not wet or not dry:
+            return [], []
+        return wet, dry
 
     # ---------- distance ----------
     @staticmethod
@@ -519,6 +529,27 @@ class BiomeGenerator:
         out.paste(overlay, (0, 0), mask)
         return out
 
+    def _lighten_tile(self, im: Image.Image, amount: float) -> Image.Image:
+        enhancer = ImageEnhance.Brightness(im)
+        return enhancer.enhance(amount)
+
+    def _smooth_water_transition(
+        self,
+        base: Image.Image,
+        tile_px: int,
+        rng: random.Random,
+        touches: List[str],
+        amount: float = 1.18
+    ) -> Image.Image:
+        if not touches:
+            return base
+        overlay = self._lighten_tile(base, amount)
+        out = base
+        for d in touches:
+            mask = self._edge_mask(tile_px, d, rng, band=max(8, tile_px // 6))
+            out = self._blend_tiles(out, overlay, mask)
+        return out
+
     def _apply_grass_sand_transition(self, grid: np.ndarray, x: int, y: int, tile_px: int, rng: random.Random, base_tile: Image.Image) -> Image.Image:
         """
         If current cell is sand (3) and touches grass (0/1), blend a thin grass band into sand along touching edges.
@@ -552,18 +583,21 @@ class BiomeGenerator:
         biome = biome.lower().strip()
 
         grid = np.zeros((grid_h, grid_w), dtype=np.int8)
+        dist_to_land: Optional[np.ndarray] = None
 
         if biome == "sea":
             ocean, sand, grass = self._make_sea(grid_h, grid_w, rng)
             grid[ocean] = 5
             grid[sand] = 3
             grid[grass] = 0
+            dist_to_land = self._distance_to_mask(~(grid == 5))
 
         elif biome == "river":
             river, sand, grass = self._make_river(grid_h, grid_w, rng)
             grid[river] = 5
             grid[sand] = 3
             grid[grass] = 0
+            dist_to_land = self._distance_to_mask(~(grid == 5))
 
         elif biome == "forest":
             dark, clear = self._make_forest(grid_h, grid_w, rng)
@@ -609,8 +643,13 @@ class BiomeGenerator:
                     tile = self.light_dirt_atlas.pick_any(rng)
                     blit_tile(x, y, self._crop_atlas_tile(self.light_dirt_atlas, tile, tile_px))
                 elif t == 3:
-                    tile = self.sand_atlas.pick_any(rng)
-                    sand_im = self._crop_atlas_tile(self.sand_atlas, tile, tile_px)
+                    if biome == "sea" and self.wet_sand_tiles and self.dry_sand_tiles and dist_to_land is not None:
+                        use_wet = dist_to_land[y, x] <= 1.5
+                        tilep = rng.choice(self.wet_sand_tiles if use_wet else self.dry_sand_tiles)
+                        sand_im = self._load_resized(tilep, tile_px, force_tile=True)
+                    else:
+                        tile = self.sand_atlas.pick_any(rng)
+                        sand_im = self._crop_atlas_tile(self.sand_atlas, tile, tile_px)
                     sand_im = self._apply_grass_sand_transition(grid, x, y, tile_px, rng, sand_im)
                     blit_tile(x, y, sand_im)
                 elif t == 4:
@@ -634,7 +673,15 @@ class BiomeGenerator:
                     if land_mask == 0:
                         # interior water only
                         tilep = self.water_core.pick_plain(rng)
-                        blit_tile(x, y, self._load_resized(tilep, tile_px, force_tile=True))
+                        water_im = self._load_resized(tilep, tile_px, force_tile=True)
+                        if dist_to_land is not None and dist_to_land[y, x] <= 2.5:
+                            touches = []
+                            for dy, dx, d in [(-1,0,'N'),(1,0,'S'),(0,-1,'W'),(0,1,'E')]:
+                                ny, nx = y+dy, x+dx
+                                if 0 <= ny < grid_h and 0 <= nx < grid_w and dist_to_land[ny, nx] <= 1.5:
+                                    touches.append(d)
+                            water_im = self._smooth_water_transition(water_im, tile_px, rng, touches)
+                        blit_tile(x, y, water_im)
                     else:
                         # choose shoreline tiles depending on adjacent sand
                         adj_has_sand = False
@@ -687,16 +734,17 @@ class BiomeGenerator:
                         shore_water[y, x] = True
                         break
 
-        if biome in ("sea", "river"):
+        if biome in ("sea", "river") and dist_to_land is not None:
             for y in range(grid_h):
                 for x in range(grid_w):
-                    if shore_water[y, x] and rng.random() < (0.30 if biome == "sea" else 0.18):
+                    if dist_to_land[y, x] == 2 and rng.random() < (0.30 if biome == "sea" else 0.18):
                         if self.water_overlay.plain:
                             tilep = self.water_overlay.pick_plain(rng)
                             blit_tile(x, y, self._load_resized(tilep, tile_px, force_tile=True))
 
         # Rocks: in all biomes, on land only
-        self._place_sprites(canvas, rng, self.rocks_sprites, occ, tile_px, attempts=1600, density=0.020, allowed_anchor=is_land)
+        rock_density = 0.030 if biome == "sea" else 0.020
+        self._place_sprites(canvas, rng, self.rocks_sprites, occ, tile_px, attempts=1600, density=rock_density, allowed_anchor=is_land)
 
         # Forest: lots of trees + shrubs, no water
         if biome == "forest":
