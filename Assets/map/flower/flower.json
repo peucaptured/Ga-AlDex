@@ -1,0 +1,529 @@
+{
+  "name": "flower_overlays",
+  "type": "overlay_sprites",
+  "atlas": "flower_overlays_atlas_clean.png",
+  "tile_size": 64,
+  "background_key": "#000000",
+  "tiles": [
+    {
+      "id": 1,
+      "name": "flower_01",
+      "file": "tiles/flower_01.png",
+      "w": 184,
+      "h": 107,
+      "source_bbox": [
+        1352,
+        49,
+        184,
+        107
+      ]
+    },
+    {
+      "id": 2,
+      "name": "flower_02",
+      "file": "tiles/flower_02.png",
+      "w": 154,
+      "h": 104,
+      "source_bbox": [
+        1139,
+        51,
+        154,
+        104
+      ]
+    },
+    {
+      "id": 3,
+      "name": "flower_03",
+      "file": "tiles/flower_03.png",
+      "w": 149,
+      "h": 100,
+      "source_bbox": [
+        1791,
+        53,
+        149,
+        100
+      ]
+    },
+    {
+      "id": 4,
+      "name": "flower_04",
+      "file": "tiles/flower_04.png",
+      "w": 140,
+      "h": 93,
+      "source_bbox": [
+        1592,
+        60,
+        140,
+        93
+      ]
+    },
+    {
+      "id": 5,
+      "name": "flower_05",
+      "file": "tiles/flower_05.png",
+      "w": 123,
+      "h": 79,
+      "source_bbox": [
+        589,
+        68,
+        123,
+        79
+      ]
+    },
+    {
+      "id": 6,
+      "name": "flower_06",
+      "file": "tiles/flower_06.png",
+      "w": 105,
+      "h": 77,
+      "source_bbox": [
+        424,
+        69,
+        105,
+        77
+      ]
+    },
+    {
+      "id": 7,
+      "name": "flower_07",
+      "file": "tiles/flower_07.png",
+      "w": 132,
+      "h": 70,
+      "source_bbox": [
+        945,
+        73,
+        132,
+        70
+      ]
+    },
+    {
+      "id": 8,
+      "name": "flower_08",
+      "file": "tiles/flower_08.png",
+      "w": 84,
+      "h": 65,
+      "source_bbox": [
+        109,
+        74,
+        84,
+        65
+      ]
+    },
+    {
+      "id": 9,
+      "name": "flower_09",
+      "file": "tiles/flower_09.png",
+      "w": 118,
+      "h": 71,
+      "source_bbox": [
+        768,
+        75,
+        118,
+        71
+      ]
+    },
+    {
+      "id": 10,
+      "name": "flower_10",
+      "file": "tiles/flower_10.png",
+      "w": 100,
+      "h": 56,
+      "source_bbox": [
+        263,
+        85,
+        100,
+        56
+      ]
+    },
+    {
+      "id": 11,
+      "name": "flower_11",
+      "file": "tiles/flower_11.png",
+      "w": 229,
+      "h": 101,
+      "source_bbox": [
+        840,
+        219,
+        229,
+        101
+      ]
+    },
+    {
+      "id": 12,
+      "name": "flower_12",
+      "file": "tiles/flower_12.png",
+      "w": 255,
+      "h": 115,
+      "source_bbox": [
+        1693,
+        220,
+        255,
+        115
+      ]
+    },
+    {
+      "id": 13,
+      "name": "flower_13",
+      "file": "tiles/flower_13.png",
+      "w": 177,
+      "h": 94,
+      "source_bbox": [
+        324,
+        222,
+        177,
+        94
+      ]
+    },
+    {
+      "id": 14,
+      "name": "flower_14",
+      "file": "tiles/flower_14.png",
+      "w": 233,
+      "h": 93,
+      "source_bbox": [
+        556,
+        224,
+        233,
+        93
+      ]
+    },
+    {
+      "id": 15,
+      "name": "flower_15",
+      "file": "tiles/flower_15.png",
+      "w": 159,
+      "h": 85,
+      "source_bbox": [
+        112,
+        225,
+        159,
+        85
+      ]
+    },
+    {
+      "id": 16,
+      "name": "flower_16",
+      "file": "tiles/flower_16.png",
+      "w": 181,
+      "h": 100,
+      "source_bbox": [
+        1451,
+        225,
+        181,
+        100
+      ]
+    },
+    {
+      "id": 17,
+      "name": "flower_17",
+      "file": "tiles/flower_17.png",
+      "w": 261,
+      "h": 91,
+      "source_bbox": [
+        1129,
+        230,
+        261,
+        91
+      ]
+    },
+    {
+      "id": 18,
+      "name": "flower_18",
+      "file": "tiles/flower_18.png",
+      "w": 229,
+      "h": 103,
+      "source_bbox": [
+        104,
+        385,
+        229,
+        103
+      ]
+    },
+    {
+      "id": 19,
+      "name": "flower_19",
+      "file": "tiles/flower_19.png",
+      "w": 303,
+      "h": 111,
+      "source_bbox": [
+        1642,
+        386,
+        303,
+        111
+      ]
+    },
+    {
+      "id": 20,
+      "name": "flower_20",
+      "file": "tiles/flower_20.png",
+      "w": 244,
+      "h": 108,
+      "source_bbox": [
+        401,
+        388,
+        244,
+        108
+      ]
+    },
+    {
+      "id": 21,
+      "name": "flower_21",
+      "file": "tiles/flower_21.png",
+      "w": 270,
+      "h": 108,
+      "source_bbox": [
+        1307,
+        391,
+        270,
+        108
+      ]
+    },
+    {
+      "id": 22,
+      "name": "flower_22",
+      "file": "tiles/flower_22.png",
+      "w": 241,
+      "h": 104,
+      "source_bbox": [
+        710,
+        392,
+        241,
+        104
+      ]
+    },
+    {
+      "id": 23,
+      "name": "flower_23",
+      "file": "tiles/flower_23.png",
+      "w": 226,
+      "h": 102,
+      "source_bbox": [
+        1015,
+        394,
+        226,
+        102
+      ]
+    },
+    {
+      "id": 24,
+      "name": "flower_24",
+      "file": "tiles/flower_24.png",
+      "w": 308,
+      "h": 122,
+      "source_bbox": [
+        1262,
+        555,
+        308,
+        122
+      ]
+    },
+    {
+      "id": 25,
+      "name": "flower_25",
+      "file": "tiles/flower_25.png",
+      "w": 334,
+      "h": 128,
+      "source_bbox": [
+        1616,
+        556,
+        334,
+        128
+      ]
+    },
+    {
+      "id": 26,
+      "name": "flower_26",
+      "file": "tiles/flower_26.png",
+      "w": 333,
+      "h": 114,
+      "source_bbox": [
+        102,
+        562,
+        333,
+        114
+      ]
+    },
+    {
+      "id": 27,
+      "name": "flower_27",
+      "file": "tiles/flower_27.png",
+      "w": 319,
+      "h": 114,
+      "source_bbox": [
+        886,
+        564,
+        319,
+        114
+      ]
+    },
+    {
+      "id": 28,
+      "name": "flower_28",
+      "file": "tiles/flower_28.png",
+      "w": 340,
+      "h": 100,
+      "source_bbox": [
+        493,
+        574,
+        340,
+        100
+      ]
+    },
+    {
+      "id": 29,
+      "name": "flower_29",
+      "file": "tiles/flower_29.png",
+      "w": 384,
+      "h": 129,
+      "source_bbox": [
+        580,
+        745,
+        384,
+        129
+      ]
+    },
+    {
+      "id": 30,
+      "name": "flower_30",
+      "file": "tiles/flower_30.png",
+      "w": 435,
+      "h": 133,
+      "source_bbox": [
+        1509,
+        748,
+        435,
+        133
+      ]
+    },
+    {
+      "id": 31,
+      "name": "flower_31",
+      "file": "tiles/flower_31.png",
+      "w": 409,
+      "h": 121,
+      "source_bbox": [
+        104,
+        752,
+        409,
+        121
+      ]
+    },
+    {
+      "id": 32,
+      "name": "flower_32",
+      "file": "tiles/flower_32.png",
+      "w": 406,
+      "h": 125,
+      "source_bbox": [
+        1035,
+        753,
+        406,
+        125
+      ]
+    },
+    {
+      "id": 33,
+      "name": "flower_33",
+      "file": "tiles/flower_33.png",
+      "w": 396,
+      "h": 148,
+      "source_bbox": [
+        1113,
+        939,
+        396,
+        148
+      ]
+    },
+    {
+      "id": 34,
+      "name": "flower_34",
+      "file": "tiles/flower_34.png",
+      "w": 378,
+      "h": 158,
+      "source_bbox": [
+        1568,
+        940,
+        378,
+        158
+      ]
+    },
+    {
+      "id": 35,
+      "name": "flower_35",
+      "file": "tiles/flower_35.png",
+      "w": 359,
+      "h": 143,
+      "source_bbox": [
+        691,
+        946,
+        359,
+        143
+      ]
+    },
+    {
+      "id": 36,
+      "name": "flower_36",
+      "file": "tiles/flower_36.png",
+      "w": 526,
+      "h": 141,
+      "source_bbox": [
+        103,
+        948,
+        526,
+        141
+      ]
+    },
+    {
+      "id": 37,
+      "name": "flower_37",
+      "file": "tiles/flower_37.png",
+      "w": 423,
+      "h": 145,
+      "source_bbox": [
+        1014,
+        1157,
+        423,
+        145
+      ]
+    },
+    {
+      "id": 38,
+      "name": "flower_38",
+      "file": "tiles/flower_38.png",
+      "w": 456,
+      "h": 141,
+      "source_bbox": [
+        1489,
+        1161,
+        456,
+        141
+      ]
+    },
+    {
+      "id": 39,
+      "name": "flower_39",
+      "file": "tiles/flower_39.png",
+      "w": 308,
+      "h": 133,
+      "source_bbox": [
+        107,
+        1162,
+        308,
+        133
+      ]
+    },
+    {
+      "id": 40,
+      "name": "flower_40",
+      "file": "tiles/flower_40.png",
+      "w": 487,
+      "h": 140,
+      "source_bbox": [
+        470,
+        1162,
+        487,
+        140
+      ]
+    }
+  ]
+}

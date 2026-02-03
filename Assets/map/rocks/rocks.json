@@ -1,0 +1,937 @@
+{
+  "type": "sprite_pack",
+  "source_atlas": "ChatGPT Image 3 de fev. de 2026, 08_10_40.png",
+  "cleaned_atlas": "rocks_atlas_clean.png",
+  "sprite_count": 58,
+  "entries": [
+    {
+      "id": 0,
+      "file": "sprites/rocks_000.png",
+      "w": 914,
+      "h": 173,
+      "bbox_in_atlas": {
+        "x": 617,
+        "y": 1056,
+        "w": 914,
+        "h": 173
+      },
+      "pivot": {
+        "x": 457,
+        "y": 172
+      }
+    },
+    {
+      "id": 1,
+      "file": "sprites/rocks_001.png",
+      "w": 474,
+      "h": 177,
+      "bbox_in_atlas": {
+        "x": 63,
+        "y": 1053,
+        "w": 474,
+        "h": 177
+      },
+      "pivot": {
+        "x": 237,
+        "y": 176
+      }
+    },
+    {
+      "id": 2,
+      "file": "sprites/rocks_002.png",
+      "w": 476,
+      "h": 183,
+      "bbox_in_atlas": {
+        "x": 1480,
+        "y": 406,
+        "w": 476,
+        "h": 183
+      },
+      "pivot": {
+        "x": 238,
+        "y": 182
+      }
+    },
+    {
+      "id": 3,
+      "file": "sprites/rocks_003.png",
+      "w": 452,
+      "h": 158,
+      "bbox_in_atlas": {
+        "x": 1050,
+        "y": 616,
+        "w": 452,
+        "h": 158
+      },
+      "pivot": {
+        "x": 226,
+        "y": 157
+      }
+    },
+    {
+      "id": 4,
+      "file": "sprites/rocks_004.png",
+      "w": 454,
+      "h": 155,
+      "bbox_in_atlas": {
+        "x": 1516,
+        "y": 618,
+        "w": 454,
+        "h": 155
+      },
+      "pivot": {
+        "x": 227,
+        "y": 154
+      }
+    },
+    {
+      "id": 5,
+      "file": "sprites/rocks_005.png",
+      "w": 399,
+      "h": 185,
+      "bbox_in_atlas": {
+        "x": 1040,
+        "y": 404,
+        "w": 399,
+        "h": 185
+      },
+      "pivot": {
+        "x": 199,
+        "y": 184
+      }
+    },
+    {
+      "id": 6,
+      "file": "sprites/rocks_006.png",
+      "w": 444,
+      "h": 164,
+      "bbox_in_atlas": {
+        "x": 1479,
+        "y": 201,
+        "w": 444,
+        "h": 164
+      },
+      "pivot": {
+        "x": 222,
+        "y": 163
+      }
+    },
+    {
+      "id": 7,
+      "file": "sprites/rocks_007.png",
+      "w": 407,
+      "h": 148,
+      "bbox_in_atlas": {
+        "x": 773,
+        "y": 782,
+        "w": 407,
+        "h": 148
+      },
+      "pivot": {
+        "x": 203,
+        "y": 147
+      }
+    },
+    {
+      "id": 8,
+      "file": "sprites/rocks_008.png",
+      "w": 421,
+      "h": 134,
+      "bbox_in_atlas": {
+        "x": 1555,
+        "y": 796,
+        "w": 421,
+        "h": 134
+      },
+      "pivot": {
+        "x": 210,
+        "y": 133
+      }
+    },
+    {
+      "id": 9,
+      "file": "sprites/rocks_009.png",
+      "w": 377,
+      "h": 149,
+      "bbox_in_atlas": {
+        "x": 380,
+        "y": 776,
+        "w": 377,
+        "h": 149
+      },
+      "pivot": {
+        "x": 188,
+        "y": 148
+      }
+    },
+    {
+      "id": 10,
+      "file": "sprites/rocks_010.png",
+      "w": 373,
+      "h": 149,
+      "bbox_in_atlas": {
+        "x": 1059,
+        "y": 211,
+        "w": 373,
+        "h": 149
+      },
+      "pivot": {
+        "x": 186,
+        "y": 148
+      }
+    },
+    {
+      "id": 11,
+      "file": "sprites/rocks_011.png",
+      "w": 364,
+      "h": 144,
+      "bbox_in_atlas": {
+        "x": 665,
+        "y": 606,
+        "w": 364,
+        "h": 144
+      },
+      "pivot": {
+        "x": 182,
+        "y": 143
+      }
+    },
+    {
+      "id": 12,
+      "file": "sprites/rocks_012.png",
+      "w": 308,
+      "h": 150,
+      "bbox_in_atlas": {
+        "x": 72,
+        "y": 777,
+        "w": 308,
+        "h": 150
+      },
+      "pivot": {
+        "x": 154,
+        "y": 149
+      }
+    },
+    {
+      "id": 13,
+      "file": "sprites/rocks_013.png",
+      "w": 335,
+      "h": 131,
+      "bbox_in_atlas": {
+        "x": 1197,
+        "y": 796,
+        "w": 335,
+        "h": 131
+      },
+      "pivot": {
+        "x": 167,
+        "y": 130
+      }
+    },
+    {
+      "id": 14,
+      "file": "sprites/rocks_014.png",
+      "w": 296,
+      "h": 141,
+      "bbox_in_atlas": {
+        "x": 357,
+        "y": 608,
+        "w": 296,
+        "h": 141
+      },
+      "pivot": {
+        "x": 148,
+        "y": 140
+      }
+    },
+    {
+      "id": 15,
+      "file": "sprites/rocks_015.png",
+      "w": 319,
+      "h": 130,
+      "bbox_in_atlas": {
+        "x": 688,
+        "y": 448,
+        "w": 319,
+        "h": 130
+      },
+      "pivot": {
+        "x": 159,
+        "y": 129
+      }
+    },
+    {
+      "id": 16,
+      "file": "sprites/rocks_016.png",
+      "w": 276,
+      "h": 143,
+      "bbox_in_atlas": {
+        "x": 82,
+        "y": 606,
+        "w": 276,
+        "h": 143
+      },
+      "pivot": {
+        "x": 138,
+        "y": 142
+      }
+    },
+    {
+      "id": 17,
+      "file": "sprites/rocks_017.png",
+      "w": 275,
+      "h": 123,
+      "bbox_in_atlas": {
+        "x": 92,
+        "y": 456,
+        "w": 275,
+        "h": 123
+      },
+      "pivot": {
+        "x": 137,
+        "y": 122
+      }
+    },
+    {
+      "id": 18,
+      "file": "sprites/rocks_018.png",
+      "w": 265,
+      "h": 119,
+      "bbox_in_atlas": {
+        "x": 403,
+        "y": 456,
+        "w": 265,
+        "h": 119
+      },
+      "pivot": {
+        "x": 132,
+        "y": 118
+      }
+    },
+    {
+      "id": 19,
+      "file": "sprites/rocks_019.png",
+      "w": 433,
+      "h": 69,
+      "bbox_in_atlas": {
+        "x": 1063,
+        "y": 958,
+        "w": 433,
+        "h": 69
+      },
+      "pivot": {
+        "x": 216,
+        "y": 68
+      }
+    },
+    {
+      "id": 20,
+      "file": "sprites/rocks_020.png",
+      "w": 257,
+      "h": 101,
+      "bbox_in_atlas": {
+        "x": 753,
+        "y": 328,
+        "w": 257,
+        "h": 101
+      },
+      "pivot": {
+        "x": 128,
+        "y": 100
+      }
+    },
+    {
+      "id": 21,
+      "file": "sprites/rocks_021.png",
+      "w": 424,
+      "h": 59,
+      "bbox_in_atlas": {
+        "x": 1545,
+        "y": 1074,
+        "w": 424,
+        "h": 59
+      },
+      "pivot": {
+        "x": 212,
+        "y": 58
+      }
+    },
+    {
+      "id": 22,
+      "file": "sprites/rocks_022.png",
+      "w": 421,
+      "h": 58,
+      "bbox_in_atlas": {
+        "x": 1547,
+        "y": 968,
+        "w": 421,
+        "h": 58
+      },
+      "pivot": {
+        "x": 210,
+        "y": 57
+      }
+    },
+    {
+      "id": 23,
+      "file": "sprites/rocks_023.png",
+      "w": 216,
+      "h": 105,
+      "bbox_in_atlas": {
+        "x": 510,
+        "y": 323,
+        "w": 216,
+        "h": 105
+      },
+      "pivot": {
+        "x": 108,
+        "y": 104
+      }
+    },
+    {
+      "id": 24,
+      "file": "sprites/rocks_024.png",
+      "w": 220,
+      "h": 100,
+      "bbox_in_atlas": {
+        "x": 1693,
+        "y": 73,
+        "w": 220,
+        "h": 100
+      },
+      "pivot": {
+        "x": 110,
+        "y": 99
+      }
+    },
+    {
+      "id": 25,
+      "file": "sprites/rocks_025.png",
+      "w": 327,
+      "h": 74,
+      "bbox_in_atlas": {
+        "x": 691,
+        "y": 950,
+        "w": 327,
+        "h": 74
+      },
+      "pivot": {
+        "x": 163,
+        "y": 73
+      }
+    },
+    {
+      "id": 26,
+      "file": "sprites/rocks_026.png",
+      "w": 201,
+      "h": 98,
+      "bbox_in_atlas": {
+        "x": 1465,
+        "y": 73,
+        "w": 201,
+        "h": 98
+      },
+      "pivot": {
+        "x": 100,
+        "y": 97
+      }
+    },
+    {
+      "id": 27,
+      "file": "sprites/rocks_027.png",
+      "w": 192,
+      "h": 105,
+      "bbox_in_atlas": {
+        "x": 1052,
+        "y": 73,
+        "w": 192,
+        "h": 105
+      },
+      "pivot": {
+        "x": 96,
+        "y": 104
+      }
+    },
+    {
+      "id": 28,
+      "file": "sprites/rocks_028.png",
+      "w": 197,
+      "h": 91,
+      "bbox_in_atlas": {
+        "x": 93,
+        "y": 328,
+        "w": 197,
+        "h": 91
+      },
+      "pivot": {
+        "x": 98,
+        "y": 90
+      }
+    },
+    {
+      "id": 29,
+      "file": "sprites/rocks_029.png",
+      "w": 173,
+      "h": 91,
+      "bbox_in_atlas": {
+        "x": 317,
+        "y": 328,
+        "w": 173,
+        "h": 91
+      },
+      "pivot": {
+        "x": 86,
+        "y": 90
+      }
+    },
+    {
+      "id": 30,
+      "file": "sprites/rocks_030.png",
+      "w": 179,
+      "h": 91,
+      "bbox_in_atlas": {
+        "x": 615,
+        "y": 200,
+        "w": 179,
+        "h": 91
+      },
+      "pivot": {
+        "x": 89,
+        "y": 90
+      }
+    },
+    {
+      "id": 31,
+      "file": "sprites/rocks_031.png",
+      "w": 299,
+      "h": 63,
+      "bbox_in_atlas": {
+        "x": 344,
+        "y": 961,
+        "w": 299,
+        "h": 63
+      },
+      "pivot": {
+        "x": 149,
+        "y": 62
+      }
+    },
+    {
+      "id": 32,
+      "file": "sprites/rocks_032.png",
+      "w": 166,
+      "h": 95,
+      "bbox_in_atlas": {
+        "x": 1267,
+        "y": 77,
+        "w": 166,
+        "h": 95
+      },
+      "pivot": {
+        "x": 83,
+        "y": 94
+      }
+    },
+    {
+      "id": 33,
+      "file": "sprites/rocks_033.png",
+      "w": 178,
+      "h": 84,
+      "bbox_in_atlas": {
+        "x": 830,
+        "y": 206,
+        "w": 178,
+        "h": 84
+      },
+      "pivot": {
+        "x": 89,
+        "y": 83
+      }
+    },
+    {
+      "id": 34,
+      "file": "sprites/rocks_034.png",
+      "w": 277,
+      "h": 58,
+      "bbox_in_atlas": {
+        "x": 235,
+        "y": 1267,
+        "w": 277,
+        "h": 58
+      },
+      "pivot": {
+        "x": 138,
+        "y": 57
+      }
+    },
+    {
+      "id": 35,
+      "file": "sprites/rocks_035.png",
+      "w": 201,
+      "h": 61,
+      "bbox_in_atlas": {
+        "x": 101,
+        "y": 966,
+        "w": 201,
+        "h": 61
+      },
+      "pivot": {
+        "x": 100,
+        "y": 60
+      }
+    },
+    {
+      "id": 36,
+      "file": "sprites/rocks_036.png",
+      "w": 153,
+      "h": 79,
+      "bbox_in_atlas": {
+        "x": 423,
+        "y": 211,
+        "w": 153,
+        "h": 79
+      },
+      "pivot": {
+        "x": 76,
+        "y": 78
+      }
+    },
+    {
+      "id": 37,
+      "file": "sprites/rocks_037.png",
+      "w": 133,
+      "h": 80,
+      "bbox_in_atlas": {
+        "x": 254,
+        "y": 210,
+        "w": 133,
+        "h": 80
+      },
+      "pivot": {
+        "x": 66,
+        "y": 79
+      }
+    },
+    {
+      "id": 38,
+      "file": "sprites/rocks_038.png",
+      "w": 122,
+      "h": 79,
+      "bbox_in_atlas": {
+        "x": 573,
+        "y": 83,
+        "w": 122,
+        "h": 79
+      },
+      "pivot": {
+        "x": 61,
+        "y": 78
+      }
+    },
+    {
+      "id": 39,
+      "file": "sprites/rocks_039.png",
+      "w": 124,
+      "h": 79,
+      "bbox_in_atlas": {
+        "x": 868,
+        "y": 83,
+        "w": 124,
+        "h": 79
+      },
+      "pivot": {
+        "x": 62,
+        "y": 78
+      }
+    },
+    {
+      "id": 40,
+      "file": "sprites/rocks_040.png",
+      "w": 209,
+      "h": 49,
+      "bbox_in_atlas": {
+        "x": 1600,
+        "y": 1271,
+        "w": 209,
+        "h": 49
+      },
+      "pivot": {
+        "x": 104,
+        "y": 48
+      }
+    },
+    {
+      "id": 41,
+      "file": "sprites/rocks_041.png",
+      "w": 123,
+      "h": 79,
+      "bbox_in_atlas": {
+        "x": 98,
+        "y": 211,
+        "w": 123,
+        "h": 79
+      },
+      "pivot": {
+        "x": 61,
+        "y": 78
+      }
+    },
+    {
+      "id": 42,
+      "file": "sprites/rocks_042.png",
+      "w": 181,
+      "h": 57,
+      "bbox_in_atlas": {
+        "x": 702,
+        "y": 1265,
+        "w": 181,
+        "h": 57
+      },
+      "pivot": {
+        "x": 90,
+        "y": 56
+      }
+    },
+    {
+      "id": 43,
+      "file": "sprites/rocks_043.png",
+      "w": 147,
+      "h": 65,
+      "bbox_in_atlas": {
+        "x": 1423,
+        "y": 1260,
+        "w": 147,
+        "h": 65
+      },
+      "pivot": {
+        "x": 73,
+        "y": 64
+      }
+    },
+    {
+      "id": 44,
+      "file": "sprites/rocks_044.png",
+      "w": 115,
+      "h": 80,
+      "bbox_in_atlas": {
+        "x": 254,
+        "y": 82,
+        "w": 115,
+        "h": 80
+      },
+      "pivot": {
+        "x": 57,
+        "y": 79
+      }
+    },
+    {
+      "id": 45,
+      "file": "sprites/rocks_045.png",
+      "w": 131,
+      "h": 69,
+      "bbox_in_atlas": {
+        "x": 542,
+        "y": 1064,
+        "w": 131,
+        "h": 69
+      },
+      "pivot": {
+        "x": 65,
+        "y": 68
+      }
+    },
+    {
+      "id": 46,
+      "file": "sprites/rocks_046.png",
+      "w": 161,
+      "h": 60,
+      "bbox_in_atlas": {
+        "x": 1229,
+        "y": 1265,
+        "w": 161,
+        "h": 60
+      },
+      "pivot": {
+        "x": 80,
+        "y": 59
+      }
+    },
+    {
+      "id": 47,
+      "file": "sprites/rocks_047.png",
+      "w": 156,
+      "h": 59,
+      "bbox_in_atlas": {
+        "x": 1832,
+        "y": 1264,
+        "w": 156,
+        "h": 59
+      },
+      "pivot": {
+        "x": 78,
+        "y": 58
+      }
+    },
+    {
+      "id": 48,
+      "file": "sprites/rocks_048.png",
+      "w": 112,
+      "h": 77,
+      "bbox_in_atlas": {
+        "x": 724,
+        "y": 83,
+        "w": 112,
+        "h": 77
+      },
+      "pivot": {
+        "x": 56,
+        "y": 76
+      }
+    },
+    {
+      "id": 49,
+      "file": "sprites/rocks_049.png",
+      "w": 153,
+      "h": 58,
+      "bbox_in_atlas": {
+        "x": 906,
+        "y": 1267,
+        "w": 153,
+        "h": 58
+      },
+      "pivot": {
+        "x": 76,
+        "y": 57
+      }
+    },
+    {
+      "id": 50,
+      "file": "sprites/rocks_050.png",
+      "w": 159,
+      "h": 65,
+      "bbox_in_atlas": {
+        "x": 79,
+        "y": 1256,
+        "w": 159,
+        "h": 65
+      },
+      "pivot": {
+        "x": 79,
+        "y": 64
+      }
+    },
+    {
+      "id": 51,
+      "file": "sprites/rocks_051.png",
+      "w": 111,
+      "h": 67,
+      "bbox_in_atlas": {
+        "x": 414,
+        "y": 93,
+        "w": 111,
+        "h": 67
+      },
+      "pivot": {
+        "x": 55,
+        "y": 66
+      }
+    },
+    {
+      "id": 52,
+      "file": "sprites/rocks_052.png",
+      "w": 100,
+      "h": 79,
+      "bbox_in_atlas": {
+        "x": 104,
+        "y": 83,
+        "w": 100,
+        "h": 79
+      },
+      "pivot": {
+        "x": 50,
+        "y": 78
+      }
+    },
+    {
+      "id": 53,
+      "file": "sprites/rocks_053.png",
+      "w": 154,
+      "h": 48,
+      "bbox_in_atlas": {
+        "x": 1810,
+        "y": 1181,
+        "w": 154,
+        "h": 48
+      },
+      "pivot": {
+        "x": 77,
+        "y": 47
+      }
+    },
+    {
+      "id": 54,
+      "file": "sprites/rocks_054.png",
+      "w": 128,
+      "h": 58,
+      "bbox_in_atlas": {
+        "x": 541,
+        "y": 1267,
+        "w": 128,
+        "h": 58
+      },
+      "pivot": {
+        "x": 64,
+        "y": 57
+      }
+    },
+    {
+      "id": 55,
+      "file": "sprites/rocks_055.png",
+      "w": 135,
+      "h": 53,
+      "bbox_in_atlas": {
+        "x": 1086,
+        "y": 1269,
+        "w": 135,
+        "h": 53
+      },
+      "pivot": {
+        "x": 67,
+        "y": 52
+      }
+    },
+    {
+      "id": 56,
+      "file": "sprites/rocks_056.png",
+      "w": 117,
+      "h": 48,
+      "bbox_in_atlas": {
+        "x": 1560,
+        "y": 1181,
+        "w": 117,
+        "h": 48
+      },
+      "pivot": {
+        "x": 58,
+        "y": 47
+      }
+    },
+    {
+      "id": 57,
+      "file": "sprites/rocks_057.png",
+      "w": 102,
+      "h": 36,
+      "bbox_in_atlas": {
+        "x": 1703,
+        "y": 1191,
+        "w": 102,
+        "h": 36
+      },
+      "pivot": {
+        "x": 51,
+        "y": 35
+      }
+    }
+  ],
+  "notes": "background keyed to transparent; pivot is bottom-center; bbox_in_atlas refers to cleaned atlas coordinates."
+}

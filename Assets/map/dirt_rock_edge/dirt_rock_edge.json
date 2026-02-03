@@ -1,0 +1,681 @@
+{
+  "base_name": "dirt_rock_edge",
+  "atlas": "dirt_rock_edge_atlas.png",
+  "grid_cols": 8,
+  "grid_rows": 6,
+  "tile_size": 64,
+  "entries": [
+    {
+      "name": "dirt_rock_edge_m00_v0",
+      "index": 0,
+      "mask": 0,
+      "variant": 0,
+      "row": 0,
+      "col": 0,
+      "src_box": [
+        98,
+        31,
+        326,
+        245
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m01_v0",
+      "index": 1,
+      "mask": 1,
+      "variant": 0,
+      "row": 0,
+      "col": 1,
+      "src_box": [
+        344,
+        31,
+        570,
+        245
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m02_v0",
+      "index": 2,
+      "mask": 2,
+      "variant": 0,
+      "row": 0,
+      "col": 2,
+      "src_box": [
+        589,
+        31,
+        817,
+        245
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m03_v0",
+      "index": 3,
+      "mask": 3,
+      "variant": 0,
+      "row": 0,
+      "col": 3,
+      "src_box": [
+        834,
+        31,
+        1060,
+        245
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m04_v0",
+      "index": 4,
+      "mask": 4,
+      "variant": 0,
+      "row": 0,
+      "col": 4,
+      "src_box": [
+        1079,
+        31,
+        1307,
+        245
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m05_v0",
+      "index": 5,
+      "mask": 5,
+      "variant": 0,
+      "row": 0,
+      "col": 5,
+      "src_box": [
+        1326,
+        31,
+        1552,
+        245
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m06_v0",
+      "index": 6,
+      "mask": 6,
+      "variant": 0,
+      "row": 0,
+      "col": 6,
+      "src_box": [
+        1570,
+        31,
+        1799,
+        245
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m07_v0",
+      "index": 7,
+      "mask": 7,
+      "variant": 0,
+      "row": 0,
+      "col": 7,
+      "src_box": [
+        1816,
+        31,
+        1949,
+        245
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m08_v0",
+      "index": 8,
+      "mask": 8,
+      "variant": 0,
+      "row": 1,
+      "col": 0,
+      "src_box": [
+        98,
+        261,
+        326,
+        487
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m09_v0",
+      "index": 9,
+      "mask": 9,
+      "variant": 0,
+      "row": 1,
+      "col": 1,
+      "src_box": [
+        344,
+        261,
+        570,
+        487
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m10_v0",
+      "index": 10,
+      "mask": 10,
+      "variant": 0,
+      "row": 1,
+      "col": 2,
+      "src_box": [
+        589,
+        261,
+        817,
+        487
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m11_v0",
+      "index": 11,
+      "mask": 11,
+      "variant": 0,
+      "row": 1,
+      "col": 3,
+      "src_box": [
+        834,
+        261,
+        1060,
+        487
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m12_v0",
+      "index": 12,
+      "mask": 12,
+      "variant": 0,
+      "row": 1,
+      "col": 4,
+      "src_box": [
+        1079,
+        261,
+        1307,
+        487
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m13_v0",
+      "index": 13,
+      "mask": 13,
+      "variant": 0,
+      "row": 1,
+      "col": 5,
+      "src_box": [
+        1326,
+        261,
+        1552,
+        487
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m14_v0",
+      "index": 14,
+      "mask": 14,
+      "variant": 0,
+      "row": 1,
+      "col": 6,
+      "src_box": [
+        1570,
+        261,
+        1799,
+        487
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m15_v0",
+      "index": 15,
+      "mask": 15,
+      "variant": 0,
+      "row": 1,
+      "col": 7,
+      "src_box": [
+        1816,
+        261,
+        1949,
+        487
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m00_v1",
+      "index": 16,
+      "mask": 0,
+      "variant": 1,
+      "row": 2,
+      "col": 0,
+      "src_box": [
+        98,
+        502,
+        326,
+        671
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m01_v1",
+      "index": 17,
+      "mask": 1,
+      "variant": 1,
+      "row": 2,
+      "col": 1,
+      "src_box": [
+        344,
+        502,
+        570,
+        671
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m02_v1",
+      "index": 18,
+      "mask": 2,
+      "variant": 1,
+      "row": 2,
+      "col": 2,
+      "src_box": [
+        589,
+        502,
+        817,
+        671
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m03_v1",
+      "index": 19,
+      "mask": 3,
+      "variant": 1,
+      "row": 2,
+      "col": 3,
+      "src_box": [
+        834,
+        502,
+        1060,
+        671
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m04_v1",
+      "index": 20,
+      "mask": 4,
+      "variant": 1,
+      "row": 2,
+      "col": 4,
+      "src_box": [
+        1079,
+        502,
+        1307,
+        671
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m05_v1",
+      "index": 21,
+      "mask": 5,
+      "variant": 1,
+      "row": 2,
+      "col": 5,
+      "src_box": [
+        1326,
+        502,
+        1552,
+        671
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m06_v1",
+      "index": 22,
+      "mask": 6,
+      "variant": 1,
+      "row": 2,
+      "col": 6,
+      "src_box": [
+        1570,
+        502,
+        1799,
+        671
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m07_v1",
+      "index": 23,
+      "mask": 7,
+      "variant": 1,
+      "row": 2,
+      "col": 7,
+      "src_box": [
+        1816,
+        502,
+        1949,
+        671
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m08_v1",
+      "index": 24,
+      "mask": 8,
+      "variant": 1,
+      "row": 3,
+      "col": 0,
+      "src_box": [
+        98,
+        689,
+        326,
+        914
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m09_v1",
+      "index": 25,
+      "mask": 9,
+      "variant": 1,
+      "row": 3,
+      "col": 1,
+      "src_box": [
+        344,
+        689,
+        570,
+        914
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m10_v1",
+      "index": 26,
+      "mask": 10,
+      "variant": 1,
+      "row": 3,
+      "col": 2,
+      "src_box": [
+        589,
+        689,
+        817,
+        914
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m11_v1",
+      "index": 27,
+      "mask": 11,
+      "variant": 1,
+      "row": 3,
+      "col": 3,
+      "src_box": [
+        834,
+        689,
+        1060,
+        914
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m12_v1",
+      "index": 28,
+      "mask": 12,
+      "variant": 1,
+      "row": 3,
+      "col": 4,
+      "src_box": [
+        1079,
+        689,
+        1307,
+        914
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m13_v1",
+      "index": 29,
+      "mask": 13,
+      "variant": 1,
+      "row": 3,
+      "col": 5,
+      "src_box": [
+        1326,
+        689,
+        1552,
+        914
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m14_v1",
+      "index": 30,
+      "mask": 14,
+      "variant": 1,
+      "row": 3,
+      "col": 6,
+      "src_box": [
+        1570,
+        689,
+        1799,
+        914
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m15_v1",
+      "index": 31,
+      "mask": 15,
+      "variant": 1,
+      "row": 3,
+      "col": 7,
+      "src_box": [
+        1816,
+        689,
+        1949,
+        914
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m00_v2",
+      "index": 32,
+      "mask": 0,
+      "variant": 2,
+      "row": 4,
+      "col": 0,
+      "src_box": [
+        98,
+        929,
+        326,
+        1142
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m01_v2",
+      "index": 33,
+      "mask": 1,
+      "variant": 2,
+      "row": 4,
+      "col": 1,
+      "src_box": [
+        344,
+        929,
+        570,
+        1142
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m02_v2",
+      "index": 34,
+      "mask": 2,
+      "variant": 2,
+      "row": 4,
+      "col": 2,
+      "src_box": [
+        589,
+        929,
+        817,
+        1142
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m03_v2",
+      "index": 35,
+      "mask": 3,
+      "variant": 2,
+      "row": 4,
+      "col": 3,
+      "src_box": [
+        834,
+        929,
+        1060,
+        1142
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m04_v2",
+      "index": 36,
+      "mask": 4,
+      "variant": 2,
+      "row": 4,
+      "col": 4,
+      "src_box": [
+        1079,
+        929,
+        1307,
+        1142
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m05_v2",
+      "index": 37,
+      "mask": 5,
+      "variant": 2,
+      "row": 4,
+      "col": 5,
+      "src_box": [
+        1326,
+        929,
+        1552,
+        1142
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m06_v2",
+      "index": 38,
+      "mask": 6,
+      "variant": 2,
+      "row": 4,
+      "col": 6,
+      "src_box": [
+        1570,
+        929,
+        1799,
+        1142
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m07_v2",
+      "index": 39,
+      "mask": 7,
+      "variant": 2,
+      "row": 4,
+      "col": 7,
+      "src_box": [
+        1816,
+        929,
+        1949,
+        1142
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m08_v2",
+      "index": 40,
+      "mask": 8,
+      "variant": 2,
+      "row": 5,
+      "col": 0,
+      "src_box": [
+        98,
+        1157,
+        326,
+        1340
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m09_v2",
+      "index": 41,
+      "mask": 9,
+      "variant": 2,
+      "row": 5,
+      "col": 1,
+      "src_box": [
+        344,
+        1157,
+        570,
+        1340
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m10_v2",
+      "index": 42,
+      "mask": 10,
+      "variant": 2,
+      "row": 5,
+      "col": 2,
+      "src_box": [
+        589,
+        1157,
+        817,
+        1340
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m11_v2",
+      "index": 43,
+      "mask": 11,
+      "variant": 2,
+      "row": 5,
+      "col": 3,
+      "src_box": [
+        834,
+        1157,
+        1060,
+        1340
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m12_v2",
+      "index": 44,
+      "mask": 12,
+      "variant": 2,
+      "row": 5,
+      "col": 4,
+      "src_box": [
+        1079,
+        1157,
+        1307,
+        1340
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m13_v2",
+      "index": 45,
+      "mask": 13,
+      "variant": 2,
+      "row": 5,
+      "col": 5,
+      "src_box": [
+        1326,
+        1157,
+        1552,
+        1340
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m14_v2",
+      "index": 46,
+      "mask": 14,
+      "variant": 2,
+      "row": 5,
+      "col": 6,
+      "src_box": [
+        1570,
+        1157,
+        1799,
+        1340
+      ]
+    },
+    {
+      "name": "dirt_rock_edge_m15_v2",
+      "index": 47,
+      "mask": 15,
+      "variant": 2,
+      "row": 5,
+      "col": 7,
+      "src_box": [
+        1816,
+        1157,
+        1949,
+        1340
+      ]
+    }
+  ]
+}

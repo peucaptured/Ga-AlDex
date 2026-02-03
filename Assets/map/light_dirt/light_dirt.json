@@ -1,0 +1,533 @@
+{
+  "atlas": "ChatGPT Image 3 de fev. de 2026, 08_04_57.png",
+  "name_prefix": "light_dirt",
+  "columns": 8,
+  "rows": 5,
+  "tile_size": {
+    "w": 215,
+    "h": 193
+  },
+  "tile_count": 40,
+  "tiles": [
+    {
+      "id": 0,
+      "name": "light_dirt_00_00",
+      "file": "tiles/light_dirt_00_00.png",
+      "row": 0,
+      "col": 0,
+      "bbox_in_atlas": {
+        "x": 105,
+        "y": 29,
+        "w": 215,
+        "h": 193
+      }
+    },
+    {
+      "id": 1,
+      "name": "light_dirt_00_01",
+      "file": "tiles/light_dirt_00_01.png",
+      "row": 0,
+      "col": 1,
+      "bbox_in_atlas": {
+        "x": 337,
+        "y": 29,
+        "w": 215,
+        "h": 193
+      }
+    },
+    {
+      "id": 2,
+      "name": "light_dirt_00_02",
+      "file": "tiles/light_dirt_00_02.png",
+      "row": 0,
+      "col": 2,
+      "bbox_in_atlas": {
+        "x": 568,
+        "y": 29,
+        "w": 215,
+        "h": 193
+      }
+    },
+    {
+      "id": 3,
+      "name": "light_dirt_00_03",
+      "file": "tiles/light_dirt_00_03.png",
+      "row": 0,
+      "col": 3,
+      "bbox_in_atlas": {
+        "x": 798,
+        "y": 29,
+        "w": 215,
+        "h": 193
+      }
+    },
+    {
+      "id": 4,
+      "name": "light_dirt_00_04",
+      "file": "tiles/light_dirt_00_04.png",
+      "row": 0,
+      "col": 4,
+      "bbox_in_atlas": {
+        "x": 1029,
+        "y": 29,
+        "w": 214,
+        "h": 193
+      }
+    },
+    {
+      "id": 5,
+      "name": "light_dirt_00_05",
+      "file": "tiles/light_dirt_00_05.png",
+      "row": 0,
+      "col": 5,
+      "bbox_in_atlas": {
+        "x": 1259,
+        "y": 29,
+        "w": 215,
+        "h": 193
+      }
+    },
+    {
+      "id": 6,
+      "name": "light_dirt_00_06",
+      "file": "tiles/light_dirt_00_06.png",
+      "row": 0,
+      "col": 6,
+      "bbox_in_atlas": {
+        "x": 1490,
+        "y": 29,
+        "w": 216,
+        "h": 193
+      }
+    },
+    {
+      "id": 7,
+      "name": "light_dirt_00_07",
+      "file": "tiles/light_dirt_00_07.png",
+      "row": 0,
+      "col": 7,
+      "bbox_in_atlas": {
+        "x": 1723,
+        "y": 29,
+        "w": 215,
+        "h": 193
+      }
+    },
+    {
+      "id": 8,
+      "name": "light_dirt_01_00",
+      "file": "tiles/light_dirt_01_00.png",
+      "row": 1,
+      "col": 0,
+      "bbox_in_atlas": {
+        "x": 105,
+        "y": 237,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 9,
+      "name": "light_dirt_01_01",
+      "file": "tiles/light_dirt_01_01.png",
+      "row": 1,
+      "col": 1,
+      "bbox_in_atlas": {
+        "x": 337,
+        "y": 237,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 10,
+      "name": "light_dirt_01_02",
+      "file": "tiles/light_dirt_01_02.png",
+      "row": 1,
+      "col": 2,
+      "bbox_in_atlas": {
+        "x": 568,
+        "y": 237,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 11,
+      "name": "light_dirt_01_03",
+      "file": "tiles/light_dirt_01_03.png",
+      "row": 1,
+      "col": 3,
+      "bbox_in_atlas": {
+        "x": 798,
+        "y": 237,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 12,
+      "name": "light_dirt_01_04",
+      "file": "tiles/light_dirt_01_04.png",
+      "row": 1,
+      "col": 4,
+      "bbox_in_atlas": {
+        "x": 1029,
+        "y": 237,
+        "w": 214,
+        "h": 194
+      }
+    },
+    {
+      "id": 13,
+      "name": "light_dirt_01_05",
+      "file": "tiles/light_dirt_01_05.png",
+      "row": 1,
+      "col": 5,
+      "bbox_in_atlas": {
+        "x": 1259,
+        "y": 237,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 14,
+      "name": "light_dirt_01_06",
+      "file": "tiles/light_dirt_01_06.png",
+      "row": 1,
+      "col": 6,
+      "bbox_in_atlas": {
+        "x": 1490,
+        "y": 237,
+        "w": 216,
+        "h": 194
+      }
+    },
+    {
+      "id": 15,
+      "name": "light_dirt_01_07",
+      "file": "tiles/light_dirt_01_07.png",
+      "row": 1,
+      "col": 7,
+      "bbox_in_atlas": {
+        "x": 1723,
+        "y": 237,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 16,
+      "name": "light_dirt_02_00",
+      "file": "tiles/light_dirt_02_00.png",
+      "row": 2,
+      "col": 0,
+      "bbox_in_atlas": {
+        "x": 105,
+        "y": 445,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 17,
+      "name": "light_dirt_02_01",
+      "file": "tiles/light_dirt_02_01.png",
+      "row": 2,
+      "col": 1,
+      "bbox_in_atlas": {
+        "x": 337,
+        "y": 445,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 18,
+      "name": "light_dirt_02_02",
+      "file": "tiles/light_dirt_02_02.png",
+      "row": 2,
+      "col": 2,
+      "bbox_in_atlas": {
+        "x": 568,
+        "y": 445,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 19,
+      "name": "light_dirt_02_03",
+      "file": "tiles/light_dirt_02_03.png",
+      "row": 2,
+      "col": 3,
+      "bbox_in_atlas": {
+        "x": 798,
+        "y": 445,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 20,
+      "name": "light_dirt_02_04",
+      "file": "tiles/light_dirt_02_04.png",
+      "row": 2,
+      "col": 4,
+      "bbox_in_atlas": {
+        "x": 1029,
+        "y": 445,
+        "w": 214,
+        "h": 194
+      }
+    },
+    {
+      "id": 21,
+      "name": "light_dirt_02_05",
+      "file": "tiles/light_dirt_02_05.png",
+      "row": 2,
+      "col": 5,
+      "bbox_in_atlas": {
+        "x": 1259,
+        "y": 445,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 22,
+      "name": "light_dirt_02_06",
+      "file": "tiles/light_dirt_02_06.png",
+      "row": 2,
+      "col": 6,
+      "bbox_in_atlas": {
+        "x": 1490,
+        "y": 445,
+        "w": 216,
+        "h": 194
+      }
+    },
+    {
+      "id": 23,
+      "name": "light_dirt_02_07",
+      "file": "tiles/light_dirt_02_07.png",
+      "row": 2,
+      "col": 7,
+      "bbox_in_atlas": {
+        "x": 1723,
+        "y": 445,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 24,
+      "name": "light_dirt_03_00",
+      "file": "tiles/light_dirt_03_00.png",
+      "row": 3,
+      "col": 0,
+      "bbox_in_atlas": {
+        "x": 105,
+        "y": 653,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 25,
+      "name": "light_dirt_03_01",
+      "file": "tiles/light_dirt_03_01.png",
+      "row": 3,
+      "col": 1,
+      "bbox_in_atlas": {
+        "x": 337,
+        "y": 653,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 26,
+      "name": "light_dirt_03_02",
+      "file": "tiles/light_dirt_03_02.png",
+      "row": 3,
+      "col": 2,
+      "bbox_in_atlas": {
+        "x": 568,
+        "y": 653,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 27,
+      "name": "light_dirt_03_03",
+      "file": "tiles/light_dirt_03_03.png",
+      "row": 3,
+      "col": 3,
+      "bbox_in_atlas": {
+        "x": 798,
+        "y": 653,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 28,
+      "name": "light_dirt_03_04",
+      "file": "tiles/light_dirt_03_04.png",
+      "row": 3,
+      "col": 4,
+      "bbox_in_atlas": {
+        "x": 1029,
+        "y": 653,
+        "w": 214,
+        "h": 194
+      }
+    },
+    {
+      "id": 29,
+      "name": "light_dirt_03_05",
+      "file": "tiles/light_dirt_03_05.png",
+      "row": 3,
+      "col": 5,
+      "bbox_in_atlas": {
+        "x": 1259,
+        "y": 653,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 30,
+      "name": "light_dirt_03_06",
+      "file": "tiles/light_dirt_03_06.png",
+      "row": 3,
+      "col": 6,
+      "bbox_in_atlas": {
+        "x": 1490,
+        "y": 653,
+        "w": 216,
+        "h": 194
+      }
+    },
+    {
+      "id": 31,
+      "name": "light_dirt_03_07",
+      "file": "tiles/light_dirt_03_07.png",
+      "row": 3,
+      "col": 7,
+      "bbox_in_atlas": {
+        "x": 1723,
+        "y": 653,
+        "w": 215,
+        "h": 194
+      }
+    },
+    {
+      "id": 32,
+      "name": "light_dirt_04_00",
+      "file": "tiles/light_dirt_04_00.png",
+      "row": 4,
+      "col": 0,
+      "bbox_in_atlas": {
+        "x": 105,
+        "y": 862,
+        "w": 215,
+        "h": 193
+      }
+    },
+    {
+      "id": 33,
+      "name": "light_dirt_04_01",
+      "file": "tiles/light_dirt_04_01.png",
+      "row": 4,
+      "col": 1,
+      "bbox_in_atlas": {
+        "x": 337,
+        "y": 862,
+        "w": 215,
+        "h": 193
+      }
+    },
+    {
+      "id": 34,
+      "name": "light_dirt_04_02",
+      "file": "tiles/light_dirt_04_02.png",
+      "row": 4,
+      "col": 2,
+      "bbox_in_atlas": {
+        "x": 568,
+        "y": 862,
+        "w": 215,
+        "h": 193
+      }
+    },
+    {
+      "id": 35,
+      "name": "light_dirt_04_03",
+      "file": "tiles/light_dirt_04_03.png",
+      "row": 4,
+      "col": 3,
+      "bbox_in_atlas": {
+        "x": 798,
+        "y": 862,
+        "w": 215,
+        "h": 193
+      }
+    },
+    {
+      "id": 36,
+      "name": "light_dirt_04_04",
+      "file": "tiles/light_dirt_04_04.png",
+      "row": 4,
+      "col": 4,
+      "bbox_in_atlas": {
+        "x": 1029,
+        "y": 862,
+        "w": 214,
+        "h": 193
+      }
+    },
+    {
+      "id": 37,
+      "name": "light_dirt_04_05",
+      "file": "tiles/light_dirt_04_05.png",
+      "row": 4,
+      "col": 5,
+      "bbox_in_atlas": {
+        "x": 1259,
+        "y": 862,
+        "w": 215,
+        "h": 193
+      }
+    },
+    {
+      "id": 38,
+      "name": "light_dirt_04_06",
+      "file": "tiles/light_dirt_04_06.png",
+      "row": 4,
+      "col": 6,
+      "bbox_in_atlas": {
+        "x": 1490,
+        "y": 862,
+        "w": 216,
+        "h": 193
+      }
+    },
+    {
+      "id": 39,
+      "name": "light_dirt_04_07",
+      "file": "tiles/light_dirt_04_07.png",
+      "row": 4,
+      "col": 7,
+      "bbox_in_atlas": {
+        "x": 1723,
+        "y": 862,
+        "w": 215,
+        "h": 193
+      }
+    }
+  ]
+}

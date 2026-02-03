@@ -1,0 +1,585 @@
+{
+  "base_name": "path_dirt_grass",
+  "atlas": "path_dirt_grass_atlas.png",
+  "grid_cols": 8,
+  "grid_rows": 6,
+  "tile_size": 64,
+  "entries": [
+    {
+      "name": "path_dirt_grass_00",
+      "index": 0,
+      "row": 0,
+      "col": 0,
+      "src_box": [
+        97,
+        32,
+        325,
+        246
+      ]
+    },
+    {
+      "name": "path_dirt_grass_01",
+      "index": 1,
+      "row": 0,
+      "col": 1,
+      "src_box": [
+        343,
+        32,
+        570,
+        246
+      ]
+    },
+    {
+      "name": "path_dirt_grass_02",
+      "index": 2,
+      "row": 0,
+      "col": 2,
+      "src_box": [
+        589,
+        32,
+        818,
+        246
+      ]
+    },
+    {
+      "name": "path_dirt_grass_03",
+      "index": 3,
+      "row": 0,
+      "col": 3,
+      "src_box": [
+        833,
+        32,
+        1060,
+        246
+      ]
+    },
+    {
+      "name": "path_dirt_grass_04",
+      "index": 4,
+      "row": 0,
+      "col": 4,
+      "src_box": [
+        1078,
+        32,
+        1308,
+        246
+      ]
+    },
+    {
+      "name": "path_dirt_grass_05",
+      "index": 5,
+      "row": 0,
+      "col": 5,
+      "src_box": [
+        1325,
+        32,
+        1551,
+        246
+      ]
+    },
+    {
+      "name": "path_dirt_grass_06",
+      "index": 6,
+      "row": 0,
+      "col": 6,
+      "src_box": [
+        1569,
+        32,
+        1799,
+        246
+      ]
+    },
+    {
+      "name": "path_dirt_grass_07",
+      "index": 7,
+      "row": 0,
+      "col": 7,
+      "src_box": [
+        1816,
+        32,
+        1950,
+        246
+      ]
+    },
+    {
+      "name": "path_dirt_grass_08",
+      "index": 8,
+      "row": 1,
+      "col": 0,
+      "src_box": [
+        97,
+        260,
+        325,
+        490
+      ]
+    },
+    {
+      "name": "path_dirt_grass_09",
+      "index": 9,
+      "row": 1,
+      "col": 1,
+      "src_box": [
+        343,
+        260,
+        570,
+        490
+      ]
+    },
+    {
+      "name": "path_dirt_grass_10",
+      "index": 10,
+      "row": 1,
+      "col": 2,
+      "src_box": [
+        589,
+        260,
+        818,
+        490
+      ]
+    },
+    {
+      "name": "path_dirt_grass_11",
+      "index": 11,
+      "row": 1,
+      "col": 3,
+      "src_box": [
+        833,
+        260,
+        1060,
+        490
+      ]
+    },
+    {
+      "name": "path_dirt_grass_12",
+      "index": 12,
+      "row": 1,
+      "col": 4,
+      "src_box": [
+        1078,
+        260,
+        1308,
+        490
+      ]
+    },
+    {
+      "name": "path_dirt_grass_13",
+      "index": 13,
+      "row": 1,
+      "col": 5,
+      "src_box": [
+        1325,
+        260,
+        1551,
+        490
+      ]
+    },
+    {
+      "name": "path_dirt_grass_14",
+      "index": 14,
+      "row": 1,
+      "col": 6,
+      "src_box": [
+        1569,
+        260,
+        1799,
+        490
+      ]
+    },
+    {
+      "name": "path_dirt_grass_15",
+      "index": 15,
+      "row": 1,
+      "col": 7,
+      "src_box": [
+        1816,
+        260,
+        1950,
+        490
+      ]
+    },
+    {
+      "name": "path_dirt_grass_16",
+      "index": 16,
+      "row": 2,
+      "col": 0,
+      "src_box": [
+        97,
+        504,
+        325,
+        672
+      ]
+    },
+    {
+      "name": "path_dirt_grass_17",
+      "index": 17,
+      "row": 2,
+      "col": 1,
+      "src_box": [
+        343,
+        504,
+        570,
+        672
+      ]
+    },
+    {
+      "name": "path_dirt_grass_18",
+      "index": 18,
+      "row": 2,
+      "col": 2,
+      "src_box": [
+        589,
+        504,
+        818,
+        672
+      ]
+    },
+    {
+      "name": "path_dirt_grass_19",
+      "index": 19,
+      "row": 2,
+      "col": 3,
+      "src_box": [
+        833,
+        504,
+        1060,
+        672
+      ]
+    },
+    {
+      "name": "path_dirt_grass_20",
+      "index": 20,
+      "row": 2,
+      "col": 4,
+      "src_box": [
+        1078,
+        504,
+        1308,
+        672
+      ]
+    },
+    {
+      "name": "path_dirt_grass_21",
+      "index": 21,
+      "row": 2,
+      "col": 5,
+      "src_box": [
+        1325,
+        504,
+        1551,
+        672
+      ]
+    },
+    {
+      "name": "path_dirt_grass_22",
+      "index": 22,
+      "row": 2,
+      "col": 6,
+      "src_box": [
+        1569,
+        504,
+        1799,
+        672
+      ]
+    },
+    {
+      "name": "path_dirt_grass_23",
+      "index": 23,
+      "row": 2,
+      "col": 7,
+      "src_box": [
+        1816,
+        504,
+        1950,
+        672
+      ]
+    },
+    {
+      "name": "path_dirt_grass_24",
+      "index": 24,
+      "row": 3,
+      "col": 0,
+      "src_box": [
+        97,
+        688,
+        325,
+        916
+      ]
+    },
+    {
+      "name": "path_dirt_grass_25",
+      "index": 25,
+      "row": 3,
+      "col": 1,
+      "src_box": [
+        343,
+        688,
+        570,
+        916
+      ]
+    },
+    {
+      "name": "path_dirt_grass_26",
+      "index": 26,
+      "row": 3,
+      "col": 2,
+      "src_box": [
+        589,
+        688,
+        818,
+        916
+      ]
+    },
+    {
+      "name": "path_dirt_grass_27",
+      "index": 27,
+      "row": 3,
+      "col": 3,
+      "src_box": [
+        833,
+        688,
+        1060,
+        916
+      ]
+    },
+    {
+      "name": "path_dirt_grass_28",
+      "index": 28,
+      "row": 3,
+      "col": 4,
+      "src_box": [
+        1078,
+        688,
+        1308,
+        916
+      ]
+    },
+    {
+      "name": "path_dirt_grass_29",
+      "index": 29,
+      "row": 3,
+      "col": 5,
+      "src_box": [
+        1325,
+        688,
+        1551,
+        916
+      ]
+    },
+    {
+      "name": "path_dirt_grass_30",
+      "index": 30,
+      "row": 3,
+      "col": 6,
+      "src_box": [
+        1569,
+        688,
+        1799,
+        916
+      ]
+    },
+    {
+      "name": "path_dirt_grass_31",
+      "index": 31,
+      "row": 3,
+      "col": 7,
+      "src_box": [
+        1816,
+        688,
+        1950,
+        916
+      ]
+    },
+    {
+      "name": "path_dirt_grass_32",
+      "index": 32,
+      "row": 4,
+      "col": 0,
+      "src_box": [
+        97,
+        930,
+        325,
+        1142
+      ]
+    },
+    {
+      "name": "path_dirt_grass_33",
+      "index": 33,
+      "row": 4,
+      "col": 1,
+      "src_box": [
+        343,
+        930,
+        570,
+        1142
+      ]
+    },
+    {
+      "name": "path_dirt_grass_34",
+      "index": 34,
+      "row": 4,
+      "col": 2,
+      "src_box": [
+        589,
+        930,
+        818,
+        1142
+      ]
+    },
+    {
+      "name": "path_dirt_grass_35",
+      "index": 35,
+      "row": 4,
+      "col": 3,
+      "src_box": [
+        833,
+        930,
+        1060,
+        1142
+      ]
+    },
+    {
+      "name": "path_dirt_grass_36",
+      "index": 36,
+      "row": 4,
+      "col": 4,
+      "src_box": [
+        1078,
+        930,
+        1308,
+        1142
+      ]
+    },
+    {
+      "name": "path_dirt_grass_37",
+      "index": 37,
+      "row": 4,
+      "col": 5,
+      "src_box": [
+        1325,
+        930,
+        1551,
+        1142
+      ]
+    },
+    {
+      "name": "path_dirt_grass_38",
+      "index": 38,
+      "row": 4,
+      "col": 6,
+      "src_box": [
+        1569,
+        930,
+        1799,
+        1142
+      ]
+    },
+    {
+      "name": "path_dirt_grass_39",
+      "index": 39,
+      "row": 4,
+      "col": 7,
+      "src_box": [
+        1816,
+        930,
+        1950,
+        1142
+      ]
+    },
+    {
+      "name": "path_dirt_grass_40",
+      "index": 40,
+      "row": 5,
+      "col": 0,
+      "src_box": [
+        97,
+        1157,
+        325,
+        1342
+      ]
+    },
+    {
+      "name": "path_dirt_grass_41",
+      "index": 41,
+      "row": 5,
+      "col": 1,
+      "src_box": [
+        343,
+        1157,
+        570,
+        1342
+      ]
+    },
+    {
+      "name": "path_dirt_grass_42",
+      "index": 42,
+      "row": 5,
+      "col": 2,
+      "src_box": [
+        589,
+        1157,
+        818,
+        1342
+      ]
+    },
+    {
+      "name": "path_dirt_grass_43",
+      "index": 43,
+      "row": 5,
+      "col": 3,
+      "src_box": [
+        833,
+        1157,
+        1060,
+        1342
+      ]
+    },
+    {
+      "name": "path_dirt_grass_44",
+      "index": 44,
+      "row": 5,
+      "col": 4,
+      "src_box": [
+        1078,
+        1157,
+        1308,
+        1342
+      ]
+    },
+    {
+      "name": "path_dirt_grass_45",
+      "index": 45,
+      "row": 5,
+      "col": 5,
+      "src_box": [
+        1325,
+        1157,
+        1551,
+        1342
+      ]
+    },
+    {
+      "name": "path_dirt_grass_46",
+      "index": 46,
+      "row": 5,
+      "col": 6,
+      "src_box": [
+        1569,
+        1157,
+        1799,
+        1342
+      ]
+    },
+    {
+      "name": "path_dirt_grass_47",
+      "index": 47,
+      "row": 5,
+      "col": 7,
+      "src_box": [
+        1816,
+        1157,
+        1950,
+        1342
+      ]
+    }
+  ]
+}

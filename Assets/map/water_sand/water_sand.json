@@ -1,0 +1,458 @@
+{
+  "atlas": "6d15dda7-63f4-43ca-8d3c-1511b297a131.png",
+  "detected_grid": {
+    "cols": 9,
+    "rows": 6
+  },
+  "tile_output_size": 64,
+  "entries": [
+    {
+      "name": "water_sand_m00_v0",
+      "mask": 0,
+      "variant": 0,
+      "index": 0,
+      "row": 0,
+      "col": 0,
+      "src_bbox": [
+        52,
+        17,
+        196,
+        203
+      ]
+    },
+    {
+      "name": "water_sand_m01_v0",
+      "mask": 1,
+      "variant": 0,
+      "index": 1,
+      "row": 0,
+      "col": 1,
+      "src_bbox": [
+        262,
+        17,
+        198,
+        203
+      ]
+    },
+    {
+      "name": "water_sand_m02_v0",
+      "mask": 2,
+      "variant": 0,
+      "index": 2,
+      "row": 0,
+      "col": 2,
+      "src_bbox": [
+        474,
+        17,
+        198,
+        203
+      ]
+    },
+    {
+      "name": "water_sand_m03_v0",
+      "mask": 3,
+      "variant": 0,
+      "index": 3,
+      "row": 0,
+      "col": 3,
+      "src_bbox": [
+        687,
+        17,
+        198,
+        203
+      ]
+    },
+    {
+      "name": "water_sand_m04_v0",
+      "mask": 4,
+      "variant": 0,
+      "index": 4,
+      "row": 0,
+      "col": 4,
+      "src_bbox": [
+        900,
+        17,
+        199,
+        203
+      ]
+    },
+    {
+      "name": "water_sand_m05_v0",
+      "mask": 5,
+      "variant": 0,
+      "index": 5,
+      "row": 0,
+      "col": 5,
+      "src_bbox": [
+        1114,
+        17,
+        198,
+        203
+      ]
+    },
+    {
+      "name": "water_sand_m06_v0",
+      "mask": 6,
+      "variant": 0,
+      "index": 6,
+      "row": 0,
+      "col": 6,
+      "src_bbox": [
+        1327,
+        17,
+        199,
+        203
+      ]
+    },
+    {
+      "name": "water_sand_m07_v0",
+      "mask": 7,
+      "variant": 0,
+      "index": 7,
+      "row": 0,
+      "col": 7,
+      "src_bbox": [
+        1541,
+        17,
+        198,
+        203
+      ]
+    },
+    {
+      "name": "water_sand_m08_v0",
+      "mask": 8,
+      "variant": 0,
+      "index": 8,
+      "row": 0,
+      "col": 8,
+      "src_bbox": [
+        1754,
+        17,
+        200,
+        203
+      ]
+    },
+    {
+      "name": "water_sand_m09_v0",
+      "mask": 9,
+      "variant": 0,
+      "index": 9,
+      "row": 1,
+      "col": 0,
+      "src_bbox": [
+        52,
+        234,
+        196,
+        200
+      ]
+    },
+    {
+      "name": "water_sand_m10_v0",
+      "mask": 10,
+      "variant": 0,
+      "index": 10,
+      "row": 1,
+      "col": 1,
+      "src_bbox": [
+        262,
+        234,
+        198,
+        200
+      ]
+    },
+    {
+      "name": "water_sand_m11_v0",
+      "mask": 11,
+      "variant": 0,
+      "index": 11,
+      "row": 1,
+      "col": 2,
+      "src_bbox": [
+        474,
+        234,
+        198,
+        200
+      ]
+    },
+    {
+      "name": "water_sand_m12_v0",
+      "mask": 12,
+      "variant": 0,
+      "index": 12,
+      "row": 1,
+      "col": 3,
+      "src_bbox": [
+        687,
+        234,
+        198,
+        200
+      ]
+    },
+    {
+      "name": "water_sand_m13_v0",
+      "mask": 13,
+      "variant": 0,
+      "index": 13,
+      "row": 1,
+      "col": 4,
+      "src_bbox": [
+        900,
+        234,
+        199,
+        200
+      ]
+    },
+    {
+      "name": "water_sand_m14_v0",
+      "mask": 14,
+      "variant": 0,
+      "index": 14,
+      "row": 1,
+      "col": 5,
+      "src_bbox": [
+        1114,
+        234,
+        198,
+        200
+      ]
+    },
+    {
+      "name": "water_sand_m15_v0",
+      "mask": 15,
+      "variant": 0,
+      "index": 15,
+      "row": 1,
+      "col": 6,
+      "src_bbox": [
+        1327,
+        234,
+        199,
+        200
+      ]
+    },
+    {
+      "name": "water_sand_m00_v1",
+      "mask": 0,
+      "variant": 1,
+      "index": 16,
+      "row": 1,
+      "col": 7,
+      "src_bbox": [
+        1541,
+        234,
+        198,
+        200
+      ]
+    },
+    {
+      "name": "water_sand_m01_v1",
+      "mask": 1,
+      "variant": 1,
+      "index": 17,
+      "row": 1,
+      "col": 8,
+      "src_bbox": [
+        1754,
+        234,
+        200,
+        200
+      ]
+    },
+    {
+      "name": "water_sand_m02_v1",
+      "mask": 2,
+      "variant": 1,
+      "index": 18,
+      "row": 2,
+      "col": 0,
+      "src_bbox": [
+        52,
+        448,
+        196,
+        199
+      ]
+    },
+    {
+      "name": "water_sand_m03_v1",
+      "mask": 3,
+      "variant": 1,
+      "index": 19,
+      "row": 2,
+      "col": 1,
+      "src_bbox": [
+        262,
+        448,
+        198,
+        199
+      ]
+    },
+    {
+      "name": "water_sand_m04_v1",
+      "mask": 4,
+      "variant": 1,
+      "index": 20,
+      "row": 2,
+      "col": 2,
+      "src_bbox": [
+        474,
+        448,
+        198,
+        199
+      ]
+    },
+    {
+      "name": "water_sand_m05_v1",
+      "mask": 5,
+      "variant": 1,
+      "index": 21,
+      "row": 2,
+      "col": 3,
+      "src_bbox": [
+        687,
+        448,
+        198,
+        199
+      ]
+    },
+    {
+      "name": "water_sand_m06_v1",
+      "mask": 6,
+      "variant": 1,
+      "index": 22,
+      "row": 2,
+      "col": 4,
+      "src_bbox": [
+        900,
+        448,
+        199,
+        199
+      ]
+    },
+    {
+      "name": "water_sand_m07_v1",
+      "mask": 7,
+      "variant": 1,
+      "index": 23,
+      "row": 2,
+      "col": 5,
+      "src_bbox": [
+        1114,
+        448,
+        198,
+        199
+      ]
+    },
+    {
+      "name": "water_sand_m08_v1",
+      "mask": 8,
+      "variant": 1,
+      "index": 24,
+      "row": 2,
+      "col": 6,
+      "src_bbox": [
+        1327,
+        448,
+        199,
+        199
+      ]
+    },
+    {
+      "name": "water_sand_m09_v1",
+      "mask": 9,
+      "variant": 1,
+      "index": 25,
+      "row": 2,
+      "col": 7,
+      "src_bbox": [
+        1541,
+        448,
+        198,
+        199
+      ]
+    },
+    {
+      "name": "water_sand_m10_v1",
+      "mask": 10,
+      "variant": 1,
+      "index": 26,
+      "row": 2,
+      "col": 8,
+      "src_bbox": [
+        1754,
+        448,
+        200,
+        199
+      ]
+    },
+    {
+      "name": "water_sand_m11_v1",
+      "mask": 11,
+      "variant": 1,
+      "index": 27,
+      "row": 3,
+      "col": 0,
+      "src_bbox": [
+        52,
+        661,
+        196,
+        200
+      ]
+    },
+    {
+      "name": "water_sand_m12_v1",
+      "mask": 12,
+      "variant": 1,
+      "index": 28,
+      "row": 3,
+      "col": 1,
+      "src_bbox": [
+        262,
+        661,
+        198,
+        200
+      ]
+    },
+    {
+      "name": "water_sand_m13_v1",
+      "mask": 13,
+      "variant": 1,
+      "index": 29,
+      "row": 3,
+      "col": 2,
+      "src_bbox": [
+        474,
+        661,
+        198,
+        200
+      ]
+    },
+    {
+      "name": "water_sand_m14_v1",
+      "mask": 14,
+      "variant": 1,
+      "index": 30,
+      "row": 3,
+      "col": 3,
+      "src_bbox": [
+        687,
+        661,
+        198,
+        200
+      ]
+    },
+    {
+      "name": "water_sand_m15_v1",
+      "mask": 15,
+      "variant": 1,
+      "index": 31,
+      "row": 3,
+      "col": 4,
+      "src_bbox": [
+        900,
+        661,
+        199,
+        200
+      ]
+    }
+  ]
+}

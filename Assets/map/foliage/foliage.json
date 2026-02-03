@@ -1,0 +1,697 @@
+{
+  "type": "sprite_pack",
+  "source_atlas": "ChatGPT Image 3 de fev. de 2026, 08_10_44.png",
+  "cleaned_atlas": "foliage_atlas_clean.png",
+  "sprite_count": 43,
+  "entries": [
+    {
+      "id": 0,
+      "file": "sprites/foliage_000.png",
+      "w": 456,
+      "h": 374,
+      "bbox_in_atlas": {
+        "x": 1096,
+        "y": 350,
+        "w": 456,
+        "h": 374
+      },
+      "pivot": {
+        "x": 228,
+        "y": 373
+      }
+    },
+    {
+      "id": 1,
+      "file": "sprites/foliage_001.png",
+      "w": 409,
+      "h": 332,
+      "bbox_in_atlas": {
+        "x": 1576,
+        "y": 396,
+        "w": 409,
+        "h": 332
+      },
+      "pivot": {
+        "x": 204,
+        "y": 331
+      }
+    },
+    {
+      "id": 2,
+      "file": "sprites/foliage_002.png",
+      "w": 624,
+      "h": 179,
+      "bbox_in_atlas": {
+        "x": 968,
+        "y": 1135,
+        "w": 624,
+        "h": 179
+      },
+      "pivot": {
+        "x": 312,
+        "y": 178
+      }
+    },
+    {
+      "id": 3,
+      "file": "sprites/foliage_003.png",
+      "w": 348,
+      "h": 304,
+      "bbox_in_atlas": {
+        "x": 753,
+        "y": 222,
+        "w": 348,
+        "h": 304
+      },
+      "pivot": {
+        "x": 174,
+        "y": 303
+      }
+    },
+    {
+      "id": 4,
+      "file": "sprites/foliage_004.png",
+      "w": 298,
+      "h": 290,
+      "bbox_in_atlas": {
+        "x": 1662,
+        "y": 72,
+        "w": 298,
+        "h": 290
+      },
+      "pivot": {
+        "x": 149,
+        "y": 289
+      }
+    },
+    {
+      "id": 5,
+      "file": "sprites/foliage_005.png",
+      "w": 511,
+      "h": 144,
+      "bbox_in_atlas": {
+        "x": 1489,
+        "y": 956,
+        "w": 511,
+        "h": 144
+      },
+      "pivot": {
+        "x": 255,
+        "y": 143
+      }
+    },
+    {
+      "id": 6,
+      "file": "sprites/foliage_006.png",
+      "w": 403,
+      "h": 172,
+      "bbox_in_atlas": {
+        "x": 1597,
+        "y": 1139,
+        "w": 403,
+        "h": 172
+      },
+      "pivot": {
+        "x": 201,
+        "y": 171
+      }
+    },
+    {
+      "id": 7,
+      "file": "sprites/foliage_007.png",
+      "w": 391,
+      "h": 170,
+      "bbox_in_atlas": {
+        "x": 1244,
+        "y": 755,
+        "w": 391,
+        "h": 170
+      },
+      "pivot": {
+        "x": 195,
+        "y": 169
+      }
+    },
+    {
+      "id": 8,
+      "file": "sprites/foliage_008.png",
+      "w": 302,
+      "h": 249,
+      "bbox_in_atlas": {
+        "x": 767,
+        "y": 553,
+        "w": 302,
+        "h": 249
+      },
+      "pivot": {
+        "x": 151,
+        "y": 248
+      }
+    },
+    {
+      "id": 9,
+      "file": "sprites/foliage_009.png",
+      "w": 304,
+      "h": 247,
+      "bbox_in_atlas": {
+        "x": 424,
+        "y": 444,
+        "w": 304,
+        "h": 247
+      },
+      "pivot": {
+        "x": 152,
+        "y": 246
+      }
+    },
+    {
+      "id": 10,
+      "file": "sprites/foliage_010.png",
+      "w": 294,
+      "h": 255,
+      "bbox_in_atlas": {
+        "x": 91,
+        "y": 435,
+        "w": 294,
+        "h": 255
+      },
+      "pivot": {
+        "x": 147,
+        "y": 254
+      }
+    },
+    {
+      "id": 11,
+      "file": "sprites/foliage_011.png",
+      "w": 275,
+      "h": 259,
+      "bbox_in_atlas": {
+        "x": 1112,
+        "y": 68,
+        "w": 275,
+        "h": 259
+      },
+      "pivot": {
+        "x": 137,
+        "y": 258
+      }
+    },
+    {
+      "id": 12,
+      "file": "sprites/foliage_012.png",
+      "w": 343,
+      "h": 163,
+      "bbox_in_atlas": {
+        "x": 1653,
+        "y": 760,
+        "w": 343,
+        "h": 163
+      },
+      "pivot": {
+        "x": 171,
+        "y": 162
+      }
+    },
+    {
+      "id": 13,
+      "file": "sprites/foliage_013.png",
+      "w": 244,
+      "h": 256,
+      "bbox_in_atlas": {
+        "x": 1400,
+        "y": 72,
+        "w": 244,
+        "h": 256
+      },
+      "pivot": {
+        "x": 122,
+        "y": 255
+      }
+    },
+    {
+      "id": 14,
+      "file": "sprites/foliage_014.png",
+      "w": 342,
+      "h": 148,
+      "bbox_in_atlas": {
+        "x": 307,
+        "y": 1164,
+        "w": 342,
+        "h": 148
+      },
+      "pivot": {
+        "x": 171,
+        "y": 147
+      }
+    },
+    {
+      "id": 15,
+      "file": "sprites/foliage_015.png",
+      "w": 277,
+      "h": 168,
+      "bbox_in_atlas": {
+        "x": 685,
+        "y": 1012,
+        "w": 277,
+        "h": 168
+      },
+      "pivot": {
+        "x": 138,
+        "y": 167
+      }
+    },
+    {
+      "id": 16,
+      "file": "sprites/foliage_016.png",
+      "w": 282,
+      "h": 143,
+      "bbox_in_atlas": {
+        "x": 1202,
+        "y": 957,
+        "w": 282,
+        "h": 143
+      },
+      "pivot": {
+        "x": 141,
+        "y": 142
+      }
+    },
+    {
+      "id": 17,
+      "file": "sprites/foliage_017.png",
+      "w": 202,
+      "h": 183,
+      "bbox_in_atlas": {
+        "x": 519,
+        "y": 232,
+        "w": 202,
+        "h": 183
+      },
+      "pivot": {
+        "x": 101,
+        "y": 182
+      }
+    },
+    {
+      "id": 18,
+      "file": "sprites/foliage_018.png",
+      "w": 205,
+      "h": 142,
+      "bbox_in_atlas": {
+        "x": 79,
+        "y": 1167,
+        "w": 205,
+        "h": 142
+      },
+      "pivot": {
+        "x": 102,
+        "y": 141
+      }
+    },
+    {
+      "id": 19,
+      "file": "sprites/foliage_019.png",
+      "w": 176,
+      "h": 172,
+      "bbox_in_atlas": {
+        "x": 293,
+        "y": 236,
+        "w": 176,
+        "h": 172
+      },
+      "pivot": {
+        "x": 88,
+        "y": 171
+      }
+    },
+    {
+      "id": 20,
+      "file": "sprites/foliage_020.png",
+      "w": 197,
+      "h": 141,
+      "bbox_in_atlas": {
+        "x": 990,
+        "y": 957,
+        "w": 197,
+        "h": 141
+      },
+      "pivot": {
+        "x": 98,
+        "y": 140
+      }
+    },
+    {
+      "id": 21,
+      "file": "sprites/foliage_021.png",
+      "w": 150,
+      "h": 176,
+      "bbox_in_atlas": {
+        "x": 1054,
+        "y": 751,
+        "w": 150,
+        "h": 176
+      },
+      "pivot": {
+        "x": 75,
+        "y": 175
+      }
+    },
+    {
+      "id": 22,
+      "file": "sprites/foliage_022.png",
+      "w": 155,
+      "h": 168,
+      "bbox_in_atlas": {
+        "x": 94,
+        "y": 239,
+        "w": 155,
+        "h": 168
+      },
+      "pivot": {
+        "x": 77,
+        "y": 167
+      }
+    },
+    {
+      "id": 23,
+      "file": "sprites/foliage_023.png",
+      "w": 196,
+      "h": 130,
+      "bbox_in_atlas": {
+        "x": 456,
+        "y": 1011,
+        "w": 196,
+        "h": 130
+      },
+      "pivot": {
+        "x": 98,
+        "y": 129
+      }
+    },
+    {
+      "id": 24,
+      "file": "sprites/foliage_024.png",
+      "w": 169,
+      "h": 120,
+      "bbox_in_atlas": {
+        "x": 814,
+        "y": 861,
+        "w": 169,
+        "h": 120
+      },
+      "pivot": {
+        "x": 84,
+        "y": 119
+      }
+    },
+    {
+      "id": 25,
+      "file": "sprites/foliage_025.png",
+      "w": 165,
+      "h": 118,
+      "bbox_in_atlas": {
+        "x": 435,
+        "y": 862,
+        "w": 165,
+        "h": 118
+      },
+      "pivot": {
+        "x": 82,
+        "y": 117
+      }
+    },
+    {
+      "id": 26,
+      "file": "sprites/foliage_026.png",
+      "w": 154,
+      "h": 122,
+      "bbox_in_atlas": {
+        "x": 264,
+        "y": 720,
+        "w": 154,
+        "h": 122
+      },
+      "pivot": {
+        "x": 77,
+        "y": 121
+      }
+    },
+    {
+      "id": 27,
+      "file": "sprites/foliage_027.png",
+      "w": 156,
+      "h": 118,
+      "bbox_in_atlas": {
+        "x": 275,
+        "y": 1020,
+        "w": 156,
+        "h": 118
+      },
+      "pivot": {
+        "x": 78,
+        "y": 117
+      }
+    },
+    {
+      "id": 28,
+      "file": "sprites/foliage_028.png",
+      "w": 165,
+      "h": 115,
+      "bbox_in_atlas": {
+        "x": 617,
+        "y": 863,
+        "w": 165,
+        "h": 115
+      },
+      "pivot": {
+        "x": 82,
+        "y": 114
+      }
+    },
+    {
+      "id": 29,
+      "file": "sprites/foliage_029.png",
+      "w": 157,
+      "h": 117,
+      "bbox_in_atlas": {
+        "x": 254,
+        "y": 861,
+        "w": 157,
+        "h": 117
+      },
+      "pivot": {
+        "x": 78,
+        "y": 116
+      }
+    },
+    {
+      "id": 30,
+      "file": "sprites/foliage_030.png",
+      "w": 156,
+      "h": 111,
+      "bbox_in_atlas": {
+        "x": 85,
+        "y": 1022,
+        "w": 156,
+        "h": 111
+      },
+      "pivot": {
+        "x": 78,
+        "y": 110
+      }
+    },
+    {
+      "id": 31,
+      "file": "sprites/foliage_031.png",
+      "w": 122,
+      "h": 132,
+      "bbox_in_atlas": {
+        "x": 275,
+        "y": 71,
+        "w": 122,
+        "h": 132
+      },
+      "pivot": {
+        "x": 61,
+        "y": 131
+      }
+    },
+    {
+      "id": 32,
+      "file": "sprites/foliage_032.png",
+      "w": 146,
+      "h": 117,
+      "bbox_in_atlas": {
+        "x": 83,
+        "y": 723,
+        "w": 146,
+        "h": 117
+      },
+      "pivot": {
+        "x": 73,
+        "y": 116
+      }
+    },
+    {
+      "id": 33,
+      "file": "sprites/foliage_033.png",
+      "w": 129,
+      "h": 132,
+      "bbox_in_atlas": {
+        "x": 930,
+        "y": 72,
+        "w": 129,
+        "h": 132
+      },
+      "pivot": {
+        "x": 64,
+        "y": 131
+      }
+    },
+    {
+      "id": 34,
+      "file": "sprites/foliage_034.png",
+      "w": 124,
+      "h": 132,
+      "bbox_in_atlas": {
+        "x": 595,
+        "y": 72,
+        "w": 124,
+        "h": 132
+      },
+      "pivot": {
+        "x": 62,
+        "y": 131
+      }
+    },
+    {
+      "id": 35,
+      "file": "sprites/foliage_035.png",
+      "w": 128,
+      "h": 131,
+      "bbox_in_atlas": {
+        "x": 755,
+        "y": 73,
+        "w": 128,
+        "h": 131
+      },
+      "pivot": {
+        "x": 64,
+        "y": 130
+      }
+    },
+    {
+      "id": 36,
+      "file": "sprites/foliage_036.png",
+      "w": 126,
+      "h": 133,
+      "bbox_in_atlas": {
+        "x": 113,
+        "y": 72,
+        "w": 126,
+        "h": 133
+      },
+      "pivot": {
+        "x": 63,
+        "y": 132
+      }
+    },
+    {
+      "id": 37,
+      "file": "sprites/foliage_037.png",
+      "w": 115,
+      "h": 133,
+      "bbox_in_atlas": {
+        "x": 445,
+        "y": 70,
+        "w": 115,
+        "h": 133
+      },
+      "pivot": {
+        "x": 57,
+        "y": 132
+      }
+    },
+    {
+      "id": 38,
+      "file": "sprites/foliage_038.png",
+      "w": 147,
+      "h": 115,
+      "bbox_in_atlas": {
+        "x": 613,
+        "y": 723,
+        "w": 147,
+        "h": 115
+      },
+      "pivot": {
+        "x": 73,
+        "y": 114
+      }
+    },
+    {
+      "id": 39,
+      "file": "sprites/foliage_039.png",
+      "w": 140,
+      "h": 111,
+      "bbox_in_atlas": {
+        "x": 446,
+        "y": 729,
+        "w": 140,
+        "h": 111
+      },
+      "pivot": {
+        "x": 70,
+        "y": 110
+      }
+    },
+    {
+      "id": 40,
+      "file": "sprites/foliage_040.png",
+      "w": 153,
+      "h": 94,
+      "bbox_in_atlas": {
+        "x": 83,
+        "y": 879,
+        "w": 153,
+        "h": 94
+      },
+      "pivot": {
+        "x": 76,
+        "y": 93
+      }
+    },
+    {
+      "id": 41,
+      "file": "sprites/foliage_041.png",
+      "w": 148,
+      "h": 98,
+      "bbox_in_atlas": {
+        "x": 688,
+        "y": 1214,
+        "w": 148,
+        "h": 98
+      },
+      "pivot": {
+        "x": 74,
+        "y": 97
+      }
+    },
+    {
+      "id": 42,
+      "file": "sprites/foliage_042.png",
+      "w": 104,
+      "h": 78,
+      "bbox_in_atlas": {
+        "x": 840,
+        "y": 1223,
+        "w": 104,
+        "h": 78
+      },
+      "pivot": {
+        "x": 52,
+        "y": 77
+      }
+    }
+  ],
+  "notes": "background keyed to transparent; pivot is bottom-center; bbox_in_atlas refers to cleaned atlas coordinates."
+}

@@ -1,0 +1,335 @@
+{
+  "source_atlas": "ChatGPT Image 2 de fev. de 2026, 19_36_18.png",
+  "method": "bbox_equal_grid",
+  "grid_cols": 8,
+  "grid_rows": 4,
+  "resize_to": 64,
+  "bbox": [
+    0,
+    0,
+    2047,
+    1364
+  ],
+  "entries": [
+    {
+      "name": "water_overlay_foam_00",
+      "index": 0,
+      "x": 0,
+      "y": 0,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_foam_01",
+      "index": 1,
+      "x": 256,
+      "y": 0,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_foam_02",
+      "index": 2,
+      "x": 512,
+      "y": 0,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_foam_03",
+      "index": 3,
+      "x": 768,
+      "y": 0,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_foam_04",
+      "index": 4,
+      "x": 1024,
+      "y": 0,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_foam_05",
+      "index": 5,
+      "x": 1280,
+      "y": 0,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_foam_06",
+      "index": 6,
+      "x": 1536,
+      "y": 0,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_foam_07",
+      "index": 7,
+      "x": 1792,
+      "y": 0,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_foam_08",
+      "index": 8,
+      "x": 0,
+      "y": 341,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_foam_09",
+      "index": 9,
+      "x": 256,
+      "y": 341,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_foam_10",
+      "index": 10,
+      "x": 512,
+      "y": 341,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_foam_11",
+      "index": 11,
+      "x": 768,
+      "y": 341,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_foam_12",
+      "index": 12,
+      "x": 1024,
+      "y": 341,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_foam_13",
+      "index": 13,
+      "x": 1280,
+      "y": 341,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_foam_14",
+      "index": 14,
+      "x": 1536,
+      "y": 341,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_foam_15",
+      "index": 15,
+      "x": 1792,
+      "y": 341,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_sparkle_00",
+      "index": 16,
+      "x": 0,
+      "y": 682,
+      "w": 256,
+      "h": 342,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_sparkle_01",
+      "index": 17,
+      "x": 256,
+      "y": 682,
+      "w": 256,
+      "h": 342,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_sparkle_02",
+      "index": 18,
+      "x": 512,
+      "y": 682,
+      "w": 256,
+      "h": 342,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_sparkle_03",
+      "index": 19,
+      "x": 768,
+      "y": 682,
+      "w": 256,
+      "h": 342,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_sparkle_04",
+      "index": 20,
+      "x": 1024,
+      "y": 682,
+      "w": 256,
+      "h": 342,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_sparkle_05",
+      "index": 21,
+      "x": 1280,
+      "y": 682,
+      "w": 256,
+      "h": 342,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_sparkle_06",
+      "index": 22,
+      "x": 1536,
+      "y": 682,
+      "w": 256,
+      "h": 342,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_sparkle_07",
+      "index": 23,
+      "x": 1792,
+      "y": 682,
+      "w": 256,
+      "h": 342,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_sparkle_08",
+      "index": 24,
+      "x": 0,
+      "y": 1024,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_sparkle_09",
+      "index": 25,
+      "x": 256,
+      "y": 1024,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_sparkle_10",
+      "index": 26,
+      "x": 512,
+      "y": 1024,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_sparkle_11",
+      "index": 27,
+      "x": 768,
+      "y": 1024,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_sparkle_12",
+      "index": 28,
+      "x": 1024,
+      "y": 1024,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_sparkle_13",
+      "index": 29,
+      "x": 1280,
+      "y": 1024,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_sparkle_14",
+      "index": 30,
+      "x": 1536,
+      "y": 1024,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "water_overlay_sparkle_15",
+      "index": 31,
+      "x": 1792,
+      "y": 1024,
+      "w": 256,
+      "h": 341,
+      "out_w": 64,
+      "out_h": 64
+    }
+  ]
+}

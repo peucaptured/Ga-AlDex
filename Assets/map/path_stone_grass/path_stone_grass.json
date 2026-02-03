@@ -1,0 +1,631 @@
+{
+  "tile_size": 64,
+  "grid_cols": 8,
+  "grid_rows": 6,
+  "entries": [
+    {
+      "name": "path_stone_grass_00",
+      "index": 0,
+      "row": 0,
+      "col": 0,
+      "src_box": [
+        96,
+        32,
+        230,
+        214
+      ],
+      "file": "path_stone_grass_00.png"
+    },
+    {
+      "name": "path_stone_grass_01",
+      "index": 1,
+      "row": 0,
+      "col": 1,
+      "src_box": [
+        342,
+        32,
+        228,
+        214
+      ],
+      "file": "path_stone_grass_01.png"
+    },
+    {
+      "name": "path_stone_grass_02",
+      "index": 2,
+      "row": 0,
+      "col": 2,
+      "src_box": [
+        588,
+        32,
+        230,
+        214
+      ],
+      "file": "path_stone_grass_02.png"
+    },
+    {
+      "name": "path_stone_grass_03",
+      "index": 3,
+      "row": 0,
+      "col": 3,
+      "src_box": [
+        833,
+        32,
+        228,
+        214
+      ],
+      "file": "path_stone_grass_03.png"
+    },
+    {
+      "name": "path_stone_grass_04",
+      "index": 4,
+      "row": 0,
+      "col": 4,
+      "src_box": [
+        1078,
+        32,
+        231,
+        214
+      ],
+      "file": "path_stone_grass_04.png"
+    },
+    {
+      "name": "path_stone_grass_05",
+      "index": 5,
+      "row": 0,
+      "col": 5,
+      "src_box": [
+        1325,
+        32,
+        226,
+        214
+      ],
+      "file": "path_stone_grass_05.png"
+    },
+    {
+      "name": "path_stone_grass_06",
+      "index": 6,
+      "row": 0,
+      "col": 6,
+      "src_box": [
+        1569,
+        32,
+        231,
+        214
+      ],
+      "file": "path_stone_grass_06.png"
+    },
+    {
+      "name": "path_stone_grass_07",
+      "index": 7,
+      "row": 0,
+      "col": 7,
+      "src_box": [
+        1815,
+        32,
+        135,
+        214
+      ],
+      "file": "path_stone_grass_07.png"
+    },
+    {
+      "name": "path_stone_grass_08",
+      "index": 8,
+      "row": 1,
+      "col": 0,
+      "src_box": [
+        96,
+        260,
+        230,
+        230
+      ],
+      "file": "path_stone_grass_08.png"
+    },
+    {
+      "name": "path_stone_grass_09",
+      "index": 9,
+      "row": 1,
+      "col": 1,
+      "src_box": [
+        342,
+        260,
+        228,
+        230
+      ],
+      "file": "path_stone_grass_09.png"
+    },
+    {
+      "name": "path_stone_grass_10",
+      "index": 10,
+      "row": 1,
+      "col": 2,
+      "src_box": [
+        588,
+        260,
+        230,
+        230
+      ],
+      "file": "path_stone_grass_10.png"
+    },
+    {
+      "name": "path_stone_grass_11",
+      "index": 11,
+      "row": 1,
+      "col": 3,
+      "src_box": [
+        833,
+        260,
+        228,
+        230
+      ],
+      "file": "path_stone_grass_11.png"
+    },
+    {
+      "name": "path_stone_grass_12",
+      "index": 12,
+      "row": 1,
+      "col": 4,
+      "src_box": [
+        1078,
+        260,
+        231,
+        230
+      ],
+      "file": "path_stone_grass_12.png"
+    },
+    {
+      "name": "path_stone_grass_13",
+      "index": 13,
+      "row": 1,
+      "col": 5,
+      "src_box": [
+        1325,
+        260,
+        226,
+        230
+      ],
+      "file": "path_stone_grass_13.png"
+    },
+    {
+      "name": "path_stone_grass_14",
+      "index": 14,
+      "row": 1,
+      "col": 6,
+      "src_box": [
+        1569,
+        260,
+        231,
+        230
+      ],
+      "file": "path_stone_grass_14.png"
+    },
+    {
+      "name": "path_stone_grass_15",
+      "index": 15,
+      "row": 1,
+      "col": 7,
+      "src_box": [
+        1815,
+        260,
+        135,
+        230
+      ],
+      "file": "path_stone_grass_15.png"
+    },
+    {
+      "name": "path_stone_grass_16",
+      "index": 16,
+      "row": 2,
+      "col": 0,
+      "src_box": [
+        96,
+        503,
+        230,
+        168
+      ],
+      "file": "path_stone_grass_16.png"
+    },
+    {
+      "name": "path_stone_grass_17",
+      "index": 17,
+      "row": 2,
+      "col": 1,
+      "src_box": [
+        342,
+        503,
+        228,
+        168
+      ],
+      "file": "path_stone_grass_17.png"
+    },
+    {
+      "name": "path_stone_grass_18",
+      "index": 18,
+      "row": 2,
+      "col": 2,
+      "src_box": [
+        588,
+        503,
+        230,
+        168
+      ],
+      "file": "path_stone_grass_18.png"
+    },
+    {
+      "name": "path_stone_grass_19",
+      "index": 19,
+      "row": 2,
+      "col": 3,
+      "src_box": [
+        833,
+        503,
+        228,
+        168
+      ],
+      "file": "path_stone_grass_19.png"
+    },
+    {
+      "name": "path_stone_grass_20",
+      "index": 20,
+      "row": 2,
+      "col": 4,
+      "src_box": [
+        1078,
+        503,
+        231,
+        168
+      ],
+      "file": "path_stone_grass_20.png"
+    },
+    {
+      "name": "path_stone_grass_21",
+      "index": 21,
+      "row": 2,
+      "col": 5,
+      "src_box": [
+        1325,
+        503,
+        226,
+        168
+      ],
+      "file": "path_stone_grass_21.png"
+    },
+    {
+      "name": "path_stone_grass_22",
+      "index": 22,
+      "row": 2,
+      "col": 6,
+      "src_box": [
+        1569,
+        503,
+        231,
+        168
+      ],
+      "file": "path_stone_grass_22.png"
+    },
+    {
+      "name": "path_stone_grass_23",
+      "index": 23,
+      "row": 2,
+      "col": 7,
+      "src_box": [
+        1815,
+        503,
+        135,
+        168
+      ],
+      "file": "path_stone_grass_23.png"
+    },
+    {
+      "name": "path_stone_grass_24",
+      "index": 24,
+      "row": 3,
+      "col": 0,
+      "src_box": [
+        96,
+        686,
+        230,
+        230
+      ],
+      "file": "path_stone_grass_24.png"
+    },
+    {
+      "name": "path_stone_grass_25",
+      "index": 25,
+      "row": 3,
+      "col": 1,
+      "src_box": [
+        342,
+        686,
+        228,
+        230
+      ],
+      "file": "path_stone_grass_25.png"
+    },
+    {
+      "name": "path_stone_grass_26",
+      "index": 26,
+      "row": 3,
+      "col": 2,
+      "src_box": [
+        588,
+        686,
+        230,
+        230
+      ],
+      "file": "path_stone_grass_26.png"
+    },
+    {
+      "name": "path_stone_grass_27",
+      "index": 27,
+      "row": 3,
+      "col": 3,
+      "src_box": [
+        833,
+        686,
+        228,
+        230
+      ],
+      "file": "path_stone_grass_27.png"
+    },
+    {
+      "name": "path_stone_grass_28",
+      "index": 28,
+      "row": 3,
+      "col": 4,
+      "src_box": [
+        1078,
+        686,
+        231,
+        230
+      ],
+      "file": "path_stone_grass_28.png"
+    },
+    {
+      "name": "path_stone_grass_29",
+      "index": 29,
+      "row": 3,
+      "col": 5,
+      "src_box": [
+        1325,
+        686,
+        226,
+        230
+      ],
+      "file": "path_stone_grass_29.png"
+    },
+    {
+      "name": "path_stone_grass_30",
+      "index": 30,
+      "row": 3,
+      "col": 6,
+      "src_box": [
+        1569,
+        686,
+        231,
+        230
+      ],
+      "file": "path_stone_grass_30.png"
+    },
+    {
+      "name": "path_stone_grass_31",
+      "index": 31,
+      "row": 3,
+      "col": 7,
+      "src_box": [
+        1815,
+        686,
+        135,
+        230
+      ],
+      "file": "path_stone_grass_31.png"
+    },
+    {
+      "name": "path_stone_grass_32",
+      "index": 32,
+      "row": 4,
+      "col": 0,
+      "src_box": [
+        96,
+        930,
+        230,
+        212
+      ],
+      "file": "path_stone_grass_32.png"
+    },
+    {
+      "name": "path_stone_grass_33",
+      "index": 33,
+      "row": 4,
+      "col": 1,
+      "src_box": [
+        342,
+        930,
+        228,
+        212
+      ],
+      "file": "path_stone_grass_33.png"
+    },
+    {
+      "name": "path_stone_grass_34",
+      "index": 34,
+      "row": 4,
+      "col": 2,
+      "src_box": [
+        588,
+        930,
+        230,
+        212
+      ],
+      "file": "path_stone_grass_34.png"
+    },
+    {
+      "name": "path_stone_grass_35",
+      "index": 35,
+      "row": 4,
+      "col": 3,
+      "src_box": [
+        833,
+        930,
+        228,
+        212
+      ],
+      "file": "path_stone_grass_35.png"
+    },
+    {
+      "name": "path_stone_grass_36",
+      "index": 36,
+      "row": 4,
+      "col": 4,
+      "src_box": [
+        1078,
+        930,
+        231,
+        212
+      ],
+      "file": "path_stone_grass_36.png"
+    },
+    {
+      "name": "path_stone_grass_37",
+      "index": 37,
+      "row": 4,
+      "col": 5,
+      "src_box": [
+        1325,
+        930,
+        226,
+        212
+      ],
+      "file": "path_stone_grass_37.png"
+    },
+    {
+      "name": "path_stone_grass_38",
+      "index": 38,
+      "row": 4,
+      "col": 6,
+      "src_box": [
+        1569,
+        930,
+        231,
+        212
+      ],
+      "file": "path_stone_grass_38.png"
+    },
+    {
+      "name": "path_stone_grass_39",
+      "index": 39,
+      "row": 4,
+      "col": 7,
+      "src_box": [
+        1815,
+        930,
+        135,
+        212
+      ],
+      "file": "path_stone_grass_39.png"
+    },
+    {
+      "name": "path_stone_grass_40",
+      "index": 40,
+      "row": 5,
+      "col": 0,
+      "src_box": [
+        96,
+        1157,
+        230,
+        186
+      ],
+      "file": "path_stone_grass_40.png"
+    },
+    {
+      "name": "path_stone_grass_41",
+      "index": 41,
+      "row": 5,
+      "col": 1,
+      "src_box": [
+        342,
+        1157,
+        228,
+        186
+      ],
+      "file": "path_stone_grass_41.png"
+    },
+    {
+      "name": "path_stone_grass_42",
+      "index": 42,
+      "row": 5,
+      "col": 2,
+      "src_box": [
+        588,
+        1157,
+        230,
+        186
+      ],
+      "file": "path_stone_grass_42.png"
+    },
+    {
+      "name": "path_stone_grass_43",
+      "index": 43,
+      "row": 5,
+      "col": 3,
+      "src_box": [
+        833,
+        1157,
+        228,
+        186
+      ],
+      "file": "path_stone_grass_43.png"
+    },
+    {
+      "name": "path_stone_grass_44",
+      "index": 44,
+      "row": 5,
+      "col": 4,
+      "src_box": [
+        1078,
+        1157,
+        231,
+        186
+      ],
+      "file": "path_stone_grass_44.png"
+    },
+    {
+      "name": "path_stone_grass_45",
+      "index": 45,
+      "row": 5,
+      "col": 5,
+      "src_box": [
+        1325,
+        1157,
+        226,
+        186
+      ],
+      "file": "path_stone_grass_45.png"
+    },
+    {
+      "name": "path_stone_grass_46",
+      "index": 46,
+      "row": 5,
+      "col": 6,
+      "src_box": [
+        1569,
+        1157,
+        231,
+        186
+      ],
+      "file": "path_stone_grass_46.png"
+    },
+    {
+      "name": "path_stone_grass_47",
+      "index": 47,
+      "row": 5,
+      "col": 7,
+      "src_box": [
+        1815,
+        1157,
+        135,
+        186
+      ],
+      "file": "path_stone_grass_47.png"
+    }
+  ]
+}

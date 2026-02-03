@@ -1,0 +1,298 @@
+{
+  "tile_size": 64,
+  "count": 48,
+  "entries": [
+    {
+      "index": 0,
+      "row": 0,
+      "col": 0,
+      "name": "water_core_deep_00"
+    },
+    {
+      "index": 1,
+      "row": 0,
+      "col": 1,
+      "name": "water_core_deep_01"
+    },
+    {
+      "index": 2,
+      "row": 0,
+      "col": 2,
+      "name": "water_core_deep_02"
+    },
+    {
+      "index": 3,
+      "row": 0,
+      "col": 3,
+      "name": "water_core_deep_03"
+    },
+    {
+      "index": 4,
+      "row": 0,
+      "col": 4,
+      "name": "water_core_deep_04"
+    },
+    {
+      "index": 5,
+      "row": 0,
+      "col": 5,
+      "name": "water_core_deep_05"
+    },
+    {
+      "index": 6,
+      "row": 0,
+      "col": 6,
+      "name": "water_core_deep_06"
+    },
+    {
+      "index": 7,
+      "row": 0,
+      "col": 7,
+      "name": "water_core_deep_07"
+    },
+    {
+      "index": 8,
+      "row": 1,
+      "col": 0,
+      "name": "water_core_deep_08"
+    },
+    {
+      "index": 9,
+      "row": 1,
+      "col": 1,
+      "name": "water_core_deep_09"
+    },
+    {
+      "index": 10,
+      "row": 1,
+      "col": 2,
+      "name": "water_core_deep_10"
+    },
+    {
+      "index": 11,
+      "row": 1,
+      "col": 3,
+      "name": "water_core_deep_11"
+    },
+    {
+      "index": 12,
+      "row": 1,
+      "col": 4,
+      "name": "water_core_deep_12"
+    },
+    {
+      "index": 13,
+      "row": 1,
+      "col": 5,
+      "name": "water_core_deep_13"
+    },
+    {
+      "index": 14,
+      "row": 1,
+      "col": 6,
+      "name": "water_core_deep_14"
+    },
+    {
+      "index": 15,
+      "row": 1,
+      "col": 7,
+      "name": "water_core_deep_15"
+    },
+    {
+      "index": 16,
+      "row": 2,
+      "col": 0,
+      "name": "water_core_deep_16"
+    },
+    {
+      "index": 17,
+      "row": 2,
+      "col": 1,
+      "name": "water_core_deep_17"
+    },
+    {
+      "index": 18,
+      "row": 2,
+      "col": 2,
+      "name": "water_core_deep_18"
+    },
+    {
+      "index": 19,
+      "row": 2,
+      "col": 3,
+      "name": "water_core_deep_19"
+    },
+    {
+      "index": 20,
+      "row": 2,
+      "col": 4,
+      "name": "water_core_deep_20"
+    },
+    {
+      "index": 21,
+      "row": 2,
+      "col": 5,
+      "name": "water_core_deep_21"
+    },
+    {
+      "index": 22,
+      "row": 2,
+      "col": 6,
+      "name": "water_core_deep_22"
+    },
+    {
+      "index": 23,
+      "row": 2,
+      "col": 7,
+      "name": "water_core_deep_23"
+    },
+    {
+      "index": 24,
+      "row": 3,
+      "col": 0,
+      "name": "water_core_shallow_00"
+    },
+    {
+      "index": 25,
+      "row": 3,
+      "col": 1,
+      "name": "water_core_shallow_01"
+    },
+    {
+      "index": 26,
+      "row": 3,
+      "col": 2,
+      "name": "water_core_shallow_02"
+    },
+    {
+      "index": 27,
+      "row": 3,
+      "col": 3,
+      "name": "water_core_shallow_03"
+    },
+    {
+      "index": 28,
+      "row": 3,
+      "col": 4,
+      "name": "water_core_shallow_04"
+    },
+    {
+      "index": 29,
+      "row": 3,
+      "col": 5,
+      "name": "water_core_shallow_05"
+    },
+    {
+      "index": 30,
+      "row": 3,
+      "col": 6,
+      "name": "water_core_shallow_06"
+    },
+    {
+      "index": 31,
+      "row": 3,
+      "col": 7,
+      "name": "water_core_shallow_07"
+    },
+    {
+      "index": 32,
+      "row": 4,
+      "col": 0,
+      "name": "water_core_shallow_08"
+    },
+    {
+      "index": 33,
+      "row": 4,
+      "col": 1,
+      "name": "water_core_shallow_09"
+    },
+    {
+      "index": 34,
+      "row": 4,
+      "col": 2,
+      "name": "water_core_shallow_10"
+    },
+    {
+      "index": 35,
+      "row": 4,
+      "col": 3,
+      "name": "water_core_shallow_11"
+    },
+    {
+      "index": 36,
+      "row": 4,
+      "col": 4,
+      "name": "water_core_shallow_12"
+    },
+    {
+      "index": 37,
+      "row": 4,
+      "col": 5,
+      "name": "water_core_shallow_13"
+    },
+    {
+      "index": 38,
+      "row": 4,
+      "col": 6,
+      "name": "water_core_shallow_14"
+    },
+    {
+      "index": 39,
+      "row": 4,
+      "col": 7,
+      "name": "water_core_shallow_15"
+    },
+    {
+      "index": 40,
+      "row": 5,
+      "col": 0,
+      "name": "water_core_shallow_16"
+    },
+    {
+      "index": 41,
+      "row": 5,
+      "col": 1,
+      "name": "water_core_shallow_17"
+    },
+    {
+      "index": 42,
+      "row": 5,
+      "col": 2,
+      "name": "water_core_shallow_18"
+    },
+    {
+      "index": 43,
+      "row": 5,
+      "col": 3,
+      "name": "water_core_shallow_19"
+    },
+    {
+      "index": 44,
+      "row": 5,
+      "col": 4,
+      "name": "water_core_shallow_20"
+    },
+    {
+      "index": 45,
+      "row": 5,
+      "col": 5,
+      "name": "water_core_shallow_21"
+    },
+    {
+      "index": 46,
+      "row": 5,
+      "col": 6,
+      "name": "water_core_shallow_22"
+    },
+    {
+      "index": 47,
+      "row": 5,
+      "col": 7,
+      "name": "water_core_shallow_23"
+    }
+  ],
+  "type": "water_core",
+  "cols": 8,
+  "rows": 6,
+  "split": "rows0-2 deep, rows3-5 shallow"
+}

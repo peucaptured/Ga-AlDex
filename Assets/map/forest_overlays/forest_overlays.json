@@ -1,0 +1,1012 @@
+{
+  "name": "forest_overlays",
+  "source_image": "forest_overlays_source.png",
+  "tile_size_mode": "free",
+  "entries": [
+    {
+      "id": "forest_overlays_000",
+      "file": "sprites/forest_overlays_000.png",
+      "src_box": {
+        "x": 1333,
+        "y": 36,
+        "w": 622,
+        "h": 172
+      },
+      "sprite_size": {
+        "w": 622,
+        "h": 172
+      },
+      "area": 72178
+    },
+    {
+      "id": "forest_overlays_001",
+      "file": "sprites/forest_overlays_001.png",
+      "src_box": {
+        "x": 906,
+        "y": 45,
+        "w": 378,
+        "h": 152
+      },
+      "sprite_size": {
+        "w": 378,
+        "h": 152
+      },
+      "area": 39965
+    },
+    {
+      "id": "forest_overlays_002",
+      "file": "sprites/forest_overlays_002.png",
+      "src_box": {
+        "x": 615,
+        "y": 65,
+        "w": 249,
+        "h": 132
+      },
+      "sprite_size": {
+        "w": 249,
+        "h": 132
+      },
+      "area": 20766
+    },
+    {
+      "id": "forest_overlays_003",
+      "file": "sprites/forest_overlays_003.png",
+      "src_box": {
+        "x": 214,
+        "y": 81,
+        "w": 110,
+        "h": 67
+      },
+      "sprite_size": {
+        "w": 110,
+        "h": 67
+      },
+      "area": 4435
+    },
+    {
+      "id": "forest_overlays_004",
+      "file": "sprites/forest_overlays_004.png",
+      "src_box": {
+        "x": 95,
+        "y": 85,
+        "w": 73,
+        "h": 31
+      },
+      "sprite_size": {
+        "w": 73,
+        "h": 31
+      },
+      "area": 1333
+    },
+    {
+      "id": "forest_overlays_005",
+      "file": "sprites/forest_overlays_005.png",
+      "src_box": {
+        "x": 362,
+        "y": 88,
+        "w": 198,
+        "h": 102
+      },
+      "sprite_size": {
+        "w": 198,
+        "h": 102
+      },
+      "area": 12957
+    },
+    {
+      "id": "forest_overlays_006",
+      "file": "sprites/forest_overlays_006.png",
+      "src_box": {
+        "x": 89,
+        "y": 180,
+        "w": 169,
+        "h": 94
+      },
+      "sprite_size": {
+        "w": 169,
+        "h": 94
+      },
+      "area": 9848
+    },
+    {
+      "id": "forest_overlays_007",
+      "file": "sprites/forest_overlays_007.png",
+      "src_box": {
+        "x": 313,
+        "y": 230,
+        "w": 151,
+        "h": 72
+      },
+      "sprite_size": {
+        "w": 151,
+        "h": 72
+      },
+      "area": 6776
+    },
+    {
+      "id": "forest_overlays_008",
+      "file": "sprites/forest_overlays_008.png",
+      "src_box": {
+        "x": 1131,
+        "y": 238,
+        "w": 335,
+        "h": 138
+      },
+      "sprite_size": {
+        "w": 335,
+        "h": 138
+      },
+      "area": 31902
+    },
+    {
+      "id": "forest_overlays_009",
+      "file": "sprites/forest_overlays_009.png",
+      "src_box": {
+        "x": 463,
+        "y": 245,
+        "w": 308,
+        "h": 133
+      },
+      "sprite_size": {
+        "w": 308,
+        "h": 133
+      },
+      "area": 24484
+    },
+    {
+      "id": "forest_overlays_010",
+      "file": "sprites/forest_overlays_010.png",
+      "src_box": {
+        "x": 812,
+        "y": 261,
+        "w": 279,
+        "h": 116
+      },
+      "sprite_size": {
+        "w": 279,
+        "h": 116
+      },
+      "area": 19876
+    },
+    {
+      "id": "forest_overlays_011",
+      "file": "sprites/forest_overlays_011.png",
+      "src_box": {
+        "x": 1504,
+        "y": 261,
+        "w": 172,
+        "h": 112
+      },
+      "sprite_size": {
+        "w": 172,
+        "h": 112
+      },
+      "area": 8381
+    },
+    {
+      "id": "forest_overlays_012",
+      "file": "sprites/forest_overlays_012.png",
+      "src_box": {
+        "x": 1686,
+        "y": 267,
+        "w": 278,
+        "h": 110
+      },
+      "sprite_size": {
+        "w": 278,
+        "h": 110
+      },
+      "area": 16566
+    },
+    {
+      "id": "forest_overlays_013",
+      "file": "sprites/forest_overlays_013.png",
+      "src_box": {
+        "x": 79,
+        "y": 331,
+        "w": 342,
+        "h": 128
+      },
+      "sprite_size": {
+        "w": 342,
+        "h": 128
+      },
+      "area": 29186
+    },
+    {
+      "id": "forest_overlays_014",
+      "file": "sprites/forest_overlays_014.png",
+      "src_box": {
+        "x": 975,
+        "y": 357,
+        "w": 26,
+        "h": 14
+      },
+      "sprite_size": {
+        "w": 26,
+        "h": 14
+      },
+      "area": 217
+    },
+    {
+      "id": "forest_overlays_015",
+      "file": "sprites/forest_overlays_015.png",
+      "src_box": {
+        "x": 724,
+        "y": 405,
+        "w": 196,
+        "h": 131
+      },
+      "sprite_size": {
+        "w": 196,
+        "h": 131
+      },
+      "area": 12450
+    },
+    {
+      "id": "forest_overlays_016",
+      "file": "sprites/forest_overlays_016.png",
+      "src_box": {
+        "x": 1225,
+        "y": 433,
+        "w": 252,
+        "h": 103
+      },
+      "sprite_size": {
+        "w": 252,
+        "h": 103
+      },
+      "area": 13639
+    },
+    {
+      "id": "forest_overlays_017",
+      "file": "sprites/forest_overlays_017.png",
+      "src_box": {
+        "x": 435,
+        "y": 435,
+        "w": 249,
+        "h": 110
+      },
+      "sprite_size": {
+        "w": 249,
+        "h": 110
+      },
+      "area": 17856
+    },
+    {
+      "id": "forest_overlays_018",
+      "file": "sprites/forest_overlays_018.png",
+      "src_box": {
+        "x": 1744,
+        "y": 436,
+        "w": 227,
+        "h": 103
+      },
+      "sprite_size": {
+        "w": 227,
+        "h": 103
+      },
+      "area": 12501
+    },
+    {
+      "id": "forest_overlays_019",
+      "file": "sprites/forest_overlays_019.png",
+      "src_box": {
+        "x": 1505,
+        "y": 437,
+        "w": 219,
+        "h": 99
+      },
+      "sprite_size": {
+        "w": 219,
+        "h": 99
+      },
+      "area": 12422
+    },
+    {
+      "id": "forest_overlays_020",
+      "file": "sprites/forest_overlays_020.png",
+      "src_box": {
+        "x": 948,
+        "y": 439,
+        "w": 255,
+        "h": 99
+      },
+      "sprite_size": {
+        "w": 255,
+        "h": 99
+      },
+      "area": 15272
+    },
+    {
+      "id": "forest_overlays_021",
+      "file": "sprites/forest_overlays_021.png",
+      "src_box": {
+        "x": 81,
+        "y": 540,
+        "w": 351,
+        "h": 122
+      },
+      "sprite_size": {
+        "w": 351,
+        "h": 122
+      },
+      "area": 30313
+    },
+    {
+      "id": "forest_overlays_022",
+      "file": "sprites/forest_overlays_022.png",
+      "src_box": {
+        "x": 457,
+        "y": 588,
+        "w": 667,
+        "h": 149
+      },
+      "sprite_size": {
+        "w": 667,
+        "h": 149
+      },
+      "area": 64609
+    },
+    {
+      "id": "forest_overlays_023",
+      "file": "sprites/forest_overlays_023.png",
+      "src_box": {
+        "x": 1171,
+        "y": 594,
+        "w": 201,
+        "h": 115
+      },
+      "sprite_size": {
+        "w": 201,
+        "h": 115
+      },
+      "area": 13336
+    },
+    {
+      "id": "forest_overlays_024",
+      "file": "sprites/forest_overlays_024.png",
+      "src_box": {
+        "x": 1423,
+        "y": 600,
+        "w": 538,
+        "h": 115
+      },
+      "sprite_size": {
+        "w": 538,
+        "h": 115
+      },
+      "area": 41842
+    },
+    {
+      "id": "forest_overlays_025",
+      "file": "sprites/forest_overlays_025.png",
+      "src_box": {
+        "x": 1947,
+        "y": 646,
+        "w": 22,
+        "h": 15
+      },
+      "sprite_size": {
+        "w": 22,
+        "h": 15
+      },
+      "area": 240
+    },
+    {
+      "id": "forest_overlays_026",
+      "file": "sprites/forest_overlays_026.png",
+      "src_box": {
+        "x": 75,
+        "y": 716,
+        "w": 667,
+        "h": 186
+      },
+      "sprite_size": {
+        "w": 667,
+        "h": 186
+      },
+      "area": 73754
+    },
+    {
+      "id": "forest_overlays_027",
+      "file": "sprites/forest_overlays_027.png",
+      "src_box": {
+        "x": 1674,
+        "y": 756,
+        "w": 303,
+        "h": 124
+      },
+      "sprite_size": {
+        "w": 303,
+        "h": 124
+      },
+      "area": 10944
+    },
+    {
+      "id": "forest_overlays_028",
+      "file": "sprites/forest_overlays_028.png",
+      "src_box": {
+        "x": 1117,
+        "y": 763,
+        "w": 518,
+        "h": 125
+      },
+      "sprite_size": {
+        "w": 518,
+        "h": 125
+      },
+      "area": 39966
+    },
+    {
+      "id": "forest_overlays_029",
+      "file": "sprites/forest_overlays_029.png",
+      "src_box": {
+        "x": 790,
+        "y": 781,
+        "w": 287,
+        "h": 114
+      },
+      "sprite_size": {
+        "w": 287,
+        "h": 114
+      },
+      "area": 19672
+    },
+    {
+      "id": "forest_overlays_030",
+      "file": "sprites/forest_overlays_030.png",
+      "src_box": {
+        "x": 1777,
+        "y": 818,
+        "w": 37,
+        "h": 22
+      },
+      "sprite_size": {
+        "w": 37,
+        "h": 22
+      },
+      "area": 516
+    },
+    {
+      "id": "forest_overlays_031",
+      "file": "sprites/forest_overlays_031.png",
+      "src_box": {
+        "x": 1805,
+        "y": 829,
+        "w": 57,
+        "h": 37
+      },
+      "sprite_size": {
+        "w": 57,
+        "h": 37
+      },
+      "area": 1110
+    },
+    {
+      "id": "forest_overlays_032",
+      "file": "sprites/forest_overlays_032.png",
+      "src_box": {
+        "x": 1790,
+        "y": 844,
+        "w": 18,
+        "h": 18
+      },
+      "sprite_size": {
+        "w": 18,
+        "h": 18
+      },
+      "area": 244
+    },
+    {
+      "id": "forest_overlays_033",
+      "file": "sprites/forest_overlays_033.png",
+      "src_box": {
+        "x": 1125,
+        "y": 850,
+        "w": 29,
+        "h": 17
+      },
+      "sprite_size": {
+        "w": 29,
+        "h": 17
+      },
+      "area": 299
+    },
+    {
+      "id": "forest_overlays_034",
+      "file": "sprites/forest_overlays_034.png",
+      "src_box": {
+        "x": 85,
+        "y": 857,
+        "w": 21,
+        "h": 19
+      },
+      "sprite_size": {
+        "w": 21,
+        "h": 19
+      },
+      "area": 304
+    },
+    {
+      "id": "forest_overlays_035",
+      "file": "sprites/forest_overlays_035.png",
+      "src_box": {
+        "x": 352,
+        "y": 879,
+        "w": 36,
+        "h": 24
+      },
+      "sprite_size": {
+        "w": 36,
+        "h": 24
+      },
+      "area": 348
+    },
+    {
+      "id": "forest_overlays_036",
+      "file": "sprites/forest_overlays_036.png",
+      "src_box": {
+        "x": 1364,
+        "y": 903,
+        "w": 582,
+        "h": 120
+      },
+      "sprite_size": {
+        "w": 582,
+        "h": 120
+      },
+      "area": 42371
+    },
+    {
+      "id": "forest_overlays_037",
+      "file": "sprites/forest_overlays_037.png",
+      "src_box": {
+        "x": 74,
+        "y": 940,
+        "w": 953,
+        "h": 121
+      },
+      "sprite_size": {
+        "w": 953,
+        "h": 121
+      },
+      "area": 71278
+    },
+    {
+      "id": "forest_overlays_038",
+      "file": "sprites/forest_overlays_038.png",
+      "src_box": {
+        "x": 1058,
+        "y": 941,
+        "w": 266,
+        "h": 107
+      },
+      "sprite_size": {
+        "w": 266,
+        "h": 107
+      },
+      "area": 7928
+    },
+    {
+      "id": "forest_overlays_039",
+      "file": "sprites/forest_overlays_039.png",
+      "src_box": {
+        "x": 165,
+        "y": 1026,
+        "w": 24,
+        "h": 13
+      },
+      "sprite_size": {
+        "w": 24,
+        "h": 13
+      },
+      "area": 227
+    },
+    {
+      "id": "forest_overlays_040",
+      "file": "sprites/forest_overlays_040.png",
+      "src_box": {
+        "x": 603,
+        "y": 1036,
+        "w": 23,
+        "h": 14
+      },
+      "sprite_size": {
+        "w": 23,
+        "h": 14
+      },
+      "area": 220
+    },
+    {
+      "id": "forest_overlays_041",
+      "file": "sprites/forest_overlays_041.png",
+      "src_box": {
+        "x": 1694,
+        "y": 1063,
+        "w": 263,
+        "h": 105
+      },
+      "sprite_size": {
+        "w": 263,
+        "h": 105
+      },
+      "area": 11089
+    },
+    {
+      "id": "forest_overlays_042",
+      "file": "sprites/forest_overlays_042.png",
+      "src_box": {
+        "x": 1889,
+        "y": 1069,
+        "w": 21,
+        "h": 34
+      },
+      "sprite_size": {
+        "w": 21,
+        "h": 34
+      },
+      "area": 302
+    },
+    {
+      "id": "forest_overlays_043",
+      "file": "sprites/forest_overlays_043.png",
+      "src_box": {
+        "x": 1000,
+        "y": 1073,
+        "w": 314,
+        "h": 110
+      },
+      "sprite_size": {
+        "w": 314,
+        "h": 110
+      },
+      "area": 12418
+    },
+    {
+      "id": "forest_overlays_044",
+      "file": "sprites/forest_overlays_044.png",
+      "src_box": {
+        "x": 691,
+        "y": 1076,
+        "w": 293,
+        "h": 95
+      },
+      "sprite_size": {
+        "w": 293,
+        "h": 95
+      },
+      "area": 7818
+    },
+    {
+      "id": "forest_overlays_045",
+      "file": "sprites/forest_overlays_045.png",
+      "src_box": {
+        "x": 1472,
+        "y": 1079,
+        "w": 193,
+        "h": 90
+      },
+      "sprite_size": {
+        "w": 193,
+        "h": 90
+      },
+      "area": 7534
+    },
+    {
+      "id": "forest_overlays_046",
+      "file": "sprites/forest_overlays_046.png",
+      "src_box": {
+        "x": 1389,
+        "y": 1081,
+        "w": 131,
+        "h": 88
+      },
+      "sprite_size": {
+        "w": 131,
+        "h": 88
+      },
+      "area": 5008
+    },
+    {
+      "id": "forest_overlays_047",
+      "file": "sprites/forest_overlays_047.png",
+      "src_box": {
+        "x": 98,
+        "y": 1082,
+        "w": 54,
+        "h": 35
+      },
+      "sprite_size": {
+        "w": 54,
+        "h": 35
+      },
+      "area": 1040
+    },
+    {
+      "id": "forest_overlays_048",
+      "file": "sprites/forest_overlays_048.png",
+      "src_box": {
+        "x": 138,
+        "y": 1086,
+        "w": 137,
+        "h": 62
+      },
+      "sprite_size": {
+        "w": 137,
+        "h": 62
+      },
+      "area": 4907
+    },
+    {
+      "id": "forest_overlays_049",
+      "file": "sprites/forest_overlays_049.png",
+      "src_box": {
+        "x": 476,
+        "y": 1089,
+        "w": 187,
+        "h": 90
+      },
+      "sprite_size": {
+        "w": 187,
+        "h": 90
+      },
+      "area": 5266
+    },
+    {
+      "id": "forest_overlays_050",
+      "file": "sprites/forest_overlays_050.png",
+      "src_box": {
+        "x": 1285,
+        "y": 1101,
+        "w": 40,
+        "h": 28
+      },
+      "sprite_size": {
+        "w": 40,
+        "h": 28
+      },
+      "area": 625
+    },
+    {
+      "id": "forest_overlays_051",
+      "file": "sprites/forest_overlays_051.png",
+      "src_box": {
+        "x": 273,
+        "y": 1116,
+        "w": 210,
+        "h": 50
+      },
+      "sprite_size": {
+        "w": 210,
+        "h": 50
+      },
+      "area": 3652
+    },
+    {
+      "id": "forest_overlays_052",
+      "file": "sprites/forest_overlays_052.png",
+      "src_box": {
+        "x": 940,
+        "y": 1117,
+        "w": 50,
+        "h": 26
+      },
+      "sprite_size": {
+        "w": 50,
+        "h": 26
+      },
+      "area": 725
+    },
+    {
+      "id": "forest_overlays_053",
+      "file": "sprites/forest_overlays_053.png",
+      "src_box": {
+        "x": 1900,
+        "y": 1122,
+        "w": 65,
+        "h": 16
+      },
+      "sprite_size": {
+        "w": 65,
+        "h": 16
+      },
+      "area": 441
+    },
+    {
+      "id": "forest_overlays_054",
+      "file": "sprites/forest_overlays_054.png",
+      "src_box": {
+        "x": 271,
+        "y": 1139,
+        "w": 85,
+        "h": 33
+      },
+      "sprite_size": {
+        "w": 85,
+        "h": 33
+      },
+      "area": 1485
+    },
+    {
+      "id": "forest_overlays_055",
+      "file": "sprites/forest_overlays_055.png",
+      "src_box": {
+        "x": 845,
+        "y": 1141,
+        "w": 36,
+        "h": 15
+      },
+      "sprite_size": {
+        "w": 36,
+        "h": 15
+      },
+      "area": 297
+    },
+    {
+      "id": "forest_overlays_056",
+      "file": "sprites/forest_overlays_056.png",
+      "src_box": {
+        "x": 679,
+        "y": 1143,
+        "w": 28,
+        "h": 12
+      },
+      "sprite_size": {
+        "w": 28,
+        "h": 12
+      },
+      "area": 204
+    },
+    {
+      "id": "forest_overlays_057",
+      "file": "sprites/forest_overlays_057.png",
+      "src_box": {
+        "x": 1141,
+        "y": 1147,
+        "w": 31,
+        "h": 30
+      },
+      "sprite_size": {
+        "w": 31,
+        "h": 30
+      },
+      "area": 556
+    },
+    {
+      "id": "forest_overlays_058",
+      "file": "sprites/forest_overlays_058.png",
+      "src_box": {
+        "x": 1446,
+        "y": 1154,
+        "w": 23,
+        "h": 14
+      },
+      "sprite_size": {
+        "w": 23,
+        "h": 14
+      },
+      "area": 242
+    },
+    {
+      "id": "forest_overlays_059",
+      "file": "sprites/forest_overlays_059.png",
+      "src_box": {
+        "x": 1040,
+        "y": 1163,
+        "w": 19,
+        "h": 13
+      },
+      "sprite_size": {
+        "w": 19,
+        "h": 13
+      },
+      "area": 206
+    },
+    {
+      "id": "forest_overlays_060",
+      "file": "sprites/forest_overlays_060.png",
+      "src_box": {
+        "x": 1334,
+        "y": 1195,
+        "w": 651,
+        "h": 128
+      },
+      "sprite_size": {
+        "w": 651,
+        "h": 128
+      },
+      "area": 53601
+    },
+    {
+      "id": "forest_overlays_061",
+      "file": "sprites/forest_overlays_061.png",
+      "src_box": {
+        "x": 75,
+        "y": 1198,
+        "w": 1222,
+        "h": 133
+      },
+      "sprite_size": {
+        "w": 1222,
+        "h": 133
+      },
+      "area": 95541
+    },
+    {
+      "id": "forest_overlays_062",
+      "file": "sprites/forest_overlays_062.png",
+      "src_box": {
+        "x": 320,
+        "y": 1298,
+        "w": 26,
+        "h": 13
+      },
+      "sprite_size": {
+        "w": 26,
+        "h": 13
+      },
+      "area": 247
+    },
+    {
+      "id": "forest_overlays_063",
+      "file": "sprites/forest_overlays_063.png",
+      "src_box": {
+        "x": 918,
+        "y": 1300,
+        "w": 24,
+        "h": 17
+      },
+      "sprite_size": {
+        "w": 24,
+        "h": 17
+      },
+      "area": 303
+    },
+    {
+      "id": "forest_overlays_064",
+      "file": "sprites/forest_overlays_064.png",
+      "src_box": {
+        "x": 1867,
+        "y": 1301,
+        "w": 16,
+        "h": 18
+      },
+      "sprite_size": {
+        "w": 16,
+        "h": 18
+      },
+      "area": 225
+    },
+    {
+      "id": "forest_overlays_065",
+      "file": "sprites/forest_overlays_065.png",
+      "src_box": {
+        "x": 1880,
+        "y": 1305,
+        "w": 19,
+        "h": 17
+      },
+      "sprite_size": {
+        "w": 19,
+        "h": 17
+      },
+      "area": 216
+    },
+    {
+      "id": "forest_overlays_066",
+      "file": "sprites/forest_overlays_066.png",
+      "src_box": {
+        "x": 951,
+        "y": 1309,
+        "w": 39,
+        "h": 22
+      },
+      "sprite_size": {
+        "w": 39,
+        "h": 22
+      },
+      "area": 557
+    }
+  ]
+}

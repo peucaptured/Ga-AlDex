@@ -1,0 +1,329 @@
+{
+  "source_atlas": "ChatGPT Image 2 de fev. de 2026, 19_39_02.png",
+  "method": "gutter_detect",
+  "grid_cols": 8,
+  "grid_rows": 4,
+  "resize_to": 64,
+  "entries": [
+    {
+      "name": "wetdry_sand_wet_00",
+      "index": 0,
+      "x": 67,
+      "y": 21,
+      "w": 230,
+      "h": 226,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_wet_01",
+      "index": 1,
+      "x": 313,
+      "y": 21,
+      "w": 233,
+      "h": 226,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_wet_02",
+      "index": 2,
+      "x": 562,
+      "y": 21,
+      "w": 233,
+      "h": 226,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_wet_03",
+      "index": 3,
+      "x": 813,
+      "y": 21,
+      "w": 233,
+      "h": 226,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_wet_04",
+      "index": 4,
+      "x": 1062,
+      "y": 21,
+      "w": 233,
+      "h": 226,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_wet_05",
+      "index": 5,
+      "x": 1312,
+      "y": 21,
+      "w": 234,
+      "h": 226,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_wet_06",
+      "index": 6,
+      "x": 1562,
+      "y": 21,
+      "w": 236,
+      "h": 226,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_wet_07",
+      "index": 7,
+      "x": 1815,
+      "y": 21,
+      "w": 164,
+      "h": 226,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_wet_08",
+      "index": 8,
+      "x": 67,
+      "y": 263,
+      "w": 230,
+      "h": 232,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_wet_09",
+      "index": 9,
+      "x": 313,
+      "y": 263,
+      "w": 233,
+      "h": 232,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_wet_10",
+      "index": 10,
+      "x": 562,
+      "y": 263,
+      "w": 233,
+      "h": 232,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_wet_11",
+      "index": 11,
+      "x": 813,
+      "y": 263,
+      "w": 233,
+      "h": 232,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_wet_12",
+      "index": 12,
+      "x": 1062,
+      "y": 263,
+      "w": 233,
+      "h": 232,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_wet_13",
+      "index": 13,
+      "x": 1312,
+      "y": 263,
+      "w": 234,
+      "h": 232,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_wet_14",
+      "index": 14,
+      "x": 1562,
+      "y": 263,
+      "w": 236,
+      "h": 232,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_wet_15",
+      "index": 15,
+      "x": 1815,
+      "y": 263,
+      "w": 164,
+      "h": 232,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_dry_00",
+      "index": 16,
+      "x": 67,
+      "y": 509,
+      "w": 230,
+      "h": 165,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_dry_01",
+      "index": 17,
+      "x": 313,
+      "y": 509,
+      "w": 233,
+      "h": 165,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_dry_02",
+      "index": 18,
+      "x": 562,
+      "y": 509,
+      "w": 233,
+      "h": 165,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_dry_03",
+      "index": 19,
+      "x": 813,
+      "y": 509,
+      "w": 233,
+      "h": 165,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_dry_04",
+      "index": 20,
+      "x": 1062,
+      "y": 509,
+      "w": 233,
+      "h": 165,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_dry_05",
+      "index": 21,
+      "x": 1312,
+      "y": 509,
+      "w": 234,
+      "h": 165,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_dry_06",
+      "index": 22,
+      "x": 1562,
+      "y": 509,
+      "w": 236,
+      "h": 165,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_dry_07",
+      "index": 23,
+      "x": 1815,
+      "y": 509,
+      "w": 164,
+      "h": 165,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_dry_08",
+      "index": 24,
+      "x": 67,
+      "y": 689,
+      "w": 230,
+      "h": 213,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_dry_09",
+      "index": 25,
+      "x": 313,
+      "y": 689,
+      "w": 233,
+      "h": 213,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_dry_10",
+      "index": 26,
+      "x": 562,
+      "y": 689,
+      "w": 233,
+      "h": 213,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_dry_11",
+      "index": 27,
+      "x": 813,
+      "y": 689,
+      "w": 233,
+      "h": 213,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_dry_12",
+      "index": 28,
+      "x": 1062,
+      "y": 689,
+      "w": 233,
+      "h": 213,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_dry_13",
+      "index": 29,
+      "x": 1312,
+      "y": 689,
+      "w": 234,
+      "h": 213,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_dry_14",
+      "index": 30,
+      "x": 1562,
+      "y": 689,
+      "w": 236,
+      "h": 213,
+      "out_w": 64,
+      "out_h": 64
+    },
+    {
+      "name": "wetdry_sand_dry_15",
+      "index": 31,
+      "x": 1815,
+      "y": 689,
+      "w": 164,
+      "h": 213,
+      "out_w": 64,
+      "out_h": 64
+    }
+  ]
+}
