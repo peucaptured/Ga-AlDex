@@ -5710,6 +5710,13 @@ def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_wat
                 if r0 + width <= grid - 2 and rng.random() > 0.35 and tiles[r0 + width][c] not in ["tree", "wall"]:
                     tiles[r0 + width][c] = "sand"
                 r0 = max(1, min(grid - 2 - (width - 1), r0 + rng.choice([-1, 0, 1])))
+
+    # Chance global de flores em qualquer campo com grama
+    for r in range(1, grid - 1):
+        for c in range(1, grid - 1):
+            if inside(r, c) and tiles[r][c] == "grass" and rng.random() > 0.97:
+                tiles[r][c] = "flower"
+
 # --- limpeza final: garante zero água se no_water=True ---
     if no_water:
         for r in range(grid):
