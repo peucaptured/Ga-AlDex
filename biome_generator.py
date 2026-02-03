@@ -728,9 +728,9 @@ class BiomeGenerator:
 
 
 def generate_to_file(
-    assets_root: str | Path = DEFAULT_ASSETS_ROOT,
     out_png: str | Path,
     biome: str,
+    assets_root: str | Path = DEFAULT_ASSETS_ROOT,
     grid_w: int = 32,
     grid_h: int = 32,
     tile_px: int = 64,
