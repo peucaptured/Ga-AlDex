@@ -3820,51 +3820,45 @@ def _build_assets_from_core_tilesets(tile_size_out: int) -> dict[str, Image.Imag
 
 @st.cache_resource
 def load_map_assets():
-    """Carrega tiles/objetos 1x1 a partir de PNGs em Assets/Texturas (modelo 'assets' do app.py).
+    """
+    Carrega assets para o gerador de mapas.
 
-    - Faz resize para TILE_SIZE (NEAREST)
-    - Para pisos (prefixos em FLOOR_PREFIXES): recorta bounding-box do alpha e normaliza (sem 'buracos' pretos)
-    - Se existirem PNGs extras na pasta, também são carregados automaticamente.
+    - Base: Assets/Texturas (compatível com seu modelo atual)
+    - Extra: Assets/map (usa TODOS os PNGs: pisos, água deep/shallow, shores por máscara, overlays)
+    - Normaliza variações: *_2, *_3 => viram __v para o sistema de variantes funcionar
+    - Garante chaves esperadas pelo render (agua_deep/shore_00..15 etc.)
     """
     base_dir = _resolve_asset_path_local("Assets/Texturas")
+    extra_dir = _resolve_asset_path_local("Assets/map")
+
     assets: dict[str, Image.Image] = {}
 
-    # lista canônica (compatível com o app.py)
-    asset_names = ['agua_1', 'agua_2', 'agua_3', 'areia_1', 'areia_2', 'areia_3', 'grama_1', 'grama_2', 'grama_3', 'pedra_1', 'pedra_2', 'pedra_3', 'terra_1', 'terra_2', 'terra_3', 'slope_1', 'slope_2', 'slope_3', 'slope_4', 'tree_1', 'tree_2', 'tree_3', 'brush_1', 'brush_2', 'rochas', 'rochas_2', 'estalagmite_1', 'pico_1', 'wall_1', 'neve_1', 'neve_2', 'neve_3', 'cave_1', 'cave_2', 'cave_3', 'flower']
+    # compatibilidade Pillow
+    _resampling = getattr(Image, "Resampling", Image)
+    resample_nearest = getattr(_resampling, "NEAREST", Image.NEAREST)
 
-    # carrega também qualquer PNG extra encontrado na pasta (mantém compatibilidade com biomas do app(1))
-    try:
-        if os.path.isdir(base_dir):
-            for fn in os.listdir(base_dir):
-                if fn.lower().endswith(".png"):
-                    stem = os.path.splitext(fn)[0]
-                    if stem and stem not in asset_names:
-                        asset_names.append(stem)
-    except Exception:
-        pass
+    def _open_rgba(path: str) -> Image.Image | None:
+        try:
+            img = Image.open(path).convert("RGBA")
+            if img.size != (TILE_SIZE, TILE_SIZE):
+                img = img.resize((TILE_SIZE, TILE_SIZE), resample_nearest)
+            return img
+        except Exception:
+            return None
 
     def pick_solid_color(img: Image.Image) -> tuple[int, int, int]:
         counts: dict[tuple[int,int,int], int] = {}
         for r, g, b, a in img.getdata():
             if a > 0:
                 counts[(r, g, b)] = counts.get((r, g, b), 0) + 1
-        if counts:
-            return max(counts, key=counts.get)
-        return (0, 0, 0)
+        return max(counts, key=counts.get) if counts else (0, 0, 0)
 
     def crop_to_alpha(img: Image.Image) -> Image.Image:
-        if img.mode != "RGBA":
-            img = img.convert("RGBA")
         bbox = img.getchannel("A").getbbox()
-        if bbox:
-            img = img.crop(bbox)
-        return img
+        return img.crop(bbox) if bbox else img
 
     def normalize_floor(img: Image.Image) -> Image.Image:
-        if img.mode != "RGBA":
-            img = img.convert("RGBA")
         alpha = img.getchannel("A")
-        # se houver transparência: preenche com a cor dominante, para evitar buracos pretos ao compor
         if alpha.getextrema()[0] < 255:
             solid = pick_solid_color(img)
             base = Image.new("RGBA", img.size, (*solid, 255))
@@ -3872,27 +3866,163 @@ def load_map_assets():
             img = base
         return img
 
-    # compatibilidade Pillow (Resampling pode não existir em versões antigas)
-    _resampling = getattr(Image, "Resampling", Image)
-    resample_nearest = getattr(_resampling, "NEAREST", Image.NEAREST)
-
-    for name in asset_names:
-        path = os.path.join(base_dir, f"{name}.png")
-        if not os.path.exists(path):
-            continue
-        try:
-            img = Image.open(path).convert("RGBA")
-            if name.startswith(FLOOR_PREFIXES):
-                img = crop_to_alpha(img)
+    def add_asset(key: str, img: Image.Image):
+        # normaliza pisos
+        if key.startswith(FLOOR_PREFIXES):
+            img = crop_to_alpha(img)
             if img.size != (TILE_SIZE, TILE_SIZE):
                 img = img.resize((TILE_SIZE, TILE_SIZE), resample_nearest)
-            if name.startswith(FLOOR_PREFIXES):
-                img = normalize_floor(img)
-            assets[name] = img
-        except Exception:
-            continue
+            img = normalize_floor(img)
+        assets[key] = img
+
+    # -----------------------------
+    # 1) Carrega Assets/Texturas
+    # -----------------------------
+    if os.path.isdir(base_dir):
+        for fn in os.listdir(base_dir):
+            if not fn.lower().endswith(".png"):
+                continue
+            stem = os.path.splitext(fn)[0]
+            img = _open_rgba(os.path.join(base_dir, fn))
+            if img:
+                add_asset(stem, img)
+
+    # ----------------------------------------------------------
+    # 2) Conserta o seu “sistema de variantes” ( *_2/_3 -> __v )
+    # ----------------------------------------------------------
+    # Ex: grama_2 vira grama_1__v01, grama_3 vira grama_1__v02
+    def promote_numbered_variants(base_key: str, numbered_keys: list[str]):
+        if base_key not in assets:
+            return
+        v = 1
+        for nk in sorted(numbered_keys):
+            assets[f"{base_key}__v{v:02d}"] = assets[nk]
+            v += 1
+
+    # Para cada família, se existir *_2/_3, promove pra variantes do *_1
+    for fam in ["grama", "areia", "terra", "pedra", "agua"]:
+        numbered = [k for k in list(assets.keys()) if re.fullmatch(rf"{fam}_[2-9]\d*", k)]
+        promote_numbered_variants(f"{fam}_1", numbered)
+
+    # -----------------------------
+    # 3) Carrega TODOS Assets/map
+    # -----------------------------
+    # A ideia: mapear pastas conhecidas como variantes dos pisos/objetos
+    def add_variants_from_folder(folder: str, base_key: str, max_take: int | None = None):
+        path = os.path.join(extra_dir, folder)
+        if not os.path.isdir(path):
+            return
+        files = [f for f in os.listdir(path) if f.lower().endswith(".png")]
+        files.sort()
+        if max_take:
+            files = files[:max_take]
+        v = 0
+        for fn in files:
+            img = _open_rgba(os.path.join(path, fn))
+            if not img:
+                continue
+            assets[f"{base_key}__v{v:03d}"] = img
+            v += 1
+
+    # pisos (vira variedade enorme do seu “grama/areia/terra/pedra”)
+    add_variants_from_folder("grass", "grama_1")
+    add_variants_from_folder("dark_grass", "grama_1")
+    add_variants_from_folder("dark_grass_light_grass", "grama_1")
+    add_variants_from_folder("sand", "areia_1")
+    add_variants_from_folder("wetdry_sand", "areia_1")
+    add_variants_from_folder("light_dirt", "terra_1")
+    add_variants_from_folder("dirt_rock_edge", "terra_1")
+    add_variants_from_folder("rocks", "pedra_1")
+
+    # -----------------------------------------
+    # 3.1) Água “deep/shallow” (water_core_tiles)
+    # -----------------------------------------
+    wc = os.path.join(extra_dir, "water_core_tiles")
+    if os.path.isdir(wc):
+        deep = sorted([f for f in os.listdir(wc) if f.lower().startswith("water_core_deep_") and f.lower().endswith(".png")])
+        shallow = sorted([f for f in os.listdir(wc) if f.lower().startswith("water_core_shallow_") and f.lower().endswith(".png")])
+
+        if deep:
+            img0 = _open_rgba(os.path.join(wc, deep[0]))
+            if img0:
+                assets["agua_deep"] = img0
+            for i, fn in enumerate(deep[:16]):
+                im = _open_rgba(os.path.join(wc, fn))
+                if im:
+                    assets[f"agua_deep__v{i:02d}"] = im
+
+        if shallow:
+            img0 = _open_rgba(os.path.join(wc, shallow[0]))
+            if img0:
+                assets["agua_shallow"] = img0
+            for i, fn in enumerate(shallow[:16]):
+                im = _open_rgba(os.path.join(wc, fn))
+                if im:
+                    assets[f"agua_shallow__v{i:02d}"] = im
+
+    # ---------------------------------------------------
+    # 3.2) Shores por máscara (16 máscaras) -> agua_shore_XX
+    # Pastas: water_grass / water_sand / water_overlay
+    # Arquivo padrão: water_sand_m00_v0.png etc.
+    # ---------------------------------------------------
+    def load_shores(folder: str):
+        p = os.path.join(extra_dir, folder)
+        if not os.path.isdir(p):
+            return
+        files = sorted([f for f in os.listdir(p) if f.lower().endswith(".png")])
+        for fn in files:
+            m = re.match(r".*_m(\d{2})_v(\d+)\.png$", fn, re.IGNORECASE)
+            if not m:
+                continue
+            mask = int(m.group(1))
+            vid = int(m.group(2))
+            img = _open_rgba(os.path.join(p, fn))
+            if not img:
+                continue
+            base = f"agua_shore_{mask:02d}"
+            # primeira que aparecer vira base; as demais viram variantes
+            if base not in assets:
+                assets[base] = img
+                assets[f"{base}__v{vid:02d}"] = img
+            else:
+                assets[f"{base}__v{folder}_{vid:02d}"] = img  # não colide
+
+    load_shores("water_grass")
+    load_shores("water_sand")
+    load_shores("water_overlay")
+
+    # -----------------------------------------
+    # 3.3) Objetos/overlays (usar tudo)
+    # -----------------------------------------
+    add_variants_from_folder("foliage", "brush_1")
+    add_variants_from_folder("forest_overlays", "tree_1")
+    add_variants_from_folder("overlays_and_objects", "brush_1")
+    add_variants_from_folder("flower", "flower")
+
+    # -----------------------------
+    # 4) Garantias / fallbacks
+    # -----------------------------
+    # Se não existir flower, tenta cair para brush
+    if "flower" not in assets:
+        if "brush_1" in assets:
+            assets["flower"] = assets["brush_1"]
+
+    # cave/neve não existem no seu zip -> fallback seguro
+    if "cave_1" not in assets and "pedra_1" in assets:
+        assets["cave_1"] = assets["pedra_1"]
+    if "neve_1" not in assets and "pedra_1" in assets:
+        assets["neve_1"] = assets["pedra_1"]
+
+    # agua_deep/agua_shore pode faltar se pasta não existir
+    if "agua_deep" not in assets and "agua_1" in assets:
+        assets["agua_deep"] = assets["agua_1"]
+    for m in range(16):
+        k = f"agua_shore_{m:02d}"
+        if k not in assets and "agua_1" in assets:
+            assets[k] = assets["agua_1"]
 
     return assets
+
 
 
 def authenticate_user(name, password):
@@ -6246,7 +6376,7 @@ def draw_tile_asset(img, r, c, tiles, assets, rng):
 
     # chão base
     under = {
-        "water": "areia_1",
+        "water": "grama_1",
         "sea": "areia_1",
         "grass": "grama_1",
         "tree": "grama_1",
