@@ -619,6 +619,21 @@ class BiomeGenerator:
             grid[grass] = 0
             dist_to_land = self._distance_to_mask(~(grid == 5))
 
+        elif biome == "center_lake":
+            grid[:, :] = 0
+            cr, cc = grid_h // 2, grid_w // 2
+            if grid_w <= 6 or grid_h <= 6:
+                rad = 1
+            elif grid_w >= 12 or grid_h >= 12:
+                rad = 3
+            else:
+                rad = 2
+            for y in range(grid_h):
+                for x in range(grid_w):
+                    if (y - cr) ** 2 + (x - cc) ** 2 <= (rad + 0.35) ** 2:
+                        grid[y, x] = 5
+            dist_to_land = self._distance_to_mask(~(grid == 5))
+
         elif biome == "forest":
             dark, clear = self._make_forest(grid_h, grid_w, rng)
             grid[dark] = 1

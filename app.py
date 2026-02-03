@@ -5255,8 +5255,10 @@ def map_theme_to_biome(theme_key: str, no_water: bool) -> str:
         return "cave"
     if key in ["mountain_slopes", "biome_mountain", "biome_snow"]:
         return "dirt"
-    if key in ["river", "center_lake"]:
+    if key in ["river"]:
         return "prairie" if no_water else "river"
+    if key in ["center_lake"]:
+        return "prairie" if no_water else "center_lake"
     if key in ["sea_coast", "biome_water"]:
         return "desert" if no_water else "sea"
     return "prairie" if no_water else "prairie"
