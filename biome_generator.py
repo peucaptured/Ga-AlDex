@@ -701,54 +701,114 @@ class BiomeGenerator:
                 t = int(grid[y, x])
 
                 # Water: interior uses water_core; shores use water_grass/water_sand
+                # Water: interior uses water_core (shallow ring + deep core); shores use water_grass/water_sand
                 if t == 5:
-                    def neigh_is_land(v: int) -> bool: return v != 5
+                    def neigh_is_land(v: int) -> bool:
+                        return v != 5
+                
                     land_mask = self._mask4(grid, y, x, neigh_is_land)
-
+                
+                    # --- helpers robustos (não dependem de atributos existirem) ---
+                    def _pick_from_list(lst, rng):
+                        return rng.choice(lst) if lst else None
+                
+                    def _is_deep_path(p: str) -> bool:
+                        s = (p or "").lower()
+                        return ("deep" in s) or ("_d" in s and "shallow" not in s)
+                
+                    def _is_shallow_path(p: str) -> bool:
+                        s = (p or "").lower()
+                        return ("shallow" in s) or ("raso" in s)
+                
+                    def _pick_water_core_prefer(prefer: str, rng) -> str:
+                        """
+                        prefer: 'shallow' | 'deep' | 'any'
+                        Tenta usar listas especializadas se existirem; senão tenta várias vezes pick_plain.
+                        """
+                        # Se você tiver listas separadas no objeto, usa
+                        shallow_lst = getattr(self, "water_shallow_tiles", None) or getattr(self, "water_core_shallow_tiles", None)
+                        deep_lst    = getattr(self, "water_deep_tiles", None)    or getattr(self, "water_core_deep_tiles", None)
+                
+                        if prefer == "shallow" and shallow_lst:
+                            return _pick_from_list(shallow_lst, rng)
+                        if prefer == "deep" and deep_lst:
+                            return _pick_from_list(deep_lst, rng)
+                
+                        # Se o seu water_core tiver listas internas, tenta descobrir
+                        plain_lst = getattr(self.water_core, "plain_tiles", None) or getattr(self.water_core, "tiles", None)
+                        if isinstance(plain_lst, (list, tuple)) and plain_lst:
+                            if prefer == "shallow":
+                                cand = [p for p in plain_lst if _is_shallow_path(p)]
+                                if cand:
+                                    return _pick_from_list(cand, rng)
+                            if prefer == "deep":
+                                cand = [p for p in plain_lst if _is_deep_path(p)]
+                                if cand:
+                                    return _pick_from_list(cand, rng)
+                
+                        # Fallback: tenta pick_plain algumas vezes até bater o "prefer"
+                        if prefer in ("shallow", "deep"):
+                            for _ in range(12):
+                                p = self.water_core.pick_plain(rng)
+                                if p is None:
+                                    break
+                                if prefer == "shallow" and _is_shallow_path(p):
+                                    return p
+                                if prefer == "deep" and _is_deep_path(p):
+                                    return p
+                
+                        # Ultimíssimo fallback
+                        return self.water_core.pick_plain(rng)
+                
                     if land_mask == 0:
-                        # interior water only
-                        tilep = self.water_core.pick_plain(rng)
+                        # interior water only (sem terra colada)
+                        # >>> CORREÇÃO PRINCIPAL: shallow perto da margem, deep no miolo <<<
+                        prefer = "any"
+                        if dist_to_land is not None:
+                            d = float(dist_to_land[y, x])
+                            if d <= 1.5:
+                                prefer = "shallow"
+                            elif d >= 3.5:
+                                prefer = "deep"
+                            else:
+                                # faixa de mistura: tende ao shallow, mas pode variar
+                                prefer = "shallow" if rng.random() < 0.70 else "deep"
+                
+                        tilep = _pick_water_core_prefer(prefer, rng)
+                        if tilep is None:
+                            tilep = self.water_core.pick_plain(rng)
+                
                         water_im = self._load_resized(tilep, tile_px, force_tile=True)
+                
+                        # mantém seu smoothing (agora ele trabalha em cima de um core mais coerente)
                         if dist_to_land is not None and dist_to_land[y, x] <= 2.5:
                             touches = []
-                            for dy, dx, d in [(-1,0,'N'),(1,0,'S'),(0,-1,'W'),(0,1,'E')]:
+                            for dy, dx, dch in [(-1,0,'N'),(1,0,'S'),(0,-1,'W'),(0,1,'E')]:
                                 ny, nx = y+dy, x+dx
                                 if 0 <= ny < grid_h and 0 <= nx < grid_w and dist_to_land[ny, nx] <= 1.5:
-                                    touches.append(d)
+                                    touches.append(dch)
                             water_im = self._smooth_water_transition(water_im, tile_px, rng, touches)
+                
                         blit_tile(x, y, water_im)
+                
                     else:
-                        # choose shoreline tiles depending on adjacent sand
+                        # shoreline tiles depending on adjacent sand
                         adj_has_sand = False
                         for dy, dx in [(-1,0),(1,0),(0,-1),(0,1)]:
                             ny, nx = y+dy, x+dx
                             if 0 <= ny < grid_h and 0 <= nx < grid_w and int(grid[ny, nx]) == 3:
                                 adj_has_sand = True
                                 break
-                        tilep = (self.water_sand.pick_mask(land_mask, rng) if adj_has_sand else self.water_grass.pick_mask(land_mask, rng))
+                
+                        tilep = (self.water_sand.pick_mask(land_mask, rng) if adj_has_sand
+                                 else self.water_grass.pick_mask(land_mask, rng))
+                
                         if tilep is None:
-                            tilep = self.water_core.pick_plain(rng)
+                            # fallback: se faltou tile de borda por algum motivo, usa shallow (não deep) perto de margem
+                            tilep = _pick_water_core_prefer("shallow", rng) or self.water_core.pick_plain(rng)
+                
                         blit_tile(x, y, self._load_resized(tilep, tile_px, force_tile=True))
 
-                # Dark grass / light grass transition tiles (atlas-based)
-                if t == 1:
-                    # if any neighbor is light grass, paint a transition tile
-                    def neigh_is_light(v: int) -> bool: return v == 0
-                    m = self._mask4(grid, y, x, neigh_is_light)
-                    if m != 0:
-                        # Heuristic mapping: use first 16 tiles row-major as masks 0..15
-                        idx = min(m, 15)
-                        trans_tile = self.dark_light_trans_atlas.tiles[idx]
-                        blit_tile(x, y, self._crop_atlas_tile(self.dark_light_trans_atlas, trans_tile, tile_px))
-
-                # Cave rock edges between rock and dirt
-                if t == 4:
-                    def neigh_is_dirt(v: int) -> bool: return v == 2
-                    m = self._mask4(grid, y, x, neigh_is_dirt)
-                    if m != 0:
-                        tilep = self.dirt_rock_edge.pick_mask(m, rng)
-                        if tilep:
-                            blit_tile(x, y, self._load_resized(tilep, tile_px, force_tile=True))
 
         # --- Overlay layer ---
         occ = np.zeros((grid_h, grid_w), dtype=bool)
