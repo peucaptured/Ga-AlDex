@@ -356,64 +356,35 @@ class BiomeGenerator:
                     dist[y, x] = d
         return dist
 
-    # ---------- forest sprite classification ----------
-    def _classify_forest_sprites(self) -> Tuple[List[Sprite], List[Sprite]]:
-        trees: List[Sprite] = []
-        shrubs: List[Sprite] = []
-        for sp in self.forest_sprites_all:
-            try:
-                im = Image.open(sp.path).convert("RGBA")
-            except Exception:
-                continue
-            x0,y0,x1,y1 = alpha_bbox(im)
-            bw, bh = (x1-x0), (y1-y0)
-            # Tree heuristic: tall bbox or multi-tile height
-            if sp.tiles_h >= 2 or (bh > self.tile_raw_px * 1.25 and bh > bw * 1.1):
-                trees.append(sp)
-            else:
-                shrubs.append(sp)
-        # fallback
-        if not trees:
-            trees = self.forest_sprites_all[:]
-        if not shrubs:
-            shrubs = self.forest_sprites_all[:]
-        return trees, shrubs
-
-    # ---------- overlay placement ----------
-    # --- TRECHO PARA SUBSTITUIR: LÓGICA DE ESCALA E FILTRO DE ÁRVORES ---
-
     def _classify_forest_sprites(self) -> Tuple[List[Sprite], List[Sprite]]:
         """
-        Classifica em árvores e arbustos.
-        NOVIDADE: Filtra qualquer coisa maior que 2x2 tiles.
+        Classifica Sprites em 'Trees' (para redimensionar) e 'Shrubs' (tamanho original).
+        Não exclui nada, apenas separa.
         """
         trees: List[Sprite] = []
         shrubs: List[Sprite] = []
         
         for sp in self.forest_sprites_all:
-            # REGRA: Ignora sprites maiores que 2 tiles de largura ou altura
-            if sp.tiles_w > 2 or sp.tiles_h > 2:
-                continue
-
-            try:
-                im = Image.open(sp.path).convert("RGBA")
-            except Exception:
-                continue
-
-            x0, y0, x1, y1 = alpha_bbox(im)
-            bw, bh = (x1 - x0), (y1 - y0)
-
-            # Heurística simples: se for alto ou 2 blocos de altura, é árvore.
-            # Se for muito pequeno, é arbusto.
-            if sp.tiles_h >= 2 or (bh > self.tile_raw_px * 1.2):
+            # Se for explicitamente maior que 1 tile, ou alto, é árvore.
+            # Ex: 1x2, 2x2, 2x3.
+            if sp.tiles_w > 1 or sp.tiles_h > 1:
                 trees.append(sp)
             else:
-                shrubs.append(sp)
+                # Se for 1x1, verificamos a altura em pixels para ter certeza
+                try:
+                    with Image.open(sp.path) as img:
+                        w, h = img.size
+                        # Se a imagem for mais alta que 1.5x o tile padrão, tratamos como árvore
+                        if h > self.tile_raw_px * 1.5:
+                            trees.append(sp)
+                        else:
+                            shrubs.append(sp)
+                except:
+                    shrubs.append(sp)
 
-        # Fallback para não quebrar se não tiver imagens
-        if not trees: trees = self.forest_sprites_all[:]
-        if not shrubs: shrubs = self.forest_sprites_all[:]
-            
+        # Fallback de segurança
+        if not trees and shrubs: trees = shrubs[:] 
+        
         return trees, shrubs
 
     def _place_sprites(
@@ -425,13 +396,13 @@ class BiomeGenerator:
         tile_px: int,
         attempts: int,
         density: float,
-        allowed_anchor: np.ndarray
+        allowed_anchor: np.ndarray,
+        force_fit: bool = False  # NOVO: Controla se deve esticar/espremer
     ) -> None:
         h, w = occ.shape
         target = int(h * w * density)
         placed = 0
-        if not sprites:
-            return
+        if not sprites: return
         
         # Filtra sprites inexistentes
         sprites = [sp for sp in sprites if sp.path.exists()]
@@ -441,51 +412,69 @@ class BiomeGenerator:
             if placed >= target: break
 
             sp = rng.choice(sprites)
-            tw, th = sp.tiles_w, sp.tiles_h
+            
+            # --- LÓGICA DE TAMANHO ---
+            if force_fit:
+                # Se for árvore, limitamos a ocupar no MÁXIMO 2x2 no grid (Clamping)
+                # Mesmo que o sprite original seja 2x3, ele ocupará apenas 2x2 espaços lógicos
+                occ_w = min(sp.tiles_w, 2)
+                occ_h = min(sp.tiles_h, 2)
+            else:
+                # Se for arbusto, ocupa o tamanho real dele (geralmente 1x1)
+                occ_w = sp.tiles_w
+                occ_h = sp.tiles_h
 
-            # Escolhe posição aleatória
-            y = rng.randrange(0, h - (th - 1))
-            x = rng.randrange(0, w - (tw - 1))
+            # Posição aleatória
+            y = rng.randrange(0, h - (occ_h - 1))
+            x = rng.randrange(0, w - (occ_w - 1))
 
-            # REGRA 1: Verifica se o chão é permitido (ex: grama clara para flores)
-            # Verifica o tile "pé" do objeto (base)
-            base_y = y + th - 1
+            # Verifica âncora (chão) na base do objeto
+            base_y = y + occ_h - 1
             if base_y >= h or not allowed_anchor[base_y, x]:
                 continue
 
-            # REGRA 2: Verifica colisão (Sem overlay sobreposto)
-            # Se qualquer pedaço da área (tw x th) estiver ocupado, cancela.
-            if occ[y:y+th, x:x+tw].any():
+            # Verifica colisão
+            if occ[y:y+occ_h, x:x+occ_w].any():
                 continue
 
-            # Marca ocupação total dos tiles
-            occ[y:y+th, x:x+tw] = True
+            # Marca ocupação
+            occ[y:y+occ_h, x:x+occ_w] = True
 
-            # Carrega e REDIMENSIONA (Escalonamento para ocupar o quadrado)
+            # --- DESENHO ---
             try:
                 base_im = Image.open(sp.path).convert("RGBA")
             except:
                 continue
 
-            # Tamanho alvo: Ocupar 95% da área de tiles designada (tw * tile_px, th * tile_px)
-            # Isso faz a árvore pequena "crescer" e a gigante "encolher" para caber no 2x2
-            target_w = int(tw * tile_px * 0.95)
-            target_h = int(th * tile_px * 0.95)
-            
-            # Resize suave (LANCZOS)
-            im_resized = base_im.resize((target_w, target_h), Image.Resampling.LANCZOS)
-            
-            # Adiciona sombra
-            im_final = self._add_sprite_shadow(im_resized)
+            if force_fit:
+                # ÁRVORES: Redimensiona para caber EXATAMENTE no espaço reservado (max 2x2)
+                # target_w/h = tamanho do espaço reservado em pixels * 0.95 (margem)
+                target_w = int(occ_w * tile_px * 0.95)
+                target_h = int(occ_h * tile_px * 0.95)
+                # O resize LANCZOS garante que a árvore 2x3 encolha bonita para 2x2
+                im_final = base_im.resize((target_w, target_h), Image.Resampling.LANCZOS)
+            else:
+                # ARBUSTOS: Mantém tamanho original OU limita se for gigante sem querer
+                im_final = base_im
+                # Se por acaso o arbusto for maior que o tile, reduzimos só um pouco
+                if im_final.height > tile_px:
+                    scale = tile_px / float(im_final.height) * 0.8
+                    nw = int(im_final.width * scale)
+                    nh = int(im_final.height * scale)
+                    im_final = im_final.resize((nw, nh), Image.Resampling.LANCZOS)
 
-            # Centraliza no bloco de tiles
-            # Área total pixel:
-            area_w = tw * tile_px
-            area_h = th * tile_px
+            # Sombra
+            im_final = self._add_sprite_shadow(im_final)
+
+            # Centraliza
+            area_w = occ_w * tile_px
+            area_h = occ_h * tile_px
+            off_x = (area_w - im_final.width) // 2
+            off_y = (area_h - im_final.height) // 2 # Alinha embaixo/centro
             
-            # Offset para centralizar
-            off_x = (area_w - target_w) // 2
-            off_y = (area_h - target_h) // 2
+            # Ajuste fino: Se for árvore (force_fit), alinha na base. Se for flor, no centro.
+            if force_fit:
+                off_y = area_h - im_final.height - (tile_px // 8)
             
             draw_x = x * tile_px + off_x
             draw_y = y * tile_px + off_y
@@ -945,28 +934,35 @@ class BiomeGenerator:
         rock_density = 0.030 if biome == "sea" else 0.020
         self._place_sprites(canvas, rng, self.rocks_sprites, occ, tile_px, attempts=1600, density=rock_density, allowed_anchor=is_land)
 
-        # Forest: lots of trees + shrubs, no water
+        # --- NOVO BLOCO FOREST NO FINAL DO GENERATE ---
         if biome == "forest":
-            # 1. DEFINIÇÃO DAS MÁSCARAS
             is_light_grass = (grid == 0)
             is_dark_grass = (grid == 1)
             is_any_grass = is_light_grass | is_dark_grass
             
-            # 2. ÁRVORES REAIS (Prioridade máxima)
+            # 1. ÁRVORES REAIS (force_fit=True -> Força encaixar em 2x2, corrige as gigantes)
             self._place_sprites(canvas, rng, self.forest_trees, occ, tile_px, 
-                              attempts=8000, density=0.25, allowed_anchor=is_any_grass)
+                              attempts=8000, density=0.25, 
+                              allowed_anchor=is_any_grass, 
+                              force_fit=True) # <--- ISSO RESOLVE A ESCALA DA ÁRVORE
             
-            # 3. ARBUSTOS (Preenchem espaços vazios)
+            # 2. ARBUSTOS/TOCOS (force_fit=False -> Tamanho normal, resolve a textura gigante)
             self._place_sprites(canvas, rng, self.forest_shrubs, occ, tile_px, 
-                              attempts=4000, density=0.10, allowed_anchor=is_dark_grass)
+                              attempts=4000, density=0.10, 
+                              allowed_anchor=is_dark_grass, 
+                              force_fit=False) # <--- ISSO IMPEDE O ARBUSTO DE FICAR GIGANTE
             
-            # 4. FLORES (Chance maior na grama clara)
+            # 3. FLORES
             self._place_sprites(canvas, rng, self.flower_sprites, occ, tile_px, 
-                              attempts=5000, density=0.15, allowed_anchor=is_light_grass)
+                              attempts=5000, density=0.15, 
+                              allowed_anchor=is_light_grass, 
+                              force_fit=False)
             
-            # 5. FOLHAGEM EXTRA
+            # 4. FOLHAGEM EXTRA
             self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, 
-                              attempts=3000, density=0.05, allowed_anchor=is_any_grass)
+                              attempts=3000, density=0.05, 
+                              allowed_anchor=is_any_grass, 
+                              force_fit=False)
 
         # Prairie: flowers + shrubs, few trees (only if they are small)
         if biome == "prairie":
