@@ -710,28 +710,27 @@ class BiomeGenerator:
                         grid[y, x] = 5
             dist_to_land = self._distance_to_mask(~(grid == 5))
 
+# --- TRECHO CORRIGIDO: BIOMA DE FLORESTA ---
         elif biome == "forest":
-# Separa máscaras de grama clara (0) e escura (1)
+            # 1. DEFINIÇÃO DAS MÁSCARAS (Deve vir ANTES de usar _place_sprites)
             is_light_grass = (grid == 0)
             is_dark_grass = (grid == 1)
             is_any_grass = is_light_grass | is_dark_grass
             
-            # 1. Árvores Reais (Prioridade máxima, ocupam espaço primeiro)
-            # Aumentei density para 0.25 (mais árvores)
-            # Podem nascer em qualquer grama
+            # 2. ÁRVORES REAIS (Prioridade máxima)
+            # allowed_anchor=is_any_grass usa a variável definida acima
             self._place_sprites(canvas, rng, self.forest_trees, occ, tile_px, 
                               attempts=8000, density=0.25, allowed_anchor=is_any_grass)
             
-            # 2. Arbustos (Preenchem espaços vazios na grama escura principalmente)
+            # 3. ARBUSTOS (Preenchem espaços vazios, preferência grama escura)
             self._place_sprites(canvas, rng, self.forest_shrubs, occ, tile_px, 
                               attempts=4000, density=0.10, allowed_anchor=is_dark_grass)
             
-            # 3. Flores (REGRA: Chance muito maior na grama clara)
-            # density 0.15 na grama clara garante que fiquem frequentes lá
+            # 4. FLORES (Chance maior na grama clara)
             self._place_sprites(canvas, rng, self.flower_sprites, occ, tile_px, 
                               attempts=5000, density=0.15, allowed_anchor=is_light_grass)
             
-            # Folhagem extra (geral)
+            # 5. FOLHAGEM EXTRA (Geral)
             self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, 
                               attempts=3000, density=0.05, allowed_anchor=is_any_grass)
 
