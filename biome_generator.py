@@ -786,125 +786,69 @@ class BiomeGenerator:
 
                 # Water: interior uses water_core; shores use water_grass/water_sand
                 # Water: interior uses water_core (shallow ring + deep core); shores use water_grass/water_sand
+ # --- LÓGICA DE ÁGUA OTIMIZADA (Com Contorno Bitmask) ---
                 if t == 5:
-                    def neigh_is_land(v: int) -> bool:
-                        return v != 5
-                
+                    # 1. Definições Auxiliares Locais
+                    def neigh_is_land(v: int) -> bool: return v != 5
+                    def _norm_str(p): return str(p).lower() if p else ""
+                    def _is_deep(p): return ("deep" in _norm_str(p)) or ("_d" in _norm_str(p) and "shallow" not in _norm_str(p))
+                    def _is_shallow(p): return ("shallow" in _norm_str(p)) or ("raso" in _norm_str(p))
+                    
+                    # Calcula a máscara dos vizinhos (N=1, E=2, S=4, W=8)
                     land_mask = self._mask4(grid, y, x, neigh_is_land)
-                
-                    # --- helpers robustos (não dependem de atributos existirem) ---
-                    def _pick_from_list(lst, rng):
-                        return rng.choice(lst) if lst else None
-                                    
-                    def _norm_str(p) -> str:
-                        if p is None:
-                            return ""
-                        # se vier Path, tuple, TileRef, etc., vira string
-                        try:
-                            return str(p).lower()
-                        except Exception:
-                            return ""
-                    
-                    def _is_deep_path(p) -> bool:
-                        s = _norm_str(p)
-                        return ("deep" in s) or ("_d" in s and "shallow" not in s)
-                    
-                    def _is_shallow_path(p) -> bool:
-                        s = _norm_str(p)
-                        return ("shallow" in s) or ("raso" in s)
-                
-                    def _pick_water_core_prefer(prefer: str, rng):
-                        """
-                        prefer: 'shallow' | 'deep' | 'any'
-                        Tenta usar listas especializadas se existirem; senão tenta várias vezes pick_plain.
-                        """
-                        # 1. Tenta pegar listas já separadas se existirem
-                        shallow_lst = getattr(self, "water_shallow_tiles", None) or getattr(self, "water_core_shallow_tiles", None)
-                        deep_lst    = getattr(self, "water_deep_tiles", None)    or getattr(self, "water_core_deep_tiles", None)
-                
-                        if prefer == "shallow" and shallow_lst:
-                            return _pick_from_list(shallow_lst, rng)
-                        if prefer == "deep" and deep_lst:
-                            return _pick_from_list(deep_lst, rng)
-                
-                        # --- CORREÇÃO: Definimos o que é plain_lst aqui ---
-                        plain_lst = self.water_core.plain
-                        # --------------------------------------------------
 
-                        # Se o seu water_core tiver listas internas misturadas, tenta descobrir pelo nome
-                        if isinstance(plain_lst, (list, tuple)) and plain_lst:
-                            if prefer == "shallow":
-                                cand = [p for p in plain_lst if _is_shallow_path(p)]
-                                if cand:
-                                    return _pick_from_list(cand, rng)
-                            if prefer == "deep":
-                                cand = [p for p in plain_lst if _is_deep_path(p)]
-                                if cand:
-                                    return _pick_from_list(cand, rng)
-                
-                        # Fallback: tenta pick_plain algumas vezes até bater o "prefer"
-                        if prefer in ("shallow", "deep"):
-                            for _ in range(12):
-                                p = self.water_core.pick_plain(rng)
-                                if p is None:
-                                    break
-                                if prefer == "shallow" and _is_shallow_path(p):
-                                    return p
-                                if prefer == "deep" and _is_deep_path(p):
-                                    return p
-                
-                        # Ultimíssimo fallback
-                        return self.water_core.pick_plain(rng)
-                
-                    if land_mask == 0:
-                        # interior water only (sem terra colada)
-                        # >>> CORREÇÃO PRINCIPAL: shallow perto da margem, deep no miolo <<<
+                    # --- CASO A: BORDA (Tem vizinho terra) ---
+                    if land_mask > 0:
+                        # Tenta pegar o tile de borda exato (water_grass_mXX)
+                        # Nota: Se quiser suportar areia no futuro, pode checar vizinhos aqui.
+                        # Por enquanto, focamos em water_grass como pediu.
+                        tilep = self.water_grass.pick_mask(land_mask, rng)
+                        
+                        # Se falhar (ex: mask complexa sem asset), usa fallback
+                        if tilep is None:
+                            shallow_lst = getattr(self, "water_shallow_tiles", None) or getattr(self, "water_core_shallow_tiles", None)
+                            if shallow_lst:
+                                tilep = rng.choice(shallow_lst)
+                            else:
+                                tilep = self.water_core.pick_plain(rng)
+                                
+                        blit_tile(x, y, self._load_resized(tilep, tile_px, force_tile=True))
+
+                    # --- CASO B: INTERIOR DO LAGO (Água cercada de água) ---
+                    else:
+                        # Define listas de água (Resolve o erro NameError anterior)
+                        plain_lst = self.water_core.plain
+                        
+                        # Decide se quer deep ou shallow baseado na distância da terra
                         prefer = "any"
                         if dist_to_land is not None:
                             d = float(dist_to_land[y, x])
-                            if d <= 1.5:
-                                prefer = "shallow"
-                            elif d >= 3.5:
-                                prefer = "deep"
-                            else:
-                                # faixa de mistura: tende ao shallow, mas pode variar
-                                prefer = "shallow" if rng.random() < 0.70 else "deep"
-                
-                        tilep = _pick_water_core_prefer(prefer, rng)
-                        if tilep is None:
-                            tilep = self.water_core.pick_plain(rng)
-                
-                        water_im = self._load_resized(tilep, tile_px, force_tile=True)
-                
-                        # mantém seu smoothing (agora ele trabalha em cima de um core mais coerente)
-                        if dist_to_land is not None and dist_to_land[y, x] <= 2.5:
-                            touches = []
-                            for dy, dx, dch in [(-1,0,'N'),(1,0,'S'),(0,-1,'W'),(0,1,'E')]:
-                                ny, nx = y+dy, x+dx
-                                if 0 <= ny < grid_h and 0 <= nx < grid_w and dist_to_land[ny, nx] <= 1.5:
-                                    touches.append(dch)
-                            water_im = self._smooth_water_transition(water_im, tile_px, rng, touches)
-                
-                        blit_tile(x, y, water_im)
-                
-                    else:
-                        # shoreline tiles depending on adjacent sand
-                        adj_has_sand = False
-                        for dy, dx in [(-1,0),(1,0),(0,-1),(0,1)]:
-                            ny, nx = y+dy, x+dx
-                            if 0 <= ny < grid_h and 0 <= nx < grid_w and int(grid[ny, nx]) == 3:
-                                adj_has_sand = True
-                                break
-                
-                        tilep = (self.water_sand.pick_mask(land_mask, rng) if adj_has_sand
-                                 else self.water_grass.pick_mask(land_mask, rng))
-                
-                        if tilep is None:
-                            # fallback: se faltou tile de borda por algum motivo, usa shallow (não deep) perto de margem
-                            tilep = _pick_water_core_prefer("shallow", rng) or self.water_core.pick_plain(rng)
+                            if d <= 2.5: prefer = "shallow" # Perto da borda
+                            elif d >= 3.5: prefer = "deep"  # Fundo
+                            else: prefer = "shallow" if rng.random() < 0.6 else "deep"
+
+                        tilep = None
+                        
+                        # Tenta pegar das listas específicas primeiro
+                        shallow_lst = getattr(self, "water_shallow_tiles", None) or getattr(self, "water_core_shallow_tiles", None)
+                        deep_lst    = getattr(self, "water_deep_tiles", None)    or getattr(self, "water_core_deep_tiles", None)
+                        
+                        if prefer == "shallow" and shallow_lst: tilep = rng.choice(shallow_lst)
+                        elif prefer == "deep" and deep_lst:     tilep = rng.choice(deep_lst)
+                        
+                        # Se não, filtra da lista geral (plain_lst)
+                        elif plain_lst and isinstance(plain_lst, list):
+                            if prefer == "shallow":
+                                cands = [p for p in plain_lst if _is_shallow(p)]
+                                if cands: tilep = rng.choice(cands)
+                            elif prefer == "deep":
+                                cands = [p for p in plain_lst if _is_deep(p)]
+                                if cands: tilep = rng.choice(cands)
+
+                        # Fallback final: pega qualquer um
+                        if tilep is None: tilep = self.water_core.pick_plain(rng)
                 
                         blit_tile(x, y, self._load_resized(tilep, tile_px, force_tile=True))
-
 
         # --- Overlay layer ---
         occ = np.zeros((grid_h, grid_w), dtype=bool)
