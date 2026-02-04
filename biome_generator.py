@@ -380,6 +380,42 @@ class BiomeGenerator:
         return trees, shrubs
 
     # ---------- overlay placement ----------
+    # --- TRECHO PARA SUBSTITUIR: LÓGICA DE ESCALA E FILTRO DE ÁRVORES ---
+
+    def _classify_forest_sprites(self) -> Tuple[List[Sprite], List[Sprite]]:
+        """
+        Classifica em árvores e arbustos.
+        NOVIDADE: Filtra qualquer coisa maior que 2x2 tiles.
+        """
+        trees: List[Sprite] = []
+        shrubs: List[Sprite] = []
+        
+        for sp in self.forest_sprites_all:
+            # REGRA: Ignora sprites maiores que 2 tiles de largura ou altura
+            if sp.tiles_w > 2 or sp.tiles_h > 2:
+                continue
+
+            try:
+                im = Image.open(sp.path).convert("RGBA")
+            except Exception:
+                continue
+
+            x0, y0, x1, y1 = alpha_bbox(im)
+            bw, bh = (x1 - x0), (y1 - y0)
+
+            # Heurística simples: se for alto ou 2 blocos de altura, é árvore.
+            # Se for muito pequeno, é arbusto.
+            if sp.tiles_h >= 2 or (bh > self.tile_raw_px * 1.2):
+                trees.append(sp)
+            else:
+                shrubs.append(sp)
+
+        # Fallback para não quebrar se não tiver imagens
+        if not trees: trees = self.forest_sprites_all[:]
+        if not shrubs: shrubs = self.forest_sprites_all[:]
+            
+        return trees, shrubs
+
     def _place_sprites(
         self,
         canvas: Image.Image,
@@ -396,52 +432,67 @@ class BiomeGenerator:
         placed = 0
         if not sprites:
             return
-
-        # User may remove assets from disk; filter missing sprites to avoid wasting attempts.
+        
+        # Filtra sprites inexistentes
         sprites = [sp for sp in sprites if sp.path.exists()]
-        if not sprites:
-            return
+        if not sprites: return
 
         for _ in range(attempts):
-            if placed >= target:
-                break
+            if placed >= target: break
+
             sp = rng.choice(sprites)
             tw, th = sp.tiles_w, sp.tiles_h
 
-            y = rng.randrange(th-1, h)
-            x = rng.randrange(0, w - (tw-1))
+            # Escolhe posição aleatória
+            y = rng.randrange(0, h - (th - 1))
+            x = rng.randrange(0, w - (tw - 1))
 
-            if not allowed_anchor[y, x]:
+            # REGRA 1: Verifica se o chão é permitido (ex: grama clara para flores)
+            # Verifica o tile "pé" do objeto (base)
+            base_y = y + th - 1
+            if base_y >= h or not allowed_anchor[base_y, x]:
                 continue
 
-            y0 = y - (th-1)
-            x0 = x
-            y1 = y + 1
-            x1 = x + tw
-            if y0 < 0 or x1 > w:
-                continue
-            if occ[y0:y1, x0:x1].any():
+            # REGRA 2: Verifica colisão (Sem overlay sobreposto)
+            # Se qualquer pedaço da área (tw x th) estiver ocupado, cancela.
+            if occ[y:y+th, x:x+tw].any():
                 continue
 
-            occ[y0:y1, x0:x1] = True
+            # Marca ocupação total dos tiles
+            occ[y:y+th, x:x+tw] = True
 
-            im = self._load_sprite_with_shadow(sp.path, tile_px)
-            if im is None:
-                # asset missing (user removed it) -> free occupancy and keep going
-                occ[y0:y1, x0:x1] = False
+            # Carrega e REDIMENSIONA (Escalonamento para ocupar o quadrado)
+            try:
+                base_im = Image.open(sp.path).convert("RGBA")
+            except:
                 continue
 
-            # Align pivot to bottom-center of footprint to bottom-center of footprint
-            scale = tile_px / float(self.tile_raw_px)
-            tgt_x = int(round(x * tile_px + (tw * tile_px) / 2.0 - sp.pivot_x * scale))
-            tgt_y = int(round((y + 1) * tile_px - sp.pivot_y * scale))
-            # Skip if sprite would be completely outside canvas
-            if tgt_x >= canvas.size[0] or tgt_y >= canvas.size[1] or (tgt_x + im.size[0]) <= 0 or (tgt_y + im.size[1]) <= 0:
-                occ[y0:y1, x0:x1] = False
-                continue
-            canvas.alpha_composite(im, (tgt_x, tgt_y))
+            # Tamanho alvo: Ocupar 95% da área de tiles designada (tw * tile_px, th * tile_px)
+            # Isso faz a árvore pequena "crescer" e a gigante "encolher" para caber no 2x2
+            target_w = int(tw * tile_px * 0.95)
+            target_h = int(th * tile_px * 0.95)
+            
+            # Resize suave (LANCZOS)
+            im_resized = base_im.resize((target_w, target_h), Image.Resampling.LANCZOS)
+            
+            # Adiciona sombra
+            im_final = self._add_sprite_shadow(im_resized)
+
+            # Centraliza no bloco de tiles
+            # Área total pixel:
+            area_w = tw * tile_px
+            area_h = th * tile_px
+            
+            # Offset para centralizar
+            off_x = (area_w - target_w) // 2
+            off_y = (area_h - target_h) // 2
+            
+            draw_x = x * tile_px + off_x
+            draw_y = y * tile_px + off_y
+
+            canvas.alpha_composite(im_final, (draw_x, draw_y))
             placed += 1
-
+# --- FIM DO TRECHO ---
     # ---------- biome grids ----------
     # Codes: 0=grass,1=dark_grass,2=light_dirt,3=sand,4=rock,5=water
     def _make_sea(self, H: int, W: int, rng: random.Random):
@@ -660,9 +711,29 @@ class BiomeGenerator:
             dist_to_land = self._distance_to_mask(~(grid == 5))
 
         elif biome == "forest":
-            dark, clear = self._make_forest(grid_h, grid_w, rng)
-            grid[dark] = 1
-            grid[clear] = 0
+# Separa máscaras de grama clara (0) e escura (1)
+            is_light_grass = (grid == 0)
+            is_dark_grass = (grid == 1)
+            is_any_grass = is_light_grass | is_dark_grass
+            
+            # 1. Árvores Reais (Prioridade máxima, ocupam espaço primeiro)
+            # Aumentei density para 0.25 (mais árvores)
+            # Podem nascer em qualquer grama
+            self._place_sprites(canvas, rng, self.forest_trees, occ, tile_px, 
+                              attempts=8000, density=0.25, allowed_anchor=is_any_grass)
+            
+            # 2. Arbustos (Preenchem espaços vazios na grama escura principalmente)
+            self._place_sprites(canvas, rng, self.forest_shrubs, occ, tile_px, 
+                              attempts=4000, density=0.10, allowed_anchor=is_dark_grass)
+            
+            # 3. Flores (REGRA: Chance muito maior na grama clara)
+            # density 0.15 na grama clara garante que fiquem frequentes lá
+            self._place_sprites(canvas, rng, self.flower_sprites, occ, tile_px, 
+                              attempts=5000, density=0.15, allowed_anchor=is_light_grass)
+            
+            # Folhagem extra (geral)
+            self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, 
+                              attempts=3000, density=0.05, allowed_anchor=is_any_grass)
 
         elif biome == "prairie":
             grass, dirt = self._make_prairie(grid_h, grid_w, rng)
