@@ -999,10 +999,29 @@ class BiomeGenerator:
             self._place_sprites(canvas, rng, self.misc_sprites, occ, tile_px, attempts=2500, density=0.03, allowed_anchor=is_land)
 
         elif biome == "center_lake":
-            is_grass = grid == 0
-            self._place_sprites(canvas, rng, self.flower_sprites, occ, tile_px, attempts=3000, density=0.05, allowed_anchor=is_grass)
-            self._place_sprites(canvas, rng, self.forest_trees, occ, tile_px, attempts=500, density=0.02, allowed_anchor=is_grass, force_fit=True)
+            # 1. Definimos o que é terra firme para poder plantar as coisas
+            is_land = (grid == 0) | (grid == 1) | (grid == 2) # Grama clara, escura ou areia/terra
+            
+            # 2. FLORES (Alta densidade para dar cor ao campo)
+            # Usamos flower_sprites que já estão mapeados no seu init
+            self._place_sprites(canvas, rng, self.flower_sprites, occ, tile_px, 
+                                attempts=4000, density=0.12, allowed_anchor=is_land)
 
+            # 3. PEDRAS (Misc sprites geralmente contém rochas e detritos)
+            # Colocamos uma quantidade moderada para "sujar" o terreno naturalmente
+            self._place_sprites(canvas, rng, self.misc_sprites, occ, tile_px, 
+                                attempts=1500, density=0.03, allowed_anchor=is_land)
+
+            # 4. ÁRVORES (Poucas, apenas uma ou outra como solicitado)
+            # Baixamos o density e o attempts drasticamente para serem raras
+            self._place_sprites(canvas, rng, self.forest_trees, occ, tile_px, 
+                                attempts=300, density=0.01, allowed_anchor=is_land)
+
+            # 5. ARBUSTOS/SHRUBS (Para compor o visual perto das árvores)
+            self._place_sprites(canvas, rng, self.forest_shrubs, occ, tile_px, 
+                                attempts=800, density=0.02, allowed_anchor=is_land)
+
+      
         return canvas
 
 
