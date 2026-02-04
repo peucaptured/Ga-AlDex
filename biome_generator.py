@@ -249,42 +249,23 @@ class BiomeGenerator:
         # Classify forest sprites into trees vs shrubs by analyzing alpha bbox aspect
         self.forest_trees, self.forest_shrubs = self._classify_forest_sprites()
 
-        # Forest tree size control:
-        # - Trees render-clamped to their footprint in _place_sprites (prevents giant canopies)
-        # - Dense placement uses footprint=1x1 for most trees
-        # - At most ONE 2x2 tree per map (max 4 squares)
-
-        # Build a "big tree" candidate list from tree-like sprites that are visually larger in raw pixels.
-        big_candidates: List[Sprite] = []
-        for sp in self.forest_trees:
-            try:
-                im = Image.open(sp.path).convert("RGBA")
-                x0,y0,x1,y1 = alpha_bbox(im)
-                bw, bh = (x1-x0), (y1-y0)
-                if bw >= int(self.tile_raw_px * 1.15) or bh >= int(self.tile_raw_px * 1.30):
-                    big_candidates.append(sp)
-            except Exception:
-                continue
-        if not big_candidates:
-            big_candidates = list(self.forest_trees)
-
-        self.forest_trees_big_2x2 = [self._clone_with_footprint(sp, 2, 2) for sp in big_candidates]
-
-        # Dense forest pool: clone ALL trees to 1x1 footprint
-        self.forest_trees_dense_1x1 = [self._clone_with_footprint(sp, 1, 1) for sp in self.forest_trees]
-
-
     # ---------- image IO ----------
-    def _load_resized(self, p: Path, tile_px: int, force_tile: bool = False) -> Image.Image:
+    def _load_resized(self, p: Path, tile_px: int, force_tile: bool = False) -> Optional[Image.Image]:
         """
         force_tile=True makes the image fill exactly (tile_px, tile_px).
         Use for ground/transition tiles.
         """
         key = (str(p), tile_px, force_tile)
-        im = self._img_cache.get(key)
-        if im is not None:
-            return im
-        src = Image.open(p).convert("RGBA")
+        if key in self._img_cache:
+            return self._img_cache[key]  # may be None
+
+        # If the user removed/renamed assets, just skip missing files gracefully.
+        try:
+            src = Image.open(p).convert("RGBA")
+        except FileNotFoundError:
+            self._img_cache[key] = None
+            return None
+
         if force_tile:
             im = src.resize((tile_px, tile_px), resample=Image.NEAREST)
         else:
@@ -292,14 +273,21 @@ class BiomeGenerator:
             w = max(1, int(round(src.size[0] * scale)))
             h = max(1, int(round(src.size[1] * scale)))
             im = src.resize((w, h), resample=Image.NEAREST)
+
         self._img_cache[key] = im
         return im
 
-    def _load_sprite_with_shadow(self, p: Path, tile_px: int) -> Image.Image:
+    def _load_sprite_with_shadow(self, p: Path, tile_px: int) -> Optional[Image.Image]:
         key = (str(p), tile_px, "shadow")
-        im = self._img_cache.get(key)
-        if im is not None:
-            return im
+        if key in self._img_cache:
+            return self._img_cache[key]  # may be None
+        base = self._load_resized(p, tile_px, force_tile=False)
+        if base is None:
+            self._img_cache[key] = None
+            return None
+        im = self._add_sprite_shadow(base)
+        self._img_cache[key] = im
+        return im
         base = self._load_resized(p, tile_px, force_tile=False)
         im = self._add_sprite_shadow(base)
         self._img_cache[key] = im
@@ -369,101 +357,27 @@ class BiomeGenerator:
         return dist
 
     # ---------- forest sprite classification ----------
-    def _is_tree_like(self, sp: Sprite) -> bool:
-        """Heuristic tree detector (works for anonymous sprite filenames)."""
-        try:
-            im = Image.open(sp.path).convert("RGBA")
-        except Exception:
-            return False
-
-        x0, y0, x1, y1 = alpha_bbox(im)
-        bw, bh = (x1 - x0), (y1 - y0)
-        if bw <= 1 or bh <= 1:
-            return False
-
-        crop = im.crop((x0, y0, x1, y1))
-        arr = np.asarray(crop)
-        a = arr[:, :, 3]
-        mask = a > 20
-        total = int(mask.sum())
-        if total < 120:
-            return False
-
-        h, w = mask.shape
-        # Bottom region should contain some brown-ish trunk pixels
-        yb0 = int(h * 0.60)
-        bottom = arr[yb0:, :, :3]
-        bottom_a = (a[yb0:, :] > 20)
-
-        if int(bottom_a.sum()) < 30:
-            # If sprite is tall enough, accept as tree anyway
-            return bh >= int(self.tile_raw_px * 1.15) and bw <= int(self.tile_raw_px * 1.80)
-
-        R = bottom[:, :, 0].astype(np.int16)
-        G = bottom[:, :, 1].astype(np.int16)
-        B = bottom[:, :, 2].astype(np.int16)
-
-        brown = (R > 85) & (G > 45) & (B < 95) & (R >= G) & bottom_a
-        brown_count = int(brown.sum())
-        brown_ratio = brown_count / float(max(1, int(bottom_a.sum())))
-
-        # Brown pixels concentrated near center columns
-        cx0 = int(w * 0.35)
-        cx1 = int(w * 0.65)
-        brown_center = int(brown[:, cx0:cx1].sum())
-        brown_center_ratio = brown_center / float(max(1, brown_count))
-
-        if (brown_ratio > 0.06 and brown_center_ratio > 0.25):
-            return True
-
-        # Fallback: tall-ish & not too wide
-        return bh >= int(self.tile_raw_px * 1.20) and bw <= int(self.tile_raw_px * 1.70)
-
     def _classify_forest_sprites(self) -> Tuple[List[Sprite], List[Sprite]]:
-        """
-        Returns (tree_like, shrub_like) pools used by the FOREST biome.
-        Uses both forest_overlays and foliage packs and detects trees by
-        looking for trunk-like brown pixels near the bottom of the sprite.
-        """
         trees: List[Sprite] = []
         shrubs: List[Sprite] = []
-
-        combined = list(self.forest_sprites_all) + list(self.foliage_sprites)
-        for sp in combined:
-            if self._is_tree_like(sp):
+        for sp in self.forest_sprites_all:
+            try:
+                im = Image.open(sp.path).convert("RGBA")
+            except Exception:
+                continue
+            x0,y0,x1,y1 = alpha_bbox(im)
+            bw, bh = (x1-x0), (y1-y0)
+            # Tree heuristic: tall bbox or multi-tile height
+            if sp.tiles_h >= 2 or (bh > self.tile_raw_px * 1.25 and bh > bw * 1.1):
                 trees.append(sp)
             else:
                 shrubs.append(sp)
-
-        # Fallbacks
+        # fallback
         if not trees:
-            trees = list(self.forest_sprites_all)
+            trees = self.forest_sprites_all[:]
         if not shrubs:
-            shrubs = list(self.forest_sprites_all)
-
+            shrubs = self.forest_sprites_all[:]
         return trees, shrubs
-
-
-    @staticmethod
-    def _split_exact_footprint(sprites: List[Sprite], tw: int, th: int) -> List[Sprite]:
-        return [sp for sp in sprites if int(sp.tiles_w) == tw and int(sp.tiles_h) == th]
-
-    @staticmethod
-    def _split_small_1x1(sprites: List[Sprite]) -> List[Sprite]:
-        return [sp for sp in sprites if int(sp.tiles_w) == 1 and int(sp.tiles_h) == 1]
-
-    @staticmethod
-    def _clone_with_footprint(sp: Sprite, tw: int, th: int) -> Sprite:
-        return Sprite(
-            path=sp.path,
-            w=sp.w,
-            h=sp.h,
-            pivot_x=sp.pivot_x,
-            pivot_y=sp.pivot_y,
-            tiles_w=tw,
-            tiles_h=th,
-        )
-
 
     # ---------- overlay placement ----------
     def _place_sprites(
@@ -475,12 +389,16 @@ class BiomeGenerator:
         tile_px: int,
         attempts: int,
         density: float,
-        allowed_anchor: np.ndarray,
-        require_full_inside: bool = False,
+        allowed_anchor: np.ndarray
     ) -> None:
         h, w = occ.shape
         target = int(h * w * density)
         placed = 0
+        if not sprites:
+            return
+
+        # User may remove assets from disk; filter missing sprites to avoid wasting attempts.
+        sprites = [sp for sp in sprites if sp.path.exists()]
         if not sprites:
             return
 
@@ -508,35 +426,19 @@ class BiomeGenerator:
             occ[y0:y1, x0:x1] = True
 
             im = self._load_sprite_with_shadow(sp.path, tile_px)
+            if im is None:
+                # asset missing (user removed it) -> free occupancy and keep going
+                occ[y0:y1, x0:x1] = False
+                continue
 
-            # Ensure sprite visual size does not exceed its declared footprint (prevents giant trees/rocks)
-            max_w_px = max(1, int(tw * tile_px))
-            max_h_px = max(1, int(th * tile_px))
-            if im.size[0] > max_w_px or im.size[1] > max_h_px:
-                s = min(max_w_px / float(im.size[0]), max_h_px / float(im.size[1]))
-                new_w = max(1, int(round(im.size[0] * s)))
-                new_h = max(1, int(round(im.size[1] * s)))
-                im = im.resize((new_w, new_h), resample=Image.NEAREST)
-                extra_scale = s
-            else:
-                extra_scale = 1.0
-
-            # Align pivot to bottom-center of footprint
-
-            scale = (tile_px / float(self.tile_raw_px)) * float(extra_scale)
+            # Align pivot to bottom-center of footprint to bottom-center of footprint
+            scale = tile_px / float(self.tile_raw_px)
             tgt_x = int(round(x * tile_px + (tw * tile_px) / 2.0 - sp.pivot_x * scale))
             tgt_y = int(round((y + 1) * tile_px - sp.pivot_y * scale))
             # Skip if sprite would be completely outside canvas
             if tgt_x >= canvas.size[0] or tgt_y >= canvas.size[1] or (tgt_x + im.size[0]) <= 0 or (tgt_y + im.size[1]) <= 0:
                 occ[y0:y1, x0:x1] = False
                 continue
-
-            # Optionally require the whole sprite to fit inside canvas (prevents clipping)
-            if require_full_inside:
-                if tgt_x < 0 or tgt_y < 0 or (tgt_x + im.size[0]) > canvas.size[0] or (tgt_y + im.size[1]) > canvas.size[1]:
-                    occ[y0:y1, x0:x1] = False
-                    continue
-
             canvas.alpha_composite(im, (tgt_x, tgt_y))
             placed += 1
 
@@ -988,55 +890,15 @@ class BiomeGenerator:
                             blit_tile(x, y, self._load_resized(tilep, tile_px, force_tile=True))
 
         # Rocks: in all biomes, on land only
-        rock_density = 0.0 if biome == "forest" else (0.030 if biome == "sea" else 0.020)
+        rock_density = 0.030 if biome == "sea" else 0.020
         self._place_sprites(canvas, rng, self.rocks_sprites, occ, tile_px, attempts=1600, density=rock_density, allowed_anchor=is_land)
 
-        # Forest: dense 1x1 trees + shrubs, and at most ONE 2x2 "big tree"
+        # Forest: lots of trees + shrubs, no water
         if biome == "forest":
-            # 1) Place at most one big 2x2 tree (max 4 squares)
-            if self.forest_trees_big_2x2:
-                self._place_sprites(
-                    canvas, rng,
-                    self.forest_trees_big_2x2,
-                    occ, tile_px,
-                    attempts=2000,
-                    density=(1.0 / max(1, (grid_h * grid_w))),  # target ~= 1
-                    allowed_anchor=is_grass,
-                    require_full_inside=True,
-                )
-
-            # 2) Dense small trees (prefer 1x1)
-            self._place_sprites(
-                canvas, rng,
-                self.forest_trees_dense_1x1,
-                occ, tile_px,
-                attempts=20000,
-                density=0.35,
-                allowed_anchor=is_grass,
-                require_full_inside=True,
-            )
-
-            # 3) Shrubs / undergrowth
-            self._place_sprites(
-                canvas, rng,
-                self.forest_shrubs,
-                occ, tile_px,
-                attempts=9000,
-                density=0.06,
-                allowed_anchor=is_grass,
-                require_full_inside=True,
-            )
-
-            # 4) Extra foliage (usually small plants)
-            self._place_sprites(
-                canvas, rng,
-                self.foliage_sprites,
-                occ, tile_px,
-                attempts=8000,
-                density=0.05,
-                allowed_anchor=is_grass,
-                require_full_inside=True,
-            )
+            self._place_sprites(canvas, rng, self.forest_trees, occ, tile_px, attempts=6000, density=0.16, allowed_anchor=is_grass)
+            self._place_sprites(canvas, rng, self.forest_shrubs, occ, tile_px, attempts=4000, density=0.08, allowed_anchor=is_grass)
+            # extra foliage
+            self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, attempts=2500, density=0.04, allowed_anchor=is_grass)
 
         # Prairie: flowers + shrubs, few trees (only if they are small)
         if biome == "prairie":
