@@ -740,7 +740,7 @@ class BiomeGenerator:
             for x in range(grid_w):
                 t = int(grid[y, x])
                 
-                # --- 2. ÁGUA COM ROTAÇÃO PARA QUADRADO ---
+                # --- LÓGICA DE ÁGUA OTIMIZADA (LAGO QUADRADO + ROTAÇÃO) ---
                 if t == 5:
                     def neigh_is_land(v: int) -> bool: return v != 5
                     # Mask: N=1, E=2, S=4, W=8
@@ -750,45 +750,57 @@ class BiomeGenerator:
                     if land_mask > 0:
                         water_im = None
                         
-                        # Tenta pegar os arquivos BASE (Borda Norte e Canto Nordeste)
-                        # O m01 costuma ser a borda reta padrão
-                        # O m03 costuma ser o canto padrão
-                        base_edge = self.water_grass.masks.get(1, [None])[0] 
-                        base_corner = self.water_grass.masks.get(3, [None])[0]
-
-                        # --- LÓGICA DE ROTAÇÃO MANUAL ---
-                        # Bordas Retas (Usam m01 rotacionado)
-                        if land_mask == 1:   # Norte
-                            water_im = get_rotated_tile(base_edge, 0)
-                        elif land_mask == 4: # Sul
-                            water_im = get_rotated_tile(base_edge, 180)
-                        elif land_mask == 2: # Leste
-                            water_im = get_rotated_tile(base_edge, 270) # Direita
-                        elif land_mask == 8: # Oeste
-                            water_im = get_rotated_tile(base_edge, 90)  # Esquerda
+                        # 1. Carrega as imagens BASE (Norte e Canto NE) usando o método seguro
+                        # pick_mask(1) = Borda Norte (Edge)
+                        # pick_mask(3) = Canto Nordeste (Corner)
+                        edge_ref = self.water_grass.pick_mask(1, rng)
+                        corner_ref = self.water_grass.pick_mask(3, rng)
                         
-                        # Cantos (Usam m03 rotacionado)
-                        elif land_mask == 3: # NE
-                            water_im = get_rotated_tile(base_corner, 0)
-                        elif land_mask == 9: # NW (Top+Left)
-                            water_im = get_rotated_tile(base_corner, 90)
-                        elif land_mask == 12: # SW (Bot+Left)
-                            water_im = get_rotated_tile(base_corner, 180)
-                        elif land_mask == 6: # SE (Bot+Right)
-                            water_im = get_rotated_tile(base_corner, 270)
+                        # Carrega as imagens na memória (cache) já no tamanho certo
+                        base_edge = self._load_resized(edge_ref, tile_px, force_tile=True) if edge_ref else None
+                        base_corner = self._load_resized(corner_ref, tile_px, force_tile=True) if corner_ref else None
 
-                        # Se não caiu na lógica de rotação (fallback)
+                        # Função auxiliar para rotacionar a imagem já carregada
+                        def rot(im, angle):
+                            if im is None: return None
+                            # Usa NEAREST para manter o pixel art nítido
+                            return im.rotate(angle, resample=Image.NEAREST)
+
+                        # --- LÓGICA DE ROTAÇÃO MANUAL (Mapeando a máscara para a rotação) ---
+                        
+                        # CASO 1: Bordas Retas (Usam a base Norte 'm01' rotacionada)
+                        if land_mask == 1:   # Norte
+                            water_im = rot(base_edge, 0)
+                        elif land_mask == 4: # Sul (Gira 180)
+                            water_im = rot(base_edge, 180)
+                        elif land_mask == 2: # Leste (Gira 270/Direita - PIL conta anti-horário)
+                            water_im = rot(base_edge, 270)
+                        elif land_mask == 8: # Oeste (Gira 90/Esquerda)
+                            water_im = rot(base_edge, 90)
+                        
+                        # CASO 2: Cantos (Usam a base NE 'm03' rotacionada)
+                        elif land_mask == 3: # NE
+                            water_im = rot(base_corner, 0)
+                        elif land_mask == 9: # NW (Era NE -> Gira 90 para virar NW)
+                            water_im = rot(base_corner, 90)
+                        elif land_mask == 12: # SW (Gira 180)
+                            water_im = rot(base_corner, 180)
+                        elif land_mask == 6: # SE (Gira 270)
+                            water_im = rot(base_corner, 270)
+
+                        # Fallback: Se não caiu na rotação (ex: máscaras complexas), tenta o automático
                         if water_im is None:
                             tilep = self.water_grass.pick_mask(land_mask, rng)
                             if tilep:
                                 water_im = self._load_resized(tilep, tile_px, force_tile=True)
                             else:
+                                # Último caso: Água rasa
                                 tilep = self.water_core.pick_plain(rng)
                                 water_im = self._load_resized(tilep, tile_px, force_tile=True)
                         
                         blit_tile(x, y, water_im)
 
-                    # Miolo do Lago
+                    # Miolo do Lago (Interior)
                     else:
                         plain_lst = self.water_core.plain
                         prefer = "deep" if (dist_to_land and dist_to_land[y, x] > 2) else "shallow"
@@ -804,7 +816,6 @@ class BiomeGenerator:
                         
                         tilep = rng.choice(cand) if cand else self.water_core.pick_plain(rng)
                         blit_tile(x, y, self._load_resized(tilep, tile_px, force_tile=True))
-
                 elif t == 1: # Dark Grass
                     tile = self.dark_grass_atlas.pick_any(rng)
                     blit_tile(x, y, self._crop_atlas_tile(self.dark_grass_atlas, tile, tile_px))
