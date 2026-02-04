@@ -712,27 +712,9 @@ class BiomeGenerator:
 
 # --- TRECHO CORRIGIDO: BIOMA DE FLORESTA ---
         elif biome == "forest":
-            # 1. DEFINIÇÃO DAS MÁSCARAS (Deve vir ANTES de usar _place_sprites)
-            is_light_grass = (grid == 0)
-            is_dark_grass = (grid == 1)
-            is_any_grass = is_light_grass | is_dark_grass
-            
-            # 2. ÁRVORES REAIS (Prioridade máxima)
-            # allowed_anchor=is_any_grass usa a variável definida acima
-            self._place_sprites(canvas, rng, self.forest_trees, occ, tile_px, 
-                              attempts=8000, density=0.25, allowed_anchor=is_any_grass)
-            
-            # 3. ARBUSTOS (Preenchem espaços vazios, preferência grama escura)
-            self._place_sprites(canvas, rng, self.forest_shrubs, occ, tile_px, 
-                              attempts=4000, density=0.10, allowed_anchor=is_dark_grass)
-            
-            # 4. FLORES (Chance maior na grama clara)
-            self._place_sprites(canvas, rng, self.flower_sprites, occ, tile_px, 
-                              attempts=5000, density=0.15, allowed_anchor=is_light_grass)
-            
-            # 5. FOLHAGEM EXTRA (Geral)
-            self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, 
-                              attempts=3000, density=0.05, allowed_anchor=is_any_grass)
+            dark, clear = self._make_forest(grid_h, grid_w, rng)
+            grid[dark] = 1
+            grid[clear] = 0
 
         elif biome == "prairie":
             grass, dirt = self._make_prairie(grid_h, grid_w, rng)
@@ -965,10 +947,26 @@ class BiomeGenerator:
 
         # Forest: lots of trees + shrubs, no water
         if biome == "forest":
-            self._place_sprites(canvas, rng, self.forest_trees, occ, tile_px, attempts=6000, density=0.16, allowed_anchor=is_grass)
-            self._place_sprites(canvas, rng, self.forest_shrubs, occ, tile_px, attempts=4000, density=0.08, allowed_anchor=is_grass)
-            # extra foliage
-            self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, attempts=2500, density=0.04, allowed_anchor=is_grass)
+            # 1. DEFINIÇÃO DAS MÁSCARAS
+            is_light_grass = (grid == 0)
+            is_dark_grass = (grid == 1)
+            is_any_grass = is_light_grass | is_dark_grass
+            
+            # 2. ÁRVORES REAIS (Prioridade máxima)
+            self._place_sprites(canvas, rng, self.forest_trees, occ, tile_px, 
+                              attempts=8000, density=0.25, allowed_anchor=is_any_grass)
+            
+            # 3. ARBUSTOS (Preenchem espaços vazios)
+            self._place_sprites(canvas, rng, self.forest_shrubs, occ, tile_px, 
+                              attempts=4000, density=0.10, allowed_anchor=is_dark_grass)
+            
+            # 4. FLORES (Chance maior na grama clara)
+            self._place_sprites(canvas, rng, self.flower_sprites, occ, tile_px, 
+                              attempts=5000, density=0.15, allowed_anchor=is_light_grass)
+            
+            # 5. FOLHAGEM EXTRA
+            self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, 
+                              attempts=3000, density=0.05, allowed_anchor=is_any_grass)
 
         # Prairie: flowers + shrubs, few trees (only if they are small)
         if biome == "prairie":
