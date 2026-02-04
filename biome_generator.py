@@ -813,12 +813,12 @@ class BiomeGenerator:
                         s = _norm_str(p)
                         return ("shallow" in s) or ("raso" in s)
                 
-                    def _pick_water_core_prefer(prefer: str, rng) -> str:
+                    def _pick_water_core_prefer(prefer: str, rng):
                         """
                         prefer: 'shallow' | 'deep' | 'any'
                         Tenta usar listas especializadas se existirem; senão tenta várias vezes pick_plain.
                         """
-                        # Se você tiver listas separadas no objeto, usa
+                        # 1. Tenta pegar listas já separadas se existirem
                         shallow_lst = getattr(self, "water_shallow_tiles", None) or getattr(self, "water_core_shallow_tiles", None)
                         deep_lst    = getattr(self, "water_deep_tiles", None)    or getattr(self, "water_core_deep_tiles", None)
                 
@@ -827,8 +827,11 @@ class BiomeGenerator:
                         if prefer == "deep" and deep_lst:
                             return _pick_from_list(deep_lst, rng)
                 
-                        # Se o seu water_core tiver listas internas, tenta descobrir
-                        cand = [p for p in plain_lst if isinstance(p, (str,)) or hasattr(p, "__fspath__")]
+                        # --- CORREÇÃO: Definimos o que é plain_lst aqui ---
+                        plain_lst = self.water_core.plain
+                        # --------------------------------------------------
+
+                        # Se o seu water_core tiver listas internas misturadas, tenta descobrir pelo nome
                         if isinstance(plain_lst, (list, tuple)) and plain_lst:
                             if prefer == "shallow":
                                 cand = [p for p in plain_lst if _is_shallow_path(p)]
