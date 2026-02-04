@@ -1,4 +1,3 @@
-
 """
 Biome tile generator (Pokemon-like cohesion) using the user's Assets pack.
 
@@ -16,17 +15,17 @@ Dependencies: pillow, numpy
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Callable
+from typing import Dict, List, Tuple, Optional, Callable, Any
 import random
 import json
 import re
 import math
+
 import numpy as np
-from PIL import Image
-from PIL import ImageEnhance
-from PIL import ImageFilter
+from PIL import Image, ImageEnhance, ImageFilter
 
 
 # ----------------------------
@@ -67,6 +66,7 @@ def value_noise(h: int, w: int, rng: random.Random, scale: int = 8, blur: int = 
 # ----------------------------
 
 _MASK_RE = re.compile(r"_m(\d{2})_v(\d+)\.png$", re.IGNORECASE)
+
 
 @dataclass
 class TileSet:
@@ -114,6 +114,7 @@ class AtlasTile:
 
 class AtlasTileSet:
     """Tile set sourced from an atlas image + json with per-tile bbox."""
+
     def __init__(self, folder: Path, json_name: str):
         data = json.loads((folder / json_name).read_text(encoding="utf-8"))
         atlas_file = data.get("atlas_file") or data.get("atlas")
@@ -131,12 +132,14 @@ class AtlasTileSet:
         self.tiles: List[AtlasTile] = []
         for t in tiles:
             bb = t.get("atlas_bbox") or t.get("bbox_in_atlas") or {}
-            self.tiles.append(AtlasTile(
-                id=t.get("id",""),
-                row=int(t.get("row",0)),
-                col=int(t.get("col",0)),
-                bbox=(int(bb.get("x",0)), int(bb.get("y",0)), int(bb.get("w",0)), int(bb.get("h",0)))
-            ))
+            self.tiles.append(
+                AtlasTile(
+                    id=t.get("id", ""),
+                    row=int(t.get("row", 0)),
+                    col=int(t.get("col", 0)),
+                    bbox=(int(bb.get("x", 0)), int(bb.get("y", 0)), int(bb.get("w", 0)), int(bb.get("h", 0))),
+                )
+            )
 
         # Sort stable row-major
         self.tiles.sort(key=lambda z: (z.row, z.col))
@@ -187,13 +190,13 @@ def load_sprite_entries(json_path: Path, base_dir: Path, tile_raw_px: int) -> Li
     return out
 
 
-def alpha_bbox(im: Image.Image) -> Tuple[int,int,int,int]:
+def alpha_bbox(im: Image.Image) -> Tuple[int, int, int, int]:
     """bbox of non-transparent pixels; returns (x0,y0,x1,y1) or full if none."""
     a = np.array(im.split()[-1])
     ys, xs = np.where(a > 8)
     if len(xs) == 0:
-        return (0,0,im.size[0], im.size[1])
-    return (int(xs.min()), int(ys.min()), int(xs.max()+1), int(ys.max()+1))
+        return (0, 0, im.size[0], im.size[1])
+    return (int(xs.min()), int(ys.min()), int(xs.max() + 1), int(ys.max() + 1))
 
 
 # ----------------------------
@@ -226,8 +229,8 @@ class BiomeGenerator:
 
         # Mask-based transitions/terrains
         self.water_grass = load_tileset(self.root / "water_grass", "water_grass", self.tile_raw_px)
-        self.water_sand  = load_tileset(self.root / "water_sand", "water_sand", self.tile_raw_px)
-        self.water_core  = load_tileset(self.root / "water_core_tiles", "water_core", self.tile_raw_px)
+        self.water_sand = load_tileset(self.root / "water_sand", "water_sand", self.tile_raw_px)
+        self.water_core = load_tileset(self.root / "water_core_tiles", "water_core", self.tile_raw_px)
         # Rock floor tiles (for cave base)
         self.rock_floor = load_tileset(self.root / "rocks", "rock_floor", self.tile_raw_px)
         self.river_narrow = load_tileset(self.root / "river_narrow_tiles", "river_narrow", self.tile_raw_px)
@@ -238,13 +241,17 @@ class BiomeGenerator:
 
         # Overlays / objects
         self.rocks_sprites = load_sprite_entries(self.root / "rocks" / "rocks.json", self.root / "rocks", self.tile_raw_px)
-        self.forest_sprites_all = load_sprite_entries(self.root / "forest_overlays" / "forest_overlays.json", self.root / "forest_overlays", self.tile_raw_px)
+        self.forest_sprites_all = load_sprite_entries(
+            self.root / "forest_overlays" / "forest_overlays.json", self.root / "forest_overlays", self.tile_raw_px
+        )
         self.foliage_sprites = load_sprite_entries(self.root / "foliage" / "foliage.json", self.root / "foliage", self.tile_raw_px)
-        self.flower_sprites  = load_sprite_entries(self.root / "flower" / "flower.json", self.root / "flower", self.tile_raw_px)
-        self.misc_sprites    = load_sprite_entries(self.root / "overlays_and_objects" / "asset.json", self.root / "overlays_and_objects", self.tile_raw_px)
+        self.flower_sprites = load_sprite_entries(self.root / "flower" / "flower.json", self.root / "flower", self.tile_raw_px)
+        self.misc_sprites = load_sprite_entries(
+            self.root / "overlays_and_objects" / "asset.json", self.root / "overlays_and_objects", self.tile_raw_px
+        )
 
         # Cache for resized images
-        self._img_cache: Dict[Tuple[str, int, bool], Image.Image] = {}
+        self._img_cache: Dict[Tuple[str, int, Any], Optional[Image.Image]] = {}
 
         # Classify forest sprites into trees vs shrubs by analyzing alpha bbox aspect
         self.forest_trees, self.forest_shrubs = self._classify_forest_sprites()
@@ -257,7 +264,7 @@ class BiomeGenerator:
         """
         key = (str(p), tile_px, force_tile)
         if key in self._img_cache:
-            return self._img_cache[key]  # may be None
+            return self._img_cache[key]
 
         # If the user removed/renamed assets, just skip missing files gracefully.
         try:
@@ -280,14 +287,17 @@ class BiomeGenerator:
     def _load_sprite_with_shadow(self, p: Path, tile_px: int) -> Optional[Image.Image]:
         key = (str(p), tile_px, "shadow")
         if key in self._img_cache:
-            return self._img_cache[key]  # may be None
+            return self._img_cache[key]
+
         base = self._load_resized(p, tile_px, force_tile=False)
         if base is None:
             self._img_cache[key] = None
             return None
+
         im = self._add_sprite_shadow(base)
         self._img_cache[key] = im
-        
+        return im
+
     @staticmethod
     def _add_sprite_shadow(im: Image.Image, offset: Tuple[int, int] = (0, 1)) -> Image.Image:
         alpha = im.split()[-1]
@@ -302,9 +312,10 @@ class BiomeGenerator:
         Crop from atlas and force to tile_px x tile_px (prevents border artifacts).
         """
         key = (f"{atlas.atlas_path}::{tile.id}", tile_px, True)
-        im = self._img_cache.get(key)
-        if im is not None:
-            return im
+        cached = self._img_cache.get(key)
+        if cached is not None:
+            return cached
+
         crop = atlas.crop(tile).convert("RGBA")
         im = crop.resize((tile_px, tile_px), resample=Image.NEAREST)
         self._img_cache[key] = im
@@ -316,10 +327,14 @@ class BiomeGenerator:
         """bit=1 when neighbor satisfies fn"""
         h, w = grid.shape
         m = 0
-        if y > 0     and fn(int(grid[y-1, x])): m |= 1
-        if x < w-1   and fn(int(grid[y, x+1])): m |= 2
-        if y < h-1   and fn(int(grid[y+1, x])): m |= 4
-        if x > 0     and fn(int(grid[y, x-1])): m |= 8
+        if y > 0 and fn(int(grid[y - 1, x])):
+            m |= 1
+        if x < w - 1 and fn(int(grid[y, x + 1])):
+            m |= 2
+        if y < h - 1 and fn(int(grid[y + 1, x])):
+            m |= 4
+        if x > 0 and fn(int(grid[y, x - 1])):
+            m |= 8
         return m
 
     def _load_wetdry_sand(self) -> Tuple[List[Path], List[Path]]:
@@ -340,14 +355,18 @@ class BiomeGenerator:
             for y in range(H):
                 for x in range(W):
                     d = dist[y, x]
-                    if y > 0: d = min(d, dist[y-1, x] + 1)
-                    if x > 0: d = min(d, dist[y, x-1] + 1)
+                    if y > 0:
+                        d = min(d, dist[y - 1, x] + 1)
+                    if x > 0:
+                        d = min(d, dist[y, x - 1] + 1)
                     dist[y, x] = d
-            for y in range(H-1, -1, -1):
-                for x in range(W-1, -1, -1):
+            for y in range(H - 1, -1, -1):
+                for x in range(W - 1, -1, -1):
                     d = dist[y, x]
-                    if y < H-1: d = min(d, dist[y+1, x] + 1)
-                    if x < W-1: d = min(d, dist[y, x+1] + 1)
+                    if y < H - 1:
+                        d = min(d, dist[y + 1, x] + 1)
+                    if x < W - 1:
+                        d = min(d, dist[y, x + 1] + 1)
                     dist[y, x] = d
         return dist
 
@@ -358,7 +377,7 @@ class BiomeGenerator:
         """
         trees: List[Sprite] = []
         shrubs: List[Sprite] = []
-        
+
         for sp in self.forest_sprites_all:
             # Se for explicitamente maior que 1 tile, ou alto, é árvore.
             # Ex: 1x2, 2x2, 2x3.
@@ -368,18 +387,19 @@ class BiomeGenerator:
                 # Se for 1x1, verificamos a altura em pixels para ter certeza
                 try:
                     with Image.open(sp.path) as img:
-                        w, h = img.size
+                        _, h = img.size
                         # Se a imagem for mais alta que 1.5x o tile padrão, tratamos como árvore
                         if h > self.tile_raw_px * 1.5:
                             trees.append(sp)
                         else:
                             shrubs.append(sp)
-                except:
+                except Exception:
                     shrubs.append(sp)
 
         # Fallback de segurança
-        if not trees and shrubs: trees = shrubs[:] 
-        
+        if not trees and shrubs:
+            trees = shrubs[:]
+
         return trees, shrubs
 
     def _place_sprites(
@@ -392,30 +412,31 @@ class BiomeGenerator:
         attempts: int,
         density: float,
         allowed_anchor: np.ndarray,
-        force_fit: bool = False  # NOVO: Controla se deve esticar/espremer
+        force_fit: bool = False,  # NOVO: Controla se deve esticar/espremer
     ) -> None:
         h, w = occ.shape
         target = int(h * w * density)
         placed = 0
-        if not sprites: return
-        
+        if not sprites:
+            return
+
         # Filtra sprites inexistentes
         sprites = [sp for sp in sprites if sp.path.exists()]
-        if not sprites: return
+        if not sprites:
+            return
 
         for _ in range(attempts):
-            if placed >= target: break
+            if placed >= target:
+                break
 
             sp = rng.choice(sprites)
-            
+
             # --- LÓGICA DE TAMANHO ---
             if force_fit:
                 # Se for árvore, limitamos a ocupar no MÁXIMO 2x2 no grid (Clamping)
-                # Mesmo que o sprite original seja 2x3, ele ocupará apenas 2x2 espaços lógicos
                 occ_w = min(sp.tiles_w, 2)
                 occ_h = min(sp.tiles_h, 2)
             else:
-                # Se for arbusto, ocupa o tamanho real dele (geralmente 1x1)
                 occ_w = sp.tiles_w
                 occ_h = sp.tiles_h
 
@@ -429,33 +450,30 @@ class BiomeGenerator:
                 continue
 
             # Verifica colisão
-            if occ[y:y+occ_h, x:x+occ_w].any():
+            if occ[y : y + occ_h, x : x + occ_w].any():
                 continue
 
             # Marca ocupação
-            occ[y:y+occ_h, x:x+occ_w] = True
+            occ[y : y + occ_h, x : x + occ_w] = True
 
             # --- DESENHO ---
             try:
                 base_im = Image.open(sp.path).convert("RGBA")
-            except:
+            except Exception:
                 continue
 
             if force_fit:
                 # ÁRVORES: Redimensiona para caber EXATAMENTE no espaço reservado (max 2x2)
-                # target_w/h = tamanho do espaço reservado em pixels * 0.95 (margem)
                 target_w = int(occ_w * tile_px * 0.95)
                 target_h = int(occ_h * tile_px * 0.95)
-                # O resize LANCZOS garante que a árvore 2x3 encolha bonita para 2x2
                 im_final = base_im.resize((target_w, target_h), Image.Resampling.LANCZOS)
             else:
                 # ARBUSTOS: Mantém tamanho original OU limita se for gigante sem querer
                 im_final = base_im
-                # Se por acaso o arbusto for maior que o tile, reduzimos só um pouco
                 if im_final.height > tile_px:
                     scale = tile_px / float(im_final.height) * 0.8
-                    nw = int(im_final.width * scale)
-                    nh = int(im_final.height * scale)
+                    nw = max(1, int(im_final.width * scale))
+                    nh = max(1, int(im_final.height * scale))
                     im_final = im_final.resize((nw, nh), Image.Resampling.LANCZOS)
 
             # Sombra
@@ -465,18 +483,18 @@ class BiomeGenerator:
             area_w = occ_w * tile_px
             area_h = occ_h * tile_px
             off_x = (area_w - im_final.width) // 2
-            off_y = (area_h - im_final.height) // 2 # Alinha embaixo/centro
-            
-            # Ajuste fino: Se for árvore (force_fit), alinha na base. Se for flor, no centro.
+            off_y = (area_h - im_final.height) // 2
+
+            # Ajuste fino: Se for árvore (force_fit), alinha na base.
             if force_fit:
                 off_y = area_h - im_final.height - (tile_px // 8)
-            
+
             draw_x = x * tile_px + off_x
             draw_y = y * tile_px + off_y
 
             canvas.alpha_composite(im_final, (draw_x, draw_y))
             placed += 1
-    # --- FIM DO TRECHO ---
+
     # ---------- biome grids ----------
     # Codes: 0=grass,1=dark_grass,2=light_dirt,3=sand,4=rock,5=water
     def _make_sea(self, H: int, W: int, rng: random.Random):
@@ -485,18 +503,27 @@ class BiomeGenerator:
 
         # flood-fill ocean connected to border
         from collections import deque
+
         vis = np.zeros((H, W), dtype=bool)
         q = deque()
         for x in range(W):
-            if water[0, x]: q.append((0, x)); vis[0, x] = True
-            if water[H-1, x]: q.append((H-1, x)); vis[H-1, x] = True
+            if water[0, x]:
+                q.append((0, x))
+                vis[0, x] = True
+            if water[H - 1, x]:
+                q.append((H - 1, x))
+                vis[H - 1, x] = True
         for y in range(H):
-            if water[y, 0]: q.append((y, 0)); vis[y, 0] = True
-            if water[y, W-1]: q.append((y, W-1)); vis[y, W-1] = True
+            if water[y, 0]:
+                q.append((y, 0))
+                vis[y, 0] = True
+            if water[y, W - 1]:
+                q.append((y, W - 1))
+                vis[y, W - 1] = True
         while q:
             y, x = q.popleft()
-            for dy, dx in [(-1,0),(1,0),(0,-1),(0,1)]:
-                ny, nx = y+dy, x+dx
+            for dy, dx in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                ny, nx = y + dy, x + dx
                 if 0 <= ny < H and 0 <= nx < W and water[ny, nx] and not vis[ny, nx]:
                     vis[ny, nx] = True
                     q.append((ny, nx))
@@ -508,7 +535,7 @@ class BiomeGenerator:
         return ocean, sand, grass
 
     def _make_river(self, H: int, W: int, rng: random.Random):
-        y = rng.randrange(H//4, 3*H//4)
+        y = rng.randrange(H // 4, 3 * H // 4)
         x = 0
         path = np.zeros((H, W), dtype=bool)
         while x < W:
@@ -516,7 +543,7 @@ class BiomeGenerator:
             x += 1
             if rng.random() < 0.55:
                 y += rng.choice([-1, 0, 1])
-                y = max(1, min(H-2, y))
+                y = max(1, min(H - 2, y))
 
         river = path.copy()
         for _ in range(2):
@@ -562,7 +589,6 @@ class BiomeGenerator:
         dirt = ~rock
         return rock, dirt
 
-    
     # ---------- procedural grass<->sand transition (option 1) ----------
     def _edge_mask(self, tile_px: int, direction: str, rng: random.Random, band: int = 14) -> Image.Image:
         """
@@ -574,22 +600,22 @@ class BiomeGenerator:
         a = np.zeros((tile_px, tile_px), dtype=np.float32)
 
         # Base ramp
-        if direction == 'N':
-            for y in range(tile_px):
-                t = 1.0 - min(1.0, y / float(band))
-                a[y, :] = t
-        elif direction == 'S':
-            for y in range(tile_px):
-                t = 1.0 - min(1.0, (tile_px - 1 - y) / float(band))
-                a[y, :] = t
-        elif direction == 'W':
-            for x in range(tile_px):
-                t = 1.0 - min(1.0, x / float(band))
-                a[:, x] = t
+        if direction == "N":
+            for yy in range(tile_px):
+                t = 1.0 - min(1.0, yy / float(band))
+                a[yy, :] = t
+        elif direction == "S":
+            for yy in range(tile_px):
+                t = 1.0 - min(1.0, (tile_px - 1 - yy) / float(band))
+                a[yy, :] = t
+        elif direction == "W":
+            for xx in range(tile_px):
+                t = 1.0 - min(1.0, xx / float(band))
+                a[:, xx] = t
         else:  # 'E'
-            for x in range(tile_px):
-                t = 1.0 - min(1.0, (tile_px - 1 - x) / float(band))
-                a[:, x] = t
+            for xx in range(tile_px):
+                t = 1.0 - min(1.0, (tile_px - 1 - xx) / float(band))
+                a[:, xx] = t
 
         # Add small noise so it doesn't look like a perfect stripe
         noise = np.array([[rng.random() for _ in range(tile_px)] for _ in range(tile_px)], dtype=np.float32)
@@ -599,8 +625,7 @@ class BiomeGenerator:
         # Slight threshold to avoid over-blending
         a = np.clip((a - 0.10) / 0.90, 0.0, 1.0)
 
-        mask = Image.fromarray((a * 255).astype(np.uint8), mode="L")
-        return mask
+        return Image.fromarray((a * 255).astype(np.uint8), mode="L")
 
     def _blend_tiles(self, base: Image.Image, overlay: Image.Image, mask: Image.Image) -> Image.Image:
         """Return base with overlay blended using mask."""
@@ -618,7 +643,7 @@ class BiomeGenerator:
         tile_px: int,
         rng: random.Random,
         touches: List[str],
-        amount: float = 1.18
+        amount: float = 1.18,
     ) -> Image.Image:
         if not touches:
             return base
@@ -629,7 +654,15 @@ class BiomeGenerator:
             out = self._blend_tiles(out, overlay, mask)
         return out
 
-    def _apply_grass_sand_transition(self, grid: np.ndarray, x: int, y: int, tile_px: int, rng: random.Random, base_tile: Image.Image) -> Image.Image:
+    def _apply_grass_sand_transition(
+        self,
+        grid: np.ndarray,
+        x: int,
+        y: int,
+        tile_px: int,
+        rng: random.Random,
+        base_tile: Image.Image,
+    ) -> Image.Image:
         """
         If current cell is sand (3) and touches grass (0/1), blend a thin grass band into sand along touching edges.
         This creates a Pokemon-like soft shore between grass and sand without needing dedicated tiles.
@@ -639,16 +672,19 @@ class BiomeGenerator:
             return base_tile
 
         # Determine which sides touch grass/dark_grass
-        touches = []
-        if y > 0 and int(grid[y-1, x]) in (0, 1): touches.append('N')
-        if x < W-1 and int(grid[y, x+1]) in (0, 1): touches.append('E')
-        if y < H-1 and int(grid[y+1, x]) in (0, 1): touches.append('S')
-        if x > 0 and int(grid[y, x-1]) in (0, 1): touches.append('W')
+        touches: List[str] = []
+        if y > 0 and int(grid[y - 1, x]) in (0, 1):
+            touches.append("N")
+        if x < W - 1 and int(grid[y, x + 1]) in (0, 1):
+            touches.append("E")
+        if y < H - 1 and int(grid[y + 1, x]) in (0, 1):
+            touches.append("S")
+        if x > 0 and int(grid[y, x - 1]) in (0, 1):
+            touches.append("W")
 
         if not touches:
             return base_tile
 
-        # Use light grass as overlay band (looks like fringe)
         grass_tile = self._crop_atlas_tile(self.grass_atlas, self.grass_atlas.pick_any(rng), tile_px)
         out = base_tile
         for d in touches:
@@ -657,254 +693,318 @@ class BiomeGenerator:
         return out
 
     # ---------- public API ----------
-    def generate(self, biome: str, grid_w: int = 32, grid_h: int = 32, tile_px: int = 64, seed: int = 0) -> Image.Image:
-      rng = random.Random(seed)
-      biome = biome.lower().strip()
-      
-      grid = np.zeros((grid_h, grid_w), dtype=np.int8)
-      dist_to_land: Optional[np.ndarray] = None
-      damp_mask: Optional[np.ndarray] = None
-      
-      # --- 1. LAGO QUADRADO (Corrigido) ---
-      if biome == "center_lake":
-          grid[:, :] = 0
-          # Define margem para criar o quadrado
-          margin_x = max(4, grid_w // 5)
-          margin_y = max(4, grid_h // 5)
-          
-          # Preenche o quadrado central com água (5)
-          for y in range(margin_y, grid_h - margin_y):
-              for x in range(margin_x, grid_w - margin_x):
-                  grid[y, x] = 5
-          
-          dist_to_land = self._distance_to_mask(~(grid == 5))
-      
-      elif biome == "sea":
-          ocean, sand, grass = self._make_sea(grid_h, grid_w, rng)
-          grid[ocean] = 5; grid[sand] = 3; grid[grass] = 0
-          dist_to_land = self._distance_to_mask(~(grid == 5))
-      
-      elif biome == "river":
-          river, sand, grass = self._make_river(grid_h, grid_w, rng)
-          grid[river] = 5; grid[sand] = 3; grid[grass] = 0
-          dist_to_land = self._distance_to_mask(~(grid == 5))
-      
-      elif biome == "forest":
-          dark, clear = self._make_forest(grid_h, grid_w, rng)
-          grid[dark] = 1; grid[clear] = 0
-      
-      elif biome == "prairie":
-          grass, dirt = self._make_prairie(grid_h, grid_w, rng)
-          grid[grass] = 0; grid[dirt] = 2
-      
-      elif biome == "dirt":
-          dirt, grass = self._make_dirt(grid_h, grid_w, rng)
-          grid[dirt] = 2; grid[grass] = 0
-      
-      elif biome == "desert":
-          sand, damp = self._make_desert(grid_h, grid_w, rng)
-          grid[sand] = 3; damp_mask = damp.astype(np.bool_)
-      
-      elif biome == "cave":
-          rock, dirt = self._make_cave(grid_h, grid_w, rng)
-          grid[rock] = 4; grid[dirt] = 2
-      
-      else:
-          # Fallback
-          grid[:, :] = 0
-      
-      canvas = Image.new("RGBA", (grid_w * tile_px, grid_h * tile_px), (0,0,0,0))
-      
-      def blit_tile(x: int, y: int, im: Image.Image):
-          canvas.alpha_composite(im, (x * tile_px, y * tile_px))
-      
-      # --- Helper de Rotação (Necessário para o Lago Quadrado) ---
-      def get_rotated_tile(path, angle):
-          if not path: return None
-          try:
-              im = Image.open(path).convert("RGBA")
-              im = im.resize((tile_px, tile_px), Image.Resampling.NEAREST)
-              if angle != 0:
-                  im = im.rotate(angle)
-              return im
-          except:
-              return None
-      
-      # --- Ground layer ---
-      for y in range(grid_h):
-          for x in range(grid_w):
-              t = int(grid[y, x])
-              
-              # --- LÓGICA DE ÁGUA OTIMIZADA (LAGO QUADRADO + ROTAÇÃO) ---
-              if t == 5:
-                  def neigh_is_land(v: int) -> bool: return v != 5
-                  # Mask: N=1, E=2, S=4, W=8
-                  land_mask = self._mask4(grid, y, x, neigh_is_land)
-      
-                  # Se for borda (tem vizinho terra)
-                  if land_mask > 0:
-                      water_im = None
-                      
-                      # 1. Carrega as imagens BASE (Norte e Canto NE) usando o método seguro
-                      # pick_mask(1) = Borda Norte (Edge)
-                      # pick_mask(3) = Canto Nordeste (Corner)
-                      edge_ref = self.water_grass.pick_mask(1, rng)
-                      corner_ref = self.water_grass.pick_mask(3, rng)
-                      
-                      # Carrega as imagens na memória (cache) já no tamanho certo
-                      base_edge = self._load_resized(edge_ref, tile_px, force_tile=True) if edge_ref else None
-                      base_corner = self._load_resized(corner_ref, tile_px, force_tile=True) if corner_ref else None
-      
-                      # Função auxiliar para rotacionar a imagem já carregada
-                      def rot(im, angle):
-                          if im is None: return None
-                          # Usa NEAREST para manter o pixel art nítido
-                          return im.rotate(angle, resample=Image.NEAREST)
-      
-                      # --- LÓGICA DE ROTAÇÃO MANUAL (Mapeando a máscara para a rotação) ---
-                      
-                      # CASO 1: Bordas Retas (Usam a base Norte 'm01' rotacionada)
-                      if land_mask == 1:   # Norte
-                          water_im = rot(base_edge, 0)
-                      elif land_mask == 4: # Sul (Gira 180)
-                          water_im = rot(base_edge, 180)
-                      elif land_mask == 2: # Leste (Gira 270/Direita - PIL conta anti-horário)
-                          water_im = rot(base_edge, 270)
-                      elif land_mask == 8: # Oeste (Gira 90/Esquerda)
-                          water_im = rot(base_edge, 90)
-                      
-                      # CASO 2: Cantos (Usam a base NE 'm03' rotacionada)
-                      elif land_mask == 3: # NE
-                          water_im = rot(base_corner, 0)
-                      elif land_mask == 9: # NW (Era NE -> Gira 90 para virar NW)
-                          water_im = rot(base_corner, 90)
-                      elif land_mask == 12: # SW (Gira 180)
-                          water_im = rot(base_corner, 180)
-                      elif land_mask == 6: # SE (Gira 270)
-                          water_im = rot(base_corner, 270)
-      
-                      # Fallback: Se não caiu na rotação (ex: máscaras complexas), tenta o automático
-                      if water_im is None:
-                          tilep = self.water_grass.pick_mask(land_mask, rng)
-                          if tilep:
-                              water_im = self._load_resized(tilep, tile_px, force_tile=True)
-                          else:
-                              # Último caso: Água rasa
-                              tilep = self.water_core.pick_plain(rng)
-                              water_im = self._load_resized(tilep, tile_px, force_tile=True)
-                      
-                      blit_tile(x, y, water_im)
-      
-                  # Miolo do Lago (Interior)
-                  else:
-                      plain_lst = self.water_core.plain
-                      prefer = "deep" if (dist_to_land and dist_to_land[y, x] > 2) else "shallow"
-                      
-                      def _n(p): return str(p).lower()
-                      def _is_d(p): return "deep" in _n(p)
-                      def _is_s(p): return "shallow" in _n(p)
-                      
-                      cand = []
-                      if plain_lst and isinstance(plain_lst, list):
-                          if prefer == "deep": cand = [p for p in plain_lst if _is_d(p)]
-                          else: cand = [p for p in plain_lst if _is_s(p)]
-                      
-                      tilep = rng.choice(cand) if cand else self.water_core.pick_plain(rng)
-                      blit_tile(x, y, self._load_resized(tilep, tile_px, force_tile=True))
-              elif t == 1: # Dark Grass
-                  tile = self.dark_grass_atlas.pick_any(rng)
-                  blit_tile(x, y, self._crop_atlas_tile(self.dark_grass_atlas, tile, tile_px))
-              elif t == 2: # Dirt
-                  tile = self.light_dirt_atlas.pick_any(rng)
-                  blit_tile(x, y, self._crop_atlas_tile(self.light_dirt_atlas, tile, tile_px))
-              elif t == 3: # Sand
-                  if self.wet_sand_tiles and self.dry_sand_tiles:
-                      if biome == "sea" and dist_to_land is not None:
-                          use_wet = float(dist_to_land[y, x]) <= 1.5
-                          tilep = rng.choice(self.wet_sand_tiles if use_wet else self.dry_sand_tiles)
-                          sand_im = self._load_resized(tilep, tile_px, force_tile=True)
-                      elif biome == "desert" and damp_mask is not None:
-                          use_wet = bool(damp_mask[y, x])
-                          if rng.random() < 0.15: use_wet = not use_wet
-                          tilep = rng.choice(self.wet_sand_tiles if use_wet else self.dry_sand_tiles)
-                          sand_im = self._load_resized(tilep, tile_px, force_tile=True)
-                      else:
-                          tile = self.sand_atlas.pick_any(rng)
-                          sand_im = self._crop_atlas_tile(self.sand_atlas, tile, tile_px)
-                  else:
-                      tile = self.sand_atlas.pick_any(rng)
-                      sand_im = self._crop_atlas_tile(self.sand_atlas, tile, tile_px)
-      
-                  if biome != "desert":
-                      sand_im = self._apply_grass_sand_transition(grid, x, y, tile_px, rng, sand_im)
-                  blit_tile(x, y, sand_im)
-      
-              elif t == 4: # Rock
-                  if getattr(self, "rock_floor", None) is not None and getattr(self.rock_floor, "plain", None):
-                      tilep = self.rock_floor.pick_plain(rng)
-                      blit_tile(x, y, self._load_resized(tilep, tile_px, force_tile=True))
-                  else:
-                      tile = self.light_dirt_atlas.pick_any(rng)
-                      blit_tile(x, y, self._crop_atlas_tile(self.light_dirt_atlas, tile, tile_px))
-              else: # Grass (0)
-                  tile = self.grass_atlas.pick_any(rng)
-                  blit_tile(x, y, self._crop_atlas_tile(self.grass_atlas, tile, tile_px))
-      
-      # --- Overlay layer ---
-      occ = np.zeros((grid_h, grid_w), dtype=bool)
-      
-      is_water = grid == 5
-      is_land = ~is_water
-      
-      # Rocks
-      rock_density = 0.030 if biome == "sea" else 0.020
-      self._place_sprites(canvas, rng, self.rocks_sprites, occ, tile_px, attempts=1600, density=rock_density, allowed_anchor=is_land)
-      
-      if biome == "forest":
-          is_light_grass = (grid == 0)
-          is_dark_grass = (grid == 1)
-          is_any_grass = is_light_grass | is_dark_grass
-          
-          # --- 3. CORREÇÃO NAS CHAMADAS (Removi force_fit para não dar erro) ---
-          # Árvores: O redimensionamento (2x2) já está embutido na função _place_sprites nova
-          self._place_sprites(canvas, rng, self.forest_trees, occ, tile_px, 
-                            attempts=8000, density=0.25, allowed_anchor=is_any_grass, force_fit=True)
-          
-          # Arbustos
-          self._place_sprites(canvas, rng, self.forest_shrubs, occ, tile_px, 
-                            attempts=4000, density=0.10, allowed_anchor=is_dark_grass)
-          
-          # Flores
-          self._place_sprites(canvas, rng, self.flower_sprites, occ, tile_px, 
-                            attempts=5000, density=0.15, allowed_anchor=is_light_grass)
-          
-          # Folhagem
-          self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, 
-                            attempts=3000, density=0.05, allowed_anchor=is_any_grass)
-      
-      elif biome == "prairie":
-          is_grass = (grid == 0)
-          self._place_sprites(canvas, rng, self.flower_sprites, occ, tile_px, attempts=4500, density=0.08, allowed_anchor=is_grass)
-          self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, attempts=3500, density=0.05, allowed_anchor=is_grass)
-          self._place_sprites(canvas, rng, self.forest_shrubs, occ, tile_px, attempts=1200, density=0.01, allowed_anchor=is_grass)
-      
-      elif biome == "dirt":
-          is_grass = (grid == 0)
-          self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, attempts=2000, density=0.02, allowed_anchor=is_grass)
-      
-      elif biome == "desert":
-          self._place_sprites(canvas, rng, self.misc_sprites, occ, tile_px, attempts=1600, density=0.015, allowed_anchor=is_land)
-      
-      elif biome == "cave":
-          self._place_sprites(canvas, rng, self.misc_sprites, occ, tile_px, attempts=2500, density=0.03, allowed_anchor=is_land)
-      
-      elif biome == "center_lake":
-            is_grass = (grid == 0)
-            self._place_sprites(canvas, rng, self.flower_sprites, occ, tile_px, 3000, 0.05, is_grass)
-            self._place_sprites(canvas, rng, self.forest_trees,  occ, tile_px,  500, 0.02, is_grass)
-        
-      
-    return canvas
+    def generate(
+        self,
+        biome: str,
+        grid_w: int = 32,
+        grid_h: int = 32,
+        tile_px: int = 64,
+        seed: int = 0,
+    ) -> Image.Image:
+        rng = random.Random(seed)
+        biome = biome.lower().strip()
+
+        grid = np.zeros((grid_h, grid_w), dtype=np.int8)
+        dist_to_land: Optional[np.ndarray] = None
+        damp_mask: Optional[np.ndarray] = None
+
+        # --- 1. LAGO QUADRADO (Corrigido) ---
+        if biome == "center_lake":
+            grid[:, :] = 0
+            margin_x = max(4, grid_w // 5)
+            margin_y = max(4, grid_h // 5)
+
+            for yy in range(margin_y, grid_h - margin_y):
+                for xx in range(margin_x, grid_w - margin_x):
+                    grid[yy, xx] = 5
+
+            dist_to_land = self._distance_to_mask(~(grid == 5))
+
+        elif biome == "sea":
+            ocean, sand, grass = self._make_sea(grid_h, grid_w, rng)
+            grid[ocean] = 5
+            grid[sand] = 3
+            grid[grass] = 0
+            dist_to_land = self._distance_to_mask(~(grid == 5))
+
+        elif biome == "river":
+            river, sand, grass = self._make_river(grid_h, grid_w, rng)
+            grid[river] = 5
+            grid[sand] = 3
+            grid[grass] = 0
+            dist_to_land = self._distance_to_mask(~(grid == 5))
+
+        elif biome == "forest":
+            dark, clear = self._make_forest(grid_h, grid_w, rng)
+            grid[dark] = 1
+            grid[clear] = 0
+
+        elif biome == "prairie":
+            grass, dirt = self._make_prairie(grid_h, grid_w, rng)
+            grid[grass] = 0
+            grid[dirt] = 2
+
+        elif biome == "dirt":
+            dirt, grass = self._make_dirt(grid_h, grid_w, rng)
+            grid[dirt] = 2
+            grid[grass] = 0
+
+        elif biome == "desert":
+            sand, damp = self._make_desert(grid_h, grid_w, rng)
+            grid[sand] = 3
+            damp_mask = damp.astype(np.bool_)
+
+        elif biome == "cave":
+            rock, dirt = self._make_cave(grid_h, grid_w, rng)
+            grid[rock] = 4
+            grid[dirt] = 2
+
+        else:
+            # Fallback
+            grid[:, :] = 0
+
+        canvas = Image.new("RGBA", (grid_w * tile_px, grid_h * tile_px), (0, 0, 0, 0))
+
+        def blit_tile(xx: int, yy: int, im: Image.Image) -> None:
+            canvas.alpha_composite(im, (xx * tile_px, yy * tile_px))
+
+        # --- Ground layer ---
+        for yy in range(grid_h):
+            for xx in range(grid_w):
+                t = int(grid[yy, xx])
+
+                # --- LÓGICA DE ÁGUA OTIMIZADA (LAGO QUADRADO + ROTAÇÃO) ---
+                if t == 5:
+
+                    def neigh_is_land(v: int) -> bool:
+                        return v != 5
+
+                    land_mask = self._mask4(grid, yy, xx, neigh_is_land)
+
+                    # Borda (tem vizinho terra)
+                    if land_mask > 0:
+                        water_im: Optional[Image.Image] = None
+
+                        edge_ref = self.water_grass.pick_mask(1, rng)
+                        corner_ref = self.water_grass.pick_mask(3, rng)
+
+                        base_edge = self._load_resized(edge_ref, tile_px, force_tile=True) if edge_ref else None
+                        base_corner = self._load_resized(corner_ref, tile_px, force_tile=True) if corner_ref else None
+
+                        def rot(im: Optional[Image.Image], angle: int) -> Optional[Image.Image]:
+                            if im is None:
+                                return None
+                            return im.rotate(angle, resample=Image.NEAREST)
+
+                        # Bordas retas (base Norte 'm01')
+                        if land_mask == 1:  # Norte
+                            water_im = rot(base_edge, 0)
+                        elif land_mask == 4:  # Sul
+                            water_im = rot(base_edge, 180)
+                        elif land_mask == 2:  # Leste
+                            water_im = rot(base_edge, 270)
+                        elif land_mask == 8:  # Oeste
+                            water_im = rot(base_edge, 90)
+
+                        # Cantos (base NE 'm03')
+                        elif land_mask == 3:  # NE
+                            water_im = rot(base_corner, 0)
+                        elif land_mask == 9:  # NW
+                            water_im = rot(base_corner, 90)
+                        elif land_mask == 12:  # SW
+                            water_im = rot(base_corner, 180)
+                        elif land_mask == 6:  # SE
+                            water_im = rot(base_corner, 270)
+
+                        # Fallback
+                        if water_im is None:
+                            tilep = self.water_grass.pick_mask(land_mask, rng)
+                            if tilep:
+                                water_im = self._load_resized(tilep, tile_px, force_tile=True)
+                            else:
+                                tilep = self.water_core.pick_plain(rng)
+                                water_im = self._load_resized(tilep, tile_px, force_tile=True)
+
+                        # safety
+                        if water_im is None:
+                            # extremely defensive fallback
+                            water_im = Image.new("RGBA", (tile_px, tile_px), (0, 0, 0, 0))
+
+                        blit_tile(xx, yy, water_im)
+
+                    # Miolo do lago
+                    else:
+                        plain_lst = self.water_core.plain
+                        prefer = "deep" if (dist_to_land is not None and dist_to_land[yy, xx] > 2) else "shallow"
+
+                        def _n(p: Path) -> str:
+                            return str(p).lower()
+
+                        def _is_d(p: Path) -> bool:
+                            return "deep" in _n(p)
+
+                        def _is_s(p: Path) -> bool:
+                            return "shallow" in _n(p)
+
+                        cand: List[Path] = []
+                        if plain_lst and isinstance(plain_lst, list):
+                            if prefer == "deep":
+                                cand = [p for p in plain_lst if _is_d(p)]
+                            else:
+                                cand = [p for p in plain_lst if _is_s(p)]
+
+                        tilep = rng.choice(cand) if cand else self.water_core.pick_plain(rng)
+                        im = self._load_resized(tilep, tile_px, force_tile=True)
+                        if im is None:
+                            im = Image.new("RGBA", (tile_px, tile_px), (0, 0, 0, 0))
+                        blit_tile(xx, yy, im)
+
+                elif t == 1:  # Dark Grass
+                    tile = self.dark_grass_atlas.pick_any(rng)
+                    blit_tile(xx, yy, self._crop_atlas_tile(self.dark_grass_atlas, tile, tile_px))
+
+                elif t == 2:  # Dirt
+                    tile = self.light_dirt_atlas.pick_any(rng)
+                    blit_tile(xx, yy, self._crop_atlas_tile(self.light_dirt_atlas, tile, tile_px))
+
+                elif t == 3:  # Sand
+                    if self.wet_sand_tiles and self.dry_sand_tiles:
+                        if biome == "sea" and dist_to_land is not None:
+                            use_wet = float(dist_to_land[yy, xx]) <= 1.5
+                            tilep = rng.choice(self.wet_sand_tiles if use_wet else self.dry_sand_tiles)
+                            sand_im = self._load_resized(tilep, tile_px, force_tile=True)
+                        elif biome == "desert" and damp_mask is not None:
+                            use_wet = bool(damp_mask[yy, xx])
+                            if rng.random() < 0.15:
+                                use_wet = not use_wet
+                            tilep = rng.choice(self.wet_sand_tiles if use_wet else self.dry_sand_tiles)
+                            sand_im = self._load_resized(tilep, tile_px, force_tile=True)
+                        else:
+                            tile = self.sand_atlas.pick_any(rng)
+                            sand_im = self._crop_atlas_tile(self.sand_atlas, tile, tile_px)
+                    else:
+                        tile = self.sand_atlas.pick_any(rng)
+                        sand_im = self._crop_atlas_tile(self.sand_atlas, tile, tile_px)
+
+                    if sand_im is None:
+                        sand_im = Image.new("RGBA", (tile_px, tile_px), (0, 0, 0, 0))
+
+                    if biome != "desert":
+                        sand_im = self._apply_grass_sand_transition(grid, xx, yy, tile_px, rng, sand_im)
+
+                    blit_tile(xx, yy, sand_im)
+
+                elif t == 4:  # Rock
+                    if getattr(self, "rock_floor", None) is not None and getattr(self.rock_floor, "plain", None):
+                        tilep = self.rock_floor.pick_plain(rng)
+                        rock_im = self._load_resized(tilep, tile_px, force_tile=True)
+                        if rock_im is None:
+                            rock_im = Image.new("RGBA", (tile_px, tile_px), (0, 0, 0, 0))
+                        blit_tile(xx, yy, rock_im)
+                    else:
+                        tile = self.light_dirt_atlas.pick_any(rng)
+                        blit_tile(xx, yy, self._crop_atlas_tile(self.light_dirt_atlas, tile, tile_px))
+
+                else:  # Grass (0)
+                    tile = self.grass_atlas.pick_any(rng)
+                    blit_tile(xx, yy, self._crop_atlas_tile(self.grass_atlas, tile, tile_px))
+
+        # --- Overlay layer ---
+        occ = np.zeros((grid_h, grid_w), dtype=bool)
+
+        is_water = grid == 5
+        is_land = ~is_water
+
+        # Rocks
+        rock_density = 0.030 if biome == "sea" else 0.020
+        self._place_sprites(
+            canvas,
+            rng,
+            self.rocks_sprites,
+            occ,
+            tile_px,
+            attempts=1600,
+            density=rock_density,
+            allowed_anchor=is_land,
+        )
+
+        if biome == "forest":
+            is_light_grass = grid == 0
+            is_dark_grass = grid == 1
+            is_any_grass = is_light_grass | is_dark_grass
+
+            # Árvores
+            self._place_sprites(
+                canvas,
+                rng,
+                self.forest_trees,
+                occ,
+                tile_px,
+                attempts=8000,
+                density=0.25,
+                allowed_anchor=is_any_grass,
+                force_fit=True,
+            )
+
+            # Arbustos
+            self._place_sprites(
+                canvas,
+                rng,
+                self.forest_shrubs,
+                occ,
+                tile_px,
+                attempts=4000,
+                density=0.10,
+                allowed_anchor=is_dark_grass,
+            )
+
+            # Flores
+            self._place_sprites(
+                canvas,
+                rng,
+                self.flower_sprites,
+                occ,
+                tile_px,
+                attempts=5000,
+                density=0.15,
+                allowed_anchor=is_light_grass,
+            )
+
+            # Folhagem
+            self._place_sprites(
+                canvas,
+                rng,
+                self.foliage_sprites,
+                occ,
+                tile_px,
+                attempts=3000,
+                density=0.05,
+                allowed_anchor=is_any_grass,
+            )
+
+        elif biome == "prairie":
+            is_grass = grid == 0
+            self._place_sprites(canvas, rng, self.flower_sprites, occ, tile_px, attempts=4500, density=0.08, allowed_anchor=is_grass)
+            self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, attempts=3500, density=0.05, allowed_anchor=is_grass)
+            self._place_sprites(canvas, rng, self.forest_shrubs, occ, tile_px, attempts=1200, density=0.01, allowed_anchor=is_grass)
+
+        elif biome == "dirt":
+            is_grass = grid == 0
+            self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, attempts=2000, density=0.02, allowed_anchor=is_grass)
+
+        elif biome == "desert":
+            self._place_sprites(canvas, rng, self.misc_sprites, occ, tile_px, attempts=1600, density=0.015, allowed_anchor=is_land)
+
+        elif biome == "cave":
+            self._place_sprites(canvas, rng, self.misc_sprites, occ, tile_px, attempts=2500, density=0.03, allowed_anchor=is_land)
+
+        elif biome == "center_lake":
+            is_grass = grid == 0
+            self._place_sprites(canvas, rng, self.flower_sprites, occ, tile_px, attempts=3000, density=0.05, allowed_anchor=is_grass)
+            self._place_sprites(canvas, rng, self.forest_trees, occ, tile_px, attempts=500, density=0.02, allowed_anchor=is_grass, force_fit=True)
+
+        return canvas
+
 
 def generate_to_file(
     out_png: str | Path,
