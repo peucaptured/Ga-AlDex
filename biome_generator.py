@@ -774,21 +774,10 @@ class BiomeGenerator:
             damp_mask = damp.astype(np.bool_)
 
         elif biome == "cave":
-            # Criamos uma máscara de "chão de caverna"
+            # Base do grid da caverna (paredes + chão)
             rock, dirt = self._make_cave(grid_h, grid_w, rng)
-            grid[rock] = 4   # rock
-            grid[dirt] = 2   # cave floor / dirt
-            is_cave_floor = (grid == 0) | (grid == 1)
-            
-            # 1. ROCHAS GRANDES (Paredes)
-            # Aumentamos o density para criar obstáculos que forçam um "labirinto"
-            self._place_sprites(canvas, rng, self.misc_sprites, occ, tile_px, 
-                                attempts=3000, density=0.15, allowed_anchor=is_cave_floor)
-            
-            # 2. DETRITOS E PEDREULHOS (Chão sujo)
-            # Use sprites menores de pedras para dar textura ao chão cinza
-            self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, 
-                                attempts=2000, density=0.05, allowed_anchor=is_cave_floor)
+            grid[rock] = 4   # rock / parede
+            grid[dirt] = 2   # chão da caverna
 
         else:
             # Fallback
@@ -861,12 +850,12 @@ class BiomeGenerator:
                             # extremely defensive fallback
                             water_im = Image.new("RGBA", (tile_px, tile_px), (0, 0, 0, 0))
 
-                        blit_tile(xx, yy, water_im)
+                        blit_tile(x, y, water_im)
 
                     # Miolo do lago
                     else:
                         plain_lst = self.water_core.plain
-                        prefer = "deep" if (dist_to_land is not None and dist_to_land[yy, xx] > 2) else "shallow"
+                        prefer = "deep" if (dist_to_land is not None and dist_to_land[y, x] > 2) else "shallow"
 
                         def _n(p: Path) -> str:
                             return str(p).lower()
@@ -888,11 +877,11 @@ class BiomeGenerator:
                         im = self._load_resized(tilep, tile_px, force_tile=True)
                         if im is None:
                             im = Image.new("RGBA", (tile_px, tile_px), (0, 0, 0, 0))
-                        blit_tile(xx, yy, im)
+                        blit_tile(x, y, im)
 
                 elif t == 1:  # Dark Grass
                     tile = self.dark_grass_atlas.pick_any(rng)
-                    blit_tile(xx, yy, self._crop_atlas_tile(self.dark_grass_atlas, tile, tile_px))
+                    blit_tile(x, y, self._crop_atlas_tile(self.dark_grass_atlas, tile, tile_px))
 
                 elif t == 2:  # Dirt
                     tile = self.light_dirt_atlas.pick_any(rng)
@@ -901,11 +890,11 @@ class BiomeGenerator:
                 elif t == 3:  # Sand
                     if self.wet_sand_tiles and self.dry_sand_tiles:
                         if biome == "sea" and dist_to_land is not None:
-                            use_wet = float(dist_to_land[yy, xx]) <= 1.5
+                            use_wet = float(dist_to_land[y, x]) <= 1.5
                             tilep = rng.choice(self.wet_sand_tiles if use_wet else self.dry_sand_tiles)
                             sand_im = self._load_resized(tilep, tile_px, force_tile=True)
                         elif biome == "desert" and damp_mask is not None:
-                            use_wet = bool(damp_mask[yy, xx])
+                            use_wet = bool(damp_mask[y, x])
                             if rng.random() < 0.15:
                                 use_wet = not use_wet
                             tilep = rng.choice(self.wet_sand_tiles if use_wet else self.dry_sand_tiles)
@@ -921,9 +910,9 @@ class BiomeGenerator:
                         sand_im = Image.new("RGBA", (tile_px, tile_px), (0, 0, 0, 0))
 
                     if biome != "desert":
-                        sand_im = self._apply_grass_sand_transition(grid, xx, yy, tile_px, rng, sand_im)
+                        sand_im = self._apply_grass_sand_transition(grid, x, y, tile_px, rng, sand_im)
 
-                    blit_tile(xx, yy, sand_im)
+                    blit_tile(x, y, sand_im)
 
                 elif t == 4:  # Rock
                     # Verifica se toca no chão da caverna (t=2)
