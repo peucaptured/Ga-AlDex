@@ -4028,7 +4028,7 @@ def load_map_assets():
     add_variants_from_folder("sand", "areia_1")
     add_variants_from_folder("wetdry_sand", "areia_1")
     add_variants_from_folder("light_dirt", "terra_1")
-    add_variants_from_folder("dirt_rock_edge", "terra_1")
+    # NOTE: "dirt_rock_edge" não entra como variação de terra_1; é usado como "muro" mascarado na arena.
     add_variants_from_folder("rocks", "pedra_1")
 
     # -----------------------------------------
@@ -4095,6 +4095,34 @@ def load_map_assets():
     load_shores("water_sand")
     load_shores("water_overlay")
 
+    # ---------------------------------------------------
+    # 3.2b) Tiles mascarados (m00..m15) para paredes/contornos
+    # Ex.: dirt_rock_edge_m02_v0.png -> dirt_rock_edge_02 (+ variantes)
+    # ---------------------------------------------------
+    def load_masked_tiles(folder: str, key_prefix: str):
+        p = os.path.join(extra_dir, folder)
+        if not os.path.isdir(p):
+            return
+
+        files = sorted([f for f in os.listdir(p) if f.lower().endswith(".png")])
+        for fn in files:
+            m = re.match(r".*_m(\d{2})_v(\d+)\.png$", fn, re.IGNORECASE)
+            if not m:
+                continue
+            mask = int(m.group(1))
+            vid = int(m.group(2))
+            img = _open_rgba(os.path.join(p, fn))
+            if not img:
+                continue
+
+            base = f"{key_prefix}_{mask:02d}"
+            if base not in assets:
+                assets[base] = img
+            assets[f"{base}__v{vid:02d}"] = img
+
+    # Dirt+rock edge (usado como muro/parede na arena da caverna)
+    load_masked_tiles("dirt_rock_edge", "dirt_rock_edge")
+
     # -----------------------------------------
     # 3.3) Objetos/overlays (usar tudo)
     # -----------------------------------------
@@ -4102,6 +4130,7 @@ def load_map_assets():
     add_variants_from_folder("forest_overlays", "tree_1")
     add_variants_from_folder("overlays_and_objects", "brush_1")
     add_variants_from_folder("flower", "flower")
+    add_variants_from_folder("cave_overlay", "cave_overlay")
 
     # -----------------------------
     # 4) Garantias / fallbacks
@@ -6176,30 +6205,82 @@ def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_wat
 
 
     elif theme_key == "biome_cave":
-        # Caverna: chão escuro + paredes na borda + stalagmites + pool
+        # Caverna / Dungeon (bioma):
+        # - Arena de combate em "sand" no interior
+        # - "Muro" artificial com dirt_rock_edge contornando a arena (pedra para fora, terra para dentro)
+        # - Fora da arena: piso rochoso mais limpo, com poucos overlays
+
+        # base bem neutra fora da arena (menos "sopa" visual)
         for r in range(grid):
             for c in range(grid):
-                if r == 0 or c == 0 or r == grid - 1 or c == grid - 1:
-                    tiles[r][c] = "wall"
-                elif inside(r, c):
-                    tiles[r][c] = "cave"
+                tiles[r][c] = "stone" if inside(r, c) else "wall"
 
-        # stalagmites
-        for _ in range(rng.randint(grid, grid * 2)):
+        # Define uma arena retangular (com alguma folga nas bordas do mapa)
+        arena_h = max(6, min(grid - 4, int(grid * 0.55)))
+        arena_w = max(7, min(grid - 4, int(grid * 0.60)))
+        top = rng.randint(2, max(2, grid - arena_h - 2))
+        left = rng.randint(2, max(2, grid - arena_w - 2))
+        bottom = top + arena_h - 1
+        right = left + arena_w - 1
+
+        # Preenche arena: piso de areia + contorno de muro (tiles mascarados)
+        for r in range(top, bottom + 1):
+            for c in range(left, right + 1):
+                if not inside(r, c):
+                    continue
+
+                on_top = (r == top)
+                on_bottom = (r == bottom)
+                on_left = (c == left)
+                on_right = (c == right)
+
+                if on_top or on_bottom or on_left or on_right:
+                    # máscara no padrão E,N,S,W => bits 1,2,4,8
+                    mask = 0
+                    if on_right:
+                        mask |= 1  # E
+                    if on_top:
+                        mask |= 2  # N
+                    if on_bottom:
+                        mask |= 4  # S
+                    if on_left:
+                        mask |= 8  # W
+                    tiles[r][c] = f"arena_wall_{mask:02d}"
+                else:
+                    tiles[r][c] = "sand"
+
+        # "Areia perto" do muro: reforça a faixa interna (1 tile) como areia
+        for r in range(top + 1, bottom):
+            for c in range(left + 1, right):
+                if tiles[r][c].startswith("arena_wall_"):
+                    continue
+                if (r in (top + 1, bottom - 1)) or (c in (left + 1, right - 1)):
+                    tiles[r][c] = "sand"
+
+        # Poucos overlays de caverna (somente cave_overlay) fora da arena
+        # (reduzido para ficar mais "limpo" e com leitura melhor)
+        overlay_n = max(3, int(grid * 0.6))
+        for _ in range(overlay_n):
             rr = rng.randint(1, grid - 2)
             cc = rng.randint(1, grid - 2)
-            if inside(rr, cc) and tiles[rr][cc] == "cave" and rng.random() > 0.55:
-                tiles[rr][cc] = "stalagmite"
+            if not inside(rr, cc):
+                continue
+            if top <= rr <= bottom and left <= cc <= right:
+                continue
+            if tiles[rr][cc] in ("stone", "cave", "sand") and rng.random() > 0.55:
+                tiles[rr][cc] = "cave_overlay"
 
-        # poça subterrânea
-        if not no_water and rng.random() > 0.35:
+        # Poça subterrânea (pequena) fora da arena
+        if not no_water and rng.random() > 0.60:
             cr = rng.randint(2, grid - 3)
             cc = rng.randint(2, grid - 3)
-            rad = 1 if grid <= 8 else 2
-            for rr in range(cr - rad, cr + rad + 1):
-                for cc2 in range(cc - rad, cc + rad + 1):
-                    if inside(rr, cc2) and rng.random() > 0.25:
-                        tiles[rr][cc2] = "water"
+            # evita cair dentro da arena
+            if not (top - 1 <= cr <= bottom + 1 and left - 1 <= cc <= right + 1):
+                rad = 1 if grid <= 10 else 2
+                for rr in range(cr - rad, cr + rad + 1):
+                    for cc2 in range(cc - rad, cc + rad + 1):
+                        if inside(rr, cc2) and rng.random() > 0.35:
+                            tiles[rr][cc2] = "water"
 
     elif theme_key == "biome_mix":
         # Mix: patches de biomas + 1 rio (bom pra rotas longas)
@@ -6497,6 +6578,7 @@ def draw_tile_asset(img, r, c, tiles, assets, rng):
         "cave": "cave_1",
         "wall": "cave_1",
         "stalagmite": "cave_1",
+        "cave_overlay": "pedra_1",
         "peak": "pedra_1",
     }.get(t_type, "grama_1")
 
@@ -6547,6 +6629,15 @@ def draw_tile_asset(img, r, c, tiles, assets, rng):
         else:
             asset_to_draw = f"agua_shore_{shore_family}_{land_mask:02d}"
 
+
+    elif t_type.startswith("arena_wall_"):
+        # Paredes artificiais (dirt_rock_edge) ao redor da arena:
+        # o sufixo é a máscara (00..15) no padrão E,N,S,W => bits 1,2,4,8.
+        try:
+            mask = int(t_type.rsplit("_", 1)[-1])
+        except Exception:
+            mask = 0
+        asset_to_draw = f"dirt_rock_edge_{mask:02d}"
     elif t_type in ("sand", "stone", "dirt", "grass", "snow", "cave"):
         prefix_map = {
             "sand": "areia",
@@ -6566,7 +6657,10 @@ def draw_tile_asset(img, r, c, tiles, assets, rng):
 
     # aplica variação se existir
     if asset_to_draw and asset_to_draw in assets:
-        choices = floor_variants.get(asset_to_draw, [asset_to_draw])
+        choices = floor_variants.get(asset_to_draw)
+        if not choices:
+            # suporte para famílias mascaradas (ex.: dirt_rock_edge_02__v01)
+            choices = [k for k in assets.keys() if k == asset_to_draw or k.startswith(asset_to_draw + "__v")]
         asset_choice = rng.choice(choices)
         img.alpha_composite(assets[asset_choice], (x, y))
 
@@ -6584,6 +6678,9 @@ def draw_tile_asset(img, r, c, tiles, assets, rng):
         pool = [k for k in assets.keys()
                 if ("brush" in k.lower()) or ("bush" in k.lower()) or ("moita" in k.lower())]
         obj_asset = rng.choice(pool) if pool else None
+    elif t_type == "cave_overlay":
+        pool = [k for k in assets.keys() if k == "cave_overlay" or k.startswith("cave_overlay__v")]
+        obj_asset = rng.choice(pool) if pool else None
     elif t_type == "stalagmite":
         obj_asset = "estalagmite_1" if "estalagmite_1" in assets else None
     elif t_type == "peak":
@@ -6591,8 +6688,9 @@ def draw_tile_asset(img, r, c, tiles, assets, rng):
     elif t_type == "flower":
         obj_asset = "flower" if "flower" in assets else None
 
-    # rochas aleatórias em pisos
-    if t_type in ("grass", "stone", "dirt", "sand", "snow", "cave") and rng.random() < 0.10:
+    # rochas aleatórias em pisos (reduzido na caverna/areia pra não poluir)
+    rock_p = 0.03 if t_type in ("cave", "sand") else 0.10
+    if t_type in ("grass", "stone", "dirt", "sand", "snow", "cave") and rng.random() < rock_p:
         pool = [k for k in ["rochas", "rochas_2"] if k in assets]
         obj_asset = rng.choice(pool) if pool else obj_asset
     elif t_type == "rock":
