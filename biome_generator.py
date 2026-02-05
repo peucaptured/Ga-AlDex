@@ -775,6 +775,9 @@ class BiomeGenerator:
 
         elif biome == "cave":
             # Criamos uma máscara de "chão de caverna"
+            rock, dirt = self._make_cave(grid_h, grid_w, rng)
+            grid[rock] = 4   # rock
+            grid[dirt] = 2   # cave floor / dirt
             is_cave_floor = (grid == 0) | (grid == 1)
             
             # 1. ROCHAS GRANDES (Paredes)
@@ -807,7 +810,7 @@ class BiomeGenerator:
                     def neigh_is_land(v: int) -> bool:
                         return v != 5
 
-                    land_mask = self._mask4(grid, yy, xx, neigh_is_land)
+                    land_mask = self._mask4(grid, y, x, neigh_is_land)
 
                     # Borda (tem vizinho terra)
                     if land_mask > 0:
