@@ -185,9 +185,9 @@ def load_sprite_entries(json_path: Path, base_dir: Path, tile_raw_px: int) -> Li
 
     data = json.loads(json_path.read_text(encoding="utf-8"))
 
-    # Suporta dois formatos:
-    # 1) {"entries":[{"file":"x.png","w":..,"h":..,"pivot":{"x":..,"y":..}}]}
-    # 2) {"sprites":[{"name":"x.png","width":..,"height":..}]}
+    # Suporta 2 formatos:
+    # (A) {"entries":[{"file":"x.png","w":..,"h":..,"pivot":{"x":..,"y":..}}]}
+    # (B) {"sprites":[{"name":"x.png","width":..,"height":..}]}
     entries = data.get("entries")
     if entries is None:
         sprites = data.get("sprites") or []
@@ -197,7 +197,6 @@ def load_sprite_entries(json_path: Path, base_dir: Path, tile_raw_px: int) -> Li
                 "file": s.get("file") or s.get("name"),
                 "w": s.get("w") or s.get("width") or 0,
                 "h": s.get("h") or s.get("height") or 0,
-                # pivot opcional (se não existir, usamos defaults abaixo)
                 "pivot": s.get("pivot") or {},
             })
 
@@ -210,11 +209,11 @@ def load_sprite_entries(json_path: Path, base_dir: Path, tile_raw_px: int) -> Li
         # caminho principal
         p = base_dir / file_rel
 
-        # fallback 1: só o basename
+        # fallback 1: basename
         if not p.exists():
             p = base_dir / Path(file_rel).name
 
-        # fallback 2: se JSON fala sprite_XXX mas a pasta tem cave_XXX
+        # fallback 2: JSON fala sprite_###, pasta tem cave_###
         if not p.exists():
             name = Path(file_rel).name
             if name.startswith("sprite_"):
@@ -223,7 +222,6 @@ def load_sprite_entries(json_path: Path, base_dir: Path, tile_raw_px: int) -> Li
                 if p2.exists():
                     p = p2
 
-        # se ainda não existe, ignora essa entrada
         if not p.exists():
             continue
 
@@ -320,6 +318,8 @@ class BiomeGenerator:
         self.cave_sprites = load_sprite_entries(
             self.root / "cave_overlay" / "cave_overlay.json", self.root / "cave_overlay", self.tile_raw_px
         )
+        print("cave_sprites:", len(self.cave_sprites), "ex:", [s.path.name for s in self.cave_sprites[:5]])
+
 
         # Cache for resized images
         self._img_cache: Dict[Tuple[str, int, Any], Optional[Image.Image]] = {}
