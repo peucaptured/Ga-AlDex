@@ -817,16 +817,25 @@ class BiomeGenerator:
 
                         canvas.alpha_composite(img, (x * tile_px, y * tile_px))
                     else:
-                        # Use dirt_rock_edge even when mask==0 to keep the border exclusively from that set.
-                        if getattr(self.dirt_rock_edge, "plain", None) or getattr(self.dirt_rock_edge, "masks", None):
+                        # Interior rock (mask==0) should NOT use dirt_rock_edge; otherwise it creates a second
+                        # "margin ring" inside the cave walls. Use a plain rock tile for solid wall mass.
+                        tilep = None
+                        if getattr(self.rock_floor, "plain", None) or getattr(self.rock_floor, "masks", None):
+                            try:
+                                tilep = self.rock_floor.pick_plain(rng)
+                            except Exception:
+                                tilep = self.rock_floor.pick_any(rng)
+                        elif getattr(self.dirt_rock_edge, "plain", None) or getattr(self.dirt_rock_edge, "masks", None):
+                            # Fallback only if rock_floor is missing.
                             try:
                                 tilep = self.dirt_rock_edge.pick_plain(rng)
                             except Exception:
                                 tilep = self.dirt_rock_edge.pick_any(rng)
-                            canvas.alpha_composite(self._load_resized(tilep, tile_px, force_tile=True), (x * tile_px, y * tile_px))
-                        else:
-                            tilep = self.rock_floor.pick_plain(rng)
-                            canvas.alpha_composite(self._load_resized(tilep, tile_px, force_tile=True), (x * tile_px, y * tile_px))
+
+                        im2 = self._load_resized(tilep, tile_px, force_tile=True) if tilep else None
+                        if im2 is None:
+                            im2 = Image.new("RGBA", (tile_px, tile_px), (0, 0, 0, 0))
+                        canvas.alpha_composite(im2, (x * tile_px, y * tile_px))
 
         # --- Overlay layer ---
         occ = np.zeros((grid_h, grid_w), dtype=bool)
