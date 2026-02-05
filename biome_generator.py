@@ -25,7 +25,7 @@ import re
 import math
 
 import numpy as np
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image, ImageEnhance, ImageFilter, ImageDraw # Adicione o ImageDraw
 
 
 # ----------------------------
@@ -211,6 +211,25 @@ class BiomeGenerator:
     Generate coherent biome maps as RGBA images.
     Output tiles are ALWAYS tile_px x tile_px.
     """
+
+    def apply_cave_lighting(self, canvas: Image.Image) -> Image.Image:
+        # Cria uma camada preta para a escuridão
+        overlay = Image.new('RGBA', canvas.size, (10, 10, 25, 220)) # Azul escuro quase preto
+        draw = ImageDraw.Draw(overlay)
+        
+        # Desenha um círculo de luz (transparente) no centro
+        w, h = canvas.size
+        center = (w // 2, h // 2)
+        radius = min(w, h) // 1.2
+        
+        # Cria um gradiente radial suave
+        for i in range(int(radius), 0, -2):
+            alpha = int(220 * (i / radius))
+            draw.ellipse([center[0]-i, center[1]-i, center[0]+i, center[1]+i], 
+                         fill=(0, 0, 0, alpha))
+        
+        # Combina a escuridão com o mapa original
+        return Image.alpha_composite(canvas, overlay)
 
     def __init__(self, assets_root: str | Path = DEFAULT_ASSETS_ROOT):
         self.root = Path(assets_root)
@@ -755,9 +774,18 @@ class BiomeGenerator:
             damp_mask = damp.astype(np.bool_)
 
         elif biome == "cave":
-            rock, dirt = self._make_cave(grid_h, grid_w, rng)
-            grid[rock] = 4
-            grid[dirt] = 2
+            # Criamos uma máscara de "chão de caverna"
+            is_cave_floor = (grid == 0) | (grid == 1)
+            
+            # 1. ROCHAS GRANDES (Paredes)
+            # Aumentamos o density para criar obstáculos que forçam um "labirinto"
+            self._place_sprites(canvas, rng, self.misc_sprites, occ, tile_px, 
+                                attempts=3000, density=0.15, allowed_anchor=is_cave_floor)
+            
+            # 2. DETRITOS E PEDREULHOS (Chão sujo)
+            # Use sprites menores de pedras para dar textura ao chão cinza
+            self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, 
+                                attempts=2000, density=0.05, allowed_anchor=is_cave_floor)
 
         else:
             # Fallback
@@ -769,9 +797,9 @@ class BiomeGenerator:
             canvas.alpha_composite(im, (xx * tile_px, yy * tile_px))
 
         # --- Ground layer ---
-        for yy in range(grid_h):
-            for xx in range(grid_w):
-                t = int(grid[yy, xx])
+        for y in range(grid_h):
+            for x in range(grid_w):
+                t = int(grid[y, x])
 
                 # --- LÓGICA DE ÁGUA OTIMIZADA (LAGO QUADRADO + ROTAÇÃO) ---
                 if t == 5:
@@ -865,7 +893,7 @@ class BiomeGenerator:
 
                 elif t == 2:  # Dirt
                     tile = self.light_dirt_atlas.pick_any(rng)
-                    blit_tile(xx, yy, self._crop_atlas_tile(self.light_dirt_atlas, tile, tile_px))
+                    canvas.alpha_composite(self._crop_atlas_tile(self.light_dirt_atlas, tile, tile_px), (x * tile_px, y * tile_px))
 
                 elif t == 3:  # Sand
                     if self.wet_sand_tiles and self.dry_sand_tiles:
@@ -895,25 +923,25 @@ class BiomeGenerator:
                     blit_tile(xx, yy, sand_im)
 
                 elif t == 4:  # Rock
-                    if getattr(self, "rock_floor", None) is not None and getattr(self.rock_floor, "plain", None):
-                        tilep = self.rock_floor.pick_plain(rng)
-                        rock_im = self._load_resized(tilep, tile_px, force_tile=True)
-                        if rock_im is None:
-                            rock_im = Image.new("RGBA", (tile_px, tile_px), (0, 0, 0, 0))
-                        blit_tile(xx, yy, rock_im)
+                    # Verifica se toca no chão da caverna (t=2)
+                    def is_floor(v): return v == 2
+                    mask = self._mask4(grid, y, x, is_floor)
+                    
+                    if mask > 0 and self.dirt_rock_edge.masks:
+                        tilep = self.dirt_rock_edge.pick_mask(mask, rng)
+                        img = self._load_resized(tilep, tile_px, force_tile=True)
+                        canvas.alpha_composite(img, (x * tile_px, y * tile_px))
                     else:
-                        tile = self.light_dirt_atlas.pick_any(rng)
-                        blit_tile(xx, yy, self._crop_atlas_tile(self.light_dirt_atlas, tile, tile_px))
+                        tilep = self.rock_floor.pick_plain(rng)
+                        canvas.alpha_composite(self._load_resized(tilep, tile_px, force_tile=True), (x * tile_px, y * tile_px))
 
-                else:  # Grass (0)
-                    tile = self.grass_atlas.pick_any(rng)
-                    blit_tile(xx, yy, self._crop_atlas_tile(self.grass_atlas, tile, tile_px))
+                elif t == 2: # Chão da Caverna / Dirt
+                    tile = self.light_dirt_atlas.pick_any(rng)
+                    canvas.alpha_composite(self._crop_atlas_tile(self.light_dirt_atlas, tile, tile_px), (x * tile_px, y * tile_px))
 
         # --- Overlay layer ---
-        occ = np.zeros((grid_h, grid_w), dtype=bool)
-
-        is_water = grid == 5
-        is_land = ~is_water
+      occ = np.zeros((grid_h, grid_w), dtype=bool)
+        is_land = (grid != 5)
 
         # Rocks
         rock_density = 0.030 if biome == "sea" else 0.020
@@ -996,7 +1024,12 @@ class BiomeGenerator:
             self._place_sprites(canvas, rng, self.misc_sprites, occ, tile_px, attempts=1600, density=0.015, allowed_anchor=is_land)
 
         elif biome == "cave":
-            self._place_sprites(canvas, rng, self.misc_sprites, occ, tile_px, attempts=2500, density=0.03, allowed_anchor=is_land)
+            is_floor = (grid == 2)
+            # Rochas grandes (Obstáculos)
+            self._place_sprites(canvas, rng, self.misc_sprites, occ, tile_px, attempts=3500, density=0.12, allowed_anchor=is_floor)
+            # Cristais/Cogumelos (Usando flower_sprites como proxy)
+            self._place_sprites(canvas, rng, self.flower_sprites, occ, tile_px, attempts=1000, density=0.04, allowed_anchor=is_floor)
+            canvas = self.apply_cave_lighting(canvas)
 
         elif biome == "center_lake":
             # 1. Definimos o que é terra firme para poder plantar as coisas
