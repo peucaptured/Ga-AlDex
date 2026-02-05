@@ -940,7 +940,7 @@ class BiomeGenerator:
                     canvas.alpha_composite(self._crop_atlas_tile(self.light_dirt_atlas, tile, tile_px), (x * tile_px, y * tile_px))
 
         # --- Overlay layer ---
-      occ = np.zeros((grid_h, grid_w), dtype=bool)
+        occ = np.zeros((grid_h, grid_w), dtype=bool)
         is_land = (grid != 5)
 
         # Rocks
