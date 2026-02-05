@@ -655,13 +655,33 @@ class BiomeGenerator:
             sand, damp = self._make_desert(grid_h, grid_w, rng)
             grid[sand] = 3; damp_mask = damp.astype(np.bool_)
         elif biome == "cave":
-            # [ARENA GENERATION] Cria uma arena quadrada/retangular
-            grid.fill(4) # Preenche com parede (Rock)
-            margin = 5   # Margem do muro
+            # [ARENA GENERATION] Arena limpa: muro (rock) + interior (chão) com predominância de light_dirt
+            grid.fill(4)  # parede (rock)
+
+            # Margem adaptativa: evita arena "sumir" em mapas pequenos
+            margin = max(2, min(6, grid_w // 6))
+
+            # Interior base: light_dirt (t=2) predominante
             for y in range(margin, grid_h - margin):
                 for x in range(margin, grid_w - margin):
-                    grid[y, x] = 3 # Preenche o centro com Sand (Areia/Chão)
-            # Sem noise, apenas a arena limpa
+                    grid[y, x] = 2  # light_dirt
+
+            # Faixa de sand (t=3) colada no muro por dentro (como "areia perto da parte marrom")
+            ring = 1
+            for y in range(margin, grid_h - margin):
+                for x in range(margin, grid_w - margin):
+                    if (y - margin) < ring or (grid_h - margin - 1 - y) < ring or (x - margin) < ring or (grid_w - margin - 1 - x) < ring:
+                        grid[y, x] = 3  # sand
+
+            # Patches suaves de sand dentro do interior (pouco), mantendo maior predominância de light_dirt
+            # (mistura leve para dar textura sem "sopa")
+            noise = value_noise(grid_h, grid_w, rng, scale=10, blur=2)
+            inner = (slice(margin + ring, grid_h - margin - ring), slice(margin + ring, grid_w - margin - ring))
+            if (grid_h - 2*(margin+ring)) > 2 and (grid_w - 2*(margin+ring)) > 2:
+                patch = noise[inner] > 0.82  # ~18% dos tiles internos viram sand (ajustável)
+                grid_inner = grid[inner]
+                grid_inner[patch] = 3
+                grid[inner] = grid_inner
         else:
             grid[:, :] = 0
 
@@ -788,24 +808,56 @@ class BiomeGenerator:
             self._place_sprites(canvas, rng, self.misc_sprites, occ, tile_px, attempts=1600, density=0.015, allowed_anchor=is_land)
 
         elif biome == "cave":
-            # Chão agora é t=3 (Sand)
-            is_floor = (grid == 3)
-            
-            # [LIMIT ASSETS] Apenas cave_sprites, separados por tamanho
-            cave_small = [s for s in self.cave_sprites if s.tiles_w <= 1 and s.tiles_h <= 1]
+            # Chão (interior) é t=2 (light_dirt) e t=3 (sand)
+            is_floor = (grid == 2) | (grid == 3)
+
+            # [LIMIT ASSETS] Apenas cave_sprites, mas reduzindo "pedrões" 1x1 que saturam o mapa.
+            cave_1x1 = [s for s in self.cave_sprites if s.tiles_w == 1 and s.tiles_h == 1]
             cave_big = [s for s in self.cave_sprites if s.tiles_w > 1 or s.tiles_h > 1]
 
-            # [REDUCE QUANTITY] Densidade muito baixa
-            # Objetos Grandes (Ex: Pedras grandes)
+            # Cache para evitar reabrir PNGs repetidamente
+            if not hasattr(self, "_alpha_ratio_cache"):
+                self._alpha_ratio_cache = {}
+
+            def alpha_ratio(sprite) -> float:
+                # SpriteEntry tem image_path
+                pth = getattr(sprite, "image_path", None)
+                if not pth:
+                    return 1.0
+                if pth in self._alpha_ratio_cache:
+                    return self._alpha_ratio_cache[pth]
+                im = Image.open(pth).convert("RGBA")
+                a = np.array(im.split()[-1])
+                r = float((a > 10).mean())
+                self._alpha_ratio_cache[pth] = r
+                return r
+
+            cave_decal: List[Any] = []
+            cave_boulder1x1: List[Any] = []
+            for s in cave_1x1:
+                # Decals são mais "vazios" (pouca área opaca). Pedrões 1x1 têm alpha alto.
+                if alpha_ratio(s) < 0.22:
+                    cave_decal.append(s)
+                else:
+                    cave_boulder1x1.append(s)
+
+            # [REDUCE QUANTITY] bem menos coisas (como pedido)
+            # 1) Pouquíssimos objetos grandes multi-tile
             self._place_sprites(
-                canvas, rng, cave_big, occ, tile_px, 
-                attempts=30, density=0.01, allowed_anchor=is_floor, force_fit=True
+                canvas, rng, cave_big, occ, tile_px,
+                attempts=12, density=0.004, allowed_anchor=is_floor, force_fit=True
             )
 
-            # Objetos Pequenos (Ex: Detalhes do chão)
+            # 2) Raros pedrões 1x1
             self._place_sprites(
-                canvas, rng, cave_small, occ, tile_px, 
-                attempts=1000, density=0.04, allowed_anchor=is_floor, force_fit=True
+                canvas, rng, cave_boulder1x1, occ, tile_px,
+                attempts=45, density=0.006, allowed_anchor=is_floor, force_fit=True
+            )
+
+            # 3) Alguns decals de chão (bem pouco)
+            self._place_sprites(
+                canvas, rng, cave_decal, occ, tile_px,
+                attempts=140, density=0.012, allowed_anchor=is_floor, force_fit=True
             )
 
         elif biome == "center_lake":
