@@ -823,7 +823,11 @@ class BiomeGenerator:
                     if biome != "desert" and biome != "cave":
                          sand_im = self._apply_grass_sand_transition(grid, x, y, tile_px, rng, sand_im)
                     
-                    blit_tile(x, y, sand_im)
+                    blit_tile(x, y, sand_im)  
+                elif t == 0:
+                    # Grass (base)
+                    tile = self.grass_atlas.pick_any(rng)
+                    blit_tile(x, y, self._crop_atlas_tile(self.grass_atlas, tile, tile_px))
 
                 elif t == 4:  # Rock / Wall
                     # Desenha um chão base para não ficar buraco
@@ -880,10 +884,11 @@ class BiomeGenerator:
         is_land = (grid != 5)
 
         # Rocks gerais
+        # Rocks gerais (fora do prairie, porque o prairie terá rocks próprios)
         rock_density = 0.030 if biome == "sea" else 0.020
-        # Na caverna, não usamos rocks_sprites, usamos apenas cave_sprites
-        if biome != "cave":
-             self._place_sprites(canvas, rng, self.rocks_sprites, occ, tile_px, attempts=1600, density=rock_density, allowed_anchor=is_land)
+        if biome not in ("cave", "prairie"):
+            self._place_sprites(canvas, rng, self.rocks_sprites, occ, tile_px,
+                                attempts=1600, density=rock_density, allowed_anchor=is_land)
 
         if biome == "forest":
             is_light_grass = grid == 0; is_dark_grass = grid == 1; is_any_grass = is_light_grass | is_dark_grass
@@ -894,9 +899,22 @@ class BiomeGenerator:
 
         elif biome == "prairie":
             is_grass = grid == 0
-            self._place_sprites(canvas, rng, self.flower_sprites, occ, tile_px, attempts=4500, density=0.08, allowed_anchor=is_grass)
-            self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px, attempts=3500, density=0.05, allowed_anchor=is_grass)
-            self._place_sprites(canvas, rng, self.forest_shrubs, occ, tile_px, attempts=1200, density=0.01, allowed_anchor=is_grass)
+
+            # Flowers (mais presentes)
+            self._place_sprites(canvas, rng, self.flower_sprites, occ, tile_px,
+                                attempts=7000, density=0.12, allowed_anchor=is_grass)
+
+            # Foliage (complemento)
+            self._place_sprites(canvas, rng, self.foliage_sprites, occ, tile_px,
+                                attempts=4000, density=0.06, allowed_anchor=is_grass)
+
+            # Shrubs (pouco, pra não virar floresta)
+            self._place_sprites(canvas, rng, self.forest_shrubs, occ, tile_px,
+                                attempts=1400, density=0.012, allowed_anchor=is_grass)
+
+            # Rocks (pasta rocks/rocha) — só no prairie
+            self._place_sprites(canvas, rng, self.rocks_sprites, occ, tile_px,
+                                attempts=2600, density=0.035, allowed_anchor=is_grass)
 
         elif biome == "dirt":
             is_grass = grid == 0
