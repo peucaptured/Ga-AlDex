@@ -231,7 +231,10 @@ class BiomeGenerator:
         self.grass_atlas = AtlasTileSet(self.root / "grass", "grass.json")
         self.dark_grass_atlas = AtlasTileSet(self.root / "dark_grass", "dark_grass.json")
         self.light_dirt_atlas = AtlasTileSet(self.root / "light_dirt", "light_dirt.json")
+        # NOTE: some code paths refer to this as `sand_atlas`.
+        # Keep a stable attribute name to avoid AttributeError.
         self.sand_atlas = AtlasTileSet(self.root / "sand", "sand.json")
+        self.sand = self.sand_atlas
         self.dark_grass_light_grass = AtlasTileSet(self.root / "dark_grass_light_grass", "dark_grass_light_grass.json")
         self.wet_sand_tiles, self.dry_sand_tiles = self._load_wetdry_sand()
 
@@ -655,36 +658,40 @@ class BiomeGenerator:
             sand, damp = self._make_desert(grid_h, grid_w, rng)
             grid[sand] = 3; damp_mask = damp.astype(np.bool_)
         elif biome == "cave":
-            # [ARENA GENERATION] Arena com muro (t=4) e chão misto (t=2 light_dirt + t=3 sand)
-            grid.fill(4)  # parede (rock)
+            # [ARENA GENERATION]
+            # 4 = wall, 2 = light_dirt floor (predominant), 3 = sand accents near the wall.
+            # Goal:
+            # - Walls surround the arena.
+            # - Inside is mostly light_dirt.
+            # - A 1-tile sand band hugs the wall on the inside ("na parte marrom sempre sand perto").
+            grid.fill(4)
 
-            # margin adaptativo para não "quebrar" em grids pequenos
-            margin = max(2, min(6, grid_w // 6, grid_h // 6))
+            cave_margin = max(2, min(6, grid_w // 6))
 
-            # interior base: predominância de light_dirt (t=2)
-            for y in range(margin, grid_h - margin):
-                for x in range(margin, grid_w - margin):
+            # Interior base: light_dirt
+            for y in range(cave_margin, grid_h - cave_margin):
+                for x in range(cave_margin, grid_w - cave_margin):
                     grid[y, x] = 2
 
-            # faixa de sand (t=3) encostada no muro por dentro (1 tile de espessura)
-            ring = 1
-            y0, y1 = margin, grid_h - margin - 1
-            x0, x1 = margin, grid_w - margin - 1
-            for x in range(x0, x1 + 1):
-                grid[y0, x] = 3
-                grid[y1, x] = 3
-            for y in range(y0, y1 + 1):
-                grid[y, x0] = 3
-                grid[y, x1] = 3
+            # Sand band hugging the wall (inside ring)
+            inner0 = cave_margin
+            inner1 = grid_h - cave_margin - 1
+            innerL = cave_margin
+            innerR = grid_w - cave_margin - 1
+            for x in range(innerL, innerR + 1):
+                grid[inner0, x] = 3
+                grid[inner1, x] = 3
+            for y in range(inner0, inner1 + 1):
+                grid[y, innerL] = 3
+                grid[y, innerR] = 3
 
-            # patches discretos de sand no interior (bem pouco), para evitar 'sopa'
-            # (mantém predominância de light_dirt)
-            if (x1 - x0) >= 4 and (y1 - y0) >= 4:
-                sand_noise = value_noise(grid_h, grid_w, rng, scale=10, blur=2)
-                inner = (slice(y0 + ring + 1, y1 - ring), slice(x0 + ring + 1, x1 - ring))
-                # ~10% do miolo vira sand
-                grid_inner = sand_noise[inner] > 0.90
-                grid[inner][grid_inner] = 3
+            # A few subtle sand patches in the interior (very low), keep predominance of light_dirt.
+            # Avoid near-wall band so the ring stays clean.
+            for _ in range(max(1, (grid_w * grid_h) // 180)):
+                yy = rng.randint(cave_margin + 2, grid_h - cave_margin - 3)
+                xx = rng.randint(cave_margin + 2, grid_w - cave_margin - 3)
+                if rng.random() < 0.35:
+                    grid[yy, xx] = 3
         else:
             grid[:, :] = 0
 
@@ -775,6 +782,27 @@ class BiomeGenerator:
                     if mask > 0 and self.dirt_rock_edge.masks:
                         tilep = self.dirt_rock_edge.pick_mask(mask, rng)
                         img = self._load_resized(tilep, tile_px, force_tile=True)
+
+                        # --- Orientation fix for cave arena walls ---
+                        # The dirt_rock_edge source tiles are "horizontal" (dirt on top, rock on bottom).
+                        # We rotate them so the brown/dirt side always faces the arena interior.
+                        # - If interior is SOUTH (floor below): this is the TOP wall -> rotate 180
+                        # - If interior is NORTH (floor above): this is the BOTTOM wall -> rotate 0
+                        # - If interior is EAST  (floor right): this is the LEFT wall -> rotate CCW ("to the left")
+                        # - If interior is WEST  (floor left):  this is the RIGHT wall -> rotate CW  ("to the right")
+                        rot_angle = 0
+                        if y < grid_h - 1 and is_floor(int(grid[y + 1, x])):  # interior below
+                            rot_angle = 180
+                        elif y > 0 and is_floor(int(grid[y - 1, x])):  # interior above
+                            rot_angle = 0
+                        elif x < grid_w - 1 and is_floor(int(grid[y, x + 1])):  # interior right
+                            rot_angle = 90  # CCW
+                        elif x > 0 and is_floor(int(grid[y, x - 1])):  # interior left
+                            rot_angle = -90  # CW
+
+                        if img is not None and rot_angle != 0:
+                            img = img.rotate(rot_angle, resample=Image.NEAREST, expand=False)
+
                         canvas.alpha_composite(img, (x * tile_px, y * tile_px))
                     else:
                         tilep = self.rock_floor.pick_plain(rng)
@@ -811,47 +839,60 @@ class BiomeGenerator:
             self._place_sprites(canvas, rng, self.misc_sprites, occ, tile_px, attempts=1600, density=0.015, allowed_anchor=is_land)
 
         elif biome == "cave":
-            # Chão da arena: t=2 (light_dirt) predominante + t=3 (sand)
-            is_floor = (grid == 2) | (grid == 3)
+            # Use ONLY cave_overlay sprites and keep them focused in the CENTER of the arena,
+            # not on the sand band near the walls.
+            is_floor_any = (grid == 2) | (grid == 3)
 
-            # Separar 1x1 "decal" (pouca área opaca) de 1x1 "pedrão"
+            # Build a "center-only" mask (avoid borders + avoid the sand ring).
+            # We reconstruct the margin with the same rule used above.
+            cave_margin = max(2, min(6, grid_w // 6))
+            center = np.zeros((grid_h, grid_w), dtype=bool)
+            y0 = cave_margin + 2
+            y1 = grid_h - cave_margin - 3
+            x0 = cave_margin + 2
+            x1 = grid_w - cave_margin - 3
+            if y1 >= y0 and x1 >= x0:
+                center[y0:y1+1, x0:x1+1] = True
+
+            # Exclude sand ring (t==3) so decorations are not hugging walls.
+            allowed_anchor = is_floor_any & center & (grid != 3)
+
+            # Separate 1x1 decals (low alpha coverage) from 1x1 boulders to avoid "rock soup".
             if not hasattr(self, "_alpha_ratio_cache"):
                 self._alpha_ratio_cache = {}
 
-            def alpha_ratio(sprite) -> float:
-                key = getattr(sprite, "image_path", None) or getattr(sprite, "path", None) or str(sprite)
-                if key in self._alpha_ratio_cache:
-                    return self._alpha_ratio_cache[key]
-                im = Image.open(sprite.image_path).convert("RGBA")
-                a = np.array(im.split()[-1])
-                r = float((a > 10).mean())
-                self._alpha_ratio_cache[key] = r
+            def alpha_ratio(sp: Sprite) -> float:
+                k = str(sp.path)
+                if k in self._alpha_ratio_cache:
+                    return self._alpha_ratio_cache[k]
+                try:
+                    im = Image.open(sp.path).convert("RGBA")
+                    a = np.array(im.split()[-1])
+                    r = float((a > 10).mean())
+                except Exception:
+                    r = 0.0
+                self._alpha_ratio_cache[k] = r
                 return r
 
             cave_1x1 = [s for s in self.cave_sprites if s.tiles_w == 1 and s.tiles_h == 1]
-            cave_big = [s for s in self.cave_sprites if (s.tiles_w > 1 or s.tiles_h > 1)]
+            cave_big = [s for s in self.cave_sprites if s.tiles_w > 1 or s.tiles_h > 1]
 
-            cave_decal: List[Any] = []
-            cave_boulder1x1: List[Any] = []
+            cave_decal: List[Sprite] = []
+            cave_boulder1x1: List[Sprite] = []
             for s in cave_1x1:
                 if alpha_ratio(s) < 0.22:
                     cave_decal.append(s)
                 else:
                     cave_boulder1x1.append(s)
 
-            # [REDUCE QUANTITY] Bem menos assets (mapa mais limpo)
-            self._place_sprites(
-                canvas, rng, cave_big, occ, tile_px,
-                attempts=12, density=0.004, allowed_anchor=is_floor, force_fit=True
-            )
-            self._place_sprites(
-                canvas, rng, cave_boulder1x1, occ, tile_px,
-                attempts=45, density=0.006, allowed_anchor=is_floor, force_fit=True
-            )
-            self._place_sprites(
-                canvas, rng, cave_decal, occ, tile_px,
-                attempts=160, density=0.012, allowed_anchor=is_floor, force_fit=True
-            )
+            # Very reduced quantities (center only).
+            self._place_sprites(canvas, rng, cave_big, occ, tile_px,
+                                attempts=14, density=0.004, allowed_anchor=allowed_anchor, force_fit=True)
+            self._place_sprites(canvas, rng, cave_boulder1x1, occ, tile_px,
+                                attempts=40, density=0.006, allowed_anchor=allowed_anchor, force_fit=True)
+            self._place_sprites(canvas, rng, cave_decal, occ, tile_px,
+                                attempts=120, density=0.012, allowed_anchor=allowed_anchor, force_fit=True)
+
         elif biome == "center_lake":
             is_land = (grid == 0) | (grid == 1) | (grid == 2)
             self._place_sprites(canvas, rng, self.flower_sprites, occ, tile_px, attempts=4000, density=0.12, allowed_anchor=is_land)
