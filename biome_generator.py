@@ -182,25 +182,69 @@ class Sprite:
 def load_sprite_entries(json_path: Path, base_dir: Path, tile_raw_px: int) -> List[Sprite]:
     if not json_path.exists():
         return []
+
     data = json.loads(json_path.read_text(encoding="utf-8"))
-    entries = data.get("entries") or []
+
+    # Suporta dois formatos:
+    # 1) {"entries":[{"file":"x.png","w":..,"h":..,"pivot":{"x":..,"y":..}}]}
+    # 2) {"sprites":[{"name":"x.png","width":..,"height":..}]}
+    entries = data.get("entries")
+    if entries is None:
+        sprites = data.get("sprites") or []
+        entries = []
+        for s in sprites:
+            entries.append({
+                "file": s.get("file") or s.get("name"),
+                "w": s.get("w") or s.get("width") or 0,
+                "h": s.get("h") or s.get("height") or 0,
+                # pivot opcional (se não existir, usamos defaults abaixo)
+                "pivot": s.get("pivot") or {},
+            })
+
     out: List[Sprite] = []
     for e in entries:
         file_rel = e.get("file")
         if not file_rel:
             continue
+
+        # caminho principal
         p = base_dir / file_rel
+
+        # fallback 1: só o basename
         if not p.exists():
             p = base_dir / Path(file_rel).name
+
+        # fallback 2: se JSON fala sprite_XXX mas a pasta tem cave_XXX
+        if not p.exists():
+            name = Path(file_rel).name
+            if name.startswith("sprite_"):
+                alt = "cave_" + name[len("sprite_"):]
+                p2 = base_dir / alt
+                if p2.exists():
+                    p = p2
+
+        # se ainda não existe, ignora essa entrada
+        if not p.exists():
+            continue
+
         w = int(e.get("w", 0))
         h = int(e.get("h", 0))
         piv = e.get("pivot") or {}
+
         pivot_x = int(piv.get("x", max(1, w // 2)))
         pivot_y = int(piv.get("y", max(1, h)))
+
         tiles_w = max(1, int(round(w / tile_raw_px)))
         tiles_h = max(1, int(round(h / tile_raw_px)))
-        out.append(Sprite(path=p, w=w, h=h, pivot_x=pivot_x, pivot_y=pivot_y, tiles_w=tiles_w, tiles_h=tiles_h))
+
+        out.append(Sprite(
+            path=p, w=w, h=h,
+            pivot_x=pivot_x, pivot_y=pivot_y,
+            tiles_w=tiles_w, tiles_h=tiles_h
+        ))
+
     return out
+
 
 
 def alpha_bbox(im: Image.Image) -> Tuple[int, int, int, int]:
