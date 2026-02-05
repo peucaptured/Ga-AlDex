@@ -10,7 +10,11 @@ Updates vs previous version:
   - Classifies forest overlays into tree vs shrub by analyzing sprite alpha bbox.
   - Places more overlays to make maps "alive" while keeping rules: only foam on water.
 - Multi-tile overlay placement with occupancy grid (supports 2+ tile objects).
-- Cave biome fixed: proper floor rendering, removed darkness, specific assets sized max 2x2.
+- Cave biome SPECIFIC update:
+  - Generates a clean ARENA (rectangular floor surrounded by walls).
+  - Uses 'sand' assets for the floor (interior).
+  - Uses 'dirt_rock_edge' for walls, with brown/dirt edge facing the sand interior.
+  - ONLY uses 'cave_overlay' assets for decoration, with reduced quantity.
 
 Dependencies: pillow, numpy
 """
@@ -209,7 +213,7 @@ class BiomeGenerator:
     """
 
     def apply_cave_lighting(self, canvas: Image.Image) -> Image.Image:
-        # [REMOVIDO A PEDIDO DO USUÁRIO] - Iluminação desativada
+        # [REMOVIDO] - Sem iluminação escura
         return canvas
 
     def __init__(self, assets_root: str | Path = DEFAULT_ASSETS_ROOT):
@@ -253,7 +257,7 @@ class BiomeGenerator:
         self.misc_sprites = load_sprite_entries(
             self.root / "overlays_and_objects" / "asset.json", self.root / "overlays_and_objects", self.tile_raw_px
         )
-        # [NOVO] Assets específicos da caverna
+        # Assets específicos da caverna
         self.cave_sprites = load_sprite_entries(
             self.root / "cave_overlay" / "cave_overlay.json", self.root / "cave_overlay", self.tile_raw_px
         )
@@ -651,9 +655,13 @@ class BiomeGenerator:
             sand, damp = self._make_desert(grid_h, grid_w, rng)
             grid[sand] = 3; damp_mask = damp.astype(np.bool_)
         elif biome == "cave":
-            rock, dirt = self._make_cave(grid_h, grid_w, rng)
-            grid[rock] = 4
-            grid[dirt] = 2
+            # [ARENA GENERATION] Cria uma arena quadrada/retangular
+            grid.fill(4) # Preenche com parede (Rock)
+            margin = 5   # Margem do muro
+            for y in range(margin, grid_h - margin):
+                for x in range(margin, grid_w - margin):
+                    grid[y, x] = 3 # Preenche o centro com Sand (Areia/Chão)
+            # Sem noise, apenas a arena limpa
         else:
             grid[:, :] = 0
 
@@ -715,39 +723,32 @@ class BiomeGenerator:
                     tile = self.light_dirt_atlas.pick_any(rng)
                     canvas.alpha_composite(self._crop_atlas_tile(self.light_dirt_atlas, tile, tile_px), (x * tile_px, y * tile_px))
 
-                elif t == 3:
-                    if self.wet_sand_tiles and self.dry_sand_tiles:
-                        if biome == "sea" and dist_to_land is not None:
-                            use_wet = float(dist_to_land[y, x]) <= 1.5
-                            tilep = rng.choice(self.wet_sand_tiles if use_wet else self.dry_sand_tiles)
-                            sand_im = self._load_resized(tilep, tile_px, force_tile=True)
-                        elif biome == "desert" and damp_mask is not None:
-                            use_wet = bool(damp_mask[y, x])
-                            if rng.random() < 0.15: use_wet = not use_wet
-                            tilep = rng.choice(self.wet_sand_tiles if use_wet else self.dry_sand_tiles)
-                            sand_im = self._load_resized(tilep, tile_px, force_tile=True)
-                        else:
-                            tile = self.sand_atlas.pick_any(rng)
-                            sand_im = self._crop_atlas_tile(self.sand_atlas, tile, tile_px)
-                    else:
-                        tile = self.sand_atlas.pick_any(rng)
-                        sand_im = self._crop_atlas_tile(self.sand_atlas, tile, tile_px)
+                elif t == 3: # Sand
+                    # [SAND LOGIC] Sempre usa sand_atlas para t=3
+                    tile = self.sand_atlas.pick_any(rng)
+                    sand_im = self._crop_atlas_tile(self.sand_atlas, tile, tile_px)
+                    
                     if sand_im is None: sand_im = Image.new("RGBA", (tile_px, tile_px), (0, 0, 0, 0))
-                    if biome != "desert":
-                        sand_im = self._apply_grass_sand_transition(grid, x, y, tile_px, rng, sand_im)
+                    
+                    # Se for deserto ou caverna, não faz transição de grama.
+                    if biome != "desert" and biome != "cave":
+                         sand_im = self._apply_grass_sand_transition(grid, x, y, tile_px, rng, sand_im)
+                    
                     blit_tile(x, y, sand_im)
 
-                elif t == 4:  # Rock (Cave Wall)
-                    # [FIX 1] Desenha SEMPRE o chão (dirt) embaixo antes de desenhar a parede/borda
-                    # Isso evita buracos transparentes se o tile de borda tiver transparência.
+                elif t == 4:  # Rock / Wall
+                    # Desenha um chão base para não ficar buraco
                     base_tile = self.light_dirt_atlas.pick_any(rng)
                     base_im = self._crop_atlas_tile(self.light_dirt_atlas, base_tile, tile_px)
                     canvas.alpha_composite(base_im, (x * tile_px, y * tile_px))
 
-                    # Verifica se toca no chão da caverna (t=2)
-                    def is_floor(v): return v == 2
+                    # Verifica se toca no chão (na caverna o chão agora é t=3 Sand)
+                    def is_floor(v): return v == 3 or v == 2
                     mask = self._mask4(grid, y, x, is_floor)
                     
+                    # [WALL LOGIC] Se for borda (mask > 0), usa dirt_rock_edge
+                    # A lógica do dirt_rock_edge é: Rock (pedra) fora, Dirt (terra/marrom) na borda tocando o vizinho.
+                    # Isso satisfaz: "Pedra virada parede e terra virada interior".
                     if mask > 0 and self.dirt_rock_edge.masks:
                         tilep = self.dirt_rock_edge.pick_mask(mask, rng)
                         img = self._load_resized(tilep, tile_px, force_tile=True)
@@ -762,7 +763,9 @@ class BiomeGenerator:
 
         # Rocks gerais
         rock_density = 0.030 if biome == "sea" else 0.020
-        self._place_sprites(canvas, rng, self.rocks_sprites, occ, tile_px, attempts=1600, density=rock_density, allowed_anchor=is_land)
+        # Na caverna, não usamos rocks_sprites, usamos apenas cave_sprites
+        if biome != "cave":
+             self._place_sprites(canvas, rng, self.rocks_sprites, occ, tile_px, attempts=1600, density=rock_density, allowed_anchor=is_land)
 
         if biome == "forest":
             is_light_grass = grid == 0; is_dark_grass = grid == 1; is_any_grass = is_light_grass | is_dark_grass
@@ -785,26 +788,25 @@ class BiomeGenerator:
             self._place_sprites(canvas, rng, self.misc_sprites, occ, tile_px, attempts=1600, density=0.015, allowed_anchor=is_land)
 
         elif biome == "cave":
-            is_floor = (grid == 2)
+            # Chão agora é t=3 (Sand)
+            is_floor = (grid == 3)
             
-            # [FIX 3 & 4] Separa e posiciona assets da cave_overlay
-            # Pequenos (1x1) vs Grandes (maior que 1x1)
+            # [LIMIT ASSETS] Apenas cave_sprites, separados por tamanho
             cave_small = [s for s in self.cave_sprites if s.tiles_w <= 1 and s.tiles_h <= 1]
             cave_big = [s for s in self.cave_sprites if s.tiles_w > 1 or s.tiles_h > 1]
 
-            # Objetos Grandes: Densidade BAIXA (0.02) e force_fit=True (clamp max 2x2)
+            # [REDUCE QUANTITY] Densidade muito baixa
+            # Objetos Grandes (Ex: Pedras grandes)
             self._place_sprites(
                 canvas, rng, cave_big, occ, tile_px, 
-                attempts=50, density=0.02, allowed_anchor=is_floor, force_fit=True
+                attempts=30, density=0.01, allowed_anchor=is_floor, force_fit=True
             )
 
-            # Objetos Pequenos: Densidade ALTA (0.08) e force_fit=True (garante que não vazam)
+            # Objetos Pequenos (Ex: Detalhes do chão)
             self._place_sprites(
                 canvas, rng, cave_small, occ, tile_px, 
-                attempts=2000, density=0.08, allowed_anchor=is_floor, force_fit=True
+                attempts=1000, density=0.04, allowed_anchor=is_floor, force_fit=True
             )
-            
-            # [FIX 2] Iluminação removida
 
         elif biome == "center_lake":
             is_land = (grid == 0) | (grid == 1) | (grid == 2)
