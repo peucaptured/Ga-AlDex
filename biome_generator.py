@@ -678,7 +678,10 @@ class BiomeGenerator:
             # - A 1-tile sand band hugs the wall on the inside ("na parte marrom sempre sand perto").
             grid.fill(4)
 
-            cave_margin = max(2, min(6, grid_w // 6))
+            # Keep the cave "wall" as a SINGLE tile-thick ring at the very edge of the map.
+            # This ensures the rotated dirt_rock_edge tiles become the OUTERMOST rows/cols,
+            # forming the cave "muro" exactly as requested.
+            cave_margin = 1
 
             # Interior base: light_dirt
             for y in range(cave_margin, grid_h - cave_margin):
@@ -817,25 +820,16 @@ class BiomeGenerator:
 
                         canvas.alpha_composite(img, (x * tile_px, y * tile_px))
                     else:
-                        # Interior rock (mask==0) should NOT use dirt_rock_edge; otherwise it creates a second
-                        # "margin ring" inside the cave walls. Use a plain rock tile for solid wall mass.
-                        tilep = None
-                        if getattr(self.rock_floor, "plain", None) or getattr(self.rock_floor, "masks", None):
-                            try:
-                                tilep = self.rock_floor.pick_plain(rng)
-                            except Exception:
-                                tilep = self.rock_floor.pick_any(rng)
-                        elif getattr(self.dirt_rock_edge, "plain", None) or getattr(self.dirt_rock_edge, "masks", None):
-                            # Fallback only if rock_floor is missing.
+                        # Use dirt_rock_edge even when mask==0 to keep the border exclusively from that set.
+                        if getattr(self.dirt_rock_edge, "plain", None) or getattr(self.dirt_rock_edge, "masks", None):
                             try:
                                 tilep = self.dirt_rock_edge.pick_plain(rng)
                             except Exception:
                                 tilep = self.dirt_rock_edge.pick_any(rng)
-
-                        im2 = self._load_resized(tilep, tile_px, force_tile=True) if tilep else None
-                        if im2 is None:
-                            im2 = Image.new("RGBA", (tile_px, tile_px), (0, 0, 0, 0))
-                        canvas.alpha_composite(im2, (x * tile_px, y * tile_px))
+                            canvas.alpha_composite(self._load_resized(tilep, tile_px, force_tile=True), (x * tile_px, y * tile_px))
+                        else:
+                            tilep = self.rock_floor.pick_plain(rng)
+                            canvas.alpha_composite(self._load_resized(tilep, tile_px, force_tile=True), (x * tile_px, y * tile_px))
 
         # --- Overlay layer ---
         occ = np.zeros((grid_h, grid_w), dtype=bool)
@@ -874,7 +868,7 @@ class BiomeGenerator:
 
             # Build a "center-only" mask (avoid borders + avoid the sand ring).
             # We reconstruct the margin with the same rule used above.
-            cave_margin = max(2, min(6, grid_w // 6))
+            cave_margin = 1  # must match cave generation above
             center = np.zeros((grid_h, grid_w), dtype=bool)
             y0 = cave_margin + 2
             y1 = grid_h - cave_margin - 3
