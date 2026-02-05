@@ -90,6 +90,18 @@ class TileSet:
             return None
         return rng.choice(opts)
 
+    def pick_any(self, rng: random.Random) -> Path:
+        """Pick any available tile (plain preferred; falls back to any masked variant)."""
+        if self.plain:
+            return rng.choice(self.plain)
+        # Flatten any masked variants
+        all_masked = []
+        for vs in self.masks.values():
+            all_masked.extend(vs)
+        if not all_masked:
+            raise ValueError(f"No tiles available in TileSet '{self.name}'")
+        return rng.choice(all_masked)
+
 
 def load_tileset(dir_path: Path, name: str, tile_raw_px: int) -> TileSet:
     plain: List[Path] = []
