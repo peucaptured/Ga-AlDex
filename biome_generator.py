@@ -796,17 +796,25 @@ class BiomeGenerator:
                         elif y > 0 and is_floor(int(grid[y - 1, x])):  # interior above
                             rot_angle = 0
                         elif x < grid_w - 1 and is_floor(int(grid[y, x + 1])):  # interior right
-                            rot_angle = 90  # CCW
+                            rot_angle = -90  # CW (user requested 180 from previous)
                         elif x > 0 and is_floor(int(grid[y, x - 1])):  # interior left
-                            rot_angle = -90  # CW
+                            rot_angle = 90  # CCW (user requested 180 from previous)
 
                         if img is not None and rot_angle != 0:
                             img = img.rotate(rot_angle, resample=Image.NEAREST, expand=False)
 
                         canvas.alpha_composite(img, (x * tile_px, y * tile_px))
                     else:
-                        tilep = self.rock_floor.pick_plain(rng)
-                        canvas.alpha_composite(self._load_resized(tilep, tile_px, force_tile=True), (x * tile_px, y * tile_px))
+                        # Use dirt_rock_edge even when mask==0 to keep the border exclusively from that set.
+                        if getattr(self.dirt_rock_edge, "plain", None) or getattr(self.dirt_rock_edge, "masks", None):
+                            try:
+                                tilep = self.dirt_rock_edge.pick_plain(rng)
+                            except Exception:
+                                tilep = self.dirt_rock_edge.pick_any(rng)
+                            canvas.alpha_composite(self._load_resized(tilep, tile_px, force_tile=True), (x * tile_px, y * tile_px))
+                        else:
+                            tilep = self.rock_floor.pick_plain(rng)
+                            canvas.alpha_composite(self._load_resized(tilep, tile_px, force_tile=True), (x * tile_px, y * tile_px))
 
         # --- Overlay layer ---
         occ = np.zeros((grid_h, grid_w), dtype=bool)
@@ -856,6 +864,10 @@ class BiomeGenerator:
 
             # Exclude sand ring (t==3) so decorations are not hugging walls.
             allowed_anchor = is_floor_any & center & (grid != 3)
+            # Prevent any overlay from occupying the wall or sand band and keep visuals concentrated in the arena center.
+            occ[~center] = True
+            occ[grid == 4] = True
+            occ[grid == 3] = True
 
             # Separate 1x1 decals (low alpha coverage) from 1x1 boulders to avoid "rock soup".
             if not hasattr(self, "_alpha_ratio_cache"):
