@@ -231,8 +231,8 @@ class BiomeGenerator:
         self.grass_atlas = AtlasTileSet(self.root / "grass", "grass.json")
         self.dark_grass_atlas = AtlasTileSet(self.root / "dark_grass", "dark_grass.json")
         self.light_dirt_atlas = AtlasTileSet(self.root / "light_dirt", "light_dirt.json")
-        self.sand_atlas = AtlasTileSet(self.root / "sand", "sand.json")
-        self.dark_light_trans_atlas = AtlasTileSet(self.root / "dark_grass_light_grass", "dark_grass_light_grass.json")
+        self.sand = AtlasTileSet(self.root / "sand", "sand.json")
+        self.dark_grass_light_grass = AtlasTileSet(self.root / "dark_grass_light_grass", "dark_grass_light_grass.json")
         self.wet_sand_tiles, self.dry_sand_tiles = self._load_wetdry_sand()
 
         # Mask-based transitions/terrains
