@@ -11598,24 +11598,25 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
           border: none !important;
           box-shadow: none !important;
         }
-        /* 1) pinta o container do componente (o mais importante) */
-        div[data-testid="stComponentFrame"]{
-          background: #000 !important;
-          border: none !important;
-          box-shadow: none !important;
-          padding: 0 !important;
-          margin: 0 !important;
-        }
-        
-        /* 2) pinta o iframe também */
-        div[data-testid="stComponentFrame"] iframe,
+        /* IMPORTANTE: só para o st_click_detector (não mexe no seu iframe do compendium) */
+        div[data-testid="stComponentFrame"] iframe[title^="st_click_detector"],
+        div[data-testid="stComponentFrame"] iframe[title*="click_detector"],
         iframe[title^="st_click_detector"],
         iframe[title*="click_detector"]{
-          background: #000 !important;
+          background: transparent !important;
           border: none !important;
+          outline: none !important;
           box-shadow: none !important;
         }
         
+        /* Se o frame (wrapper) estiver aparecendo como “moldura”, deixa transparente também */
+        div[data-testid="stComponentFrame"]:has(iframe[title^="st_click_detector"]),
+        div[data-testid="stComponentFrame"]:has(iframe[title*="click_detector"]){
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+        }
+                
         /* 3) remove padding extra do wrapper do Streamlit */
         div[data-testid="stElementContainer"]{
           padding: 0 !important;
