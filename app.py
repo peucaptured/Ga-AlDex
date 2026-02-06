@@ -52,6 +52,11 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+try:
+    from st_click_detector import click_detector
+except Exception:
+    click_detector = None
+
 
 # ----------------------------
 # Utils
@@ -13465,12 +13470,23 @@ for _, row_g in filtered_df.iterrows():
     ''')
 
 grid_html = "<div class='pokedex-grid'>" + "".join(card_nodes) + "</div>"
+
+try:
+    from st_click_detector import click_detector
+except Exception:
+    click_detector = None
+
+if click_detector is None:
+    st.error("Faltou instalar: st-click-detector (adicione no requirements.txt).")
+    st.stop()
+
 clicked_id = click_detector(grid_html)
 
-if clicked_id is not None:
-    selected_pid = grid_id_map.get(str(clicked_id))
-    if selected_pid:
-        st.session_state["pokedex_selected"] = str(selected_pid)
+if clicked_id:
+    # clicked_id vem como string tipo: "dex_25"
+    pid = str(clicked_id).replace("dex_", "").strip()
+    if pid.isdigit():
+        st.session_state["pokedex_selected"] = int(pid)
         st.rerun()
 
 st.markdown("</div>", unsafe_allow_html=True)
