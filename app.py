@@ -2170,6 +2170,29 @@ iframe {
 }
 
 /* =========================================================
+   IFRAME DO st_click_detector (Custom Component)
+   ========================================================= */
+div[data-testid="stCustomComponentV1"],
+div[data-testid="stCustomComponentV1"] > iframe,
+div[data-testid="stCustomComponentV1"] iframe {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* fallback: se Streamlit usar outro testid */
+div[data-testid="stCustomComponent"],
+div[data-testid="stCustomComponent"] > iframe,
+div[data-testid="stCustomComponent"] iframe {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* fallback geral */
+iframe {
+  background: transparent !important;
+}
+
+/* =========================================================
    2) FONTE RETRÔ E CONTRASTE GLOBAL (FORÇADO)
    ========================================================= */
 /* Aplica a fonte e a cor clara em TODOS os elementos possíveis */
@@ -13434,6 +13457,10 @@ if page == "Pokédex (Busca)":
               background: transparent !important;
               margin: 0 !important;
               padding: 0 !important;
+            }
+            /* o st_click_detector costuma ter um root/wrapper */
+            #root, .root, .container, .main, .app {
+              background: transparent !important;
             }
 
             .pokedex-grid-note {
