@@ -962,59 +962,67 @@ class BiomeGenerator:
             self._place_sprites(canvas, rng, self.misc_sprites, occ, tile_px, attempts=1600, density=0.015, allowed_anchor=is_land)
 
         elif biome == "cave":
-            # Use ONLY cave_overlay sprites and keep them focused in the CENTER of the arena,
-            # not on the sand band near the walls.
-            # em vez de (grid==2)|(grid==3):
-            is_floor_any = (grid != 4) & (grid != 5)   # tudo que não é parede nem água
-            allowed_anchor = is_floor_any & center & (grid != 3)  # se quiser evitar sand
+          # Use ONLY cave_overlay sprites and keep them focused in the CENTER of the arena,
+          # not on the sand band near the walls.
+      
+          cave_margin = 1  # must match cave generation above
+      
+          # 1) cria center PRIMEIRO
+          center = np.zeros((grid_h, grid_w), dtype=bool)
+          y0 = cave_margin + 2
+          y1 = grid_h - cave_margin - 3
+          x0 = cave_margin + 2
+          x1 = grid_w - cave_margin - 3
+          if y1 >= y0 and x1 >= x0:
+              center[y0:y1+1, x0:x1+1] = True
+          else:
+              center[:, :] = True  # fallback se o grid for pequeno
+      
+          # 2) define piso válido
+          is_floor_any = (grid != 4) & (grid != 5)  # tudo que não é parede nem água
+      
+          # 3) agora SIM pode usar center
+          allowed_anchor = is_floor_any & center & (grid != 3)  # evita sand
+      
+          # bloqueia fora do centro e em paredes/areia
+          occ[~center] = True
+          occ[grid == 4] = True
+          occ[grid == 3] = True
+      
+          if not hasattr(self, "_alpha_ratio_cache"):
+              self._alpha_ratio_cache = {}
+      
+          def alpha_ratio(sp: Sprite) -> float:
+              k = str(sp.path)
+              if k in self._alpha_ratio_cache:
+                  return self._alpha_ratio_cache[k]
+              try:
+                  im = Image.open(sp.path).convert("RGBA")
+                  a = np.array(im.split()[-1])
+                  r = float((a > 10).mean())
+              except Exception:
+                  r = 0.0
+              self._alpha_ratio_cache[k] = r
+              return r
+      
+          cave_1x1 = [s for s in self.cave_sprites if s.tiles_w == 1 and s.tiles_h == 1]
+          cave_big = [s for s in self.cave_sprites if s.tiles_w > 1 or s.tiles_h > 1]
+      
+          cave_decal: List[Sprite] = []
+          cave_boulder1x1: List[Sprite] = []
+          for s in cave_1x1:
+              if alpha_ratio(s) < 0.22:
+                  cave_decal.append(s)
+              else:
+                  cave_boulder1x1.append(s)
+      
+          self._place_sprites(canvas, rng, cave_big, occ, tile_px,
+                              attempts=14, density=0.014, allowed_anchor=allowed_anchor, force_fit=True)
+          self._place_sprites(canvas, rng, cave_boulder1x1, occ, tile_px,
+                              attempts=60, density=0.016, allowed_anchor=allowed_anchor, force_fit=True)
+          self._place_sprites(canvas, rng, cave_decal, occ, tile_px,
+                              attempts=120, density=0.012, allowed_anchor=allowed_anchor, force_fit=True)
 
-            cave_margin = 1  # must match cave generation above
-            center = np.zeros((grid_h, grid_w), dtype=bool)
-            y0 = cave_margin + 2
-            y1 = grid_h - cave_margin - 3
-            x0 = cave_margin + 2
-            x1 = grid_w - cave_margin - 3
-            if y1 >= y0 and x1 >= x0:
-                center[y0:y1+1, x0:x1+1] = True
-
-            allowed_anchor = is_floor_any & center & (grid != 3)
-            occ[~center] = True
-            occ[grid == 4] = True
-            occ[grid == 3] = True
-
-            if not hasattr(self, "_alpha_ratio_cache"):
-                self._alpha_ratio_cache = {}
-
-            def alpha_ratio(sp: Sprite) -> float:
-                k = str(sp.path)
-                if k in self._alpha_ratio_cache:
-                    return self._alpha_ratio_cache[k]
-                try:
-                    im = Image.open(sp.path).convert("RGBA")
-                    a = np.array(im.split()[-1])
-                    r = float((a > 10).mean())
-                except Exception:
-                    r = 0.0
-                self._alpha_ratio_cache[k] = r
-                return r
-
-            cave_1x1 = [s for s in self.cave_sprites if s.tiles_w == 1 and s.tiles_h == 1]
-            cave_big = [s for s in self.cave_sprites if s.tiles_w > 1 or s.tiles_h > 1]
-
-            cave_decal: List[Sprite] = []
-            cave_boulder1x1: List[Sprite] = []
-            for s in cave_1x1:
-                if alpha_ratio(s) < 0.22:
-                    cave_decal.append(s)
-                else:
-                    cave_boulder1x1.append(s)
-
-            self._place_sprites(canvas, rng, cave_big, occ, tile_px,
-                                attempts=14, density=0.014, allowed_anchor=allowed_anchor, force_fit=True)
-            self._place_sprites(canvas, rng, cave_boulder1x1, occ, tile_px,
-                                attempts=60, density=0.016, allowed_anchor=allowed_anchor, force_fit=True)
-            self._place_sprites(canvas, rng, cave_decal, occ, tile_px,
-                                attempts=120, density=0.012, allowed_anchor=allowed_anchor, force_fit=True)
 
         elif biome == "center_lake":
             is_land2 = (grid == 0) | (grid == 1) | (grid == 2)
