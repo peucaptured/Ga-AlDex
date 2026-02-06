@@ -964,7 +964,9 @@ class BiomeGenerator:
         elif biome == "cave":
             # Use ONLY cave_overlay sprites and keep them focused in the CENTER of the arena,
             # not on the sand band near the walls.
-            is_floor_any = (grid == 2) | (grid == 3)
+            # em vez de (grid==2)|(grid==3):
+            is_floor_any = (grid != 4) & (grid != 5)   # tudo que não é parede nem água
+            allowed_anchor = is_floor_any & center & (grid != 3)  # se quiser evitar sand
 
             cave_margin = 1  # must match cave generation above
             center = np.zeros((grid_h, grid_w), dtype=bool)
@@ -1008,9 +1010,9 @@ class BiomeGenerator:
                     cave_boulder1x1.append(s)
 
             self._place_sprites(canvas, rng, cave_big, occ, tile_px,
-                                attempts=14, density=0.004, allowed_anchor=allowed_anchor, force_fit=True)
+                                attempts=14, density=0.014, allowed_anchor=allowed_anchor, force_fit=True)
             self._place_sprites(canvas, rng, cave_boulder1x1, occ, tile_px,
-                                attempts=40, density=0.006, allowed_anchor=allowed_anchor, force_fit=True)
+                                attempts=60, density=0.016, allowed_anchor=allowed_anchor, force_fit=True)
             self._place_sprites(canvas, rng, cave_decal, occ, tile_px,
                                 attempts=120, density=0.012, allowed_anchor=allowed_anchor, force_fit=True)
 
