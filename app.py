@@ -12754,120 +12754,90 @@ if page == "Pokédex (Busca)":
         cursor: pointer;
     }
     
+    /* =========================
+       TCG Cards (Pokédex)
+       ========================= */
+    .dex-tcg-card{
+        width: 100%;
+        border-radius: 16px;
+        overflow: hidden;
+        border-width: 4px !important; /* reforça a borda do status */
+        cursor: pointer;
+        user-select: none;
+        transition: transform 0.12s ease, filter 0.12s ease;
+        position: relative;
+        box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+        background-size: cover;
+    }
+    .dex-tcg-card:hover{ transform: translateY(-2px) scale(1.01); filter: brightness(1.03); }
+    .dex-tcg-header{
+        display:flex;
+        align-items:center;
+        gap:8px;
+        padding: 6px 8px;
+        background: rgba(0,0,0,0.55);
+    }
+    .dex-tcg-statusicon{
+        width: 22px; height: 22px;
+        display:flex; align-items:center; justify-content:center;
+        flex: 0 0 auto;
+        opacity: 0.95;
+    }
+    .dex-tcg-statusicon svg{ width: 20px; height: 20px; }
+    .dex-tcg-name{
+        flex: 1 1 auto;
+        font-weight: 800;
+        font-size: 12px;
+        line-height: 1.1;
+        color: #fff;
+        text-align: center;
+        text-shadow: 0 2px 0 rgba(0,0,0,0.5);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding: 0 4px;
+    }
+    .dex-tcg-np{
+        flex: 0 0 auto;
+        font-weight: 900;
+        font-size: 11px;
+        color: #fff;
+        background: rgba(0,0,0,0.45);
+        border: 1px solid rgba(255,255,255,0.18);
+        padding: 2px 6px;
+        border-radius: 999px;
+        min-width: 44px;
+        text-align:center;
+    }
+    .dex-tcg-body{
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        height: 92px;
+        padding: 6px 8px;
+        background: transparent;
+    }
+    .dex-tcg-sprite{
+        width: 72px;
+        height: 72px;
+        image-rendering: pixelated;
+        filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
+    }
+    .dex-tcg-footer{
+        padding: 6px 8px;
+        background: rgba(0,0,0,0.55);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+    }
+    .dex-tcg-viab{
+        font-weight: 900;
+        letter-spacing: 0.26em;
+        font-size: 14px;
+        color: #ffd36a;
+        text-shadow: 0 2px 0 rgba(0,0,0,0.55);
+    }
 
-/* ============================================================
-   2. POKÉDEX CARDS (TCG-like)
-   ============================================================ */
-.dex-tcg-link{
-    display:block;
-    text-decoration:none !important;
-    color:inherit;
-}
-.dex-tcg-card{
-    width:100%;
-    height:200px;
-    border-radius:14px;
-    position:relative;
-    overflow:hidden;
-    border:4px solid rgba(148,163,184,0.55); /* fallback */
-    box-shadow: 0 10px 18px rgba(0,0,0,0.35);
-    transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
-}
-.dex-tcg-card:hover{
-    transform: translateY(-2px) scale(1.01);
-    box-shadow: 0 14px 24px rgba(0,0,0,0.42);
-    filter: saturate(1.04);
-}
-
-/* reaproveita suas classes de status para a borda */
-.dex-tcg-card.dex-frame--caught{ border-color:#22c55e; }
-.dex-tcg-card.dex-frame--wish{ border-color:#facc15; }
-.dex-tcg-card.dex-frame--seen{ border-color:#38bdf8; }
-.dex-tcg-card.dex-frame--default{ border-color:rgba(148,163,184,0.55); }
-
-/* “inner border” para acabamento */
-.dex-tcg-card::after{
-    content:"";
-    position:absolute;
-    inset:6px;
-    border-radius:10px;
-    border:1px solid rgba(15,23,42,0.55);
-    pointer-events:none;
-}
-
-.dex-tcg-top{
-    position:absolute;
-    top:0; left:0; right:0;
-    height:34px;
-    display:flex;
-    align-items:center;
-    gap:8px;
-    padding:6px 8px;
-    background: rgba(2,6,23,0.58);
-    backdrop-filter: blur(3px);
-    z-index:2;
-}
-.dex-tcg-left{ width:22px; display:flex; align-items:center; justify-content:center; color: rgba(255,255,255,0.92); }
-.dex-tcg-ico{ width:18px; height:18px; display:block; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5)); }
-.dex-tcg-name{
-    flex:1;
-    font-weight:800;
-    font-size:13px;
-    color:#f8fafc;
-    text-align:center;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.55);
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    padding:0 4px;
-}
-.dex-tcg-np{
-    font-weight:800;
-    font-size:11px;
-    color:#e2e8f0;
-    padding:4px 8px;
-    border-radius:999px;
-    background: rgba(15,23,42,0.65);
-    border: 1px solid rgba(148,163,184,0.35);
-    text-shadow: 0 1px 2px rgba(0,0,0,0.45);
-    white-space:nowrap;
-}
-
-.dex-tcg-body{
-    position:absolute;
-    top:34px; bottom:34px; left:0; right:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    z-index:1;
-}
-.dex-tcg-sprite{
-    width:92px;
-    height:92px;
-    object-fit:contain;
-    image-rendering: pixelated;
-    filter: drop-shadow(0 6px 10px rgba(0,0,0,0.45));
-}
-
-.dex-tcg-footer{
-    position:absolute;
-    left:0; right:0; bottom:0;
-    height:34px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background: rgba(2,6,23,0.62);
-    backdrop-filter: blur(3px);
-    z-index:2;
-}
-.dex-tcg-viab{
-    font-weight:900;
-    letter-spacing: 0.28em;
-    font-size:18px;
-    color:#facc15;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.55);
-    padding-left: 0.28em; /* compensa letter-spacing visual */
-}
 </style>
     """, unsafe_allow_html=True)
 
@@ -13277,7 +13247,70 @@ if page == "Pokédex (Busca)":
             if (carousel) {
                 carousel.addEventListener("wheel", (event) => {
                     event.preventDefault();
-                    const delta = Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+                    const delta = Math.abs(event.deltaY) > Math.abs(event.deltaX) ? eve
+            # -----------------------------
+            # Render de Cards (estilo carta)
+            # -----------------------------
+            TYPE_COLORS = {
+                "Normal": "#A8A77A", "Fire": "#EE8130", "Water": "#6390F0", "Electric": "#F7D02C", "Grass": "#7AC74C",
+                "Ice": "#96D9D6", "Fighting": "#C22E28", "Poison": "#A33EA1", "Ground": "#E2BF65", "Flying": "#A98FF3",
+                "Psychic": "#F95587", "Bug": "#A6B91A", "Rock": "#B6A136", "Ghost": "#735797", "Dragon": "#6F35FC",
+                "Dark": "#705746", "Steel": "#B7B7CE", "Fairy": "#D685AD",
+            }
+            TYPE_PT_MAP = {
+                "normal": "Normal",
+                "fogo": "Fire",
+                "água": "Water", "agua": "Water",
+                "elétrico": "Electric", "eletrico": "Electric",
+                "grama": "Grass", "planta": "Grass",
+                "gelo": "Ice",
+                "lutador": "Fighting", "luta": "Fighting",
+                "veneno": "Poison",
+                "terra": "Ground",
+                "voador": "Flying",
+                "psíquico": "Psychic", "psiquico": "Psychic",
+                "inseto": "Bug",
+                "pedra": "Rock",
+                "fantasma": "Ghost",
+                "dragão": "Dragon", "dragao": "Dragon",
+                "sombrio": "Dark", "noturno": "Dark",
+                "aço": "Steel", "aco": "Steel",
+                "fada": "Fairy",
+            }
+
+            def _norm_type(x):
+                if x is None:
+                    return None
+                s = str(x).strip()
+                if not s or s.lower() in {"nan", "none", "null", "-"}:
+                    return None
+                key = s.strip().lower()
+                if key in TYPE_PT_MAP:
+                    return TYPE_PT_MAP[key]
+                # tenta capitalizar padrão inglês
+                s2 = s[:1].upper() + s[1:].lower()
+                return s2
+
+            def _pick_first_viab_code(row):
+                codes = row.get("Codigos_Estrategia", None)
+                if isinstance(codes, list) and codes:
+                    return str(codes[0])[:3]
+                vtxt = row.get("Viabilidade", "")
+                if isinstance(vtxt, str):
+                    m = re.search(r"\b([CFS][ODFIC][RL])\b", vtxt)
+                    if m:
+                        return m.group(1)
+                return ""
+
+            def _get_np_value(row):
+                for k in ("NP", "Np", "np", "Nivel_Poder", "Nível_Poder", "Nivel Poder", "Nível Poder"):
+                    if k in row and row.get(k) is not None and str(row.get(k)).strip() != "":
+                        try:
+                            return int(float(row.get(k)))
+                        except Exception:
+                            return str(row.get(k)).strip()
+                return ""
+nt.deltaY : event.deltaX;
                     carousel.scrollLeft += delta;
                 }, { passive: false });
 
@@ -13359,81 +13392,67 @@ if page == "Pokédex (Busca)":
                         icon = ""
 
                     display_name = f"{icon} {p_name}".strip()
-
                     with col:
-                        
-                        # 3. Renderiza a CARTA (TCG-like) usando HTML/CSS
-                        # - Borda: status_class (mesmas classes já usadas hoje)
-                        # - Fundo: diagonal por tipos (cores oficiais)
-                        tipo_raw = row_g.get("Tipo", "")
-                        tipo_list = [t.strip() for t in re.split(r"[\/|,]+", str(tipo_raw)) if t.strip()]
-                        tipo1 = (tipo_list[0] if len(tipo_list) >= 1 else "")
-                        tipo2 = (tipo_list[1] if len(tipo_list) >= 2 else "")
+                                            # Renderiza como "carta" (card) clicável (mesma aba)
+                                            # Tipos (PT/EN) -> cores oficiais
+                                            t1_raw = None
+                                            t2_raw = None
+                                            for cand in ("Tipo 1", "Tipo1", "Tipo_1", "Type 1", "Type1"):
+                                                if cand in row_g:
+                                                    t1_raw = row_g.get(cand)
+                                                    break
+                                            for cand in ("Tipo 2", "Tipo2", "Tipo_2", "Type 2", "Type2"):
+                                                if cand in row_g:
+                                                    t2_raw = row_g.get(cand)
+                                                    break
 
-                        # NP / Viabilidade (mantém compatibilidade: se faltar, mostra vazio)
-                        np_val = row_g.get("NP", row_g.get("Np", row_g.get("np", "")))
-                        viab = row_g.get("Viabilidade", row_g.get("viabilidade", ""))
+                                            t1 = _norm_type(t1_raw)
+                                            t2 = _norm_type(t2_raw)
 
-                        # --- cores oficiais (português + inglês) ---
-                        TYPE_COLORS = {
-                            # PT-BR
-                            "Normal":"#A8A77A","Fogo":"#EE8130","Água":"#6390F0","Agua":"#6390F0","Elétrico":"#F7D02C","Eletrico":"#F7D02C",
-                            "Grama":"#7AC74C","Gelo":"#96D9D6","Lutador":"#C22E28","Venenoso":"#A33EA1","Terrestre":"#E2BF65","Voador":"#A98FF3",
-                            "Psíquico":"#F95587","Psiquico":"#F95587","Inseto":"#A6B91A","Pedra":"#B6A136","Fantasma":"#735797","Dragão":"#6F35FC",
-                            "Dragao":"#6F35FC","Sombrio":"#705746","Aço":"#B7B7CE","Aco":"#B7B7CE","Fada":"#D685AD",
-                            # EN
-                            "Fire":"#EE8130","Water":"#6390F0","Electric":"#F7D02C","Grass":"#7AC74C","Ice":"#96D9D6","Fighting":"#C22E28",
-                            "Poison":"#A33EA1","Ground":"#E2BF65","Flying":"#A98FF3","Psychic":"#F95587","Bug":"#A6B91A","Rock":"#B6A136",
-                            "Ghost":"#735797","Dragon":"#6F35FC","Dark":"#705746","Steel":"#B7B7CE","Fairy":"#D685AD",
-                        }
-                        c1 = TYPE_COLORS.get(tipo1, "#334155")
-                        c2 = TYPE_COLORS.get(tipo2, c1)
+                                            c1 = TYPE_COLORS.get(t1, "#2a2f3a")
+                                            c2 = TYPE_COLORS.get(t2, "#2a2f3a") if t2 else None
 
-                        if tipo2:
-                            bg_style = f"background: linear-gradient(135deg, {c1} 0%, {c1} 52%, {c2} 52%, {c2} 100%);"
-                        else:
-                            bg_style = f"background: {c1};"
+                                            if c2:
+                                                bg_style = f"background: linear-gradient(135deg, {c1} 0%, {c1} 50%, {c2} 50%, {c2} 100%);"
+                                            else:
+                                                bg_style = f"background: {c1};"
 
-                        # Ícone de status (SVG inline, sem assets)
-                        ICONS = {
-                            "dex-frame--caught": """<svg class='dex-tcg-ico' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
-                                <path d='M12 21a9 9 0 0 0 9-9h-6a3 3 0 0 1-6 0H3a9 9 0 0 0 9 9Z' fill='currentColor' opacity='0.9'/>
-                                <path d='M3 12a9 9 0 0 1 18 0h-6a3 3 0 0 0-6 0H3Z' fill='currentColor' opacity='0.55'/>
-                                <circle cx='12' cy='12' r='2' fill='currentColor'/>
-                                <circle cx='12' cy='12' r='9' stroke='currentColor' stroke-width='1.5'/>
-                            </svg>""",
-                            "dex-frame--wish": """<svg class='dex-tcg-ico' viewBox='0 0 24 24' fill='currentColor' xmlns='http://www.w3.org/2000/svg'>
-                                <path d='M12 2.5l2.93 5.94 6.57.95-4.75 4.63 1.12 6.53L12 17.9l-5.87 3.08 1.12-6.53L2.5 9.39l6.57-.95L12 2.5z'/>
-                            </svg>""",
-                            "dex-frame--seen": """<svg class='dex-tcg-ico' viewBox='0 0 24 24' fill='currentColor' xmlns='http://www.w3.org/2000/svg'>
-                                <path d='M12 5c5.5 0 9.5 5.2 10.6 6.9a1.7 1.7 0 0 1 0 2.2C21.5 15.8 17.5 21 12 21S2.5 15.8 1.4 14.1a1.7 1.7 0 0 1 0-2.2C2.5 10.2 6.5 5 12 5zm0 3.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6z'/>
-                            </svg>""",
-                            "dex-frame--default": """<svg class='dex-tcg-ico' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
-                                <circle cx='12' cy='12' r='7' stroke='currentColor' stroke-width='2'/>
-                            </svg>""",
-                        }
-                        icon_svg = ICONS.get(status_class, ICONS["dex-frame--default"])
+                                            viab_code = _pick_first_viab_code(row_g)
+                                            np_val = _get_np_value(row_g)
 
-                        # IMPORTANTE: sem target=_blank para NÃO abrir nova aba
-                        card_html = f"""
-<a class='dex-tcg-link' href='?dex={html.escape(dex_num)}'>
-  <div class='dex-tcg-card {status_class}' style='{bg_style}'>
-    <div class='dex-tcg-top'>
-      <div class='dex-tcg-left'>{icon_svg}</div>
-      <div class='dex-tcg-name' title='#{html.escape(dex_num)} • {html.escape(p_name)}'>{html.escape(p_name)}</div>
-      <div class='dex-tcg-np'>NP {html.escape(str(np_val))}</div>
-    </div>
-    <div class='dex-tcg-body'>
-      <img class='dex-tcg-sprite' src='{html.escape(sprite_url)}' alt='{html.escape(p_name)}'>
-    </div>
-    <div class='dex-tcg-footer'>
-      <div class='dex-tcg-viab' title='{html.escape(str(viab))}'>{html.escape(str(viab))}</div>
-    </div>
-  </div>
-</a>
-"""
-                        st.markdown(card_html, unsafe_allow_html=True)
+                                            # Ícones (SVG inline) por status (sem assets externos)
+                                            if is_caught:
+                                                status_svg = """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M2 12h20'/><circle cx='12' cy='12' r='2' fill='white' stroke='none'/></svg>"""
+                                            elif is_wished:
+                                                status_svg = """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='white'><path d='M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z'/></svg>"""
+                                            elif is_seen:
+                                                status_svg = """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='white'><path d='M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8z'/><path d='M8 5.5A2.5 2.5 0 1 0 8 10a2.5 2.5 0 0 0 0-5z'/></svg>"""
+                                            else:
+                                                status_svg = """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9'/></svg>"""
 
+                                            # Tooltip da viabilidade (opcional). Mantém só as 3 letras visíveis.
+                                            viab_title = ""
+                                            if viab_code and len(viab_code) == 3:
+                                                first_map = {"C":"Controlador","F":"Finalizador","S":"Suporte"}
+                                                second_map = {"O":"Ofensivo","D":"Defensivo","F":"Furtivo","I":"Incompleto","C":"Completo"}
+                                                third_map = {"R":"Rápido","L":"Lento"}
+                                                viab_title = f"{first_map.get(viab_code[0], viab_code[0])} • {second_map.get(viab_code[1], viab_code[1])} • {third_map.get(viab_code[2], viab_code[2])}"
+
+                                            card_html = (
+                                                f"<div class='dex-tcg-card {status_class}' style=\"{bg_style}\" "
+                                                f"onclick=\"window.location.href='?dex={dex_num}'\" role='button' tabindex='0'>"
+                                                f"<div class='dex-tcg-header'>"
+                                                f"<div class='dex-tcg-statusicon'>{status_svg}</div>"
+                                                f"<div class='dex-tcg-name'>{p_name}</div>"
+                                                f"<div class='dex-tcg-np'>NP {np_val}</div>"
+                                                f"</div>"
+                                                f"<div class='dex-tcg-body'><img src='{sprite_url}' class='dex-tcg-sprite' alt='{p_name}'></div>"
+                                                f"<div class='dex-tcg-footer'><div class='dex-tcg-viab' title='{viab_title}'>{viab_code}</div></div>"
+                                                f"</div>"
+                                            )
+                                            st.markdown(card_html, unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ==============================================================================
