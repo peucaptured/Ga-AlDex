@@ -4340,6 +4340,9 @@ def save_data_cloud(trainer_name, data):
             prof.pop("photo_b64", None)
 
         # ✅ reduz tamanho do JSON
+        # 🛡️ blindagem de IDs da Pokédex (UID + migração)
+        _dex_uid_sync(data)
+
         json_str = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
 
         row_num = find_user_row(sheet, trainer_name)
@@ -4438,7 +4441,267 @@ def save_data_cloud(trainer_name, data):
 
 
 def get_empty_user_data():
-    return {"seen": [], "caught": [], "party": [], "notes": {}}
+    return {
+        "seen": [],
+        "caught": [],
+        "party": [],
+        "wishlist": [],
+        "shinies": [],
+        "favorite_moves": {},
+        "forms": {},
+        "stats": {},
+        "notes": {},
+        "__dex_uid": {
+            "version": 1,
+            "seen": [],
+            "caught": [],
+            "party": [],
+            "shinies": [],
+            "wishlist": [],
+            "stats": {},
+            "favorite_moves": {},
+            "forms": {},
+        },
+    }
+
+
+# ============================================================
+# 🛡️ BLINDAGEM DE IDs DA POKÉDEX (duas opções no mesmo código)
+# ------------------------------------------------------------
+# Opção 1 (recomendada): salvar um ID estável por NOME (UID) em data["__dex_uid"]
+#                        e sempre reconstruir os IDs atuais a partir dele.
+# Opção 2 (migração): se existir uma pokédex "legada" no projeto (ex.: pokedex_old.xlsx
+#                    ou pokedex Nova.xlsx), o app converte automaticamente IDs antigos
+#                    (coluna "Nº") para os IDs novos, sem trocar o Pokémon do jogador.
+#
+# Isso evita que, ao mudar o "Nº" na planilha, o Trainer Hub e a Pokédex "embaralhem"
+# os pokémons do jogador.
+# ============================================================
+
+def _dex_uid_from_row(name: str, region: str | None = None) -> str:
+    base = _norm(str(name))
+    reg = _norm(str(region)) if region not in (None, "", "-", "—") else ""
+    if reg:
+        base = f"{base}|{reg}"
+    return f"UID:{base}"
+
+def _dex_build_uid_maps(df_local: pd.DataFrame) -> tuple[dict[str, str], dict[str, str]]:
+    pid_to_uid: dict[str, str] = {}
+    uid_to_pid: dict[str, str] = {}
+    if df_local is None or df_local.empty:
+        return pid_to_uid, uid_to_pid
+
+    cols = set(map(str, df_local.columns))
+    has_region = "Região" in cols or "Regiao" in cols
+
+    for _, r in df_local.iterrows():
+        try:
+            pid = str(r.get("Nº", "")).strip().replace("#", "")
+        except Exception:
+            pid = ""
+        if not pid:
+            continue
+
+        name = str(r.get("Nome", "")).strip()
+        region = None
+        if has_region:
+            region = r.get("Região", r.get("Regiao", None))
+
+        uid = _dex_uid_from_row(name, region)
+        pid_to_uid[pid] = uid
+        if uid not in uid_to_pid:
+            uid_to_pid[uid] = pid
+
+    return pid_to_uid, uid_to_pid
+
+def _dex_try_load_legacy_df() -> pd.DataFrame | None:
+    # Lista de nomes comuns para manter a dex velha junto do projeto
+    candidates = [
+        "pokedex_old.xlsx",
+        "pokedex_velha.xlsx",
+        "pokedex_legacy.xlsx",
+        "pokedex.xlsx.old",
+        "pokedex.xlsx.bak",
+        "pokedex Nova.xlsx",  # (como você mandou aqui)
+        "pokedex velha.xlsx",
+    ]
+
+    for name in candidates:
+        try:
+            p = None
+            if "_resolve_asset_path" in globals():
+                p = _resolve_asset_path(name)
+            if not p:
+                p = name
+            if p and os.path.exists(p):
+                return pd.read_excel(p)
+        except Exception:
+            continue
+    return None
+
+def _dex_ensure_uid_store(data: dict) -> dict:
+    store = data.setdefault("__dex_uid", {})
+    if not isinstance(store, dict):
+        store = {}
+        data["__dex_uid"] = store
+
+    store.setdefault("version", 1)
+    for k in ("seen", "caught", "party", "shinies", "wishlist"):
+        if not isinstance(store.get(k), list):
+            store[k] = []
+    for k in ("stats", "favorite_moves", "forms"):
+        if not isinstance(store.get(k), dict):
+            store[k] = {}
+    return store
+
+def _dex_to_uid(item: str, pid_to_uid: dict[str, str], legacy_pid_to_uid: dict[str, str] | None = None) -> str:
+    s = str(item).strip()
+    if not s:
+        return s
+    if s.startswith("UID:") or s.startswith("EXT:") or s.startswith("PID:"):
+        return s
+    if s.isdigit():
+        if legacy_pid_to_uid and s in legacy_pid_to_uid:
+            return legacy_pid_to_uid[s]
+        if s in pid_to_uid:
+            return pid_to_uid[s]
+        return f"PID:{s}"  # fallback estável (sem nome)
+    return s  # wishlist por texto etc.
+
+def _dex_uid_to_pid(item: str, uid_to_pid: dict[str, str]) -> str | None:
+    s = str(item).strip()
+    if not s:
+        return None
+    if s.startswith("EXT:"):
+        return s
+    if s.startswith("UID:"):
+        return uid_to_pid.get(s)
+    if s.startswith("PID:"):
+        return s.replace("PID:", "", 1)
+    # texto livre (wishlist manual)
+    return s
+
+def _dex_uid_sync(data: dict) -> None:
+    # Atualiza data["__dex_uid"] antes de salvar.
+    if not isinstance(data, dict):
+        return
+
+    pid_to_uid = st.session_state.get("_dex_pid_to_uid") or {}
+    legacy_pid_to_uid = st.session_state.get("_dex_legacy_pid_to_uid") or {}
+
+    # Se ainda não temos mapas na sessão, tenta construir a partir do df carregado
+    if not pid_to_uid:
+        try:
+            df_local = st.session_state.get("df_data")
+            if df_local is not None:
+                pid_to_uid, uid_to_pid = _dex_build_uid_maps(df_local)
+                st.session_state["_dex_pid_to_uid"] = pid_to_uid
+                st.session_state["_dex_uid_to_pid"] = uid_to_pid
+        except Exception:
+            pass
+
+    store = _dex_ensure_uid_store(data)
+
+    # Listas
+    for k in ("seen", "caught", "party", "shinies", "wishlist"):
+        cur = data.get(k, [])
+        if not isinstance(cur, list):
+            continue
+        store[k] = [_dex_to_uid(x, pid_to_uid, legacy_pid_to_uid) for x in cur]
+
+    # Dicionários por PID
+    for dk in ("stats", "favorite_moves", "forms"):
+        curd = data.get(dk, {})
+        if not isinstance(curd, dict):
+            continue
+        newd = {}
+        for pid_key, val in curd.items():
+            uid = _dex_to_uid(str(pid_key), pid_to_uid, legacy_pid_to_uid)
+            newd[uid] = val
+        store[dk] = newd
+
+def _dex_apply_migration(data: dict, df_current: pd.DataFrame) -> None:
+    # Converte tudo para UID (se necessário) e reconstrói os PIDs atuais.
+    if not isinstance(data, dict) or df_current is None:
+        return
+
+    # Mapas atuais
+    pid_to_uid, uid_to_pid = _dex_build_uid_maps(df_current)
+    st.session_state["_dex_pid_to_uid"] = pid_to_uid
+    st.session_state["_dex_uid_to_pid"] = uid_to_pid
+
+    # Mapas legados (para converter PID antigo -> UID por nome)
+    legacy_pid_to_uid = st.session_state.get("_dex_legacy_pid_to_uid")
+    if legacy_pid_to_uid is None:
+        legacy_df = _dex_try_load_legacy_df()
+        if legacy_df is not None and not legacy_df.empty:
+            legacy_pid_to_uid, _ = _dex_build_uid_maps(legacy_df)
+        else:
+            legacy_pid_to_uid = {}
+        st.session_state["_dex_legacy_pid_to_uid"] = legacy_pid_to_uid
+
+    store = _dex_ensure_uid_store(data)
+
+    # Se store vazio, cria a partir dos dados atuais (primeira vez após o patch)
+    if (not store.get("caught")) and isinstance(data.get("caught"), list) and data.get("caught"):
+        _dex_uid_sync(data)
+        store = _dex_ensure_uid_store(data)
+
+    # Reconstrói listas usando UID -> PID atual
+    for k in ("seen", "caught", "party", "shinies"):
+        uids = store.get(k, [])
+        if not isinstance(uids, list):
+            continue
+        rebuilt = []
+        for u in uids:
+            pid = _dex_uid_to_pid(u, uid_to_pid)
+            if pid is None or pid == "":
+                continue
+            rebuilt.append(str(pid))
+        data[k] = rebuilt
+
+    # wishlist pode ter mistura (UID/PID/EXT/texto)
+    uids = store.get("wishlist", [])
+    if isinstance(uids, list):
+        rebuilt = []
+        for u in uids:
+            pid = _dex_uid_to_pid(u, uid_to_pid)
+            if pid is None or pid == "":
+                continue
+            rebuilt.append(str(pid))
+        data["wishlist"] = rebuilt
+
+    # Reconstrói dicts por PID atual
+    for dk in ("stats", "favorite_moves", "forms"):
+        uidd = store.get(dk, {})
+        if not isinstance(uidd, dict):
+            continue
+        rebuilt = {}
+        for u, val in uidd.items():
+            pid = _dex_uid_to_pid(u, uid_to_pid)
+            if not pid:
+                continue
+            rebuilt[str(pid)] = val
+        data[dk] = rebuilt
+
+def _dex_guard_once(data: dict, df_current: pd.DataFrame) -> None:
+    # Roda uma vez por trainer + assinatura da dex
+    try:
+        tn = st.session_state.get("trainer_name") or st.session_state.get("trainer") or ""
+    except Exception:
+        tn = ""
+
+    try:
+        sig = (tn, int(df_current.shape[0]), str(df_current.get("Nº").iloc[0]), str(df_current.get("Nº").iloc[-1]))
+    except Exception:
+        sig = (tn, id(df_current))
+
+    if st.session_state.get("_dex_guard_sig") == sig:
+        return
+
+    _dex_apply_migration(data, df_current)
+    st.session_state["_dex_guard_sig"] = sig
+
 
 def _npc_pokemon_list(npc_obj: dict) -> list[str]:
     pokes = npc_obj.get("pokemons") or npc_obj.get("pokemons_conhecidos") or []
@@ -11567,7 +11830,6 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
         </style>
         """, unsafe_allow_html=True)
     
-
         
         # CSS das molduras (não interfere no click)
         css = """
@@ -11586,7 +11848,7 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
               text-transform: uppercase;
               letter-spacing: 0.25em;
             }
-
+        
           .ds-npc-banner-title{
             font-size: 20px;
             color: rgba(255,255,255,0.95);
@@ -11600,67 +11862,63 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
           .ds-npc-banner-spacer{
             height: 14px;
           }
+        
           .ds-npc-panel{
             background-repeat:no-repeat;
             background-position:center;
             background-size:100% 100%;
             padding: 28px 28px 26px 28px;
-            min-height: 0px;     /* deixa crescer pelo conteúdo */
-
+            min-height: 0px; /* deixa crescer pelo conteúdo */
           }
+        
           .ds-npc-panel.left{
-          background: transparent !important;
-          background-image: none !important;
-          border: none !important;
-          box-shadow: none !important;
-            padding-top: 6px !important;   /* bem pequeno */
-
-        }
-        /* (opcional) tira o padding padrão do Streamlit só nessa tela */
-        [data-testid="stMainBlockContainer"]{
-          padding-top: 0 !important;
-        }
-
+            background: transparent !important;
+            background-image: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding-top: 6px !important; /* bem pequeno */
+          }
         
-
+          /* (opcional) tira o padding padrão do Streamlit só nessa tela */
+          [data-testid="stMainBlockContainer"]{
+            padding-top: 0 !important;
+          }
         
-        iframe[title^="st_click_detector"]{
-          background:  #000 !important;
-          border: none !important;
-          box-shadow: none !important;
-        }
-        /* IMPORTANTE: só para o st_click_detector (não mexe no seu iframe do compendium) */
-        div[data-testid="stComponentFrame"] iframe[title^="st_click_detector"],
-        div[data-testid="stComponentFrame"] iframe[title*="click_detector"],
-        iframe[title^="st_click_detector"],
-        iframe[title*="click_detector"]{
-          background: transparent !important;
-          border: none !important;
-          outline: none !important;
-          box-shadow: none !important;
-        }
+          /* ✅ FIX: remove o “contorno preto” do st_click_detector
+             (APENAS dentro do painel de NPCs; não mexe no iframe do Compendium) */
+          .ds-npc-panel div[data-testid="stComponentFrame"],
+          .ds-npc-panel div[data-testid="stCustomComponentV1"],
+          .ds-npc-panel div[data-testid="stCustomComponent"]{
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
         
-        /* Se o frame (wrapper) estiver aparecendo como “moldura”, deixa transparente também */
-        div[data-testid="stComponentFrame"]:has(iframe[title^="st_click_detector"]),
-        div[data-testid="stComponentFrame"]:has(iframe[title*="click_detector"]){
-          background: transparent !important;
-          border: none !important;
-          box-shadow: none !important;
-        }
-                
-        /* 3) remove padding extra do wrapper do Streamlit */
-        div[data-testid="stElementContainer"]{
-          padding: 0 !important;
-          margin: 0 !important;
-          background: transparent !important;
-        }        
-        /* remove padding/margem que às vezes vira “caixa” */
-        .ds-npc-panel.left div[data-testid="stElementContainer"]{
-          padding: 0 !important;
-          margin: 0 !important;
-        }
+          .ds-npc-panel div[data-testid="stComponentFrame"] > iframe,
+          .ds-npc-panel div[data-testid="stCustomComponentV1"] > iframe,
+          .ds-npc-panel div[data-testid="stCustomComponent"] > iframe,
+          .ds-npc-panel iframe[title^="st_click_detector"],
+          .ds-npc-panel iframe[title*="click_detector"]{
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+            outline: none !important;
+          }
         
-               
+          /* 3) remove padding extra do wrapper do Streamlit */
+          .ds-npc-panel div[data-testid="stElementContainer"]{
+            padding: 0 !important;
+            margin: 0 !important;
+            background: transparent !important;
+          }
+        
+          /* remove padding/margem que às vezes vira “caixa” */
+          .ds-npc-panel.left div[data-testid="stElementContainer"]{
+            padding: 0 !important;
+            margin: 0 !important;
+          }
         
           /* grid automático */
           .ds-grid{
@@ -13015,20 +13273,41 @@ if page == "Pokédex (Busca)":
     st.sidebar.header("🔍 Filtros")
     search_query = st.sidebar.text_input("Buscar (Nome ou Nº)", "")
 
-    # --- FIX: garante transparência APENAS nos iframes da Pokédex (não afeta Compendium) ---
+    # --- FIX: remove o “contorno preto” do st_click_detector da Pokédex (não afeta Compendium) ---
     st.markdown("""
     <style>
-    /* st_click_detector (grid e carrossel da Pokédex) */
+    /* 1) Iframe do click_detector */
     iframe[title*="pokedex_grid"],
     iframe[title*="pokedex_carousel"],
     div[data-testid="stComponentFrame"] iframe[title*="pokedex_grid"],
     div[data-testid="stComponentFrame"] iframe[title*="pokedex_carousel"]{
       background: transparent !important;
-      border: none !important;
+      border: 0 !important;
+      outline: none !important;
       box-shadow: none !important;
+      display: block !important;
+    }
+    
+    /* 2) Wrapper do componente (é aqui que geralmente “vira a caixa preta”) */
+    div[data-testid="stComponentFrame"],
+    div[data-testid="stCustomComponentV1"],
+    div[data-testid="stCustomComponent"]{
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    
+    /* 3) Container do elemento que pode adicionar espaço/fundo */
+    div[data-testid="stElementContainer"]{
+      background: transparent !important;
+      padding: 0 !important;
+      margin: 0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
+
 
     # 1) FILTRO DE REGIÃO
     all_regions = sorted(list(set([r.strip() for region in df["Região"].unique() for r in str(region).split("/")])) )
@@ -13272,6 +13551,11 @@ if page == "Pokédex (Busca)":
             st.markdown(f"<div class='pokedex-tags'>{tags_html}</div>", unsafe_allow_html=True)
 
         def render_status_controls():
+            # 🛡️ garante que IDs antigos sejam migrados para a dex atual
+            try:
+                _dex_guard_once(user_data, df)
+            except Exception:
+                pass
             # precisa existir no save
             if "seen" not in user_data:
                 user_data["seen"] = []
@@ -13885,6 +14169,12 @@ if page == "Trainer Hub (Meus Pokémons)":
     user_data.setdefault("shinies", [])
     user_data.setdefault("favorite_moves", {}) # {pid: [move_name,...]}
     user_data.setdefault("forms", {})
+    # 🛡️ garante que IDs antigos sejam migrados para a dex atual
+    try:
+        _dex_guard_once(user_data, df)
+    except Exception:
+        pass
+
 
     # estados de UI
     st.session_state.setdefault("hub_selected_pid", None)      # abre ficha
