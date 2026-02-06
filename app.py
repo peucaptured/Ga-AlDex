@@ -13422,6 +13422,21 @@ if page == "Pokédex (Busca)":
                     text-align: center;
                     margin: 6px 0 10px 0;
                 }
+
+                /* GRID (sempre 6 colunas; em telas pequenas vira scroll horizontal) */
+                .pokedex-grid-wrap { overflow-x: auto; padding-bottom: 6px; }
+                .pokedex-grid {
+                    display: grid;
+                    grid-template-columns: repeat(var(--cols, 6), minmax(140px, 1fr));
+                    gap: 14px;
+                    align-items: stretch;
+                    min-width: calc(var(--cols, 6) * 150px);
+                }
+                .dex-tcg-card { height: 160px; } /* ajuda a caber mais na viewport */
+                .dex-tcg-body { display:flex; justify-content:center; align-items:center; height: 96px; }
+                .dex-tcg-sprite { width: 64px; height: 64px; image-rendering: pixelated; }
+
+
                 .pokedex-card {
                     background: rgba(15, 23, 42, 0.82);
                     color: #f8fafc;
@@ -13739,7 +13754,7 @@ if page == "Pokédex (Busca)":
                     </a>
                 """)
 
-            grid_html = f"<style>{POKEDEX_IFRAME_CSS}</style><div class='pokedex-grid'>" + "".join(card_nodes) + "</div>"
+            grid_html = f"<style>{POKEDEX_IFRAME_CSS}</style><div class='pokedex-grid-wrap'><div class='pokedex-grid' style='--cols:{grid_cols};'>" + "".join(card_nodes) + "</div></div>"
             clicked_id = click_detector(grid_html)
 
             if clicked_id is not None:
