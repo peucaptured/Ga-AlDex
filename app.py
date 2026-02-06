@@ -12922,9 +12922,6 @@ if page == "Pokédex (Busca)":
 if page == "Pokédex (Busca)":
     dex_param = st.query_params.get("dex", None)
     if dex_param:
-        # st.query_params pode devolver str ou lista[str]
-        if isinstance(dex_param, (list, tuple)):
-            dex_param = dex_param[0] if dex_param else None
         st.session_state["pokedex_selected"] = str(dex_param)
         st.query_params.clear() # Limpa a URL após capturar
         st.rerun()
@@ -13059,7 +13056,6 @@ if page == "Pokédex (Busca)":
     # ==============================================================================
     # VISÃO DE FOCO (selecionado)
     # ==============================================================================
-    st.markdown("<div id='dex_focus'></div>", unsafe_allow_html=True)
     if selected_id:
         
 
@@ -13396,87 +13392,103 @@ if page == "Pokédex (Busca)":
             grid_cols = 6 # Reduzi para 6 para as bordas não ficarem espremidas
             rows = list(filtered_df.iterrows())
 
-            st.markdown("<div class='pokedex-grid'>", unsafe_allow_html=True)
-            for start in range(0, len(rows), grid_cols):
-                cols = st.columns(grid_cols)
-                for col, (index, row_g) in zip(cols, rows[start : start + grid_cols]):
-                    dex_num = str(row_g["Nº"])
-                    p_name = row_g["Nome"]
+            # Renderiza o grid inteiro via HTML + click_detector (Streamlit bloqueia JS em onclick)
+            from st_click_detector import click_detector
 
-                    # 1. Gera o link da imagem
-                    sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
+            card_nodes = []
+            grid_id_map = {}
 
-                    # 2. Define o status
-                    is_caught = dex_num in user_data.get("caught", [])
-                    is_seen = dex_num in user_data.get("seen", [])
-                    is_wished = dex_num in user_data.get("wishlist", [])
+            for _, row_g in filtered_df.iterrows():
+                dex_num = str(row_g["Nº"])
+                p_name = row_g["Nome"]
 
-                    if is_caught:
-                        status_class = "dex-frame--caught"
-                        icon = "✅"
-                    elif is_wished:
-                        status_class = "dex-frame--wish"
-                        icon = "⭐"
-                    elif is_seen:
-                        status_class = "dex-frame--seen"
-                        icon = "👁️"
-                    else:
-                        status_class = "dex-frame--default"
-                        icon = ""
+                sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
 
-                    display_name = f"{icon} {p_name}".strip()
+                is_caught = dex_num in user_data.get("caught", [])
+                is_seen = dex_num in user_data.get("seen", [])
+                is_wished = dex_num in user_data.get("wishlist", [])
 
-                    with col:
-                        # Card estilo "carta" (TCG) — clique na MESMA ABA (via ?dex=)
-                        types = _split_types(row_g.get("Tipo", ""))
-                        t1 = types[0] if len(types) > 0 else ""
-                        t2 = types[1] if len(types) > 1 else ""
-                        c1 = _type_color(t1)
-                        c2 = _type_color(t2) if t2 else ""
-                        if c2:
-                            bg_style = f"background: linear-gradient(135deg, {c1} 0%, {c1} 50%, {c2} 50%, {c2} 100%);"
-                        else:
-                            bg_style = f"background: {c1};"
+                if is_caught:
+                    status_class = "dex-frame--caught"
+                elif is_wished:
+                    status_class = "dex-frame--wish"
+                elif is_seen:
+                    status_class = "dex-frame--seen"
+                else:
+                    status_class = "dex-frame--default"
 
-                        viab_code = _extract_viab_code_from_text(row_g.get("Viabilidade", ""))
-                        # NP já é calculado no load_excel_data() e salvo em Nivel_Poder
-                        try:
-                            np_val = int(row_g.get("Nivel_Poder", 0) or 0)
-                        except Exception:
-                            np_val = 0
+                types = _split_types(row_g.get("Tipo", ""))
+                t1 = types[0] if len(types) > 0 else ""
+                t2 = types[1] if len(types) > 1 else ""
+                c1 = _type_color(t1)
+                c2 = _type_color(t2) if t2 else ""
 
-                        # Ícone do status (sem assets externos)
-                        if is_caught:
-                            status_svg = _SVG_POKEBALL
-                        elif is_wished:
-                            status_svg = _SVG_STAR
-                        elif is_seen:
-                            status_svg = _SVG_EYE
-                        else:
-                            status_svg = ""
+                # Fundo 1 tipo / 2 tipos (diagonal)
+                if c2:
+                    bg_style = f"background: linear-gradient(135deg, {c1} 0%, {c1} 50%, {c2} 50%, {c2} 100%);"
+                else:
+                    bg_style = f"background: {c1};"
 
-                        # clique mesma aba
-                        onclick_js = f"window.location.href = window.location.pathname + '?dex={dex_num}#dex_focus';"
+                viab_code = _extract_viab_code_from_text(row_g.get("Viabilidade", ""))
+                try:
+                    np_val = int(row_g.get("Nivel_Poder", 0) or 0)
+                except Exception:
+                    np_val = 0
 
-                        card_html = f"""
-                        <div class="dex-tcg-card {status_class}" style="{bg_style}" onclick="{onclick_js}" role="button" tabindex="0">
-                            <div class="dex-tcg-header">
+                if is_caught:
+                    status_svg = _SVG_POKEBALL
+                elif is_wished:
+                    status_svg = _SVG_STAR
+                elif is_seen:
+                    status_svg = _SVG_EYE
+                else:
+                    status_svg = ""
+
+                # ✅ IMPORTANTÍSSIMO: o click_detector normalmente devolve o id do ELEMENTO clicado.
+                # Como o clique pode cair no <div> interno ou no <img>, damos id também neles e mapeamos todos.
+                safe_id = f"dex_{dex_num}"
+                safe_id_card = f"{safe_id}__card"
+                safe_id_img = f"{safe_id}__img"
+
+                grid_id_map[safe_id] = dex_num
+                grid_id_map[safe_id_card] = dex_num
+                grid_id_map[safe_id_img] = dex_num
+
+                card_nodes.append(f'''
+                    <a href="javascript:void(0)" id="{safe_id}" style="text-decoration:none;color:inherit;display:block;">
+                        <div id="{safe_id_card}" class="dex-tcg-card {status_class}" style="{bg_style}; cursor:pointer;" role="button" tabindex="0">
+                            <div class="dex-tcg-header" style="pointer-events:none;">
                                 <div class="dex-tcg-statusicon">{status_svg}</div>
                                 <div class="dex-tcg-name">{p_name}</div>
                                 <div class="dex-tcg-np">NP {np_val}</div>
                             </div>
-                            <div class="dex-tcg-body">
-                                <img src="{sprite_url}" class="dex-tcg-sprite" alt="{p_name}">
+                            <div class="dex-tcg-body" style="pointer-events:none;">
+                                <img id="{safe_id_img}" src="{sprite_url}" class="dex-tcg-sprite" alt="{p_name}">
                             </div>
-                            <div class="dex-tcg-footer">
+                            <div class="dex-tcg-footer" style="pointer-events:none;">
                                 <div class="dex-tcg-viab" title="{viab_code}">{viab_code}</div>
                             </div>
                         </div>
-                        """
-                        st.markdown(card_html, unsafe_allow_html=True)
+                    </a>
+                ''')
 
-            st.markdown("</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+            grid_html = "<div class='pokedex-grid'>" + "".join(card_nodes) + "</div>"
+            clicked_id = click_detector(grid_html)
+
+            if clicked_id is not None:
+                clicked_id = str(clicked_id)
+
+                # fallback: se voltar algo como "dex_25__img", tenta reduzir
+                selected_pid = grid_id_map.get(clicked_id)
+                if selected_pid is None and "__" in clicked_id:
+                    selected_pid = grid_id_map.get(clicked_id.split("__", 1)[0])
+
+                if selected_pid:
+                    st.session_state["pokedex_selected"] = str(selected_pid)
+                    st.rerun()
+
+            st.markdown("</div>", unsafe_allow_html=True)  # fecha .pokedex-shell
+            st.markdown("</div>", unsafe_allow_html=True)  # fecha wrapper externo (se houver)
 
 
 # ==============================================================================
