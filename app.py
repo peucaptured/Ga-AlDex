@@ -7806,19 +7806,6 @@ if st.sidebar.button("🚪 Sair (Logout)"):
     del st.session_state['trainer_name']
     st.rerun()
 
-if trainer_name == "Ezenek":
-    if st.sidebar.button("🔄 Atualizar NPCs"):
-        try:
-            fn = globals().get("comp_load")
-            if not callable(fn):
-                raise NameError("comp_load ainda não foi definido (ordem do script). Mova o bloco do sidebar para depois do Compendium.")
-            comp_data = fn()
-            comp_data["npcs"] = _sync_npc_users_and_overrides(comp_data.get("npcs") or {})
-            st.session_state["npc_sync_overrides"] = comp_data.get("npcs") or {}
-            st.sidebar.success("NPCs atualizados.")
-        except Exception as e:
-            st.sidebar.error(f"Falha ao atualizar NPCs: {e}")
-
 
 if st.sidebar.button("🔄 Recarregar Excel"):
     st.session_state['df_data'], st.session_state['cols_map'] = load_excel_data()
@@ -9410,7 +9397,18 @@ def comp_load() -> dict:
         
     return data
 
-
+if trainer_name == "Ezenek":
+    if st.sidebar.button("🔄 Atualizar NPCs"):
+        try:
+            fn = globals().get("comp_load")
+            if not callable(fn):
+                raise NameError("comp_load ainda não foi definido (ordem do script). Mova o bloco do sidebar para depois do Compendium.")
+            comp_data = fn()
+            comp_data["npcs"] = _sync_npc_users_and_overrides(comp_data.get("npcs") or {})
+            st.session_state["npc_sync_overrides"] = comp_data.get("npcs") or {}
+            st.sidebar.success("NPCs atualizados.")
+        except Exception as e:
+            st.sidebar.error(f"Falha ao atualizar NPCs: {e}")
 # ----------------------------
 # SESSION TRACKER (JSON)
 # ----------------------------
