@@ -9416,12 +9416,32 @@ def _session_now_iso() -> str:
     return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
 
 
-def _sessions_default_payload() -> dict:
-    return {
-        "meta": {"schema": 1, "updated_at": _session_now_iso()},
-        "sessions": {},
-    }
+def _sessions_file_path() -> str:
+    """
+    Sempre usa ./data/compendium_sessions.json como fonte principal (gravável).
+    Se não existir ainda, tenta ler de um arquivo existente em assets/raiz (fallback).
+    """
+    # 1) caminho gravável principal
+    data_dir = os.path.join(os.getcwd(), "data")
+    try:
+        os.makedirs(data_dir, exist_ok=True)
+    except Exception:
+        # se não conseguir criar, cai pro cwd mesmo
+        data_dir = os.getcwd()
 
+    primary = os.path.join(data_dir, COMP_SESSIONS_JSON)
+
+    # Se já existe no local gravável, usa ele
+    if os.path.exists(primary):
+        return primary
+
+    # 2) fallback: se existir algum "resolved" em assets/raiz, usa só para leitura inicial
+    resolved = _resolve_asset_path(COMP_SESSIONS_JSON)
+    if resolved and os.path.exists(resolved):
+        return resolved
+
+    # 3) se não existir em lugar nenhum ainda, já aponta pro local gravável
+    return primary
 
 def _sessions_file_path() -> str:
     resolved = _resolve_asset_path(COMP_SESSIONS_JSON)
@@ -10449,6 +10469,9 @@ def render_compendium_sessions(comp_data: dict) -> None:
                     "events": [],
                     "flags": {},
                 }
+                sessions_data["sessions"] = sessions
+                save_sessions_data(sessions_data)
+
                 save_sessions_data(sessions_data, globals().get("db"), st.session_state.get("trainer_name"))
 
                 st.session_state["comp_session_selected"] = sid
