@@ -4266,13 +4266,40 @@ def save_data_cloud(trainer_name, data):
             if isinstance(data, dict) and data.get("npc_user"):
                 npc_name = (data.get("npc_name") or trainer_name or "").strip() or trainer_name
 
-                # 1) fontes possíveis
-                raw = []
-                raw += (data.get("npc_pokemons") or []) if isinstance(data.get("npc_pokemons"), list) else []
-                raw += (data.get("party") or []) if isinstance(data.get("party"), list) else []
-                raw += (data.get("caught") or []) if isinstance(data.get("caught"), list) else []
+                # --- pega NPC "base" do compendium pra não perder lore ---
+                base_obj = {}
+                try:
+                    cd = st.session_state.get("comp_data")
+                    if isinstance(cd, dict):
+                        npcs = cd.get("npcs") or {}
+                        if isinstance(npcs, dict):
+                            base_obj = npcs.get(npc_name) or {}
+                except Exception:
+                    base_obj = {}
 
-                # 2) normaliza e converte em nomes
+                overrides = st.session_state.setdefault("npc_sync_overrides", {})
+
+                # usa prioridade: override anterior -> base do compendium -> default
+                npc_obj = overrides.get(npc_name) or base_obj or {"name": npc_name, "sections": {}}
+                npc_obj["name"] = npc_name  # garante
+
+                # ✅ preserva lore: nunca zere sections
+                if not isinstance(npc_obj.get("sections"), dict) or not npc_obj.get("sections"):
+                    if isinstance(base_obj, dict) and isinstance(base_obj.get("sections"), dict) and base_obj.get("sections"):
+                        npc_obj["sections"] = base_obj.get("sections")
+                    else:
+                        npc_obj["sections"] = npc_obj.get("sections") if isinstance(npc_obj.get("sections"), dict) else {}
+
+                # 1) fontes possíveis (do user NPC)
+                raw = []
+                if isinstance(data.get("npc_pokemons"), list):
+                    raw += (data.get("npc_pokemons") or [])
+                if isinstance(data.get("party"), list):
+                    raw += (data.get("party") or [])
+                if isinstance(data.get("caught"), list):
+                    raw += (data.get("caught") or [])
+
+                # 2) converte para nomes + dedupe mantendo ordem
                 pokes = []
                 seen = set()
                 for pid in raw:
@@ -4280,27 +4307,34 @@ def save_data_cloud(trainer_name, data):
                     if not pid_str:
                         continue
 
-                    # visitante fora da dex
                     if pid_str.startswith("EXT:"):
                         nm = pid_str.replace("EXT:", "").strip()
                     else:
-                        # usa seus helpers já existentes
                         try:
                             nm = _get_pokemon_name(pid_str)
                         except Exception:
                             nm = pid_str
 
                     nm = (nm or "").strip()
-                    if nm and nm.lower() not in seen:
-                        seen.add(nm.lower())
+                    key = nm.lower()
+                    if nm and key not in seen:
+                        seen.add(key)
                         pokes.append(nm)
 
-                # 3) grava em overrides
-                overrides = st.session_state.setdefault("npc_sync_overrides", {})
-                npc_obj = overrides.get(npc_name) or {"name": npc_name, "sections": {}}
+                # 3) (opcional, mas recomendado) merge com pokemons já existentes no NPC base/override
+                existing = npc_obj.get("pokemons") or npc_obj.get("pokemons_conhecidos") or []
+                if isinstance(existing, list) and existing:
+                    for x in existing:
+                        xs = str(x).strip()
+                        k = xs.lower()
+                        if xs and k not in seen:
+                            seen.add(k)
+                            pokes.append(xs)
+
                 npc_obj["pokemons"] = list(pokes)
                 npc_obj["pokemons_conhecidos"] = list(pokes)
                 overrides[npc_name] = npc_obj
+
         except Exception:
             pass
 
@@ -4309,7 +4343,6 @@ def save_data_cloud(trainer_name, data):
     except Exception as e:
         st.error(f"Erro ao salvar: {e}")
         return False
-
 
 
 def get_empty_user_data():
@@ -9592,7 +9625,9 @@ def add_entity_to_active_session(link_key: str, entity_id: str, event_type: str,
     active_sid = st.session_state.get("comp_session_active_id")
     if not active_sid or not entity_id:
         return False
-    sessions_data = load_sessions_data(globals().get("db"), st.session_state.get("trainer_name"))
+    db = globals().get("db")
+    trainer_name = st.session_state.get("trainer_name") or ""
+    sessions_data = load_sessions_data_cloud_first(db, trainer_name)
 
 
     sessions = sessions_data.get("sessions", {}) or {}
@@ -9612,6 +9647,53 @@ def add_entity_to_active_session(link_key: str, entity_id: str, event_type: str,
     save_sessions_data(sessions_data, globals().get("db"), st.session_state.get("trainer_name"))
     return True
 
+def _sessions_firestore_ref(db, trainer_name: str):
+    trainer_id = safe_doc_id(trainer_name)
+    return (
+        db.collection("trainers")
+          .document(trainer_id)
+          .collection("compendium")
+          .document("sessions")
+    )
+
+def load_sessions_data_cloud_first(db, trainer_name: str) -> dict:
+    # 1) tenta Firestore
+    try:
+        if db is not None and trainer_name:
+            snap = _sessions_firestore_ref(db, trainer_name).get()
+            if snap.exists:
+                data = snap.to_dict() or {}
+                if isinstance(data, dict):
+                    data.setdefault("meta", {})
+                    data.setdefault("sessions", {})
+                    data["meta"].setdefault("schema", 1)
+                    data["meta"].setdefault("updated_at", _session_now_iso())
+                    if not isinstance(data["sessions"], dict):
+                        data["sessions"] = {}
+                    return data
+    except Exception as e:
+        st.warning(f"Falha ao carregar sessões do Firestore: {e}")
+
+    # 2) fallback: JSON local (o seu atual)
+    return load_sessions_data()
+
+def save_sessions_data_cloud_first(db, trainer_name: str, data: dict) -> None:
+    if not isinstance(data, dict):
+        return
+    data.setdefault("meta", {})
+    data.setdefault("sessions", {})
+    data["meta"]["updated_at"] = _session_now_iso()
+
+    # 1) tenta Firestore
+    try:
+        if db is not None and trainer_name:
+            _sessions_firestore_ref(db, trainer_name).set(data, merge=True)
+            return
+    except Exception as e:
+        st.warning(f"Falha ao salvar sessões no Firestore: {e}")
+
+    # 2) fallback: JSON local
+    save_sessions_data(data)
 
 # ----------------------------
 # INFERÊNCIA DE TAGS + MENCÕES
@@ -10443,7 +10525,9 @@ def render_compendium_sessions(comp_data: dict) -> None:
     unsafe_allow_html=True
 )
 
-    sessions_data = load_sessions_data(globals().get("db"), st.session_state.get("trainer_name"))
+    db = globals().get("db")
+    trainer_name = st.session_state.get("trainer_name") or ""
+    sessions_data = load_sessions_data_cloud_first(db, trainer_name)
 
     sessions = sessions_data.get("sessions", {}) or {}
 
@@ -10528,7 +10612,7 @@ def render_compendium_sessions(comp_data: dict) -> None:
     
                 # importante: garante que o payload carregado recebe o dict atualizado
                 sessions_data["sessions"] = sessions
-                save_sessions_data(sessions_data)
+                save_sessions_data_cloud_first(db, trainer_name, sessions_data)
     
                 st.session_state["comp_session_selected"] = sid
                 st.success(f"Sessão {sid} criada.")
@@ -10594,7 +10678,7 @@ def render_compendium_sessions(comp_data: dict) -> None:
                     st.session_state["comp_session_selected"] = None
     
                 sessions_data["sessions"] = sessions
-                save_sessions_data(sessions_data)
+                save_sessions_data_cloud_first(db, trainer_name, sessions_data)
     
                 st.success(f"Sessão {selected_sid} excluída.")
                 st.rerun()
