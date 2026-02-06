@@ -503,7 +503,8 @@ class BiomeGenerator:
         FIX: evita ValueError randrange() quando o sprite não cabe.
         """
         h, w = occ.shape
-        target = int(h * w * density)
+        avail = int(np.sum(allowed_anchor)) if allowed_anchor is not None else (h * w)
+        target = max(1, int(avail * density))
         placed = 0
         if not sprites:
             return
