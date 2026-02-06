@@ -4257,13 +4257,54 @@ def save_data_cloud(trainer_name, data):
         row_num = find_user_row(sheet, trainer_name)
         if row_num:
             sheet.update_cell(row_num, 2, json_str)
+
+            # ✅ Se for um "usuário NPC", atualiza overrides do Compendium automaticamente
+            try:
+                if isinstance(data, dict) and data.get("npc_user"):
+                    npc_name = (data.get("npc_name") or trainer_name or "").strip() or trainer_name
+
+                    # tenta pegar nomes diretamente
+                    pokes = data.get("npc_pokemons")
+                    if not isinstance(pokes, list) or not pokes:
+                        pokes = []
+                        caught = data.get("caught") or []
+                        if not isinstance(caught, list):
+                            caught = []
+
+                        local_df = st.session_state.get("df_data")
+                        for pid in caught:
+                            pid_str = str(pid).strip()
+                            if not pid_str:
+                                continue
+                            if pid_str.startswith("EXT:"):
+                                nm = pid_str.replace("EXT:", "").strip()
+                                if nm:
+                                    pokes.append(nm)
+                            elif pid_str.isdigit() and local_df is not None:
+                                row = local_df[local_df["Nº"].astype(str) == pid_str]
+                                if not row.empty:
+                                    pokes.append(str(row.iloc[0]["Nome"]))
+
+                        # grava de volta pra manter consistente
+                        data["npc_pokemons"] = pokes
+
+                    overrides = st.session_state.setdefault("npc_sync_overrides", {})
+                    npc_obj = overrides.get(npc_name) or {"name": npc_name, "sections": {}}
+                    npc_obj["pokemons"] = list(pokes)
+                    npc_obj["pokemons_conhecidos"] = list(pokes)
+                    overrides[npc_name] = npc_obj
+            except Exception:
+                pass
+
             return True
         else:
             st.error("Erro crítico: Usuário sumiu da planilha enquanto salvava.")
             return False
+
     except Exception as e:
         st.error(f"Erro ao salvar: {e}")
         return False
+
 
 def get_empty_user_data():
     return {"seen": [], "caught": [], "party": [], "notes": {}}
@@ -7768,12 +7809,16 @@ if st.sidebar.button("🚪 Sair (Logout)"):
 if trainer_name == "Ezenek":
     if st.sidebar.button("🔄 Atualizar NPCs"):
         try:
-            comp_data = comp_load()
+            fn = globals().get("comp_load")
+            if not callable(fn):
+                raise NameError("comp_load ainda não foi definido (ordem do script). Mova o bloco do sidebar para depois do Compendium.")
+            comp_data = fn()
             comp_data["npcs"] = _sync_npc_users_and_overrides(comp_data.get("npcs") or {})
             st.session_state["npc_sync_overrides"] = comp_data.get("npcs") or {}
             st.sidebar.success("NPCs atualizados.")
         except Exception as e:
             st.sidebar.error(f"Falha ao atualizar NPCs: {e}")
+
 
 if st.sidebar.button("🔄 Recarregar Excel"):
     st.session_state['df_data'], st.session_state['cols_map'] = load_excel_data()
