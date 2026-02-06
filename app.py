@@ -9804,8 +9804,8 @@ def add_entity_to_active_session(link_key: str, entity_id: str, event_type: str,
     active_sid = st.session_state.get("comp_session_active_id")
     if not active_sid or not entity_id:
         return False
-    db = globals().get("db")
-    trainer_name = st.session_state.get("trainer_name") or ""
+    db = _sessions_db(globals().get("db"))
+    trainer_name = _sessions_owner_name()
     sessions_data = load_sessions_data_cloud_first(db, trainer_name)
 
 
@@ -9823,7 +9823,7 @@ def add_entity_to_active_session(link_key: str, entity_id: str, event_type: str,
             "refs": refs,
         },
     )
-    save_sessions_data(sessions_data, globals().get("db"), st.session_state.get("trainer_name"))
+    save_sessions_data_cloud_first(db, trainer_name, sessions_data)
     return True
 
 def _sessions_firestore_ref(db, trainer_name: str):
@@ -9835,7 +9835,36 @@ def _sessions_firestore_ref(db, trainer_name: str):
           .document("sessions")
     )
 
+
+def _sessions_owner_name(explicit_name: str | None = None) -> str:
+    """
+    Resolve o dono dos dados de sessões no Compendium.
+    Prioriza o nome explicitamente informado e, em seguida,
+    os nomes já presentes na sessão de login.
+    """
+    return (
+        (explicit_name or "").strip()
+        or (st.session_state.get("trainer_name") or "").strip()
+        or (st.session_state.get("player_name") or "").strip()
+    )
+
+
+def _sessions_db(db=None):
+    """Retorna cliente Firestore ativo, tentando inicializar quando necessário."""
+    if db is not None:
+        return db
+    db = globals().get("db")
+    if db is not None:
+        return db
+    try:
+        db, _ = init_firebase()
+        return db
+    except Exception:
+        return None
+
 def load_sessions_data_cloud_first(db, trainer_name: str) -> dict:
+    db = _sessions_db(db)
+    trainer_name = _sessions_owner_name(trainer_name)
     # 1) tenta Firestore
     try:
         if db is not None and trainer_name:
@@ -9859,6 +9888,8 @@ def load_sessions_data_cloud_first(db, trainer_name: str) -> dict:
 def save_sessions_data_cloud_first(db, trainer_name: str, data: dict) -> None:
     if not isinstance(data, dict):
         return
+    db = _sessions_db(db)
+    trainer_name = _sessions_owner_name(trainer_name)
     data.setdefault("meta", {})
     data.setdefault("sessions", {})
     data["meta"]["updated_at"] = _session_now_iso()
@@ -10704,8 +10735,8 @@ def render_compendium_sessions(comp_data: dict) -> None:
     unsafe_allow_html=True
 )
 
-    db = globals().get("db")
-    trainer_name = st.session_state.get("trainer_name") or ""
+    db = _sessions_db(globals().get("db"))
+    trainer_name = _sessions_owner_name()
     sessions_data = load_sessions_data_cloud_first(db, trainer_name)
 
     sessions = sessions_data.setdefault("sessions", {})
@@ -10917,7 +10948,7 @@ def render_compendium_sessions(comp_data: dict) -> None:
             session["links"]["places"] = link_places
             session["links"]["gyms"] = link_gyms
             session["links"]["items"] = link_items
-            save_sessions_data(sessions_data, globals().get("db"), st.session_state.get("trainer_name"))
+            save_sessions_data_cloud_first(db, trainer_name, sessions_data)
             st.success("Resumo atualizado.")
 
     with tabs[1]:
@@ -10976,7 +11007,7 @@ def render_compendium_sessions(comp_data: dict) -> None:
                     "refs": refs,
                 },
             )
-            save_sessions_data(sessions_data, globals().get("db"), st.session_state.get("trainer_name"))
+            save_sessions_data_cloud_first(db, trainer_name, sessions_data)
             st.success("Evento adicionado.")
             st.rerun()
 
@@ -11047,7 +11078,7 @@ def render_compendium_sessions(comp_data: dict) -> None:
             if new_key.strip():
                 flags[new_key.strip()] = bool(new_val)
             session["flags"] = flags
-            save_sessions_data(sessions_data, globals().get("db"), st.session_state.get("trainer_name"))
+            save_sessions_data_cloud_first(db, trainer_name, sessions_data)
             st.success("Flags atualizadas.")
 
     with tabs[4]:
