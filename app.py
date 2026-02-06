@@ -10597,6 +10597,22 @@ def render_compendium_sessions(comp_data: dict) -> None:
     sessions_data = load_sessions_data_cloud_first(db, trainer_name)
 
     sessions = sessions_data.setdefault("sessions", {})
+    # --- RESTAURA UI (persistente em Firestore) ---
+    sessions_data.setdefault("meta", {})
+    sessions_data["meta"].setdefault("ui", {})
+    ui = sessions_data["meta"]["ui"]
+    
+    # restaura seleção/ativa salvas no banco
+    if "comp_session_selected" not in st.session_state:
+        st.session_state["comp_session_selected"] = ui.get("selected_sid")
+    
+    if "comp_session_active_id" not in st.session_state:
+        st.session_state["comp_session_active_id"] = ui.get("active_sid")
+    
+    # fallback seguro: se não tiver nada, seleciona a primeira existente
+    if not st.session_state.get("comp_session_selected") and sessions:
+        st.session_state["comp_session_selected"] = sorted(sessions.keys())[0]
+
 
     npcs = sorted((comp_data.get("npcs") or {}).keys())
     cities = sorted((comp_data.get("cities") or {}).keys())
@@ -10745,6 +10761,13 @@ def render_compendium_sessions(comp_data: dict) -> None:
                     st.session_state["comp_session_selected"] = None
     
                 sessions_data["sessions"] = sessions
+                # --- PERSISTE UI NO BANCO ---
+                sessions_data.setdefault("meta", {})
+                sessions_data["meta"].setdefault("ui", {})
+                sessions_data["meta"]["ui"]["active_sid"] = st.session_state.get("comp_session_active_id")
+                sessions_data["meta"]["ui"]["selected_sid"] = st.session_state.get("comp_session_selected")
+                save_sessions_data_cloud_first(db, trainer_name, sessions_data)
+
                 save_sessions_data_cloud_first(db, trainer_name, sessions_data)
     
                 st.success(f"Sessão {selected_sid} excluída.")
