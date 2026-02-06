@@ -13084,6 +13084,44 @@ if page == "Pokédex (Busca)":
     @keyframes pageFade { from { opacity: 0.92; } to { opacity: 1; } }
     @keyframes contentSlide { from { transform: translateY(8px); opacity: 0.92; } to { transform: translateY(0); opacity: 1; } }
 
+    /* ============================================================
+       FIX: remove a “moldura/contorno preto” SOMENTE do st_click_detector
+       (não afeta seu iframe do compendium)
+       ============================================================ */
+    
+    /* o iframe do componente (por título) */
+    iframe[title^="st_click_detector"],
+    iframe[title*="click_detector"]{
+      background: transparent !important;
+      border: 0 !important;
+      outline: 0 !important;
+      box-shadow: none !important;
+    }
+    
+    /* o wrapper do Streamlit que costuma vir com fundo/borda */
+    div[data-testid="stComponentFrame"]:has(iframe[title^="st_click_detector"]),
+    div[data-testid="stComponentFrame"]:has(iframe[title*="click_detector"]){
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+    }
+    
+    /* em alguns temas, existe um “container interno” também */
+    div[data-testid="stComponentFrame"]:has(iframe[title^="st_click_detector"]) > div,
+    div[data-testid="stComponentFrame"]:has(iframe[title*="click_detector"]) > div{
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+    }
+    
+    /* remove espaçamentos que podem virar “faixa” */
+    div[data-testid="stElementContainer"]:has(iframe[title^="st_click_detector"]),
+    div[data-testid="stElementContainer"]:has(iframe[title*="click_detector"]){
+      background: transparent !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
 
     /* ============================================================
        2. O NOVO CSS DOS TILES (CORRIGIDO PARA BATER COM O PYTHON)
