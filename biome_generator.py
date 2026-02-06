@@ -197,49 +197,76 @@ def load_sprite_entries(json_path: Path, base_dir: Path, tile_raw_px: int) -> Li
 
     data = json.loads(json_path.read_text(encoding="utf-8"))
 
+    def load_sprite_entries(json_path: Path, base_dir: Path, tile_raw_px: int) -> List[Sprite]:
+    if not json_path.exists():
+        return []
+
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+
+    # Formato A: {"entries":[{"file":..., "w":..., "h":..., "pivot":...}, ...]}
     entries = data.get("entries")
-    if entries is None:
+
+    # Formato B: {"sprites":[{"name":..., "width":..., "height":...}, ...]}
+    if not entries:
         sprites = data.get("sprites") or []
         entries = []
         for s in sprites:
+            name = s.get("name")
+            if not name:
+                continue
             entries.append({
-                "file": s.get("file") or s.get("name"),
-                "w": s.get("w") or s.get("width") or 0,
-                "h": s.get("h") or s.get("height") or 0,
-                "pivot": s.get("pivot") or {},
+                "file": name,
+                "w": int(s.get("width", 0)),
+                "h": int(s.get("height", 0)),
+                # sem pivot no JSON -> pivot padrão
+                "pivot": {"x": None, "y": None},
             })
 
     out: List[Sprite] = []
+
+    def resolve_path(file_rel: str) -> Path:
+        p = base_dir / file_rel
+        if p.exists():
+            return p
+
+        # tenta só o basename
+        p2 = base_dir / Path(file_rel).name
+        if p2.exists():
+            return p2
+
+        # tenta trocar prefixos comuns (sprite_###.png <-> cave_###.png)
+        name = Path(file_rel).name
+        if name.startswith("sprite_"):
+            alt = "cave_" + name[len("sprite_"):]
+            p3 = base_dir / alt
+            if p3.exists():
+                return p3
+        if name.startswith("cave_"):
+            alt = "sprite_" + name[len("cave_"):]
+            p3 = base_dir / alt
+            if p3.exists():
+                return p3
+
+        return p  # deixa falhar (vai ficar inexistente)
+
     for e in entries:
         file_rel = e.get("file")
         if not file_rel:
             continue
 
-        # caminho principal
-        p = base_dir / file_rel
-
-        # fallback 1: basename
+        p = resolve_path(file_rel)
         if not p.exists():
-            p = base_dir / Path(file_rel).name
-
-        # fallback 2: JSON fala sprite_###, pasta tem cave_###
-        if not p.exists():
-            name = Path(file_rel).name
-            if name.startswith("sprite_"):
-                alt = "cave_" + name[len("sprite_"):]
-                p2 = base_dir / alt
-                if p2.exists():
-                    p = p2
-
-        if not p.exists():
-            continue
+            continue  # não achou mesmo -> ignora
 
         w = int(e.get("w", 0))
         h = int(e.get("h", 0))
-        piv = e.get("pivot") or {}
 
-        pivot_x = int(piv.get("x", max(1, w // 2)))
-        pivot_y = int(piv.get("y", max(1, h)))
+        piv = e.get("pivot") or {}
+        # pivots padrão se vier None
+        px = piv.get("x")
+        py = piv.get("y")
+        pivot_x = int(px if px is not None else max(1, w // 2))
+        pivot_y = int(py if py is not None else max(1, h))
 
         tiles_w = max(1, int(round(w / tile_raw_px)))
         tiles_h = max(1, int(round(h / tile_raw_px)))
@@ -251,6 +278,7 @@ def load_sprite_entries(json_path: Path, base_dir: Path, tile_raw_px: int) -> Li
         ))
 
     return out
+
 
 
 def alpha_bbox(im: Image.Image) -> Tuple[int, int, int, int]:
