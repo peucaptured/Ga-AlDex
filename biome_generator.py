@@ -196,13 +196,6 @@ def load_sprite_entries(json_path: Path, base_dir: Path, tile_raw_px: int) -> Li
         return []
 
     data = json.loads(json_path.read_text(encoding="utf-8"))
-
-    def load_sprite_entries(json_path: Path, base_dir: Path, tile_raw_px: int) -> List[Sprite]:
-    if not json_path.exists():
-        return []
-
-    data = json.loads(json_path.read_text(encoding="utf-8"))
-
     # Formato A: {"entries":[{"file":..., "w":..., "h":..., "pivot":...}, ...]}
     entries = data.get("entries")
 
