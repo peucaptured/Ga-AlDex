@@ -509,6 +509,58 @@ def comp_img_data_uri(path_str: str) -> str:
     b64 = base64.b64encode(data).decode("utf-8")
     return f"data:{mime};base64,{b64}"
 
+def apply_npc_overrides(base_npcs: dict, overrides: dict) -> dict:
+    base_npcs = base_npcs or {}
+    overrides = overrides or {}
+
+    for npc_name, over in overrides.items():
+        if not isinstance(over, dict):
+            continue
+
+        base = base_npcs.get(npc_name) or {"name": npc_name, "sections": {}}
+        if not isinstance(base, dict):
+            base = {"name": npc_name, "sections": {}}
+
+        merged = dict(base)  # shallow copy
+
+        # nunca deixar perder sections (lore)
+        merged_sections = {}
+        if isinstance(base.get("sections"), dict):
+            merged_sections.update(base["sections"])
+        if isinstance(over.get("sections"), dict):
+            # override só adiciona/atualiza; não apaga o que existe
+            for k, v in over["sections"].items():
+                if (str(v).strip() if v is not None else ""):
+                    merged_sections[k] = v
+        merged["sections"] = merged_sections
+
+        # campos "seguros" que você pode sobrescrever
+        for k in ["idade", "origem", "ocupacao", "status", "img", "name"]:
+            if k in over and over[k] not in (None, ""):
+                merged[k] = over[k]
+
+        # pokémons: dedupe preservando ordem
+        def _dedupe_list(xs):
+            out, seen = [], set()
+            for x in xs or []:
+                s = str(x).strip()
+                if not s:
+                    continue
+                key = s.lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append(s)
+            return out
+
+        if "pokemons" in over:
+            merged["pokemons"] = _dedupe_list(over.get("pokemons"))
+        if "pokemons_conhecidos" in over:
+            merged["pokemons_conhecidos"] = _dedupe_list(over.get("pokemons_conhecidos"))
+
+        base_npcs[npc_name] = merged
+
+    return base_npcs
 
 
 def render_bgm(track_path: str, volume: float = 0.35) -> None:
@@ -9432,7 +9484,10 @@ def comp_load() -> dict:
                     dst["sections"][sec] = obj["sections"][sec]
 
     if "npc_sync_overrides" in st.session_state:
-        data["npcs"] = st.session_state["npc_sync_overrides"]
+        data["npcs"] = apply_npc_overrides(
+            data.get("npcs") or {},
+            st.session_state["npc_sync_overrides"]
+        )
         
     return data
 
