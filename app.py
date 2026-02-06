@@ -9522,66 +9522,131 @@ def _session_now_iso() -> str:
     return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
 
 
-def _sessions_firestore_ref(db, trainer_name: str):
-    trainer_id = safe_doc_id(trainer_name)
-    return (
-        db.collection("trainers")
-          .document(trainer_id)
-          .collection("compendium")
-          .document("sessions")
-    )
+def _sessions_file_path() -> str:
+    """
+    Sempre usa ./data/compendium_sessions.json como fonte principal (gravável).
+    Se não existir ainda, tenta ler de um arquivo existente em assets/raiz (fallback).
+    """
+    # 1) caminho gravável principal
+    data_dir = os.path.join(os.getcwd(), "data")
+    try:
+        os.makedirs(data_dir, exist_ok=True)
+    except Exception:
+        # se não conseguir criar, cai pro cwd mesmo
+        data_dir = os.getcwd()
 
+    primary = os.path.join(data_dir, COMP_SESSIONS_JSON)
 
-def _sessions_get_context(db=None, trainer_name: str | None = None):
-    if db is None:
-        db = globals().get("db")
-    if trainer_name is None:
-        trainer_name = st.session_state.get("trainer_name") or st.session_state.get("player_name")
-    trainer_name = str(trainer_name or "").strip()
-    if not db or not trainer_name:
-        return None, None
-    return db, trainer_name
+    # Se já existe no local gravável, usa ele
+    if os.path.exists(primary):
+        return primary
+
+    # 2) fallback: se existir algum "resolved" em assets/raiz, usa só para leitura inicial
+    resolved = _resolve_asset_path(COMP_SESSIONS_JSON)
+    if resolved and os.path.exists(resolved):
+        return resolved
+
+    # 3) se não existir em lugar nenhum ainda, já aponta pro local gravável
+    return primary
+
+def _sessions_file_path() -> str:
+    resolved = _resolve_asset_path(COMP_SESSIONS_JSON)
+    if resolved and os.path.exists(resolved):
+        return resolved
+    return os.path.join(os.getcwd(), COMP_SESSIONS_JSON)
 
 
 def load_sessions_data(db=None, trainer_name: str | None = None) -> dict:
-    db, trainer_name = _sessions_get_context(db=db, trainer_name=trainer_name)
-    if db is None or not trainer_name:
-        return _sessions_default_payload()
-
+    # 1) tenta Firestore
     try:
-        snap = _sessions_firestore_ref(db, trainer_name).get()
-        if snap.exists:
-            data = snap.to_dict() or {}
-            if isinstance(data, dict):
-                data.setdefault("meta", {})
-                data.setdefault("sessions", {})
-                data["meta"].setdefault("schema", 1)
-                data["meta"].setdefault("updated_at", _session_now_iso())
-                if not isinstance(data["sessions"], dict):
-                    data["sessions"] = {}
-                return data
+        if db is None:
+            db = globals().get("db")
+        if trainer_name is None:
+            trainer_name = st.session_state.get("trainer_name") or st.session_state.get("player_name")
+        if db is not None and trainer_name:
+            trainer_id = safe_doc_id(str(trainer_name))
+            ref = (
+                db.collection("trainers")
+                  .document(trainer_id)
+                  .collection("compendium")
+                  .document("sessions")
+            )
+            snap = ref.get()
+            if snap.exists:
+                data = snap.to_dict() or {}
+                if isinstance(data, dict):
+                    data.setdefault("meta", {})
+                    data.setdefault("sessions", {})
+                    data["meta"].setdefault("schema", 1)
+                    data["meta"].setdefault("updated_at", _session_now_iso())
+                    if not isinstance(data["sessions"], dict):
+                        data["sessions"] = {}
+                    return data
+    except Exception:
+        pass
+
+    # 2) fallback: arquivo local (seu comportamento atual)
+    path = _sessions_file_path()
+    if not os.path.exists(path):
+        return _sessions_default_payload()
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
     except Exception:
         return _sessions_default_payload()
 
-    return _sessions_default_payload()
+    if not isinstance(data, dict):
+        return _sessions_default_payload()
+    data.setdefault("meta", {})
+    data.setdefault("sessions", {})
+    data["meta"].setdefault("schema", 1)
+    data["meta"].setdefault("updated_at", _session_now_iso())
+    if not isinstance(data["sessions"], dict):
+        data["sessions"] = {}
+    return data
 
 
 def save_sessions_data(data: dict, db=None, trainer_name: str | None = None) -> None:
     if not isinstance(data, dict):
         return
-    db, trainer_name = _sessions_get_context(db=db, trainer_name=trainer_name)
-    if db is None or not trainer_name:
-        return
-
     data.setdefault("meta", {})
     data.setdefault("sessions", {})
     data["meta"]["updated_at"] = _session_now_iso()
 
+    # 1) tenta Firestore
     try:
-        _sessions_firestore_ref(db, trainer_name).set(data, merge=True)
-        return
+        if db is None:
+            db = globals().get("db")
+        if trainer_name is None:
+            trainer_name = st.session_state.get("trainer_name") or st.session_state.get("player_name")
+        if db is not None and trainer_name:
+            trainer_id = safe_doc_id(str(trainer_name))
+            ref = (
+                db.collection("trainers")
+                  .document(trainer_id)
+                  .collection("compendium")
+                  .document("sessions")
+            )
+            ref.set(data, merge=True)
+            return  # sucesso no Firestore -> não precisa arquivo
     except Exception:
-        return
+        pass
+
+    # 2) fallback: arquivo local (seu comportamento atual)
+    path = _sessions_file_path()
+    folder = os.path.dirname(path) or os.getcwd()
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M")
+    backup_path = os.path.join(folder, f"compendium_sessions_backup_{ts}.json")
+
+    payload = json.dumps(data, ensure_ascii=False, indent=2)
+    try:
+        with open(backup_path, "w", encoding="utf-8") as backup:
+            backup.write(payload)
+    except Exception:
+        pass
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(payload)
 
 
 
@@ -9649,17 +9714,53 @@ def add_entity_to_active_session(link_key: str, entity_id: str, event_type: str,
     save_sessions_data(sessions_data, globals().get("db"), st.session_state.get("trainer_name"))
     return True
 
+def _sessions_firestore_ref(db, trainer_name: str):
+    trainer_id = safe_doc_id(trainer_name)
+    return (
+        db.collection("trainers")
+          .document(trainer_id)
+          .collection("compendium")
+          .document("sessions")
+    )
+
 def load_sessions_data_cloud_first(db, trainer_name: str) -> dict:
+    # 1) tenta Firestore
     try:
-        return load_sessions_data(db=db, trainer_name=trainer_name)
-    except Exception:
-        return _sessions_default_payload()
+        if db is not None and trainer_name:
+            snap = _sessions_firestore_ref(db, trainer_name).get()
+            if snap.exists:
+                data = snap.to_dict() or {}
+                if isinstance(data, dict):
+                    data.setdefault("meta", {})
+                    data.setdefault("sessions", {})
+                    data["meta"].setdefault("schema", 1)
+                    data["meta"].setdefault("updated_at", _session_now_iso())
+                    if not isinstance(data["sessions"], dict):
+                        data["sessions"] = {}
+                    return data
+    except Exception as e:
+        st.warning(f"Falha ao carregar sessões do Firestore: {e}")
+
+    # 2) fallback: JSON local (o seu atual)
+    return load_sessions_data()
 
 def save_sessions_data_cloud_first(db, trainer_name: str, data: dict) -> None:
-    try:
-        save_sessions_data(data=data, db=db, trainer_name=trainer_name)
-    except Exception:
+    if not isinstance(data, dict):
         return
+    data.setdefault("meta", {})
+    data.setdefault("sessions", {})
+    data["meta"]["updated_at"] = _session_now_iso()
+
+    # 1) tenta Firestore
+    try:
+        if db is not None and trainer_name:
+            _sessions_firestore_ref(db, trainer_name).set(data, merge=True)
+            return
+    except Exception as e:
+        st.warning(f"Falha ao salvar sessões no Firestore: {e}")
+
+    # 2) fallback: JSON local
+    save_sessions_data(data)
 
 # ----------------------------
 # INFERÊNCIA DE TAGS + MENCÕES
@@ -12654,131 +12755,119 @@ if page == "Pokédex (Busca)":
     }
     
 
-    /* ============================================================
-       2.1 CARTA (TCG-like) PARA A GRID DA POKÉDEX
-       ============================================================ */
-    .dex-tcg-link { text-decoration: none !important; display: block; }
-    .dex-tcg-card{
-        width: 100%;
-        border-radius: 14px;
-        overflow: hidden;
-        position: relative;
-        border: 4px solid rgba(255,255,255,0.28);
-        box-shadow:
-            0 10px 18px rgba(0,0,0,0.25),
-            inset 0 0 0 2px rgba(255,255,255,0.18);
-        transition: transform 0.15s ease, filter 0.15s ease;
-        min-height: 150px;
-    }
-    .dex-tcg-card:hover{ transform: translateY(-2px) scale(1.01); filter: saturate(1.06); }
+/* ============================================================
+   2. POKÉDEX CARDS (TCG-like)
+   ============================================================ */
+.dex-tcg-link{
+    display:block;
+    text-decoration:none !important;
+    color:inherit;
+}
+.dex-tcg-card{
+    width:100%;
+    height:200px;
+    border-radius:14px;
+    position:relative;
+    overflow:hidden;
+    border:4px solid rgba(148,163,184,0.55); /* fallback */
+    box-shadow: 0 10px 18px rgba(0,0,0,0.35);
+    transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+}
+.dex-tcg-card:hover{
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 14px 24px rgba(0,0,0,0.42);
+    filter: saturate(1.04);
+}
 
-    /* Top bar com nome e NP */
-    .dex-tcg-topbar{
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap: 8px;
-        padding: 8px 10px 6px 10px;
-        background: rgba(15, 23, 42, 0.62);
-        backdrop-filter: blur(2px);
-    }
-    .dex-tcg-name{
-        flex: 1;
-        text-align:center;
-        font-size: 10px;
-        color: #ffffff;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.45);
-    }
-    .dex-tcg-np{
-        font-size: 9px;
-        color: rgba(255,255,255,0.92);
-        background: rgba(0,0,0,0.25);
-        padding: 2px 6px;
-        border-radius: 999px;
-        border: 1px solid rgba(255,255,255,0.22);
-        min-width: 46px;
-        text-align:center;
-    }
-    .dex-tcg-status{
-        width: 20px;
-        height: 20px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        color: rgba(255,255,255,0.92);
-        background: rgba(0,0,0,0.25);
-        border: 1px solid rgba(255,255,255,0.22);
-        border-radius: 8px;
-        flex: 0 0 20px;
-    }
+/* reaproveita suas classes de status para a borda */
+.dex-tcg-card.dex-frame--caught{ border-color:#22c55e; }
+.dex-tcg-card.dex-frame--wish{ border-color:#facc15; }
+.dex-tcg-card.dex-frame--seen{ border-color:#38bdf8; }
+.dex-tcg-card.dex-frame--default{ border-color:rgba(148,163,184,0.55); }
 
-    /* Type badges */
-    .dex-tcg-typebar{
-        display:flex;
-        gap:6px;
-        padding: 6px 10px 6px 10px;
-        background: rgba(15, 23, 42, 0.40);
-        border-top: 1px solid rgba(255,255,255,0.14);
-        border-bottom: 1px solid rgba(255,255,255,0.14);
-        min-height: 26px;
-        align-items:center;
-        justify-content:center;
-    }
-    .dex-tcg-type{
-        font-size: 9px;
-        padding: 2px 8px;
-        border-radius: 999px;
-        color: rgba(255,255,255,0.95);
-        border: 1px solid rgba(255,255,255,0.25);
-        text-shadow: 0 1px 2px rgba(0,0,0,0.35);
-    }
+/* “inner border” para acabamento */
+.dex-tcg-card::after{
+    content:"";
+    position:absolute;
+    inset:6px;
+    border-radius:10px;
+    border:1px solid rgba(15,23,42,0.55);
+    pointer-events:none;
+}
 
-    /* Sprite */
-    .dex-tcg-body{
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        padding: 10px 10px 8px 10px;
-        background: rgba(15,23,42,0.18);
-        min-height: 80px;
-    }
-    .dex-tcg-sprite{
-        width: 72px;
-        height: 72px;
-        image-rendering: pixelated;
-        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35));
-    }
+.dex-tcg-top{
+    position:absolute;
+    top:0; left:0; right:0;
+    height:34px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:6px 8px;
+    background: rgba(2,6,23,0.58);
+    backdrop-filter: blur(3px);
+    z-index:2;
+}
+.dex-tcg-left{ width:22px; display:flex; align-items:center; justify-content:center; color: rgba(255,255,255,0.92); }
+.dex-tcg-ico{ width:18px; height:18px; display:block; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5)); }
+.dex-tcg-name{
+    flex:1;
+    font-weight:800;
+    font-size:13px;
+    color:#f8fafc;
+    text-align:center;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.55);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    padding:0 4px;
+}
+.dex-tcg-np{
+    font-weight:800;
+    font-size:11px;
+    color:#e2e8f0;
+    padding:4px 8px;
+    border-radius:999px;
+    background: rgba(15,23,42,0.65);
+    border: 1px solid rgba(148,163,184,0.35);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.45);
+    white-space:nowrap;
+}
 
-    /* Footer com viabilidade */
-    .dex-tcg-footer{
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        padding: 6px 10px 8px 10px;
-        background: rgba(15, 23, 42, 0.62);
-        border-top: 1px solid rgba(255,255,255,0.14);
-    }
-    .dex-tcg-viab{
-        font-size: 10px;
-        letter-spacing: 2px;
-        color: rgba(255,255,255,0.95);
-        background: rgba(0,0,0,0.25);
-        border: 1px solid rgba(255,255,255,0.22);
-        padding: 2px 10px;
-        border-radius: 999px;
-        text-align:center;
-        min-width: 52px;
-    }
+.dex-tcg-body{
+    position:absolute;
+    top:34px; bottom:34px; left:0; right:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:1;
+}
+.dex-tcg-sprite{
+    width:92px;
+    height:92px;
+    object-fit:contain;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,0.45));
+}
 
-    /* Reaproveita as cores de status já existentes (dex-frame--caught/wish/seen/default)
-       mas aplicando também na carta */
-    .dex-tcg-card.dex-frame--caught { border-color: rgba(34,197,94,0.95); }
-    .dex-tcg-card.dex-frame--wish   { border-color: rgba(250,204,21,0.95); }
-    .dex-tcg-card.dex-frame--seen   { border-color: rgba(56,189,248,0.95); }
-    .dex-tcg-card.dex-frame--default{ border-color: rgba(255,255,255,0.28); }
+.dex-tcg-footer{
+    position:absolute;
+    left:0; right:0; bottom:0;
+    height:34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: rgba(2,6,23,0.62);
+    backdrop-filter: blur(3px);
+    z-index:2;
+}
+.dex-tcg-viab{
+    font-weight:900;
+    letter-spacing: 0.28em;
+    font-size:18px;
+    color:#facc15;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.55);
+    padding-left: 0.28em; /* compensa letter-spacing visual */
+}
 </style>
     """, unsafe_allow_html=True)
 
@@ -12899,177 +12988,6 @@ if page == "Pokédex (Busca)":
 
     def select_pokedex_entry(pid: str) -> None:
         st.session_state["pokedex_selected"] = str(pid)
-
-    
-    # ----------------------------
-    # Helpers: TCG-like Pokédex cards
-    # ----------------------------
-    _TYPE_COLORS = {
-        # EN
-        "normal": "#A8A77A",
-        "fire": "#EE8130",
-        "water": "#6390F0",
-        "electric": "#F7D02C",
-        "grass": "#7AC74C",
-        "ice": "#96D9D6",
-        "fighting": "#C22E28",
-        "poison": "#A33EA1",
-        "ground": "#E2BF65",
-        "flying": "#A98FF3",
-        "psychic": "#F95587",
-        "bug": "#A6B91A",
-        "rock": "#B6A136",
-        "ghost": "#735797",
-        "dragon": "#6F35FC",
-        "dark": "#705746",
-        "steel": "#B7B7CE",
-        "fairy": "#D685AD",
-        # PT-BR (com e sem acento)
-        "normal": "#A8A77A",
-        "fogo": "#EE8130",
-        "agua": "#6390F0",
-        "água": "#6390F0",
-        "eletrico": "#F7D02C",
-        "elétrico": "#F7D02C",
-        "grama": "#7AC74C",
-        "gelo": "#96D9D6",
-        "lutador": "#C22E28",
-        "luta": "#C22E28",
-        "veneno": "#A33EA1",
-        "terra": "#E2BF65",
-        "voador": "#A98FF3",
-        "psiquico": "#F95587",
-        "psíquico": "#F95587",
-        "inseto": "#A6B91A",
-        "pedra": "#B6A136",
-        "fantasma": "#735797",
-        "dragao": "#6F35FC",
-        "dragão": "#6F35FC",
-        "sombrio": "#705746",
-        "metal": "#B7B7CE",
-        "fada": "#D685AD",
-    }
-
-    def _type_color(t: str) -> str:
-        key = (t or "").strip().lower()
-        return _TYPE_COLORS.get(key, "#64748B")  # slate fallback
-
-    def _extract_types_from_row(row_like) -> list[str]:
-        # tenta chaves comuns
-        raw = ""
-        for k in ("Tipos", "Tipo", "Type", "Types"):
-            try:
-                v = row_like.get(k)
-            except Exception:
-                v = None
-            if v is not None and str(v).strip() and str(v).lower() != "nan":
-                raw = str(v)
-                break
-
-        # tenta qualquer coluna que contenha "Tipo", mas ignora "Tipo de Evolução"
-        if not raw:
-            try:
-                for colname in getattr(row_like, "index", []):
-                    cn = str(colname)
-                    if "Tipo" in cn and "Evol" not in cn:
-                        vv = row_like.get(colname)
-                        if vv is not None and str(vv).strip() and str(vv).lower() != "nan":
-                            raw = str(vv)
-                            break
-            except Exception:
-                pass
-
-        if not raw:
-            return []
-
-        parts = re.split(r"[\/,\|\;\+]+", raw)
-        out = []
-        for p in parts:
-            p = str(p).strip()
-            if not p:
-                continue
-            out.append(p)
-        # mantém só 2 tipos
-        return out[:2]
-
-    def _extract_viability_from_row(row_like) -> str:
-        raw = ""
-        for k in ("Viabilidade", "viabilidade", "VIA", "Via"):
-            try:
-                v = row_like.get(k)
-            except Exception:
-                v = None
-            if v is not None and str(v).strip() and str(v).lower() != "nan":
-                raw = str(v).strip()
-                break
-        if not raw:
-            return "---"
-        # pega as 3 primeiras letras alfabéticas
-        letters = re.findall(r"[A-Za-z]", raw.upper())
-        if len(letters) >= 3:
-            return "".join(letters[:3])
-        # se vier "C-O-R" etc
-        raw2 = re.sub(r"[^A-Za-z]", "", raw.upper())
-        return (raw2[:3] or "---").ljust(3, "-")
-
-    def _extract_np_from_row(row_like) -> str:
-        for k in ("Nivel_Poder", "Nível de Poder", "NP", "np"):
-            try:
-                v = row_like.get(k)
-            except Exception:
-                v = None
-            if v is None:
-                continue
-            s = str(v).strip()
-            if not s or s.lower() == "nan":
-                continue
-            # tenta inteiro
-            try:
-                return str(int(float(s)))
-            except Exception:
-                return s
-        return ""
-
-    # SVG icons (inline) — sem depender de assets
-    _SVG_POKEBALL = """<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2Zm7.93 9H15.5a3.5 3.5 0 0 0-7 0H4.07A8.02 8.02 0 0 1 12 4a8.02 8.02 0 0 1 7.93 7ZM12 10a2 2 0 1 1 0 4a2 2 0 0 1 0-4Zm0 10a8.02 8.02 0 0 1-7.93-7H8.5a3.5 3.5 0 0 0 7 0h4.43A8.02 8.02 0 0 1 12 20Z"/></svg>"""
-    _SVG_STAR = """<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.33-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.613.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/></svg>"""
-    _SVG_EYE = """<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8ZM8 12a4 4 0 1 1 0-8a4 4 0 0 1 0 8Zm0-2.5a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3Z"/></svg>"""
-
-    def _status_svg(is_caught: bool, is_wished: bool, is_seen: bool) -> str:
-        if is_caught:
-            return _SVG_POKEBALL
-        if is_wished:
-            return _SVG_STAR
-        if is_seen:
-            return _SVG_EYE
-        return ""
-
-    # Suporte a clique via query param (?dex=xxx) — permite card clicável sem botão do Streamlit
-    try:
-        _qp = st.query_params
-        _dex_q = _qp.get("dex")
-        if isinstance(_dex_q, list):
-            _dex_q = _dex_q[0] if _dex_q else None
-    except Exception:
-        _dex_q = None
-        try:
-            _qp2 = st.experimental_get_query_params()
-            _dex_q = (_qp2.get("dex") or [None])[0]
-        except Exception:
-            pass
-
-    if _dex_q:
-        _dex_q = str(_dex_q)
-        if _dex_q != st.session_state.get("pokedex_selected"):
-            st.session_state["pokedex_selected"] = _dex_q
-            # tenta limpar o parâmetro pra URL não ficar “presa”
-            try:
-                st.query_params.clear()
-            except Exception:
-                try:
-                    st.experimental_set_query_params()
-                except Exception:
-                    pass
 
     selected_id = st.session_state.get("pokedex_selected")
 
@@ -13443,52 +13361,79 @@ if page == "Pokédex (Busca)":
                     display_name = f"{icon} {p_name}".strip()
 
                     with col:
-                        # Card “TCG” clicável (via query param ?dex=)
-                        types = _extract_types_from_row(row_g)
-                        viab = _extract_viability_from_row(row_g)
-                        np_val = _extract_np_from_row(row_g)
+                        
+                        # 3. Renderiza a CARTA (TCG-like) usando HTML/CSS
+                        # - Borda: status_class (mesmas classes já usadas hoje)
+                        # - Fundo: diagonal por tipos (cores oficiais)
+                        tipo_raw = row_g.get("Tipo", "")
+                        tipo_list = [t.strip() for t in re.split(r"[\/|,]+", str(tipo_raw)) if t.strip()]
+                        tipo1 = (tipo_list[0] if len(tipo_list) >= 1 else "")
+                        tipo2 = (tipo_list[1] if len(tipo_list) >= 2 else "")
 
-                        # fundo por tipo (1 cor) ou 2 tipos (diagonal)
-                        if len(types) >= 2:
-                            c1 = _type_color(types[0])
-                            c2 = _type_color(types[1])
-                            bg_style = f"background: linear-gradient(135deg, {c1} 0%, {c1} 49%, {c2} 51%, {c2} 100%);"
-                            type_badges = f"<span class='dex-tcg-type' style='background:{c1}'>{html.escape(str(types[0]))}</span><span class='dex-tcg-type' style='background:{c2}'>{html.escape(str(types[1]))}</span>"
-                        elif len(types) == 1:
-                            c1 = _type_color(types[0])
-                            bg_style = f"background: {c1};"
-                            type_badges = f"<span class='dex-tcg-type' style='background:{c1}'>{html.escape(str(types[0]))}</span>"
+                        # NP / Viabilidade (mantém compatibilidade: se faltar, mostra vazio)
+                        np_val = row_g.get("NP", row_g.get("Np", row_g.get("np", "")))
+                        viab = row_g.get("Viabilidade", row_g.get("viabilidade", ""))
+
+                        # --- cores oficiais (português + inglês) ---
+                        TYPE_COLORS = {
+                            # PT-BR
+                            "Normal":"#A8A77A","Fogo":"#EE8130","Água":"#6390F0","Agua":"#6390F0","Elétrico":"#F7D02C","Eletrico":"#F7D02C",
+                            "Grama":"#7AC74C","Gelo":"#96D9D6","Lutador":"#C22E28","Venenoso":"#A33EA1","Terrestre":"#E2BF65","Voador":"#A98FF3",
+                            "Psíquico":"#F95587","Psiquico":"#F95587","Inseto":"#A6B91A","Pedra":"#B6A136","Fantasma":"#735797","Dragão":"#6F35FC",
+                            "Dragao":"#6F35FC","Sombrio":"#705746","Aço":"#B7B7CE","Aco":"#B7B7CE","Fada":"#D685AD",
+                            # EN
+                            "Fire":"#EE8130","Water":"#6390F0","Electric":"#F7D02C","Grass":"#7AC74C","Ice":"#96D9D6","Fighting":"#C22E28",
+                            "Poison":"#A33EA1","Ground":"#E2BF65","Flying":"#A98FF3","Psychic":"#F95587","Bug":"#A6B91A","Rock":"#B6A136",
+                            "Ghost":"#735797","Dragon":"#6F35FC","Dark":"#705746","Steel":"#B7B7CE","Fairy":"#D685AD",
+                        }
+                        c1 = TYPE_COLORS.get(tipo1, "#334155")
+                        c2 = TYPE_COLORS.get(tipo2, c1)
+
+                        if tipo2:
+                            bg_style = f"background: linear-gradient(135deg, {c1} 0%, {c1} 52%, {c2} 52%, {c2} 100%);"
                         else:
-                            bg_style = "background: rgba(100,116,139,0.65);"
-                            type_badges = ""
+                            bg_style = f"background: {c1};"
 
-                        status_svg = _status_svg(is_caught, is_wished, is_seen)
-                        safe_name = html.escape(str(p_name))
+                        # Ícone de status (SVG inline, sem assets)
+                        ICONS = {
+                            "dex-frame--caught": """<svg class='dex-tcg-ico' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+                                <path d='M12 21a9 9 0 0 0 9-9h-6a3 3 0 0 1-6 0H3a9 9 0 0 0 9 9Z' fill='currentColor' opacity='0.9'/>
+                                <path d='M3 12a9 9 0 0 1 18 0h-6a3 3 0 0 0-6 0H3Z' fill='currentColor' opacity='0.55'/>
+                                <circle cx='12' cy='12' r='2' fill='currentColor'/>
+                                <circle cx='12' cy='12' r='9' stroke='currentColor' stroke-width='1.5'/>
+                            </svg>""",
+                            "dex-frame--wish": """<svg class='dex-tcg-ico' viewBox='0 0 24 24' fill='currentColor' xmlns='http://www.w3.org/2000/svg'>
+                                <path d='M12 2.5l2.93 5.94 6.57.95-4.75 4.63 1.12 6.53L12 17.9l-5.87 3.08 1.12-6.53L2.5 9.39l6.57-.95L12 2.5z'/>
+                            </svg>""",
+                            "dex-frame--seen": """<svg class='dex-tcg-ico' viewBox='0 0 24 24' fill='currentColor' xmlns='http://www.w3.org/2000/svg'>
+                                <path d='M12 5c5.5 0 9.5 5.2 10.6 6.9a1.7 1.7 0 0 1 0 2.2C21.5 15.8 17.5 21 12 21S2.5 15.8 1.4 14.1a1.7 1.7 0 0 1 0-2.2C2.5 10.2 6.5 5 12 5zm0 3.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6z'/>
+                            </svg>""",
+                            "dex-frame--default": """<svg class='dex-tcg-ico' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+                                <circle cx='12' cy='12' r='7' stroke='currentColor' stroke-width='2'/>
+                            </svg>""",
+                        }
+                        icon_svg = ICONS.get(status_class, ICONS["dex-frame--default"])
 
+                        # IMPORTANTE: sem target=_blank para NÃO abrir nova aba
                         card_html = f"""
-                        <a class="dex-tcg-link" href="?dex={html.escape(str(dex_num))}">
-                          <div class="dex-tcg-card {status_class}" style="{bg_style}">
-                            <div class="dex-tcg-topbar">
-                              <div class="dex-tcg-status">{status_svg}</div>
-                              <div class="dex-tcg-name" title="{safe_name}">{safe_name}</div>
-                              <div class="dex-tcg-np">{('NP ' + html.escape(np_val)) if np_val else ''}</div>
-                            </div>
-
-                            <div class="dex-tcg-typebar">{type_badges}</div>
-
-                            <div class="dex-tcg-body">
-                              <img src="{sprite_url}" class="dex-tcg-sprite" alt="{safe_name}">
-                            </div>
-
-                            <div class="dex-tcg-footer">
-                              <div class="dex-tcg-viab" title="Viabilidade">{html.escape(viab)}</div>
-                            </div>
-                          </div>
-                        </a>
-                        """
+<a class='dex-tcg-link' href='?dex={html.escape(dex_num)}'>
+  <div class='dex-tcg-card {status_class}' style='{bg_style}'>
+    <div class='dex-tcg-top'>
+      <div class='dex-tcg-left'>{icon_svg}</div>
+      <div class='dex-tcg-name' title='#{html.escape(dex_num)} • {html.escape(p_name)}'>{html.escape(p_name)}</div>
+      <div class='dex-tcg-np'>NP {html.escape(str(np_val))}</div>
+    </div>
+    <div class='dex-tcg-body'>
+      <img class='dex-tcg-sprite' src='{html.escape(sprite_url)}' alt='{html.escape(p_name)}'>
+    </div>
+    <div class='dex-tcg-footer'>
+      <div class='dex-tcg-viab' title='{html.escape(str(viab))}'>{html.escape(str(viab))}</div>
+    </div>
+  </div>
+</a>
+"""
                         st.markdown(card_html, unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+
 
 
 # ==============================================================================
