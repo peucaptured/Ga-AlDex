@@ -2155,6 +2155,19 @@ div[data-testid="stAppViewContainer"]{{
 div[data-testid="stAppViewContainer"] > .main{{ background: transparent !important; }}
 div[data-testid="stSidebar"]{{ background: #000 !important; }}
 div[data-testid="stHeader"]{{ background: transparent !important; }}
+/* =========================================================
+   IFRAME / COMPONENTES (deixar fundo transparente)
+   ========================================================= */
+div[data-testid="stIFrame"],
+div[data-testid="stIFrame"] > iframe {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Alguns builds do Streamlit usam wrappers adicionais */
+iframe {
+  background: transparent !important;
+}
 
 /* =========================================================
    2) FONTE RETRÔ E CONTRASTE GLOBAL (FORÇADO)
@@ -13416,6 +13429,13 @@ if page == "Pokédex (Busca)":
             from st_click_detector import click_detector
 
             POKEDEX_IFRAME_CSS = r"""@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+           
+            html, body {
+              background: transparent !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+
             .pokedex-grid-note {
                     font-size: 12px;
                     color: #e2e8f0;
