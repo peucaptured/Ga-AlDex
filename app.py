@@ -12922,6 +12922,9 @@ if page == "Pokédex (Busca)":
 if page == "Pokédex (Busca)":
     dex_param = st.query_params.get("dex", None)
     if dex_param:
+        # st.query_params pode devolver str ou lista[str]
+        if isinstance(dex_param, (list, tuple)):
+            dex_param = dex_param[0] if dex_param else None
         st.session_state["pokedex_selected"] = str(dex_param)
         st.query_params.clear() # Limpa a URL após capturar
         st.rerun()
@@ -13056,6 +13059,7 @@ if page == "Pokédex (Busca)":
     # ==============================================================================
     # VISÃO DE FOCO (selecionado)
     # ==============================================================================
+    st.markdown("<div id='dex_focus'></div>", unsafe_allow_html=True)
     if selected_id:
         
 
@@ -13430,7 +13434,7 @@ if page == "Pokédex (Busca)":
                         c1 = _type_color(t1)
                         c2 = _type_color(t2) if t2 else ""
                         if c2:
-                            bg_style = f"background: linear-gradient(135deg, {c1} 0 50%, {c2} 50 100%);"
+                            bg_style = f"background: linear-gradient(135deg, {c1} 0%, {c1} 50%, {c2} 50%, {c2} 100%);"
                         else:
                             bg_style = f"background: {c1};"
 
@@ -13452,7 +13456,7 @@ if page == "Pokédex (Busca)":
                             status_svg = ""
 
                         # clique mesma aba
-                        onclick_js = f"window.location.search='?dex={dex_num}';"
+                        onclick_js = f"window.location.href = window.location.pathname + '?dex={dex_num}#dex_focus';"
 
                         card_html = f"""
                         <div class="dex-tcg-card {status_class}" style="{bg_style}" onclick="{onclick_js}" role="button" tabindex="0">
