@@ -12875,6 +12875,25 @@ if page == "Pokédex (Busca)":
         text-overflow: ellipsis;
         text-align: center;
     }
+    /* GRID: sempre no mínimo 6 por fileira */
+    .pokedex-grid{
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 14px;
+    }
+    
+    /* Evita esmagar demais em telas menores: cria scroll horizontal */
+    .pokedex-grid{
+      overflow-x: auto;
+      padding-bottom: 8px;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Opcional: garante um tamanho mínimo agradável pros cards */
+    .dex-tcg-card{
+      min-width: 165px;
+    }
+
     .dex-tcg-np{
         font-size: 8px;
         color: #e2e8f0;
