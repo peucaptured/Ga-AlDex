@@ -10426,6 +10426,23 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
 
 def render_compendium_sessions(comp_data: dict) -> None:
     st.markdown("## 📒 Tracker de Sessões")
+    st.markdown(
+    """
+    <style>
+      .sess-card {
+        border: 1px solid rgba(255,255,255,0.10);
+        border-radius: 14px;
+        padding: 14px 14px 10px 14px;
+        background: rgba(255,255,255,0.03);
+      }
+      .sess-card h4 { margin: 0 0 8px 0; }
+      .sess-muted { opacity: 0.75; font-size: 0.92rem; }
+      .sess-danger { border-color: rgba(255,0,0,0.20); background: rgba(255,0,0,0.06); }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
     sessions_data = load_sessions_data(globals().get("db"), st.session_state.get("trainer_name"))
 
     sessions = sessions_data.get("sessions", {}) or {}
@@ -10450,19 +10467,52 @@ def render_compendium_sessions(comp_data: dict) -> None:
             default_number = max(int(n) for n in nums) + 1
 
     with st.expander("➕ Nova Sessão", expanded=not bool(items_sorted)):
-        with st.form("session_create_form"):
-            col_a, col_b = st.columns(2)
-            with col_a:
-                number = st.number_input("Número da sessão", min_value=1, value=default_number, step=1)
-                date_val = st.date_input("Data", value=datetime.utcnow().date())
-            with col_b:
-                title = st.text_input("Título")
-                tags_raw = st.text_input("Tags (separadas por vírgula)")
-            submitted = st.form_submit_button("Criar sessão")
-
+        st.markdown(
+            """
+            <div class="sess-card">
+              <h4>Adicionar sessão</h4>
+              <div class="sess-muted">Crie uma sessão e já deixe pronta para virar “ativa”.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.write("")
+    
+        with st.form("session_create_form", clear_on_submit=False):
+            c1, c2, c3 = st.columns([1, 1, 2])
+    
+            with c1:
+                number = st.number_input(
+                    "Número",
+                    min_value=1,
+                    value=default_number,
+                    step=1,
+                    help="Ex.: 129"
+                )
+            with c2:
+                date_val = st.date_input(
+                    "Data",
+                    value=datetime.utcnow().date(),
+                    help="Data da sessão"
+                )
+            with c3:
+                title = st.text_input(
+                    "Título",
+                    placeholder="Ex.: Hospital pós Bronzong",
+                )
+    
+            tags_raw = st.text_input(
+                "Tags (separadas por vírgula)",
+                placeholder="Ex.: amber, shintaro, joice",
+            )
+    
+            submitted = st.form_submit_button("✅ Criar sessão", use_container_width=True)
+    
         if submitted:
             sid = _session_id_from_number(int(number))
-            if sid in sessions:
+            if not title.strip():
+                st.error("Dê um título para a sessão antes de criar.")
+            elif sid in sessions:
                 st.error(f"Já existe a sessão {sid}.")
             else:
                 sessions[sid] = {
@@ -10475,11 +10525,11 @@ def render_compendium_sessions(comp_data: dict) -> None:
                     "events": [],
                     "flags": {},
                 }
+    
+                # importante: garante que o payload carregado recebe o dict atualizado
                 sessions_data["sessions"] = sessions
                 save_sessions_data(sessions_data)
-
-                save_sessions_data(sessions_data, globals().get("db"), st.session_state.get("trainer_name"))
-
+    
                 st.session_state["comp_session_selected"] = sid
                 st.success(f"Sessão {sid} criada.")
                 st.rerun()
@@ -10500,11 +10550,55 @@ def render_compendium_sessions(comp_data: dict) -> None:
     st.session_state["comp_session_selected"] = selected_sid
 
     active_sid = st.session_state.get("comp_session_active_id")
-    col_set, col_info = st.columns([1, 2])
+
+    col_set, col_del, col_info = st.columns([1.1, 1.1, 2])
+    
     with col_set:
-        if st.button("✅ Definir como sessão ativa", key="set_active_session"):
+        if st.button("✅ Definir como sessão ativa", key="set_active_session", use_container_width=True):
             st.session_state["comp_session_active_id"] = selected_sid
             st.success(f"Sessão ativa: {selected_sid}")
+            st.rerun()
+    
+    with col_del:
+        with st.popover("🗑️ Excluir sessão", use_container_width=True):
+            st.markdown(
+                f"""
+                <div class="sess-card sess-danger">
+                  <b>Excluir {selected_sid}</b><br/>
+                  <span class="sess-muted">Esta ação não pode ser desfeita.</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.write("")
+            confirm = st.checkbox("Confirmo que quero excluir esta sessão", key="sess_del_confirm")
+            typed = st.text_input("Digite o ID da sessão para confirmar", value="", key="sess_del_typed", placeholder=selected_sid)
+    
+            if st.button("❌ Excluir definitivamente", key="sess_del_btn", use_container_width=True, disabled=not (confirm and typed.strip() == selected_sid)):
+                # remove
+                if selected_sid in sessions:
+                    sessions.pop(selected_sid, None)
+    
+                # se era ativa, limpa
+                if st.session_state.get("comp_session_active_id") == selected_sid:
+                    st.session_state["comp_session_active_id"] = None
+    
+                # ajusta selecionada
+                items_left = sorted(
+                    sessions.items(),
+                    key=lambda it: ((it[1].get("date") or ""), int(it[1].get("number") or 0), it[0])
+                )
+                if items_left:
+                    st.session_state["comp_session_selected"] = items_left[0][0]
+                else:
+                    st.session_state["comp_session_selected"] = None
+    
+                sessions_data["sessions"] = sessions
+                save_sessions_data(sessions_data)
+    
+                st.success(f"Sessão {selected_sid} excluída.")
+                st.rerun()
+    
     with col_info:
         if active_sid:
             st.caption(f"Sessão ativa atual: {active_sid}")
