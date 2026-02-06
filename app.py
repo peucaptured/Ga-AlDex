@@ -4249,61 +4249,67 @@ def save_data_cloud(trainer_name, data):
         # ✅ limpeza preventiva: remove campos que estouram a célula
         prof = (data or {}).get("trainer_profile")
         if isinstance(prof, dict):
-            prof.pop("photo_b64", None)  # nunca mais salvar foto cheia no Sheets
+            prof.pop("photo_b64", None)
 
         # ✅ reduz tamanho do JSON
         json_str = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
 
         row_num = find_user_row(sheet, trainer_name)
-        if row_num:
-            sheet.update_cell(row_num, 2, json_str)
-
-            # ✅ Se for um "usuário NPC", atualiza overrides do Compendium automaticamente
-            try:
-                if isinstance(data, dict) and data.get("npc_user"):
-                    npc_name = (data.get("npc_name") or trainer_name or "").strip() or trainer_name
-
-                    # tenta pegar nomes diretamente
-                    pokes = data.get("npc_pokemons")
-                    if not isinstance(pokes, list) or not pokes:
-                        pokes = []
-                        caught = data.get("caught") or []
-                        if not isinstance(caught, list):
-                            caught = []
-
-                        local_df = st.session_state.get("df_data")
-                        for pid in caught:
-                            pid_str = str(pid).strip()
-                            if not pid_str:
-                                continue
-                            if pid_str.startswith("EXT:"):
-                                nm = pid_str.replace("EXT:", "").strip()
-                                if nm:
-                                    pokes.append(nm)
-                            elif pid_str.isdigit() and local_df is not None:
-                                row = local_df[local_df["Nº"].astype(str) == pid_str]
-                                if not row.empty:
-                                    pokes.append(str(row.iloc[0]["Nome"]))
-
-                        # grava de volta pra manter consistente
-                        data["npc_pokemons"] = pokes
-
-                    overrides = st.session_state.setdefault("npc_sync_overrides", {})
-                    npc_obj = overrides.get(npc_name) or {"name": npc_name, "sections": {}}
-                    npc_obj["pokemons"] = list(pokes)
-                    npc_obj["pokemons_conhecidos"] = list(pokes)
-                    overrides[npc_name] = npc_obj
-            except Exception:
-                pass
-
-            return True
-        else:
+        if not row_num:
             st.error("Erro crítico: Usuário sumiu da planilha enquanto salvava.")
             return False
+
+        sheet.update_cell(row_num, 2, json_str)
+
+        # ✅ Auto-sync NPC → Compendium (mesma sessão)
+        try:
+            if isinstance(data, dict) and data.get("npc_user"):
+                npc_name = (data.get("npc_name") or trainer_name or "").strip() or trainer_name
+
+                # 1) fontes possíveis
+                raw = []
+                raw += (data.get("npc_pokemons") or []) if isinstance(data.get("npc_pokemons"), list) else []
+                raw += (data.get("party") or []) if isinstance(data.get("party"), list) else []
+                raw += (data.get("caught") or []) if isinstance(data.get("caught"), list) else []
+
+                # 2) normaliza e converte em nomes
+                pokes = []
+                seen = set()
+                for pid in raw:
+                    pid_str = str(pid).strip()
+                    if not pid_str:
+                        continue
+
+                    # visitante fora da dex
+                    if pid_str.startswith("EXT:"):
+                        nm = pid_str.replace("EXT:", "").strip()
+                    else:
+                        # usa seus helpers já existentes
+                        try:
+                            nm = _get_pokemon_name(pid_str)
+                        except Exception:
+                            nm = pid_str
+
+                    nm = (nm or "").strip()
+                    if nm and nm.lower() not in seen:
+                        seen.add(nm.lower())
+                        pokes.append(nm)
+
+                # 3) grava em overrides
+                overrides = st.session_state.setdefault("npc_sync_overrides", {})
+                npc_obj = overrides.get(npc_name) or {"name": npc_name, "sections": {}}
+                npc_obj["pokemons"] = list(pokes)
+                npc_obj["pokemons_conhecidos"] = list(pokes)
+                overrides[npc_name] = npc_obj
+        except Exception:
+            pass
+
+        return True
 
     except Exception as e:
         st.error(f"Erro ao salvar: {e}")
         return False
+
 
 
 def get_empty_user_data():
