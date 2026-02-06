@@ -9522,131 +9522,66 @@ def _session_now_iso() -> str:
     return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
 
 
-def _sessions_file_path() -> str:
-    """
-    Sempre usa ./data/compendium_sessions.json como fonte principal (gravável).
-    Se não existir ainda, tenta ler de um arquivo existente em assets/raiz (fallback).
-    """
-    # 1) caminho gravável principal
-    data_dir = os.path.join(os.getcwd(), "data")
-    try:
-        os.makedirs(data_dir, exist_ok=True)
-    except Exception:
-        # se não conseguir criar, cai pro cwd mesmo
-        data_dir = os.getcwd()
+def _sessions_firestore_ref(db, trainer_name: str):
+    trainer_id = safe_doc_id(trainer_name)
+    return (
+        db.collection("trainers")
+          .document(trainer_id)
+          .collection("compendium")
+          .document("sessions")
+    )
 
-    primary = os.path.join(data_dir, COMP_SESSIONS_JSON)
 
-    # Se já existe no local gravável, usa ele
-    if os.path.exists(primary):
-        return primary
-
-    # 2) fallback: se existir algum "resolved" em assets/raiz, usa só para leitura inicial
-    resolved = _resolve_asset_path(COMP_SESSIONS_JSON)
-    if resolved and os.path.exists(resolved):
-        return resolved
-
-    # 3) se não existir em lugar nenhum ainda, já aponta pro local gravável
-    return primary
-
-def _sessions_file_path() -> str:
-    resolved = _resolve_asset_path(COMP_SESSIONS_JSON)
-    if resolved and os.path.exists(resolved):
-        return resolved
-    return os.path.join(os.getcwd(), COMP_SESSIONS_JSON)
+def _sessions_get_context(db=None, trainer_name: str | None = None):
+    if db is None:
+        db = globals().get("db")
+    if trainer_name is None:
+        trainer_name = st.session_state.get("trainer_name") or st.session_state.get("player_name")
+    trainer_name = str(trainer_name or "").strip()
+    if not db or not trainer_name:
+        return None, None
+    return db, trainer_name
 
 
 def load_sessions_data(db=None, trainer_name: str | None = None) -> dict:
-    # 1) tenta Firestore
-    try:
-        if db is None:
-            db = globals().get("db")
-        if trainer_name is None:
-            trainer_name = st.session_state.get("trainer_name") or st.session_state.get("player_name")
-        if db is not None and trainer_name:
-            trainer_id = safe_doc_id(str(trainer_name))
-            ref = (
-                db.collection("trainers")
-                  .document(trainer_id)
-                  .collection("compendium")
-                  .document("sessions")
-            )
-            snap = ref.get()
-            if snap.exists:
-                data = snap.to_dict() or {}
-                if isinstance(data, dict):
-                    data.setdefault("meta", {})
-                    data.setdefault("sessions", {})
-                    data["meta"].setdefault("schema", 1)
-                    data["meta"].setdefault("updated_at", _session_now_iso())
-                    if not isinstance(data["sessions"], dict):
-                        data["sessions"] = {}
-                    return data
-    except Exception:
-        pass
-
-    # 2) fallback: arquivo local (seu comportamento atual)
-    path = _sessions_file_path()
-    if not os.path.exists(path):
+    db, trainer_name = _sessions_get_context(db=db, trainer_name=trainer_name)
+    if db is None or not trainer_name:
         return _sessions_default_payload()
+
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        snap = _sessions_firestore_ref(db, trainer_name).get()
+        if snap.exists:
+            data = snap.to_dict() or {}
+            if isinstance(data, dict):
+                data.setdefault("meta", {})
+                data.setdefault("sessions", {})
+                data["meta"].setdefault("schema", 1)
+                data["meta"].setdefault("updated_at", _session_now_iso())
+                if not isinstance(data["sessions"], dict):
+                    data["sessions"] = {}
+                return data
     except Exception:
         return _sessions_default_payload()
 
-    if not isinstance(data, dict):
-        return _sessions_default_payload()
-    data.setdefault("meta", {})
-    data.setdefault("sessions", {})
-    data["meta"].setdefault("schema", 1)
-    data["meta"].setdefault("updated_at", _session_now_iso())
-    if not isinstance(data["sessions"], dict):
-        data["sessions"] = {}
-    return data
+    return _sessions_default_payload()
 
 
 def save_sessions_data(data: dict, db=None, trainer_name: str | None = None) -> None:
     if not isinstance(data, dict):
         return
+    db, trainer_name = _sessions_get_context(db=db, trainer_name=trainer_name)
+    if db is None or not trainer_name:
+        return
+
     data.setdefault("meta", {})
     data.setdefault("sessions", {})
     data["meta"]["updated_at"] = _session_now_iso()
 
-    # 1) tenta Firestore
     try:
-        if db is None:
-            db = globals().get("db")
-        if trainer_name is None:
-            trainer_name = st.session_state.get("trainer_name") or st.session_state.get("player_name")
-        if db is not None and trainer_name:
-            trainer_id = safe_doc_id(str(trainer_name))
-            ref = (
-                db.collection("trainers")
-                  .document(trainer_id)
-                  .collection("compendium")
-                  .document("sessions")
-            )
-            ref.set(data, merge=True)
-            return  # sucesso no Firestore -> não precisa arquivo
+        _sessions_firestore_ref(db, trainer_name).set(data, merge=True)
+        return
     except Exception:
-        pass
-
-    # 2) fallback: arquivo local (seu comportamento atual)
-    path = _sessions_file_path()
-    folder = os.path.dirname(path) or os.getcwd()
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M")
-    backup_path = os.path.join(folder, f"compendium_sessions_backup_{ts}.json")
-
-    payload = json.dumps(data, ensure_ascii=False, indent=2)
-    try:
-        with open(backup_path, "w", encoding="utf-8") as backup:
-            backup.write(payload)
-    except Exception:
-        pass
-
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(payload)
+        return
 
 
 
@@ -9714,53 +9649,17 @@ def add_entity_to_active_session(link_key: str, entity_id: str, event_type: str,
     save_sessions_data(sessions_data, globals().get("db"), st.session_state.get("trainer_name"))
     return True
 
-def _sessions_firestore_ref(db, trainer_name: str):
-    trainer_id = safe_doc_id(trainer_name)
-    return (
-        db.collection("trainers")
-          .document(trainer_id)
-          .collection("compendium")
-          .document("sessions")
-    )
-
 def load_sessions_data_cloud_first(db, trainer_name: str) -> dict:
-    # 1) tenta Firestore
     try:
-        if db is not None and trainer_name:
-            snap = _sessions_firestore_ref(db, trainer_name).get()
-            if snap.exists:
-                data = snap.to_dict() or {}
-                if isinstance(data, dict):
-                    data.setdefault("meta", {})
-                    data.setdefault("sessions", {})
-                    data["meta"].setdefault("schema", 1)
-                    data["meta"].setdefault("updated_at", _session_now_iso())
-                    if not isinstance(data["sessions"], dict):
-                        data["sessions"] = {}
-                    return data
-    except Exception as e:
-        st.warning(f"Falha ao carregar sessões do Firestore: {e}")
-
-    # 2) fallback: JSON local (o seu atual)
-    return load_sessions_data()
+        return load_sessions_data(db=db, trainer_name=trainer_name)
+    except Exception:
+        return _sessions_default_payload()
 
 def save_sessions_data_cloud_first(db, trainer_name: str, data: dict) -> None:
-    if not isinstance(data, dict):
-        return
-    data.setdefault("meta", {})
-    data.setdefault("sessions", {})
-    data["meta"]["updated_at"] = _session_now_iso()
-
-    # 1) tenta Firestore
     try:
-        if db is not None and trainer_name:
-            _sessions_firestore_ref(db, trainer_name).set(data, merge=True)
-            return
-    except Exception as e:
-        st.warning(f"Falha ao salvar sessões no Firestore: {e}")
-
-    # 2) fallback: JSON local
-    save_sessions_data(data)
+        save_sessions_data(data=data, db=db, trainer_name=trainer_name)
+    except Exception:
+        return
 
 # ----------------------------
 # INFERÊNCIA DE TAGS + MENCÕES
