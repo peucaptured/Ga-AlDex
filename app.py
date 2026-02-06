@@ -78,6 +78,27 @@ def _boolish(v: Any) -> bool:
     x = _norm(_safe_str(v))
     return x in {"sim", "true", "1", "yes", "y"}
 
+
+
+def _draw_tactical_grid(img, grid, tile_size: int):
+    """
+    Desenha a grade por cima da imagem. `grid` é uma matriz (H x W).
+    """
+    draw = ImageDraw.Draw(img)
+    h = len(grid)
+    w = len(grid[0]) if h else 0
+
+    # linhas verticais
+    for x in range(w + 1):
+        px = x * tile_size
+        draw.line([(px, 0), (px, h * tile_size)], fill=(0, 0, 0, 90), width=1)
+
+    # linhas horizontais
+    for y in range(h + 1):
+        py = y * tile_size
+        draw.line([(0, py), (w * tile_size, py)], fill=(0, 0, 0, 90), width=1)
+
+
 def _move_based_stat_from_meta(move_meta: dict | None) -> str:
     move_meta = move_meta or {}
     cat_meta = str(move_meta.get("category", "") or "").strip().lower()
@@ -5516,9 +5537,15 @@ THEMES = {
 "biome_mix": {"base": "grass", "border": "tree"},
 }
 
+
 @st.cache_resource(show_spinner=False)
 def get_biome_generator():
-    return BiomeGenerator()
+    base_dir = Path(__file__).resolve().parent
+    assets_root = base_dir / "Assets" / "map"
+    return BiomeGenerator(assets_root=assets_root)
+
+
+
 
 def map_theme_to_biome(theme_key: str, no_water: bool) -> str:
     key = (theme_key or "").lower().strip()
