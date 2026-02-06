@@ -608,6 +608,7 @@ class BiomeGenerator:
         grass = (~ocean) & (~sand)
         return ocean, sand, grass
 
+
     def _make_river(self, H: int, W: int, rng: random.Random):
         # Linha-base do rio (snake)
         y = rng.randrange(max(1, H // 4), max(2, (3 * H) // 4))
@@ -640,10 +641,11 @@ class BiomeGenerator:
     
         # --- MAIS TERRA / MAIS GRASS ---
         # areia mais fina (antes era 2.0)
-        sand = land & (dist_to_river <= 0.5)
+        sand = land & (dist_to_river <= 1.0)
         grass = land & (~sand)
     
         return river, sand, grass
+
 
 
     def _make_forest(self, H: int, W: int, rng: random.Random):
