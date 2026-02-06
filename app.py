@@ -7823,6 +7823,82 @@ def calculate_power_level(row, cols_map):
     if final_score > 15: final_score = 15
     return final_score
 
+
+
+# ----------------------------
+# Pokédex Card UI helpers (Tipos, Viabilidade)
+# ----------------------------
+
+TYPE_COLORS = {
+    # padrão de cores (franquia / TCG-like)
+    "normal":  "#A8A77A",
+    "fogo":    "#EE8130",
+    "fire":    "#EE8130",
+    "agua":    "#6390F0",
+    "água":    "#6390F0",
+    "water":   "#6390F0",
+    "planta":  "#7AC74C",
+    "grass":   "#7AC74C",
+    "eletrico":"#F7D02C",
+    "elétrico":"#F7D02C",
+    "electric":"#F7D02C",
+    "gelo":    "#96D9D6",
+    "ice":     "#96D9D6",
+    "lutador": "#C22E28",
+    "fighting":"#C22E28",
+    "veneno":  "#A33EA1",
+    "poison":  "#A33EA1",
+    "terra":   "#E2BF65",
+    "ground":  "#E2BF65",
+    "voador":  "#A98FF3",
+    "flying":  "#A98FF3",
+    "psiquico":"#F95587",
+    "psíquico":"#F95587",
+    "psychic": "#F95587",
+    "inseto":  "#A6B91A",
+    "bug":     "#A6B91A",
+    "pedra":   "#B6A136",
+    "rock":    "#B6A136",
+    "fantasma":"#735797",
+    "ghost":   "#735797",
+    "dragao":  "#6F35FC",
+    "dragão":  "#6F35FC",
+    "dragon":  "#6F35FC",
+    "noturno": "#705746",
+    "dark":    "#705746",
+    "metal":   "#B7B7CE",
+    "steel":   "#B7B7CE",
+    "fada":    "#D685AD",
+    "fairy":   "#D685AD",
+}
+
+_VIAB_RE = re.compile(r"\b([CFS])\s*([ODFIC])\s*([RL])\b", re.IGNORECASE)
+
+def _extract_viab_code_from_text(txt: str) -> str:
+    if not txt:
+        return "---"
+    m = _VIAB_RE.search(str(txt))
+    if not m:
+        return "---"
+    return (m.group(1) + m.group(2) + m.group(3)).upper()
+
+def _split_types(raw: str) -> list[str]:
+    if not raw:
+        return []
+    parts = [p.strip() for p in str(raw).split("/") if str(p).strip()]
+    return parts[:2]
+
+def _type_color(t: str) -> str:
+    if not t:
+        return "#64748b"
+    key = normalize_text(str(t))
+    return TYPE_COLORS.get(key, "#64748b")
+
+# Status icons (SVG inline - sem assets externos)
+_SVG_POKEBALL = """<svg viewBox='0 0 24 24' width='16' height='16' fill='none' xmlns='http://www.w3.org/2000/svg'><circle cx='12' cy='12' r='10' stroke='white' stroke-width='2'/><path d='M2 12h20' stroke='white' stroke-width='2'/><circle cx='12' cy='12' r='3' fill='white'/></svg>"""
+_SVG_STAR = """<svg viewBox='0 0 24 24' width='16' height='16' fill='white' xmlns='http://www.w3.org/2000/svg'><path d='M12 17.3l-6.18 3.25 1.18-6.88L1.99 8.95l6.91-1 3.1-6.26 3.1 6.26 6.91 1-5 4.72 1.18 6.88z'/></svg>"""
+_SVG_EYE = """<svg viewBox='0 0 24 24' width='16' height='16' fill='none' xmlns='http://www.w3.org/2000/svg'><path d='M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z' stroke='white' stroke-width='2'/><circle cx='12' cy='12' r='3' fill='white'/></svg>"""
+
 def load_excel_data():
     file_name = "pokedex.xlsx"
     if not os.path.exists(file_name): return None, None
@@ -12754,96 +12830,89 @@ if page == "Pokédex (Busca)":
         cursor: pointer;
     }
     
-    /* =========================
-       TCG Cards (Pokédex)
-       ========================= */
-    .dex-tcg-grid{
-        display: grid;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
-        gap: 14px;
-        align-items: stretch;
-    }
-    @media (max-width: 1200px){ .dex-tcg-grid{ grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-    @media (max-width: 800px){ .dex-tcg-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+    /* ============================================================
+       3. CARDS "TCG" DA POKEDEX (NOVO)
+       ============================================================ */
     .dex-tcg-card{
-        width: 100%;
-        border-radius: 16px;
+        border-radius: 14px;
         overflow: hidden;
-        border-width: 4px !important; /* reforça a borda do status */
-        cursor: pointer;
-        user-select: none;
-        transition: transform 0.12s ease, filter 0.12s ease;
         position: relative;
-        box-shadow: 0 8px 18px rgba(0,0,0,0.35);
-        background-size: cover;
+        height: 170px;
+        width: 100%;
+        cursor: pointer;
+        box-shadow: 0 10px 22px rgba(0,0,0,0.35);
+        border: 4px solid rgba(255,255,255,0.12); /* será "dominada" pela classe de status */
+        transition: transform .15s ease, filter .15s ease;
     }
-    .dex-tcg-card:hover{ transform: translateY(-2px) scale(1.01); filter: brightness(1.03); }
+    .dex-tcg-card:hover{
+        transform: translateY(-2px) scale(1.01);
+        filter: brightness(1.03);
+    }
+
     .dex-tcg-header{
-        display:flex;
-        align-items:center;
-        gap:8px;
+        height: 30px;
+        display: grid;
+        grid-template-columns: 26px 1fr auto;
+        align-items: center;
+        gap: 8px;
         padding: 6px 8px;
-        background: rgba(0,0,0,0.55);
+        background: rgba(15,23,42,0.62);
+        border-bottom: 1px solid rgba(255,255,255,0.12);
     }
     .dex-tcg-statusicon{
         width: 22px; height: 22px;
         display:flex; align-items:center; justify-content:center;
-        flex: 0 0 auto;
-        opacity: 0.95;
+        opacity: .95;
+        filter: drop-shadow(0 2px 3px rgba(0,0,0,.45));
     }
-    .dex-tcg-statusicon svg{ width: 20px; height: 20px; }
     .dex-tcg-name{
-        flex: 1 1 auto;
-        font-weight: 800;
-        font-size: 12px;
-        line-height: 1.1;
-        color: #fff;
-        text-align: center;
-        text-shadow: 0 2px 0 rgba(0,0,0,0.5);
+        font-size: 9px;
+        color: #e2e8f0;
+        text-shadow: 0 2px 2px rgba(0,0,0,.55);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        padding: 0 4px;
+        text-align: center;
     }
     .dex-tcg-np{
-        flex: 0 0 auto;
-        font-weight: 900;
-        font-size: 11px;
-        color: #fff;
-        background: rgba(0,0,0,0.45);
-        border: 1px solid rgba(255,255,255,0.18);
-        padding: 2px 6px;
+        font-size: 8px;
+        color: #e2e8f0;
+        background: rgba(15,23,42,0.7);
+        border: 1px solid rgba(255,255,255,0.14);
         border-radius: 999px;
-        min-width: 44px;
-        text-align:center;
+        padding: 2px 7px;
+        text-shadow: 0 1px 2px rgba(0,0,0,.55);
     }
+
     .dex-tcg-body{
+        height: 110px;
         display:flex;
         align-items:center;
         justify-content:center;
-        height: 92px;
-        padding: 6px 8px;
-        background: transparent;
+        background: rgba(2,6,23,0.18);
     }
     .dex-tcg-sprite{
-        width: 72px;
-        height: 72px;
+        width: 86px;
+        height: 86px;
+        object-fit: contain;
         image-rendering: pixelated;
-        filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
+        filter: drop-shadow(0 7px 10px rgba(0,0,0,0.55));
     }
+
     .dex-tcg-footer{
-        padding: 6px 8px;
-        background: rgba(0,0,0,0.55);
+        height: 30px;
         display:flex;
         align-items:center;
         justify-content:center;
+        background: rgba(15,23,42,0.62);
+        border-top: 1px solid rgba(255,255,255,0.12);
     }
     .dex-tcg-viab{
-        font-weight: 900;
-        letter-spacing: 0.26em;
         font-size: 14px;
-        color: #ffd36a;
-        text-shadow: 0 2px 0 rgba(0,0,0,0.55);
+        letter-spacing: 2px;
+        color: #ffd166;
+        text-shadow: 0 2px 2px rgba(0,0,0,.55);
     }
 
 </style>
@@ -12966,6 +13035,21 @@ if page == "Pokédex (Busca)":
 
     def select_pokedex_entry(pid: str) -> None:
         st.session_state["pokedex_selected"] = str(pid)
+
+
+    # Se veio por query param (?dex=XXX), seleciona o Pokémon na MESMA ABA
+    try:
+        _dex_param = st.query_params.get("dex")
+        if isinstance(_dex_param, list):
+            _dex_param = _dex_param[0] if _dex_param else None
+        if _dex_param:
+            select_pokedex_entry(str(_dex_param))
+            try:
+                del st.query_params["dex"]
+            except Exception:
+                st.query_params.clear()
+    except Exception:
+        pass
 
     selected_id = st.session_state.get("pokedex_selected")
 
@@ -13255,70 +13339,7 @@ if page == "Pokédex (Busca)":
             if (carousel) {
                 carousel.addEventListener("wheel", (event) => {
                     event.preventDefault();
-                    const delta = Math.abs(event.deltaY) > Math.abs(event.deltaX) ? eve
-            # -----------------------------
-            # Render de Cards (estilo carta)
-            # -----------------------------
-            TYPE_COLORS = {
-                "Normal": "#A8A77A", "Fire": "#EE8130", "Water": "#6390F0", "Electric": "#F7D02C", "Grass": "#7AC74C",
-                "Ice": "#96D9D6", "Fighting": "#C22E28", "Poison": "#A33EA1", "Ground": "#E2BF65", "Flying": "#A98FF3",
-                "Psychic": "#F95587", "Bug": "#A6B91A", "Rock": "#B6A136", "Ghost": "#735797", "Dragon": "#6F35FC",
-                "Dark": "#705746", "Steel": "#B7B7CE", "Fairy": "#D685AD",
-            }
-            TYPE_PT_MAP = {
-                "normal": "Normal",
-                "fogo": "Fire",
-                "água": "Water", "agua": "Water",
-                "elétrico": "Electric", "eletrico": "Electric",
-                "grama": "Grass", "planta": "Grass",
-                "gelo": "Ice",
-                "lutador": "Fighting", "luta": "Fighting",
-                "veneno": "Poison",
-                "terra": "Ground",
-                "voador": "Flying",
-                "psíquico": "Psychic", "psiquico": "Psychic",
-                "inseto": "Bug",
-                "pedra": "Rock",
-                "fantasma": "Ghost",
-                "dragão": "Dragon", "dragao": "Dragon",
-                "sombrio": "Dark", "noturno": "Dark",
-                "aço": "Steel", "aco": "Steel",
-                "fada": "Fairy",
-            }
-
-            def _norm_type(x):
-                if x is None:
-                    return None
-                s = str(x).strip()
-                if not s or s.lower() in {"nan", "none", "null", "-"}:
-                    return None
-                key = s.strip().lower()
-                if key in TYPE_PT_MAP:
-                    return TYPE_PT_MAP[key]
-                # tenta capitalizar padrão inglês
-                s2 = s[:1].upper() + s[1:].lower()
-                return s2
-
-            def _pick_first_viab_code(row):
-                codes = row.get("Codigos_Estrategia", None)
-                if isinstance(codes, list) and codes:
-                    return str(codes[0])[:3]
-                vtxt = row.get("Viabilidade", "")
-                if isinstance(vtxt, str):
-                    m = re.search(r"\b([CFS][ODFIC][RL])\b", vtxt)
-                    if m:
-                        return m.group(1)
-                return ""
-
-            def _get_np_value(row):
-                for k in ("NP", "Np", "np", "Nivel_Poder", "Nível_Poder", "Nivel Poder", "Nível Poder"):
-                    if k in row and row.get(k) is not None and str(row.get(k)).strip() != "":
-                        try:
-                            return int(float(row.get(k)))
-                        except Exception:
-                            return str(row.get(k)).strip()
-                return ""
-nt.deltaY : event.deltaX;
+                    const delta = Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
                     carousel.scrollLeft += delta;
                 }, { passive: false });
 
@@ -13368,133 +13389,88 @@ nt.deltaY : event.deltaX;
             )
             st.markdown("<div class='pokedex-grid-note'>Clique em um Pokémon para ver os detalhes.</div>", unsafe_allow_html=True)
 
-            # --- Cards Pokédex (estilo carta TCG) ---
-            # Helpers locais (garante que sempre existam, evitando NameError)
-            TYPE_COLORS = {
-                "Normal": "#A8A77A", "Fire": "#EE8130", "Water": "#6390F0", "Electric": "#F7D02C",
-                "Grass": "#7AC74C", "Ice": "#96D9D6", "Fighting": "#C22E28", "Poison": "#A33EA1",
-                "Ground": "#E2BF65", "Flying": "#A98FF3", "Psychic": "#F95587", "Bug": "#A6B91A",
-                "Rock": "#B6A136", "Ghost": "#735797", "Dragon": "#6F35FC", "Dark": "#705746",
-                "Steel": "#B7B7CE", "Fairy": "#D685AD",
-            }
-            TYPE_PT_MAP = {
-                "normal": "Normal",
-                "fogo": "Fire",
-                "água": "Water", "agua": "Water",
-                "elétrico": "Electric", "eletrico": "Electric",
-                "grama": "Grass", "planta": "Grass",
-                "gelo": "Ice",
-                "lutador": "Fighting", "luta": "Fighting",
-                "veneno": "Poison",
-                "terra": "Ground",
-                "voador": "Flying",
-                "psíquico": "Psychic", "psiquico": "Psychic",
-                "inseto": "Bug",
-                "pedra": "Rock",
-                "fantasma": "Ghost",
-                "dragão": "Dragon", "dragao": "Dragon",
-                "sombrio": "Dark", "noturno": "Dark",
-                "aço": "Steel", "aco": "Steel",
-                "fada": "Fairy",
-            }
-            def _norm_type(x):
-                if x is None:
-                    return None
-                s = str(x).strip()
-                if not s or s.lower() in {"nan","none","null","-"}:
-                    return None
-                key = s.lower()
-                if key in TYPE_PT_MAP:
-                    return TYPE_PT_MAP[key]
-                return s[:1].upper() + s[1:].lower()
-            
-            def _pick_first_viab_code(row):
-                # Código 3 letras: (C|F|S)(O|D|F|I|C)(R|L)
-                for v in row.values():
-                    if isinstance(v, str):
-                        m = re.search(r"\b([CFS][ODFIC][RL])\b", v.upper())
-                        if m:
-                            return m.group(1)
-                    elif isinstance(v, list) and v:
-                        s = str(v[0]).upper()
-                        m = re.search(r"\b([CFS][ODFIC][RL])\b", s)
-                        if m:
-                            return m.group(1)
-                return ""
-            
-            def _get_np_value(row):
-                # Busca por NP / Nível Poder
-                for k in row.keys():
-                    kl = str(k).strip().lower()
-                    if kl == "np" or ("nivel" in kl and "poder" in kl) or kl.startswith("np"):
-                        v = row.get(k)
-                        if v is None:
-                            continue
-                        s = str(v).strip()
-                        if not s or s.lower() in {"nan","none","null","-"}:
-                            continue
+            grid_cols = 6 # Reduzi para 6 para as bordas não ficarem espremidas
+            rows = list(filtered_df.iterrows())
+
+            st.markdown("<div class='pokedex-grid'>", unsafe_allow_html=True)
+            for start in range(0, len(rows), grid_cols):
+                cols = st.columns(grid_cols)
+                for col, (index, row_g) in zip(cols, rows[start : start + grid_cols]):
+                    dex_num = str(row_g["Nº"])
+                    p_name = row_g["Nome"]
+
+                    # 1. Gera o link da imagem
+                    sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
+
+                    # 2. Define o status
+                    is_caught = dex_num in user_data.get("caught", [])
+                    is_seen = dex_num in user_data.get("seen", [])
+                    is_wished = dex_num in user_data.get("wishlist", [])
+
+                    if is_caught:
+                        status_class = "dex-frame--caught"
+                        icon = "✅"
+                    elif is_wished:
+                        status_class = "dex-frame--wish"
+                        icon = "⭐"
+                    elif is_seen:
+                        status_class = "dex-frame--seen"
+                        icon = "👁️"
+                    else:
+                        status_class = "dex-frame--default"
+                        icon = ""
+
+                    display_name = f"{icon} {p_name}".strip()
+
+                    with col:
+                        # Card estilo "carta" (TCG) — clique na MESMA ABA (via ?dex=)
+                        types = _split_types(row_g.get("Tipo", ""))
+                        t1 = types[0] if len(types) > 0 else ""
+                        t2 = types[1] if len(types) > 1 else ""
+                        c1 = _type_color(t1)
+                        c2 = _type_color(t2) if t2 else ""
+                        if c2:
+                            bg_style = f"background: linear-gradient(135deg, {c1} 0 50%, {c2} 50 100%);"
+                        else:
+                            bg_style = f"background: {c1};"
+
+                        viab_code = _extract_viab_code_from_text(row_g.get("Viabilidade", ""))
+                        # NP já é calculado no load_excel_data() e salvo em Nivel_Poder
                         try:
-                            return int(float(s))
+                            np_val = int(row_g.get("Nivel_Poder", 0) or 0)
                         except Exception:
-                            return s
-                return ""
-            
-            # Monta o grid inteiro em HTML para capturar clique SEM abrir nova aba
-            cards = []
-            for _, row_g in filtered_df.iterrows():
-                dex_num = str(row_g.get("Nº", row_g.get("No", row_g.get("#", "")))).strip()
-                if not dex_num:
-                    continue
-                p_name = row_g.get("Nome", "")
-                sprite_url = pokemon_pid_to_image(dex_num, mode="sprite", shiny=False)
-            
-                is_caught = dex_num in user_data.get("caught", [])
-                is_seen = dex_num in user_data.get("seen", [])
-                is_wished = dex_num in user_data.get("wishlist", [])
-            
-                if is_caught:
-                    status_class = "dex-frame--caught"
-                    status_svg = """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M2 12h20'/><circle cx='12' cy='12' r='2' fill='white' stroke='none'/></svg>"""
-                elif is_wished:
-                    status_class = "dex-frame--wish"
-                    status_svg = """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='white'><path d='M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z'/></svg>"""
-                elif is_seen:
-                    status_class = "dex-frame--seen"
-                    status_svg = """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='white'><path d='M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8z'/><path d='M8 5.5A2.5 2.5 0 1 0 8 10a2.5 2.5 0 0 0 0-5z'/></svg>"""
-                else:
-                    status_class = "dex-frame--default"
-                    status_svg = """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='white' opacity='0.55'><circle cx='8' cy='8' r='7'/></svg>"""
-            
-                # Tipos
-                t1_raw = None; t2_raw = None
-                for cand in ("Tipo 1","Tipo1","Tipo_1","Type 1","Type1"):
-                    if cand in row_g:
-                        t1_raw = row_g.get(cand); break
-                for cand in ("Tipo 2","Tipo2","Tipo_2","Type 2","Type2"):
-                    if cand in row_g:
-                        t2_raw = row_g.get(cand); break
-                t1 = _norm_type(t1_raw); t2 = _norm_type(t2_raw)
-                c1 = TYPE_COLORS.get(t1, "#2a2f3a")
-                c2 = TYPE_COLORS.get(t2, "#2a2f3a") if t2 else None
-                bg_style = (f"background: linear-gradient(135deg, {c1} 0%, {c1} 50%, {c2} 50%, {c2} 100%);"
-                           if c2 else f"background: {c1};")
-            
-                viab_code = _pick_first_viab_code(row_g)[:3].upper()
-                np_val = _get_np_value(row_g)
-                cid = f"dexcard_{dex_num}"
-            
-                cards.append(f"""\
-<div class='dex-tcg-card {status_class}' id='{cid}' style='{bg_style}'>  <div class='dex-tcg-header'>    <div class='dex-tcg-statusicon'>{status_svg}</div>    <div class='dex-tcg-name'>{p_name}</div>    <div class='dex-tcg-np'>NP {np_val}</div>  </div>  <div class='dex-tcg-body'>    <img src='{sprite_url}' class='dex-tcg-sprite' alt='{p_name}'/>  </div>  <div class='dex-tcg-footer'>    <div class='dex-tcg-viab' title='{viab_code}'>{viab_code}</div>  </div></div>""")
-            
-            grid_html = "<div class='dex-tcg-grid'>" + "".join(cards) + "</div>"
-            clicked = click_detector(grid_html)
-            if clicked:
-                clicked = str(clicked)
-                if clicked.startswith("dexcard_"):
-                    sel_pid = clicked.split("dexcard_", 1)[1]
-                    if sel_pid and sel_pid != st.session_state.get("pokedex_selected"):
-                        st.session_state["pokedex_selected"] = sel_pid
-                        st.rerun()
+                            np_val = 0
+
+                        # Ícone do status (sem assets externos)
+                        if is_caught:
+                            status_svg = _SVG_POKEBALL
+                        elif is_wished:
+                            status_svg = _SVG_STAR
+                        elif is_seen:
+                            status_svg = _SVG_EYE
+                        else:
+                            status_svg = ""
+
+                        # clique mesma aba
+                        onclick_js = f"window.location.search='?dex={dex_num}';"
+
+                        card_html = f"""
+                        <div class="dex-tcg-card {status_class}" style="{bg_style}" onclick="{onclick_js}" role="button" tabindex="0">
+                            <div class="dex-tcg-header">
+                                <div class="dex-tcg-statusicon">{status_svg}</div>
+                                <div class="dex-tcg-name">{p_name}</div>
+                                <div class="dex-tcg-np">NP {np_val}</div>
+                            </div>
+                            <div class="dex-tcg-body">
+                                <img src="{sprite_url}" class="dex-tcg-sprite" alt="{p_name}">
+                            </div>
+                            <div class="dex-tcg-footer">
+                                <div class="dex-tcg-viab" title="{viab_code}">{viab_code}</div>
+                            </div>
+                        </div>
+                        """
+                        st.markdown(card_html, unsafe_allow_html=True)
+
             st.markdown("</div>", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
