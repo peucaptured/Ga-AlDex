@@ -79,21 +79,41 @@ def _boolish(v: Any) -> bool:
     return x in {"sim", "true", "1", "yes", "y"}
 
 
-
 def _draw_tactical_grid(img, grid, tile_size: int):
     """
-    Desenha a grade por cima da imagem. `grid` é uma matriz (H x W).
+    Desenha a grade por cima da imagem.
+
+    Aceita:
+      - grid como matriz (H x W): list[list[...]]
+      - grid como int: tamanho (NxN)
+      - grid como tuple/list (h, w)
     """
     draw = ImageDraw.Draw(img)
-    h = len(grid)
-    w = len(grid[0]) if h else 0
 
-    # linhas verticais
+    # 1) Descobre dimensões (h, w)
+    h = w = 0
+
+    if isinstance(grid, int):
+        h = w = int(grid)
+    elif isinstance(grid, (tuple, list)) and len(grid) == 2 and all(isinstance(x, int) for x in grid):
+        h, w = int(grid[0]), int(grid[1])
+    else:
+        # assume matriz
+        try:
+            h = len(grid)
+            w = len(grid[0]) if h else 0
+        except Exception:
+            return  # fail-safe: não desenha grade se vier algo inesperado
+
+    if h <= 0 or w <= 0:
+        return
+
+    # 2) linhas verticais
     for x in range(w + 1):
         px = x * tile_size
         draw.line([(px, 0), (px, h * tile_size)], fill=(0, 0, 0, 90), width=1)
 
-    # linhas horizontais
+    # 3) linhas horizontais
     for y in range(h + 1):
         py = y * tile_size
         draw.line([(0, py), (w * tile_size, py)], fill=(0, 0, 0, 90), width=1)
