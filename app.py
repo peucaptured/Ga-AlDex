@@ -11593,13 +11593,13 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
         
 
         
-        iframe[title^="st_click_detector"]{
+        iframe[title*="npc_click"]{
           background:  #000 !important;
           border: none !important;
           box-shadow: none !important;
         }
         /* 1) pinta o container do componente (o mais importante) */
-        div[data-testid="stComponentFrame"]{
+        div[data-testid="stComponentFrame"]:has(iframe[title*="npc_click"]){
           background: #000 !important;
           border: none !important;
           box-shadow: none !important;
@@ -11609,21 +11609,21 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
         
         /* 2) pinta o iframe também */
         div[data-testid="stComponentFrame"] iframe,
-        iframe[title^="st_click_detector"],
-        iframe[title*="click_detector"]{
+        iframe[title*="npc_click"],
+        iframe[title*="npc_click"]{
           background: #000 !important;
           border: none !important;
           box-shadow: none !important;
         }
         
         /* 3) remove padding extra do wrapper do Streamlit */
-        div[data-testid="stElementContainer"]{
+        div[data-testid="stElementContainer"]:has(iframe[title*="npc_click"]){
           padding: 0 !important;
           margin: 0 !important;
           background: transparent !important;
         }        
         /* remove padding/margem que às vezes vira “caixa” */
-        .ds-npc-panel.left div[data-testid="stElementContainer"]{
+        .ds-npc-panel.left div[data-testid="stElementContainer"]:has(iframe[title*="npc_click"]){
           padding: 0 !important;
           margin: 0 !important;
         }
@@ -11817,7 +11817,7 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
                     )
                         
                 content_html += "</div>"
-                clicked_safe_id = click_detector(content_html)
+                clicked_safe_id = click_detector(content_html, key='npc_click')
     
                 if clicked_safe_id is not None:
                     nome_selecionado = id_map.get(str(clicked_safe_id))
