@@ -11604,7 +11604,14 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
                 sprite_imgs = []
                 for pkm in pokemons:
                     try:
-                        url = get_pokemon_image_url(str(pkm), name_map, mode="sprite", shiny=False)
+                        s = str(pkm).strip()
+
+                        # se vier número (ex: "224") ou EXT:forma, usa o resolvedor por PID
+                        if s.isdigit() or s.startswith("EXT:"):
+                            url = pokemon_pid_to_image(s, mode="sprite", shiny=False)
+                        else:
+                            url = get_pokemon_image_url(s, name_map, mode="sprite", shiny=False)
+
                     except Exception:
                         url = ""
                     if url:
@@ -11646,8 +11653,10 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
                 sprites_html = ""
                 if sprite_imgs:
                     sprites_html = "<div class='ds-sprites'>" + "".join(
-                        f"<img src='{u}' alt='sprite'/>" for u in sprite_imgs
+                        f"<img src='{u}' alt='sprite' style='width:72px;height:72px;image-rendering:pixelated;'/>"
+                        for u in sprite_imgs
                     ) + "</div>"
+
 
                 panel_html = f"""
                 <div class="ds-npc-panel right">
