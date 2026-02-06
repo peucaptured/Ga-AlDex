@@ -4908,10 +4908,44 @@ def render_login_menu(trainer_name: str, user_data: dict):
         for badge_key in selected_badges
         if badge_paths.get(badge_key)
     ]
-    party_ids = [str(p) for p in (user_data.get("party") or [])]
-    party_sprites = [
-        pokemon_pid_to_image(pid, mode="sprite", shiny=False) for pid in party_ids
-    ]
+
+    # Party (sprites) — usa a MESMA lógica do Trainer Hub:
+    # - respeita shiny
+    # - respeita forma salva (user_data["forms"][pid] => ex: "ponyta-galar", "lycanroc-midnight")
+    # - aceita UID:/PID: caso algum dado antigo apareça aqui
+    raw_party = user_data.get("party") or []
+    party_ids: list[str] = []
+    uid_to_pid = st.session_state.get("_dex_uid_to_pid") or {}
+    for p in raw_party:
+        s = str(p).strip()
+        if not s:
+            continue
+        if s.startswith("UID:") or s.startswith("PID:"):
+            s2 = _dex_uid_to_pid(s, uid_to_pid)
+            s = str(s2).strip() if s2 else s
+        party_ids.append(s)
+
+    party_sprites: list[str] = []
+    shinies = set(str(x).strip() for x in (user_data.get("shinies") or []) if str(x).strip())
+    forms = user_data.get("forms", {}) if isinstance(user_data.get("forms", {}), dict) else {}
+
+    for pid in party_ids:
+        pid = str(pid).strip()
+        if not pid:
+            continue
+
+        is_shiny = pid in shinies
+
+        if pid.startswith("EXT:"):
+            party_sprites.append(pokemon_pid_to_image(pid, mode="sprite", shiny=is_shiny))
+            continue
+
+        saved_form = forms.get(pid) or forms.get(str(pid))
+        if saved_form:
+            # Força lookup por NOME de forma (evita depender do Nº do Excel)
+            party_sprites.append(pokemon_pid_to_image(f"EXT:{saved_form}", mode="sprite", shiny=is_shiny))
+        else:
+            party_sprites.append(pokemon_pid_to_image(pid, mode="sprite", shiny=is_shiny))
 
     st.markdown(
         """
@@ -13084,44 +13118,6 @@ if page == "Pokédex (Busca)":
     @keyframes pageFade { from { opacity: 0.92; } to { opacity: 1; } }
     @keyframes contentSlide { from { transform: translateY(8px); opacity: 0.92; } to { transform: translateY(0); opacity: 1; } }
 
-    /* ============================================================
-       FIX: remove a “moldura/contorno preto” SOMENTE do st_click_detector
-       (não afeta seu iframe do compendium)
-       ============================================================ */
-    
-    /* o iframe do componente (por título) */
-    iframe[title^="st_click_detector"],
-    iframe[title*="click_detector"]{
-      background: transparent !important;
-      border: 0 !important;
-      outline: 0 !important;
-      box-shadow: none !important;
-    }
-    
-    /* o wrapper do Streamlit que costuma vir com fundo/borda */
-    div[data-testid="stComponentFrame"]:has(iframe[title^="st_click_detector"]),
-    div[data-testid="stComponentFrame"]:has(iframe[title*="click_detector"]){
-      background: transparent !important;
-      border: 0 !important;
-      box-shadow: none !important;
-      padding: 0 !important;
-    }
-    
-    /* em alguns temas, existe um “container interno” também */
-    div[data-testid="stComponentFrame"]:has(iframe[title^="st_click_detector"]) > div,
-    div[data-testid="stComponentFrame"]:has(iframe[title*="click_detector"]) > div{
-      background: transparent !important;
-      border: 0 !important;
-      box-shadow: none !important;
-    }
-    
-    /* remove espaçamentos que podem virar “faixa” */
-    div[data-testid="stElementContainer"]:has(iframe[title^="st_click_detector"]),
-    div[data-testid="stElementContainer"]:has(iframe[title*="click_detector"]){
-      background: transparent !important;
-      padding: 0 !important;
-      margin: 0 !important;
-    }
 
     /* ============================================================
        2. O NOVO CSS DOS TILES (CORRIGIDO PARA BATER COM O PYTHON)
@@ -13311,41 +13307,20 @@ if page == "Pokédex (Busca)":
     st.sidebar.header("🔍 Filtros")
     search_query = st.sidebar.text_input("Buscar (Nome ou Nº)", "")
 
-    # --- FIX: remove o “contorno preto” do st_click_detector da Pokédex (não afeta Compendium) ---
+    # --- FIX: garante transparência APENAS nos iframes da Pokédex (não afeta Compendium) ---
     st.markdown("""
     <style>
-    /* 1) Iframe do click_detector */
+    /* st_click_detector (grid e carrossel da Pokédex) */
     iframe[title*="pokedex_grid"],
     iframe[title*="pokedex_carousel"],
     div[data-testid="stComponentFrame"] iframe[title*="pokedex_grid"],
     div[data-testid="stComponentFrame"] iframe[title*="pokedex_carousel"]{
       background: transparent !important;
-      border: 0 !important;
-      outline: none !important;
+      border: none !important;
       box-shadow: none !important;
-      display: block !important;
-    }
-    
-    /* 2) Wrapper do componente (é aqui que geralmente “vira a caixa preta”) */
-    div[data-testid="stComponentFrame"],
-    div[data-testid="stCustomComponentV1"],
-    div[data-testid="stCustomComponent"]{
-      background: transparent !important;
-      border: 0 !important;
-      box-shadow: none !important;
-      padding: 0 !important;
-      margin: 0 !important;
-    }
-    
-    /* 3) Container do elemento que pode adicionar espaço/fundo */
-    div[data-testid="stElementContainer"]{
-      background: transparent !important;
-      padding: 0 !important;
-      margin: 0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
-
 
     # 1) FILTRO DE REGIÃO
     all_regions = sorted(list(set([r.strip() for region in df["Região"].unique() for r in str(region).split("/")])) )
