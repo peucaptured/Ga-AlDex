@@ -11567,7 +11567,6 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
         </style>
         """, unsafe_allow_html=True)
     
-
         
         # CSS das molduras (não interfere no click)
         css = """
@@ -11586,7 +11585,7 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
               text-transform: uppercase;
               letter-spacing: 0.25em;
             }
-
+        
           .ds-npc-banner-title{
             font-size: 20px;
             color: rgba(255,255,255,0.95);
@@ -11600,67 +11599,63 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
           .ds-npc-banner-spacer{
             height: 14px;
           }
+        
           .ds-npc-panel{
             background-repeat:no-repeat;
             background-position:center;
             background-size:100% 100%;
             padding: 28px 28px 26px 28px;
-            min-height: 0px;     /* deixa crescer pelo conteúdo */
-
+            min-height: 0px; /* deixa crescer pelo conteúdo */
           }
+        
           .ds-npc-panel.left{
-          background: transparent !important;
-          background-image: none !important;
-          border: none !important;
-          box-shadow: none !important;
-            padding-top: 6px !important;   /* bem pequeno */
-
-        }
-        /* (opcional) tira o padding padrão do Streamlit só nessa tela */
-        [data-testid="stMainBlockContainer"]{
-          padding-top: 0 !important;
-        }
-
+            background: transparent !important;
+            background-image: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding-top: 6px !important; /* bem pequeno */
+          }
         
-
+          /* (opcional) tira o padding padrão do Streamlit só nessa tela */
+          [data-testid="stMainBlockContainer"]{
+            padding-top: 0 !important;
+          }
         
-        iframe[title^="st_click_detector"]{
-          background:  #000 !important;
-          border: none !important;
-          box-shadow: none !important;
-        }
-        /* IMPORTANTE: só para o st_click_detector (não mexe no seu iframe do compendium) */
-        div[data-testid="stComponentFrame"] iframe[title^="st_click_detector"],
-        div[data-testid="stComponentFrame"] iframe[title*="click_detector"],
-        iframe[title^="st_click_detector"],
-        iframe[title*="click_detector"]{
-          background: transparent !important;
-          border: none !important;
-          outline: none !important;
-          box-shadow: none !important;
-        }
+          /* ✅ FIX: remove o “contorno preto” do st_click_detector
+             (APENAS dentro do painel de NPCs; não mexe no iframe do Compendium) */
+          .ds-npc-panel div[data-testid="stComponentFrame"],
+          .ds-npc-panel div[data-testid="stCustomComponentV1"],
+          .ds-npc-panel div[data-testid="stCustomComponent"]{
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
         
-        /* Se o frame (wrapper) estiver aparecendo como “moldura”, deixa transparente também */
-        div[data-testid="stComponentFrame"]:has(iframe[title^="st_click_detector"]),
-        div[data-testid="stComponentFrame"]:has(iframe[title*="click_detector"]){
-          background: transparent !important;
-          border: none !important;
-          box-shadow: none !important;
-        }
-                
-        /* 3) remove padding extra do wrapper do Streamlit */
-        div[data-testid="stElementContainer"]{
-          padding: 0 !important;
-          margin: 0 !important;
-          background: transparent !important;
-        }        
-        /* remove padding/margem que às vezes vira “caixa” */
-        .ds-npc-panel.left div[data-testid="stElementContainer"]{
-          padding: 0 !important;
-          margin: 0 !important;
-        }
+          .ds-npc-panel div[data-testid="stComponentFrame"] > iframe,
+          .ds-npc-panel div[data-testid="stCustomComponentV1"] > iframe,
+          .ds-npc-panel div[data-testid="stCustomComponent"] > iframe,
+          .ds-npc-panel iframe[title^="st_click_detector"],
+          .ds-npc-panel iframe[title*="click_detector"]{
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+            outline: none !important;
+          }
         
-               
+          /* 3) remove padding extra do wrapper do Streamlit */
+          .ds-npc-panel div[data-testid="stElementContainer"]{
+            padding: 0 !important;
+            margin: 0 !important;
+            background: transparent !important;
+          }
+        
+          /* remove padding/margem que às vezes vira “caixa” */
+          .ds-npc-panel.left div[data-testid="stElementContainer"]{
+            padding: 0 !important;
+            margin: 0 !important;
+          }
         
           /* grid automático */
           .ds-grid{
