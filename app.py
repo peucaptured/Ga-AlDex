@@ -11593,13 +11593,13 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
         
 
         
-        iframe[title*="npc_click"]{
+        iframe[title^="st_click_detector"]{
           background:  #000 !important;
           border: none !important;
           box-shadow: none !important;
         }
         /* 1) pinta o container do componente (o mais importante) */
-        div[data-testid="stComponentFrame"]:has(iframe[title*="npc_click"]){
+        div[data-testid="stComponentFrame"]{
           background: #000 !important;
           border: none !important;
           box-shadow: none !important;
@@ -11609,21 +11609,21 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
         
         /* 2) pinta o iframe também */
         div[data-testid="stComponentFrame"] iframe,
-        iframe[title*="npc_click"],
-        iframe[title*="npc_click"]{
+        iframe[title^="st_click_detector"],
+        iframe[title*="click_detector"]{
           background: #000 !important;
           border: none !important;
           box-shadow: none !important;
         }
         
         /* 3) remove padding extra do wrapper do Streamlit */
-        div[data-testid="stElementContainer"]:has(iframe[title*="npc_click"]){
+        div[data-testid="stElementContainer"]{
           padding: 0 !important;
           margin: 0 !important;
           background: transparent !important;
         }        
         /* remove padding/margem que às vezes vira “caixa” */
-        .ds-npc-panel.left div[data-testid="stElementContainer"]:has(iframe[title*="npc_click"]){
+        .ds-npc-panel.left div[data-testid="stElementContainer"]{
           padding: 0 !important;
           margin: 0 !important;
         }
@@ -11817,7 +11817,7 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
                     )
                         
                 content_html += "</div>"
-                clicked_safe_id = click_detector(content_html, key='npc_click')
+                clicked_safe_id = click_detector(content_html)
     
                 if clicked_safe_id is not None:
                     nome_selecionado = id_map.get(str(clicked_safe_id))
@@ -12983,6 +12983,21 @@ if page == "Pokédex (Busca)":
     st.sidebar.header("🔍 Filtros")
     search_query = st.sidebar.text_input("Buscar (Nome ou Nº)", "")
 
+    # --- FIX: garante transparência APENAS nos iframes da Pokédex (não afeta Compendium) ---
+    st.markdown("""
+    <style>
+    /* st_click_detector (grid e carrossel da Pokédex) */
+    iframe[title*="pokedex_grid"],
+    iframe[title*="pokedex_carousel"],
+    div[data-testid="stComponentFrame"] iframe[title*="pokedex_grid"],
+    div[data-testid="stComponentFrame"] iframe[title*="pokedex_carousel"]{
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     # 1) FILTRO DE REGIÃO
     all_regions = sorted(list(set([r.strip() for region in df["Região"].unique() for r in str(region).split("/")])) )
     selected_regions = st.sidebar.multiselect("Região", all_regions)
@@ -13413,7 +13428,7 @@ if page == "Pokédex (Busca)":
         '''
         
         final_carousel_html = html_template.replace("REPLACE_ME", all_items_string)
-        clicked_carousel_id = click_detector(final_carousel_html)
+        clicked_carousel_id = click_detector(final_carousel_html, key="pokedex_carousel")
 
         if clicked_carousel_id is not None:
             selected_pid = carousel_id_map.get(str(clicked_carousel_id))
@@ -13802,7 +13817,7 @@ if page == "Pokédex (Busca)":
                 """)
 
             grid_html = f"<style>{POKEDEX_IFRAME_CSS}</style><div class='pokedex-grid-wrap'><div class='pokedex-grid' style='--cols:{grid_cols};'>" + "".join(card_nodes) + "</div></div>"
-            clicked_id = click_detector(grid_html)
+            clicked_id = click_detector(grid_html, key="pokedex_grid")
 
             if clicked_id is not None:
                 clicked_id = str(clicked_id)
