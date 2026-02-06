@@ -96,6 +96,20 @@ class TileSet:
             return None
         return rng.choice(opts)
 
+    def pick_mask_variant(self, mask: int, prefer_v: Optional[int], rng: random.Random) -> Optional[Path]:
+        """Pick a masked tile, optionally preferring a specific variant v (from filename _mXX_vY)."""
+        opts = self.masks.get(mask)
+        if not opts:
+            return None
+        if prefer_v is None:
+            return rng.choice(opts)
+        pref = []
+        for p in opts:
+            mm = _MASK_RE.search(p.name)
+            if mm and int(mm.group(2)) == int(prefer_v):
+                pref.append(p)
+        return rng.choice(pref) if pref else rng.choice(opts)
+
     def pick_any(self, rng: random.Random) -> Path:
         """Pick any available tile (plain preferred; falls back to any masked variant)."""
         if self.plain:
@@ -610,35 +624,40 @@ class BiomeGenerator:
 
     
     def _make_river(self, H: int, W: int, rng: random.Random):
+
         river = np.zeros((H, W), dtype=bool)
-    
-        # --- FAIXA FIXA NO SUL ---
-        # Escolha: penúltima linha como base visual do rio
-        base_y = H - 2            # <- ESTE é o ponto que garante "sul"
-        thick = 1                 # 1 tile de altura (pode virar 2 se quiser)
-    
+
+        # --- RIO NO SUL, COM 2 OU 3 FILEIRAS ---
+        # Ideia: criar um rio "grosso" (2 ou 3 tiles de altura) para permitir:
+        #  - fileira superior: grama ao norte / água ao sul (borda)
+        #  - fileira central (quando existir): água "pura" (mesma paleta)
+        #  - fileira inferior: grama ao sul / água ao norte (borda)
+        base_y = H - 2  # mantém sempre no sul (penúltima linha)
+        thick = 3 if rng.random() < 0.55 else 2  # 2 ou 3 fileiras (leve preferência por 3)
+
         y0 = max(0, base_y - (thick - 1))
         y1 = min(H - 1, base_y)
-        river[y0:y1+1, :] = True  # água na faixa inteira do sul
-    
-        # --- opcional: pequenas "mordidas" pra cima (meandros) ---
-        # mantém o sul sempre água, mas cria variação
-        bumps = max(1, W // 3)
+        river[y0 : y1 + 1, :] = True
+
+        # --- pequenas variações (sem "engrossar" além do desejado) ---
+        # Faz "mordidas" pra cima no TOPO do rio, mas só 1 tile, para dar organicidade.
+        bumps = max(1, W // 4)
         for _ in range(bumps):
             x = rng.randrange(0, W)
-            if y0 - 1 >= 0 and rng.random() < 0.6:
+            if y0 - 1 >= 0 and rng.random() < 0.45:
                 river[y0 - 1, x] = True
-                if x + 1 < W and rng.random() < 0.35:
+                if x + 1 < W and rng.random() < 0.25:
                     river[y0 - 1, x + 1] = True
-    
+
         land = ~river
         dist_to_river = self._distance_to_mask(river)
-    
+
         # areia bem fina (pra não roubar grass)
         sand = land & (dist_to_river <= 1.0)
         grass = land & (~sand)
-    
+
         return river, sand, grass
+
 
 
 
@@ -815,6 +834,33 @@ class BiomeGenerator:
         def blit_tile(xx: int, yy: int, im: Image.Image) -> None:
             canvas.alpha_composite(im, (xx * tile_px, yy * tile_px))
 
+        # --- River palette locking (keeps all water rows with the same "color") ---
+        # For river biome, we lock:
+        #   - one water_core tile for all interior water
+        #   - one variant 'v' for water_grass edge tiles so the shoreline looks consistent
+        river_water_plain: Optional[Path] = None
+        river_edge_v: Optional[int] = None
+        if biome == "river":
+            # lock a single core-water tile to keep the central row consistent
+            if self.water_core.plain:
+                river_water_plain = rng.choice(self.water_core.plain)
+            else:
+                river_water_plain = None
+
+            # infer available v's from any water_grass masked tiles and lock one
+            vs = set()
+            for lst in self.water_grass.masks.values():
+                for p in lst:
+                    mm = _MASK_RE.search(p.name)
+                    if mm:
+                        vs.add(int(mm.group(2)))
+            river_edge_v = rng.choice(sorted(vs)) if vs else None
+
+            # cache resized core tile (avoid re-open for every pixel)
+        river_water_cache: Optional[Image.Image] = None
+        if biome == "river" and river_water_plain is not None:
+            river_water_cache = self._load_resized(river_water_plain, tile_px, force_tile=True)
+
         # --- Ground layer ---
         for y in range(grid_h):
             for x in range(grid_w):
@@ -825,8 +871,8 @@ class BiomeGenerator:
                     land_mask = self._mask4(grid, y, x, neigh_is_land)
                     if land_mask > 0:
                         water_im: Optional[Image.Image] = None
-                        edge_ref = self.water_grass.pick_mask(1, rng)
-                        corner_ref = self.water_grass.pick_mask(3, rng)
+                        edge_ref = self.water_grass.pick_mask_variant(1, river_edge_v if biome == "river" else None, rng)
+                        corner_ref = self.water_grass.pick_mask_variant(3, river_edge_v if biome == "river" else None, rng)
                         base_edge = self._load_resized(edge_ref, tile_px, force_tile=True) if edge_ref else None
                         base_corner = self._load_resized(corner_ref, tile_px, force_tile=True) if corner_ref else None
                         def rot(im: Optional[Image.Image], angle: int) -> Optional[Image.Image]:
@@ -841,7 +887,7 @@ class BiomeGenerator:
                         elif land_mask == 12: water_im = rot(base_corner, 180)
                         elif land_mask == 6: water_im = rot(base_corner, 270)
                         if water_im is None:
-                            tilep = self.water_grass.pick_mask(land_mask, rng)
+                            tilep = self.water_grass.pick_mask_variant(land_mask, river_edge_v if biome == "river" else None, rng)
                             if tilep: water_im = self._load_resized(tilep, tile_px, force_tile=True)
                             else:
                                 tilep = self.water_core.pick_plain(rng)
@@ -849,6 +895,9 @@ class BiomeGenerator:
                         if water_im is None: water_im = Image.new("RGBA", (tile_px, tile_px), (0, 0, 0, 0))
                         blit_tile(x, y, water_im)
                     else:
+                        if biome == "river" and river_water_cache is not None:
+                            blit_tile(x, y, river_water_cache)
+                            continue
                         plain_lst = self.water_core.plain
                         prefer = "deep" if (dist_to_land is not None and dist_to_land[y, x] > 2) else "shallow"
                         def _n(p: Path) -> str: return str(p).lower()
