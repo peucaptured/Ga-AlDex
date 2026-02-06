@@ -10584,7 +10584,7 @@ def render_compendium_sessions(comp_data: dict) -> None:
     trainer_name = st.session_state.get("trainer_name") or ""
     sessions_data = load_sessions_data_cloud_first(db, trainer_name)
 
-    sessions = sessions_data.get("sessions", {}) or {}
+    sessions = sessions_data.setdefault("sessions", {})
 
     npcs = sorted((comp_data.get("npcs") or {}).keys())
     cities = sorted((comp_data.get("cities") or {}).keys())
@@ -11734,6 +11734,23 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
                 pokemons = npc.get("pokemons") or npc.get("pokemons_conhecidos") or []
                 if not isinstance(pokemons, list):
                     pokemons = []
+                seen = set()
+                clean = []
+                for x in pokemons:
+                    s = str(x).strip()
+                    if not s:
+                        continue
+                    k = s.lower()
+                    if s.isdigit():
+                        try:
+                            k = _get_pokemon_name(s).strip().lower()
+                        except Exception:
+                            k = s.lower()
+                    if k in seen:
+                        continue
+                    seen.add(k)
+                    clean.append(s)
+                pokemons = clean
 
                 try:
                     name_map = get_official_pokemon_map() or {}
