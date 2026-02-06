@@ -9430,7 +9430,36 @@ def _sessions_file_path() -> str:
     return os.path.join(os.getcwd(), COMP_SESSIONS_JSON)
 
 
-def load_sessions_data() -> dict:
+def load_sessions_data(db=None, trainer_name: str | None = None) -> dict:
+    # 1) tenta Firestore
+    try:
+        if db is None:
+            db = globals().get("db")
+        if trainer_name is None:
+            trainer_name = st.session_state.get("trainer_name") or st.session_state.get("player_name")
+        if db is not None and trainer_name:
+            trainer_id = safe_doc_id(str(trainer_name))
+            ref = (
+                db.collection("trainers")
+                  .document(trainer_id)
+                  .collection("compendium")
+                  .document("sessions")
+            )
+            snap = ref.get()
+            if snap.exists:
+                data = snap.to_dict() or {}
+                if isinstance(data, dict):
+                    data.setdefault("meta", {})
+                    data.setdefault("sessions", {})
+                    data["meta"].setdefault("schema", 1)
+                    data["meta"].setdefault("updated_at", _session_now_iso())
+                    if not isinstance(data["sessions"], dict):
+                        data["sessions"] = {}
+                    return data
+    except Exception:
+        pass
+
+    # 2) fallback: arquivo local (seu comportamento atual)
     path = _sessions_file_path()
     if not os.path.exists(path):
         return _sessions_default_payload()
@@ -9451,13 +9480,33 @@ def load_sessions_data() -> dict:
     return data
 
 
-def save_sessions_data(data: dict) -> None:
+def save_sessions_data(data: dict, db=None, trainer_name: str | None = None) -> None:
     if not isinstance(data, dict):
         return
     data.setdefault("meta", {})
     data.setdefault("sessions", {})
     data["meta"]["updated_at"] = _session_now_iso()
 
+    # 1) tenta Firestore
+    try:
+        if db is None:
+            db = globals().get("db")
+        if trainer_name is None:
+            trainer_name = st.session_state.get("trainer_name") or st.session_state.get("player_name")
+        if db is not None and trainer_name:
+            trainer_id = safe_doc_id(str(trainer_name))
+            ref = (
+                db.collection("trainers")
+                  .document(trainer_id)
+                  .collection("compendium")
+                  .document("sessions")
+            )
+            ref.set(data, merge=True)
+            return  # sucesso no Firestore -> não precisa arquivo
+    except Exception:
+        pass
+
+    # 2) fallback: arquivo local (seu comportamento atual)
     path = _sessions_file_path()
     folder = os.path.dirname(path) or os.getcwd()
     ts = datetime.utcnow().strftime("%Y%m%d_%H%M")
@@ -9472,6 +9521,7 @@ def save_sessions_data(data: dict) -> None:
 
     with open(path, "w", encoding="utf-8") as f:
         f.write(payload)
+
 
 
 def _session_id_from_number(number: int) -> str:
@@ -9516,7 +9566,9 @@ def add_entity_to_active_session(link_key: str, entity_id: str, event_type: str,
     active_sid = st.session_state.get("comp_session_active_id")
     if not active_sid or not entity_id:
         return False
-    sessions_data = load_sessions_data()
+    sessions_data = load_sessions_data(globals().get("db"), st.session_state.get("trainer_name"))
+
+
     sessions = sessions_data.get("sessions", {}) or {}
     session = sessions.get(active_sid)
     if not isinstance(session, dict):
@@ -9531,7 +9583,7 @@ def add_entity_to_active_session(link_key: str, entity_id: str, event_type: str,
             "refs": refs,
         },
     )
-    save_sessions_data(sessions_data)
+    save_sessions_data(sessions_data, globals().get("db"), st.session_state.get("trainer_name"))
     return True
 
 
@@ -10348,7 +10400,8 @@ def _render_npc_dossier(nm: str, npc: dict, cities: dict[str, dict], npcs: dict[
 
 def render_compendium_sessions(comp_data: dict) -> None:
     st.markdown("## 📒 Tracker de Sessões")
-    sessions_data = load_sessions_data()
+    sessions_data = load_sessions_data(globals().get("db"), st.session_state.get("trainer_name"))
+
     sessions = sessions_data.get("sessions", {}) or {}
 
     npcs = sorted((comp_data.get("npcs") or {}).keys())
@@ -10396,7 +10449,8 @@ def render_compendium_sessions(comp_data: dict) -> None:
                     "events": [],
                     "flags": {},
                 }
-                save_sessions_data(sessions_data)
+                save_sessions_data(sessions_data, globals().get("db"), st.session_state.get("trainer_name"))
+
                 st.session_state["comp_session_selected"] = sid
                 st.success(f"Sessão {sid} criada.")
                 st.rerun()
@@ -10454,7 +10508,7 @@ def render_compendium_sessions(comp_data: dict) -> None:
             session["links"]["places"] = link_places
             session["links"]["gyms"] = link_gyms
             session["links"]["items"] = link_items
-            save_sessions_data(sessions_data)
+            save_sessions_data(sessions_data, globals().get("db"), st.session_state.get("trainer_name"))
             st.success("Resumo atualizado.")
 
     with tabs[1]:
@@ -10513,7 +10567,7 @@ def render_compendium_sessions(comp_data: dict) -> None:
                     "refs": refs,
                 },
             )
-            save_sessions_data(sessions_data)
+            save_sessions_data(sessions_data, globals().get("db"), st.session_state.get("trainer_name"))
             st.success("Evento adicionado.")
             st.rerun()
 
@@ -10584,7 +10638,7 @@ def render_compendium_sessions(comp_data: dict) -> None:
             if new_key.strip():
                 flags[new_key.strip()] = bool(new_val)
             session["flags"] = flags
-            save_sessions_data(sessions_data)
+            save_sessions_data(sessions_data, globals().get("db"), st.session_state.get("trainer_name"))
             st.success("Flags atualizadas.")
 
     with tabs[4]:
