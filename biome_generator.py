@@ -608,26 +608,43 @@ class BiomeGenerator:
         grass = (~ocean) & (~sand)
         return ocean, sand, grass
 
-    def _make_river(self, H: int, W: int, rng: random.Random):
-        y = rng.randrange(H // 4, 3 * H // 4)
-        x = 0
-        path = np.zeros((H, W), dtype=bool)
-        while x < W:
-            path[y, x] = True
-            x += 1
-            if rng.random() < 0.55:
-                y += rng.choice([-1, 0, 1])
-                y = max(1, min(H - 2, y))
-        river = path.copy()
-        for _ in range(2):
-            river = river | np.roll(river, 1, 0) | np.roll(river, -1, 0)
-        if rng.random() < 0.5:
-            river = river | np.roll(river, 1, 1)
-        land = ~river
-        dist_to_river = self._distance_to_mask(river)
-        sand = land & (dist_to_river <= 2.0)
-        grass = land & (~sand)
-        return river, sand, grass
+  def _make_river(self, H: int, W: int, rng: random.Random):
+      # Linha-base do rio (snake)
+      y = rng.randrange(max(1, H // 4), max(2, (3 * H) // 4))
+      x = 0
+      path = np.zeros((H, W), dtype=bool)
+      while x < W:
+          path[y, x] = True
+          x += 1
+          if rng.random() < 0.55:
+              y += rng.choice([-1, 0, 1])
+              y = max(1, min(H - 2, y))
+  
+      river = path.copy()
+  
+      # --- CONTROLE DE LARGURA (o ponto-chave!) ---
+      # grids pequenos => rio fino; grids maiores => um pouco mais largo
+      min_dim = min(H, W)
+      widen_iters = 0 if min_dim <= 10 else (1 if min_dim <= 18 else 2)
+  
+      for _ in range(widen_iters):
+          # engrossa só verticalmente, mantendo o rio mais estreito
+          river = river | np.roll(river, 1, 0) | np.roll(river, -1, 0)
+  
+      # chance menor de alargar horizontalmente (e só em grid maior)
+      if min_dim >= 18 and rng.random() < 0.25:
+          river = river | np.roll(river, 1, 1)
+  
+      land = ~river
+      dist_to_river = self._distance_to_mask(river)
+  
+      # --- MAIS TERRA / MAIS GRASS ---
+      # areia mais fina (antes era 2.0)
+      sand = land & (dist_to_river <= 0.5)
+      grass = land & (~sand)
+  
+      return river, sand, grass
+
 
     def _make_forest(self, H: int, W: int, rng: random.Random):
         n = value_noise(H, W, rng, scale=9, blur=3)
