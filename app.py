@@ -13392,8 +13392,259 @@ if page == "Pokédex (Busca)":
             grid_cols = 6 # Reduzi para 6 para as bordas não ficarem espremidas
             rows = list(filtered_df.iterrows())
 
-            # Renderiza o grid inteiro via HTML + click_detector (Streamlit bloqueia JS em onclick)
+            
+            # Renderiza o grid com o visual original + clique (click_detector roda em iframe, então precisa CSS inline)
             from st_click_detector import click_detector
+
+            POKEDEX_IFRAME_CSS = r"""@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+            .pokedex-grid-note {
+                    font-size: 12px;
+                    color: #e2e8f0;
+                    text-align: center;
+                    margin: 6px 0 10px 0;
+                }
+                .pokedex-card {
+                    background: rgba(15, 23, 42, 0.82);
+                    color: #f8fafc;
+                    padding: 18px;
+                    border-radius: 16px;
+                    border: 2px solid rgba(255,255,255,0.35);
+                    margin-top: 18px;
+                }
+                .pokedex-detail-grid { display: grid; gap: 12px; }
+    
+                .pokedex-info-card {
+                    background: rgba(15, 23, 42, 0.9) !important;
+                    border: 1px solid rgba(56, 189, 248, 0.4) !important;
+                    color: #f8fafc !important;
+                    padding: 10px;
+                    border-radius: 8px;
+                }
+                .pokedex-info-card--dark { background: #e2e8f0; }
+    
+                .pokedex-info-title {
+                    font-size: 12px;
+                    color: #38bdf8 !important;
+                    margin-bottom: 4px;
+                }
+                .pokedex-info-value {
+                    font-size: 14px;
+                    color: #0f172a;
+                    line-height: 1.6;
+                }
+                .pokedex-info-card--wide { padding: 12px 14px; }
+                .pokedex-info-card--wide .pokedex-info-value { font-size: 12px; }
+                .pokedex-info-card--wide .section-title { margin-top: 0; }
+    
+                .pokedex-tags span {
+                    display: inline-block;
+                    padding: 2px 8px;
+                    border-radius: 999px;
+                    font-size: 10px;
+                    margin-right: 6px;
+                    margin-bottom: 4px;
+                    background: rgba(0,0,0,0.35);
+                    color: #ffffff;
+                }
+                .pokedex-carousel {
+                    display: flex; gap: 12px; overflow-x: auto; padding: 10px 4px;
+                }
+                .pokedex-carousel img {
+                    width: 72px; height: 72px; image-rendering: pixelated;
+                    background: rgba(255,255,255,0.25); border-radius: 10px; padding: 6px;
+                }
+
+                /* CARROSSEL INFERIOR */
+                .pokedex-footer-carousel {
+                    display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 12px; padding: 14px;
+                    background: rgba(0, 0, 0, 0.30); border-radius: 15px;
+                    border: 1px solid rgba(255,255,255,0.18); scroll-behavior: smooth;
+                }
+                .pokedex-footer-carousel::-webkit-scrollbar { height: 8px; }
+                .pokedex-footer-carousel::-webkit-scrollbar-thumb { background: #FFCC00; border-radius: 10px; }
+
+                .carousel-item {
+                    flex: 0 0 auto; width: 70px; height: 70px; border-radius: 12px;
+                    display: grid; place-items: center; cursor: pointer;
+                    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18);
+                    transition: transform 0.15s;
+                }
+                .carousel-item:hover { transform: scale(1.12); }
+                .carousel-item img { width: 54px; height: 54px; image-rendering: pixelated; }
+                .carousel-item-active { border: 2px solid #FFCC00; background: rgba(255, 204, 0, 0.10); }
+
+                .info-label { color: #ffd166; font-weight: 800; }
+                .section-title { color: #80ed99; font-weight: 900; margin-top: 10px; }
+                .hi-red { color: #ff5c5c; font-weight: 900; }
+                .hi-cyan { color: #4dd6ff; font-weight: 900; }
+                .hi-purple { color: #b197ff; font-weight: 900; }
+                .power-badge {
+                    display: block; width: fit-content; margin: 10px auto 0 auto;
+                    padding: 6px 12px; border-radius: 999px;
+                    background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.25);
+                    color: #ffd166; font-weight: 900; text-align: center;
+                }
+                @keyframes pageFade { from { opacity: 0.92; } to { opacity: 1; } }
+                @keyframes contentSlide { from { transform: translateY(8px); opacity: 0.92; } to { transform: translateY(0); opacity: 1; } }
+
+
+                /* ============================================================
+                   2. O NOVO CSS DOS TILES (CORRIGIDO PARA BATER COM O PYTHON)
+                   ============================================================ */
+
+                /* MOLDURA DO CARD */
+                .dex-card-frame {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 110px;        
+                    width: 100%;
+                    border-radius: 12px;
+                    margin-bottom: 8px;
+                    transition: transform 0.2s ease;
+                    background: rgba(15, 23, 42, 0.6);
+                    position: relative;
+                }
+    
+                .dex-card-frame:hover {
+                    transform: scale(1.02);
+                }
+
+                /* A IMAGEM */
+                .dex-sprite-img {
+                    max-width: 80px;
+                    max-height: 80px;
+                    width: auto;
+                    height: auto;
+                    object-fit: contain;
+                    image-rendering: pixelated;
+                    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+                    z-index: 1;
+                }
+
+                /* --- AQUI ESTAVA O ERRO: NOMES DAS CLASSES --- */
+                /* Antes estava .frame-caught, agora é .dex-frame--caught */
+
+                /* 🟢 CAPTURADO (Verde) */
+                .dex-frame--caught {
+                    border: 2px solid #00ff41;
+                    box-shadow: 0 0 12px rgba(0, 255, 65, 0.25), inset 0 0 15px rgba(0, 60, 20, 0.6);
+                    background: rgba(0, 60, 20, 0.4);
+                }
+
+                /* 🔵 VISTO (Azul) */
+                .dex-frame--seen {
+                    border: 2px solid #00d0ff;
+                    box-shadow: 0 0 12px rgba(0, 208, 255, 0.25), inset 0 0 15px rgba(0, 40, 60, 0.6);
+                    background: rgba(0, 40, 60, 0.4);
+                }
+
+                /* ⭐ WISHLIST (Dourado) */
+                .dex-frame--wish {
+                    border: 2px solid #ffd700;
+                    box-shadow: 0 0 12px rgba(255, 215, 0, 0.25), inset 0 0 15px rgba(60, 50, 0, 0.6);
+                    background: rgba(60, 50, 0, 0.4);
+                }
+
+                /* ⚪ PADRÃO (Cinza) */
+                .dex-frame--default {
+                    border: 2px solid rgba(255, 255, 255, 0.15);
+                    background: rgba(255, 255, 255, 0.03);
+                }
+
+                .dex-card-link {
+                    display: block;
+                    text-decoration: none;
+                    color: inherit;
+                    cursor: pointer;
+                }
+    
+
+                /* ============================================================
+                   3. CARDS "TCG" DA POKEDEX (NOVO)
+                   ============================================================ */
+                .dex-tcg-card{
+                    border-radius: 14px;
+                    overflow: hidden;
+                    position: relative;
+                    height: 170px;
+                    width: 100%;
+                    cursor: pointer;
+                    box-shadow: 0 10px 22px rgba(0,0,0,0.35);
+                    border: 4px solid rgba(255,255,255,0.12); /* será "dominada" pela classe de status */
+                    transition: transform .15s ease, filter .15s ease;
+                }
+                .dex-tcg-card:hover{
+                    transform: translateY(-2px) scale(1.01);
+                    filter: brightness(1.03);
+                }
+
+                .dex-tcg-header{
+                    height: 30px;
+                    display: grid;
+                    grid-template-columns: 26px 1fr auto;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 6px 8px;
+                    background: rgba(15,23,42,0.62);
+                    border-bottom: 1px solid rgba(255,255,255,0.12);
+                }
+                .dex-tcg-statusicon{
+                    width: 22px; height: 22px;
+                    display:flex; align-items:center; justify-content:center;
+                    opacity: .95;
+                    filter: drop-shadow(0 2px 3px rgba(0,0,0,.45));
+                }
+                .dex-tcg-name{
+                    font-size: 9px;
+                    color: #e2e8f0;
+                    text-shadow: 0 2px 2px rgba(0,0,0,.55);
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    text-align: center;
+                }
+                .dex-tcg-np{
+                    font-size: 8px;
+                    color: #e2e8f0;
+                    background: rgba(15,23,42,0.7);
+                    border: 1px solid rgba(255,255,255,0.14);
+                    border-radius: 999px;
+                    padding: 2px 7px;
+                    text-shadow: 0 1px 2px rgba(0,0,0,.55);
+                }
+
+                .dex-tcg-body{
+                    height: 110px;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    background: rgba(2,6,23,0.18);
+                }
+                .dex-tcg-sprite{
+                    width: 86px;
+                    height: 86px;
+                    object-fit: contain;
+                    image-rendering: pixelated;
+                    filter: drop-shadow(0 7px 10px rgba(0,0,0,0.55));
+                }
+
+                .dex-tcg-footer{
+                    height: 30px;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    background: rgba(15,23,42,0.62);
+                    border-top: 1px solid rgba(255,255,255,0.12);
+                }
+                .dex-tcg-viab{
+                    font-size: 14px;
+                    letter-spacing: 2px;
+                    color: #ffd166;
+                    text-shadow: 0 2px 2px rgba(0,0,0,.55);
+                }
+
+            """
 
             card_nodes = []
             grid_id_map = {}
@@ -13423,7 +13674,6 @@ if page == "Pokédex (Busca)":
                 c1 = _type_color(t1)
                 c2 = _type_color(t2) if t2 else ""
 
-                # Fundo 1 tipo / 2 tipos (diagonal)
                 if c2:
                     bg_style = f"background: linear-gradient(135deg, {c1} 0%, {c1} 50%, {c2} 50%, {c2} 100%);"
                 else:
@@ -13444,8 +13694,6 @@ if page == "Pokédex (Busca)":
                 else:
                     status_svg = ""
 
-                # ✅ IMPORTANTÍSSIMO: o click_detector normalmente devolve o id do ELEMENTO clicado.
-                # Como o clique pode cair no <div> interno ou no <img>, damos id também neles e mapeamos todos.
                 safe_id = f"dex_{dex_num}"
                 safe_id_card = f"{safe_id}__card"
                 safe_id_img = f"{safe_id}__img"
@@ -13454,7 +13702,7 @@ if page == "Pokédex (Busca)":
                 grid_id_map[safe_id_card] = dex_num
                 grid_id_map[safe_id_img] = dex_num
 
-                card_nodes.append(f'''
+                card_nodes.append(f"""
                     <a href="javascript:void(0)" id="{safe_id}" style="text-decoration:none;color:inherit;display:block;">
                         <div id="{safe_id_card}" class="dex-tcg-card {status_class}" style="{bg_style}; cursor:pointer;" role="button" tabindex="0">
                             <div class="dex-tcg-header" style="pointer-events:none;">
@@ -13463,23 +13711,22 @@ if page == "Pokédex (Busca)":
                                 <div class="dex-tcg-np">NP {np_val}</div>
                             </div>
                             <div class="dex-tcg-body" style="pointer-events:none;">
-                                <img id="{safe_id_img}" src="{sprite_url}" class="dex-tcg-sprite" alt="{p_name}">
+                                <img id="{safe_id_img}" src="{sprite_url}" class="dex-tcg-sprite" alt="{p_name}" />
                             </div>
                             <div class="dex-tcg-footer" style="pointer-events:none;">
                                 <div class="dex-tcg-viab" title="{viab_code}">{viab_code}</div>
                             </div>
                         </div>
                     </a>
-                ''')
+                """)
 
-            grid_html = "<div class='pokedex-grid'>" + "".join(card_nodes) + "</div>"
+            grid_html = f"<style>{POKEDEX_IFRAME_CSS}</style><div class='pokedex-grid'>" + "".join(card_nodes) + "</div>"
             clicked_id = click_detector(grid_html)
 
             if clicked_id is not None:
                 clicked_id = str(clicked_id)
-
-                # fallback: se voltar algo como "dex_25__img", tenta reduzir
                 selected_pid = grid_id_map.get(clicked_id)
+
                 if selected_pid is None and "__" in clicked_id:
                     selected_pid = grid_id_map.get(clicked_id.split("__", 1)[0])
 
@@ -13487,8 +13734,9 @@ if page == "Pokédex (Busca)":
                     st.session_state["pokedex_selected"] = str(selected_pid)
                     st.rerun()
 
-            st.markdown("</div>", unsafe_allow_html=True)  # fecha .pokedex-shell
-            st.markdown("</div>", unsafe_allow_html=True)  # fecha wrapper externo (se houver)
+
+st.markdown("</div>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ==============================================================================
