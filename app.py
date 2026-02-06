@@ -13307,17 +13307,35 @@ if page == "Pokédex (Busca)":
     st.sidebar.header("🔍 Filtros")
     search_query = st.sidebar.text_input("Buscar (Nome ou Nº)", "")
 
-    # --- FIX: garante transparência APENAS nos iframes da Pokédex (não afeta Compendium) ---
+    # --- FIX REAL: remove a “moldura preta” do click_detector sem afetar o iframe do Compendium ---
     st.markdown("""
     <style>
-    /* st_click_detector (grid e carrossel da Pokédex) */
-    iframe[title*="pokedex_grid"],
-    iframe[title*="pokedex_carousel"],
-    div[data-testid="stComponentFrame"] iframe[title*="pokedex_grid"],
-    div[data-testid="stComponentFrame"] iframe[title*="pokedex_carousel"]{
+    /* Só dentro da Pokédex: wrapper que a gente vai colocar em volta dos click_detector */
+    .pokedex-clickwrap,
+    .pokedex-clickwrap *{
+      background: transparent !important;
+    }
+    
+    /* Remove fundo/borda do frame do componente (é isso que costuma aparecer como “contorno preto”) */
+    .pokedex-clickwrap div[data-testid="stComponentFrame"],
+    .pokedex-clickwrap div[data-testid="stComponentFrame"] > div,
+    .pokedex-clickwrap div[data-testid="stElementContainer"],
+    .pokedex-clickwrap div[data-testid="stElementContainer"] > div{
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
+      outline: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    
+    /* O iframe real do st_click_detector */
+    .pokedex-clickwrap iframe[title^="st_click_detector"],
+    .pokedex-clickwrap iframe[title*="click_detector"]{
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      outline: none !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -13757,8 +13775,10 @@ if page == "Pokédex (Busca)":
         '''
         
         final_carousel_html = html_template.replace("REPLACE_ME", all_items_string)
+        st.markdown("<div class='pokedex-clickwrap'>", unsafe_allow_html=True)
         clicked_carousel_id = click_detector(final_carousel_html, key="pokedex_carousel")
-
+        st.markdown("</div>", unsafe_allow_html=True)
+        
         if clicked_carousel_id is not None:
             selected_pid = carousel_id_map.get(str(clicked_carousel_id))
             if selected_pid and selected_pid != st.session_state.get("pokedex_selected"):
@@ -14127,27 +14147,37 @@ if page == "Pokédex (Busca)":
                 grid_id_map[safe_id_card] = dex_num
                 grid_id_map[safe_id_img] = dex_num
 
-                card_nodes.append(f"""
-                    <a href="javascript:void(0)" id="{safe_id}" style="text-decoration:none;color:inherit;display:block;">
-                        <div id="{safe_id_card}" class="dex-tcg-card {status_class}" style="{bg_style}; cursor:pointer;" role="button" tabindex="0">
-                            <div class="dex-tcg-header" style="pointer-events:none;">
-                                <div class="dex-tcg-statusicon">{status_svg}</div>
-                                <div class="dex-tcg-name">{p_name}</div>
-                                <div class="dex-tcg-np">NP {np_val}</div>
-                            </div>
-                            <div class="dex-tcg-body" style="pointer-events:none;">
-                                <img id="{safe_id_img}" src="{sprite_url}" class="dex-tcg-sprite" alt="{p_name}" />
-                            </div>
-                            <div class="dex-tcg-footer" style="pointer-events:none;">
-                                <div class="dex-tcg-viab" title="{viab_code}">{viab_code}</div>
-                            </div>
-                        </div>
-                    </a>
-                """)
+                card_nodes.append("\n".join([
+                    f'<a href="javascript:void(0)" id="{safe_id}" '
+                    f'style="text-decoration:none;color:inherit;display:block;">',
+                
+                    f'  <div id="{safe_id_card}" class="dex-tcg-card {status_class}" '
+                    f'style="{bg_style}; cursor:pointer;" role="button" tabindex="0">',
+                
+                    '    <div class="dex-tcg-header" style="pointer-events:none;">',
+                    f'      <div class="dex-tcg-statusicon">{status_svg}</div>',
+                    f'      <div class="dex-tcg-name">{p_name}</div>',
+                    f'      <div class="dex-tcg-np">NP {np_val}</div>',
+                    '    </div>',
+                
+                    '    <div class="dex-tcg-body" style="pointer-events:none;">',
+                    f'      <img id="{safe_id_img}" src="{sprite_url}" class="dex-tcg-sprite" alt="{p_name}" />',
+                    '    </div>',
+                
+                    '    <div class="dex-tcg-footer" style="pointer-events:none;">',
+                    f'      <div class="dex-tcg-viab" title="{viab_code}">{viab_code}</div>',
+                    '    </div>',
+                
+                    '  </div>',
+                    '</a>',
+                ]))
 
             grid_html = f"<style>{POKEDEX_IFRAME_CSS}</style><div class='pokedex-grid-wrap'><div class='pokedex-grid' style='--cols:{grid_cols};'>" + "".join(card_nodes) + "</div></div>"
+            st.markdown("<div class='pokedex-clickwrap'>", unsafe_allow_html=True)
             clicked_id = click_detector(grid_html, key="pokedex_grid")
+            st.markdown("</div>", unsafe_allow_html=True)
 
+            
             if clicked_id is not None:
                 clicked_id = str(clicked_id)
                 selected_pid = grid_id_map.get(clicked_id)
