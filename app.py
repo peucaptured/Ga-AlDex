@@ -4317,7 +4317,7 @@ def save_data_cloud(trainer_name, data):
         try:
             if isinstance(data, dict) and data.get("npc_user"):
                 npc_name = (data.get("npc_name") or trainer_name or "").strip() or trainer_name
-
+        
                 # --- pega NPC "base" do compendium pra não perder lore ---
                 base_obj = {}
                 try:
@@ -4328,20 +4328,20 @@ def save_data_cloud(trainer_name, data):
                             base_obj = npcs.get(npc_name) or {}
                 except Exception:
                     base_obj = {}
-
+        
                 overrides = st.session_state.setdefault("npc_sync_overrides", {})
-
+        
                 # usa prioridade: override anterior -> base do compendium -> default
                 npc_obj = overrides.get(npc_name) or base_obj or {"name": npc_name, "sections": {}}
                 npc_obj["name"] = npc_name  # garante
-
+        
                 # ✅ preserva lore: nunca zere sections
                 if not isinstance(npc_obj.get("sections"), dict) or not npc_obj.get("sections"):
                     if isinstance(base_obj, dict) and isinstance(base_obj.get("sections"), dict) and base_obj.get("sections"):
                         npc_obj["sections"] = base_obj.get("sections")
                     else:
                         npc_obj["sections"] = npc_obj.get("sections") if isinstance(npc_obj.get("sections"), dict) else {}
-
+        
                 # 1) fontes possíveis (do user NPC)
                 raw = []
                 if isinstance(data.get("npc_pokemons"), list):
@@ -4350,7 +4350,7 @@ def save_data_cloud(trainer_name, data):
                     raw += (data.get("party") or [])
                 if isinstance(data.get("caught"), list):
                     raw += (data.get("caught") or [])
-
+        
                 # 2) converte para nomes + dedupe mantendo ordem
                 pokes = []
                 seen = set()
@@ -4358,7 +4358,7 @@ def save_data_cloud(trainer_name, data):
                     pid_str = str(pid).strip()
                     if not pid_str:
                         continue
-
+        
                     if pid_str.startswith("EXT:"):
                         nm = pid_str.replace("EXT:", "").strip()
                     else:
@@ -4366,14 +4366,14 @@ def save_data_cloud(trainer_name, data):
                             nm = _get_pokemon_name(pid_str)
                         except Exception:
                             nm = pid_str
-
+        
                     nm = (nm or "").strip()
                     key = nm.lower()
                     if nm and key not in seen:
                         seen.add(key)
                         pokes.append(nm)
-
-                # 3) (opcional, mas recomendado) merge com pokemons já existentes no NPC base/override
+        
+                # 3) merge com pokemons já existentes no NPC base/override
                 existing = npc_obj.get("pokemons") or npc_obj.get("pokemons_conhecidos") or []
                 if isinstance(existing, list) and existing:
                     for x in existing:
@@ -4382,19 +4382,16 @@ def save_data_cloud(trainer_name, data):
                         if xs and k not in seen:
                             seen.add(k)
                             pokes.append(xs)
-
+        
                 npc_obj["pokemons"] = list(pokes)
                 npc_obj["pokemons_conhecidos"] = list(pokes)
                 overrides[npc_name] = npc_obj
-
+        
+                # ✅ IMPORTANTÍSSIMO: invalida cache do compendium na sessão
+                st.session_state.pop("comp_data", None)
+        
         except Exception:
             pass
-
-        return True
-
-    except Exception as e:
-        st.error(f"Erro ao salvar: {e}")
-        return False
 
 
 def get_empty_user_data():
@@ -9483,26 +9480,34 @@ def comp_load() -> dict:
                 if not dst["sections"].get(sec):
                     dst["sections"][sec] = obj["sections"][sec]
 
+    # -------------------------------------------------
+    # Sync persistente: NPC Users (Trainer Hub) -> NPCs
+    # -------------------------------------------------
+    try:
+        data.setdefault("npcs", {})
+        data["npcs"] = _sync_npc_users_and_overrides(data.get("npcs") or {})
+    except Exception:
+        pass
+
+    # -------------------------------------------------
+    # Overrides por sessão (UI): sempre por último
+    # -------------------------------------------------
     if "npc_sync_overrides" in st.session_state:
         data["npcs"] = apply_npc_overrides(
             data.get("npcs") or {},
             st.session_state["npc_sync_overrides"]
         )
-        
+
     return data
 
 if trainer_name == "Ezenek":
     if st.sidebar.button("🔄 Atualizar NPCs"):
         try:
-            fn = globals().get("comp_load")
-            if not callable(fn):
-                raise NameError("comp_load ainda não foi definido (ordem do script). Mova o bloco do sidebar para depois do Compendium.")
-            comp_data = fn()
-            comp_data["npcs"] = _sync_npc_users_and_overrides(comp_data.get("npcs") or {})
-            st.session_state["npc_sync_overrides"] = comp_data.get("npcs") or {}
-            st.sidebar.success("NPCs atualizados.")
+            st.session_state.pop("comp_data", None)  # se você cacheia em comp_data
+            st.sidebar.success("Compendium será recarregado com NPCs do Trainer Hub.")
         except Exception as e:
             st.sidebar.error(f"Falha ao atualizar NPCs: {e}")
+
 # ----------------------------
 # SESSION TRACKER (JSON)
 # ----------------------------
