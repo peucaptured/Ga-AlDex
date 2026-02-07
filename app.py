@@ -7057,6 +7057,19 @@ def gen_tiles(grid: int, theme_key: str, seed: int | None = None, no_water: bool
     # fallback: devolve o último mesmo se não passou (evita travar)
     return tiles, int(seed)
 
+
+@st.cache_data(show_spinner=False)
+def fetch_image_pil(url: str) -> Image.Image | None:
+    try:
+        r = requests.get(url, timeout=5)
+        r.raise_for_status()
+        img = Image.open(BytesIO(r.content)).convert("RGBA")
+        return img
+    except Exception:
+        return None
+
+
+
 def draw_tile_asset(img, r, c, tiles, assets, rng):
     """Desenha 1 tile (utilitário). Mantido por compatibilidade; usa a mesma lógica do render_map_png."""
     grid = len(tiles)
