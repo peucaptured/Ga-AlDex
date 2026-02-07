@@ -4516,13 +4516,13 @@ def _dex_build_uid_maps(df_local: pd.DataFrame) -> tuple[dict[str, str], dict[st
 
 def _dex_try_load_legacy_df() -> pd.DataFrame | None:
     # Lista de nomes comuns para manter a dex velha junto do projeto
+    # (IMPORTANTE: não incluir a pokédex NOVA aqui — ela é tratada como "current".)
     candidates = [
         "pokedex_old.xlsx",
         "pokedex_velha.xlsx",
         "pokedex_legacy.xlsx",
         "pokedex.xlsx.old",
         "pokedex.xlsx.bak",
-        "pokedex Nova.xlsx",  # (como você mandou aqui)
         "pokedex velha.xlsx",
     ]
 
@@ -7068,7 +7068,15 @@ def fetch_image_pil(url: str) -> Image.Image | None:
     except Exception:
         return None
 
-
+@st.cache_data(show_spinner=False)
+def fetch_image_pil(url: str) -> Image.Image | None:
+    try:
+        r = requests.get(url, timeout=5)
+        r.raise_for_status()
+        img = Image.open(BytesIO(r.content)).convert("RGBA")
+        return img
+    except Exception:
+        return None
 
 def draw_tile_asset(img, r, c, tiles, assets, rng):
     """Desenha 1 tile (utilitário). Mantido por compatibilidade; usa a mesma lógica do render_map_png."""
@@ -7361,6 +7369,28 @@ def get_pid_from_name(user_name: str, name_map: dict) -> str | None:
         return None
 
     pre_clean = user_name.replace('♀', '-f').replace('♂', '-m')
+    # --- Normalização de formas regionais no formato "Nome (Galar)" / "Nome (Alola)" etc ---
+    # Isso garante que sprites usem o ID correto do PokeAPI (ex: ponyta-galar -> 10162)
+    try:
+        _pc = str(pre_clean)
+        _pc = re.sub(r"\s*\(\s*galar\s*\)\s*", "-galar", _pc, flags=re.IGNORECASE)
+        _pc = re.sub(r"\s*\(\s*alola\s*\)\s*", "-alola", _pc, flags=re.IGNORECASE)
+        _pc = re.sub(r"\s*\(\s*hisui\s*\)\s*", "-hisui", _pc, flags=re.IGNORECASE)
+        _pc = re.sub(r"\s*\(\s*paldea\s*\)\s*", "-paldea", _pc, flags=re.IGNORECASE)
+
+        if re.search(r"\bgalarian\b", _pc, flags=re.IGNORECASE):
+            _pc = re.sub(r"\bgalarian\b", "", _pc, flags=re.IGNORECASE).strip() + "-galar"
+        if re.search(r"\balolan\b", _pc, flags=re.IGNORECASE):
+            _pc = re.sub(r"\balolan\b", "", _pc, flags=re.IGNORECASE).strip() + "-alola"
+        if re.search(r"\bhisuian\b", _pc, flags=re.IGNORECASE):
+            _pc = re.sub(r"\bhisuian\b", "", _pc, flags=re.IGNORECASE).strip() + "-hisui"
+        if re.search(r"\bpaldean\b", _pc, flags=re.IGNORECASE):
+            _pc = re.sub(r"\bpaldean\b", "", _pc, flags=re.IGNORECASE).strip() + "-paldea"
+
+        pre_clean = _pc
+    except Exception:
+        pass
+
     clean = normalize_text(pre_clean).replace('.', '').replace("'", '').replace(' ', '-')
 
     # exceções / formas (as mesmas que você já usa)
@@ -8246,8 +8276,12 @@ _SVG_STAR = """<svg viewBox='0 0 24 24' width='16' height='16' fill='white' xmln
 _SVG_EYE = """<svg viewBox='0 0 24 24' width='16' height='16' fill='none' xmlns='http://www.w3.org/2000/svg'><path d='M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z' stroke='white' stroke-width='2'/><circle cx='12' cy='12' r='3' fill='white'/></svg>"""
 
 def load_excel_data():
-    file_name = "pokedex.xlsx"
-    if not os.path.exists(file_name): return None, None
+    # Preferência: usar a pokédex nova se estiver no projeto com esse nome.
+    # Mantém compatibilidade com o nome antigo (pokedex.xlsx).
+    candidates = ["pokedex Nova.xlsx", "pokedex.xlsx"]
+    file_name = next((n for n in candidates if os.path.exists(n)), None)
+    if not file_name:
+        return None, None
     try:
         df = pd.read_excel(file_name)
         df.columns = [c.strip() for c in df.columns]
@@ -8305,6 +8339,15 @@ if 'df_data' not in st.session_state:
 
 df = st.session_state['df_data']
 cols_map = st.session_state.get('cols_map', {})
+
+# =========================
+# DEX GUARD antes do CONTINUE
+# (garante party/seen/caught/forms migrados antes de renderizar o menu)
+# =========================
+try:
+    _dex_guard_once(user_data, df)
+except Exception:
+    pass
 
 if st.session_state.get("show_login_menu"):
     render_login_menu(trainer_name, user_data)
