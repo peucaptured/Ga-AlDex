@@ -16576,6 +16576,32 @@ elif page == "Minhas Fichas":
 
     db, bucket = init_firebase()
     sheets = list_sheets(db, trainer_name)
+    party_ids_set = {str(p) for p in (user_data.get("party") or [])}
+
+    hub_pokemon_ids = []
+    _seen_hub_ids = set()
+    for raw_pid in (user_data.get("caught") or []):
+        pid = str(raw_pid).strip()
+        if not pid or pid in _seen_hub_ids:
+            continue
+        _seen_hub_ids.add(pid)
+        hub_pokemon_ids.append(pid)
+
+    def _hub_pid_label(pid_value: str) -> str:
+        pid_norm = str(pid_value).strip()
+        if not pid_norm:
+            return "Pokémon inválido"
+
+        if pid_norm.startswith("EXT:"):
+            pname_local = pid_norm.replace("EXT:", "", 1).strip() or "Pokémon Externo"
+        else:
+            try:
+                pname_local = _get_pokemon_name(pid_norm)
+            except Exception:
+                pname_local = pid_norm
+
+        location_tag = "Equipe" if pid_norm in party_ids_set else "Box"
+        return f"{pname_local} (ID {pid_norm}) — {location_tag}"
 
     if not sheets:
         st.info("Você ainda não tem fichas salvas.")
@@ -16607,6 +16633,31 @@ elif page == "Minhas Fichas":
                 st.write(f"**Atualizada em:** {updated_at}")
                 st.write(f"**Criada em:** {created_at}")
                 st.write(f"**PP Total:** {sheet.get('pp_budget_total', '—')}")
+
+                linked_pid = str(sheet.get("linked_pid", "")).strip()
+                if linked_pid:
+                    st.write(f"**Associada a:** {_hub_pid_label(linked_pid)}")
+                else:
+                    st.caption("Sem Pokémon associado nesta ficha.")
+
+                if hub_pokemon_ids:
+                    assoc_options = [""] + hub_pokemon_ids
+                    current_assoc = linked_pid if linked_pid in hub_pokemon_ids else ""
+                    selected_assoc = st.selectbox(
+                        "Associar ficha a um Pokémon do Trainer Hub",
+                        options=assoc_options,
+                        index=assoc_options.index(current_assoc),
+                        format_func=lambda opt: "❌ Sem associação" if not opt else _hub_pid_label(opt),
+                        key=f"sheet_assoc_select_{sheet_id}",
+                    )
+
+                    if st.button("💾 Salvar associação", key=f"sheet_assoc_save_{sheet_id}"):
+                        payload = {"linked_pid": selected_assoc or None}
+                        save_sheet_to_firestore(db, trainer_name, payload, sheet_id=sheet_id)
+                        st.success("Associação atualizada.")
+                        st.rerun()
+                else:
+                    st.caption("Capture Pokémon no Trainer Hub para habilitar associações.")
 
                 moves = sheet.get("moves") or []
                 if moves:
