@@ -12085,6 +12085,7 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
                 if isinstance(secs, dict):
                     historia = secs.get("História") or secs.get("Historia") or ""
                 historia = _strip_html_if_any(historia)
+                
 
     
                 hay = _norm(nome) + " " + _norm(historia)
@@ -12318,6 +12319,9 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
                 secs = npc.get("sections") or {}
                 if isinstance(secs, dict):
                     historia = secs.get("História") or secs.get("Historia") or ""
+
+                historia = _strip_html_if_any(historia)
+
 
                 # highlight busca na história
                 q2 = st.session_state.get("ds_npc_search", "").strip()
