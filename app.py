@@ -14376,6 +14376,31 @@ if page == "Trainer Hub (Meus Pokémons)":
         save_data_cloud(trainer_name, user_data)
         st.rerun()
 
+    def _delete_pokemon_from_hub(pid: str):
+        pid = _pid_key(pid)
+
+        user_data["caught"] = [p for p in user_data.get("caught", []) if str(p) != pid]
+        user_data["party"] = [p for p in user_data.get("party", []) if str(p) != pid]
+        user_data["seen"] = [p for p in user_data.get("seen", []) if str(p) != pid]
+        user_data["wishlist"] = [p for p in user_data.get("wishlist", []) if str(p) != pid]
+        user_data["shinies"] = [p for p in user_data.get("shinies", []) if str(p) != pid]
+
+        if isinstance(user_data.get("stats"), dict):
+            user_data["stats"].pop(pid, None)
+        if isinstance(user_data.get("forms"), dict):
+            user_data["forms"].pop(pid, None)
+        if isinstance(user_data.get("favorite_moves"), dict):
+            user_data["favorite_moves"].pop(pid, None)
+
+        if st.session_state.get("hub_selected_pid") == pid:
+            st.session_state["hub_selected_pid"] = None
+        st.session_state["hub_context_pid"] = None
+        st.session_state["hub_context_action"] = None
+
+        save_data_cloud(trainer_name, user_data)
+        st.success(f"{_get_pokemon_name(pid)} removido da sua conta.")
+        st.rerun()
+
     # ----------------------------
     # Carrega fichas do Firebase (mapa pid -> sheet)
     # ----------------------------
@@ -14814,7 +14839,7 @@ if page == "Trainer Hub (Meus Pokémons)":
                 st.markdown("<div class='hub-divider'></div>", unsafe_allow_html=True)
                 pname_ctx = _get_pokemon_name(ctx_pid)
                 st.markdown(f"**Menu:** {pname_ctx}")
-                c1, c2, c3 = st.columns([1, 1, 1])
+                c1, c2, c3, c4 = st.columns([1, 1, 1, 1])
                 with c1:
                     if st.button("➡️ Mover p/ equipe", key="hub_ctx_move"):
                         _move_box_to_party(ctx_pid)
@@ -14826,6 +14851,20 @@ if page == "Trainer Hub (Meus Pokémons)":
                     if st.button("✖️ Fechar", key="hub_ctx_close"):
                         st.session_state["hub_context_pid"] = None
                         st.rerun()
+                with c4:
+                    if st.button("🗑️ Excluir", key="hub_ctx_delete"):
+                        st.session_state["hub_context_action"] = "confirm_delete"
+
+                if st.session_state.get("hub_context_action") == "confirm_delete":
+                    st.warning("Excluir removerá este Pokémon da BOX, equipe, wishlist e status salvos.")
+                    cd1, cd2 = st.columns([1, 1])
+                    with cd1:
+                        if st.button("✅ Confirmar exclusão", key="hub_ctx_delete_yes"):
+                            _delete_pokemon_from_hub(ctx_pid)
+                    with cd2:
+                        if st.button("Cancelar", key="hub_ctx_delete_no"):
+                            st.session_state["hub_context_action"] = None
+                            st.rerun()
 
             st.markdown('</div>', unsafe_allow_html=True) # Fecha grass-box
 
