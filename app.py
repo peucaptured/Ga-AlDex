@@ -5684,7 +5684,6 @@ def _strip_html_if_any(s: str) -> str:
         s = re.sub(r"(?is)<[^>]+>", "", s)
     return s.strip()
 
-historia = _strip_html_if_any(historia)
 
 # --- FUNÇÃO DE CALLBACK CORRIGIDA (CORREÇÃO DO BUG DE STATS 0) ---
 def update_poke_state_callback(db, rid, trainer_name, pid, index):
@@ -12085,6 +12084,8 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
                 secs = obj.get("sections") or {}
                 if isinstance(secs, dict):
                     historia = secs.get("História") or secs.get("Historia") or ""
+                historia = _strip_html_if_any(historia)
+
     
                 hay = _norm(nome) + " " + _norm(historia)
                 if not q or q in hay:
