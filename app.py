@@ -16611,6 +16611,9 @@ elif page == "Minhas Fichas":
 
         if pid_norm.startswith("EXT:"):
             pname_local = pid_norm.replace("EXT:", "", 1).strip() or "Pokémon Externo"
+            if pname_local == f"ID {pid_norm}":
+                pid_no_zero = pid_norm.lstrip("0") or "0"
+                pname_local = _get_pokemon_name(pid_no_zero)
         else:
             try:
                 pname_local = _get_pokemon_name(pid_norm)
@@ -16618,8 +16621,7 @@ elif page == "Minhas Fichas":
                 pname_local = pid_norm
 
         location_tag = "Equipe" if pid_norm in party_ids_set else "Box"
-        return f"{pname_local} (ID {pid_norm}) — {location_tag}"
-
+        return f"{pname_local} — {location_tag}"
     if not sheets:
         st.info("Você ainda não tem fichas salvas.")
     else:
