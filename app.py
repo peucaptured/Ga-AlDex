@@ -5674,6 +5674,18 @@ def remove_room_from_user(db, trainer_name: str, rid: str):
          "updatedAt": firestore.SERVER_TIMESTAMP},
         merge=True
     )
+
+
+def _strip_html_if_any(s: str) -> str:
+    s = html.unescape(s or "")
+    # se parece HTML, remove tags
+    if "<" in s and ">" in s:
+        s = re.sub(r"(?i)<br\s*/?>", "\n", s)
+        s = re.sub(r"(?is)<[^>]+>", "", s)
+    return s.strip()
+
+historia = _strip_html_if_any(historia)
+
 # --- FUNÇÃO DE CALLBACK CORRIGIDA (CORREÇÃO DO BUG DE STATS 0) ---
 def update_poke_state_callback(db, rid, trainer_name, pid, index):
     # CHAVE CORRIGIDA: Agora inclui o nome do treinador e o índice da party
