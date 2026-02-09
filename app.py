@@ -197,6 +197,67 @@ st.markdown("""
 [data-testid="stVerticalBlock"] > div:has(.box-slot-grass) {
     padding: 0px !important;
 }
+
+/* =========================================
+   🎴 Cards (Arena - Equipes) estilo jogo
+   ========================================= */
+.pk-card{
+  border: 2px solid rgba(148,163,184,0.35);
+  border-radius: 14px;
+  padding: 10px 10px 12px 10px;
+  margin: 10px 0;
+  background: rgba(15,23,42,0.40);
+  box-shadow: inset 0 0 14px rgba(15,23,42,0.45);
+}
+.pk-card.pk-me{
+  background: rgba(15,23,42,0.46);
+}
+.pk-card.pk-unknown{
+  opacity: 0.9;
+}
+.pk-hpbar{
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148,163,184,0.35);
+  background: rgba(148,163,184,0.16);
+  overflow: hidden;
+  margin-top: 6px;
+}
+.pk-hpfill{
+  height: 100%;
+  border-radius: 999px;
+  background: rgba(34,197,94,0.75);
+}
+.pk-badges{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-top: 6px;
+}
+.pk-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(248,250,252,0.35);
+  background: rgba(239,68,68,0.15);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+/* =========================================
+   🧭 Cards de iniciativa
+   ========================================= */
+.init-card{
+  border: 1px solid rgba(148,163,184,0.35);
+  border-radius: 12px;
+  padding: 10px;
+  margin: 10px 0;
+  background: rgba(15,23,42,0.35);
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -16935,6 +16996,11 @@ elif page == "PvP – Arena Tática":
         # Definição da Função de Renderização da Coluna (DEFINIDA ANTES DE USAR)
         # Definição da Função de Renderização da Coluna (MELHORADA)
         def render_player_column(p_name, p_label, is_me):
+            """Renderiza a coluna de um jogador em formato de cards (estilo jogos).
+            Mantém a mesma lógica de ações (mover/colocar/revelar/remover/HP/status), mudando só o layout.
+            """
+
+            # Cabeçalho
             if is_me:
                 photo_data = get_trainer_photo_thumb(user_data)
                 if photo_data:
@@ -16946,237 +17012,248 @@ elif page == "PvP – Arena Tática":
                     st.markdown(f"### {p_label}")
             else:
                 st.markdown(f"### {p_label}")
-            
-            # Busca party e estado público
+
+            # Party do jogador (público)
             p_doc_data = db.collection("rooms").document(rid).collection("public_state").document("players").get().to_dict() or {}
-            party_list = p_doc_data.get(p_name, [])[:8] 
-            
-            # Variáveis de Estado de Ação
+            party_list = (p_doc_data.get(p_name, []) or [])[:8]
+
+            # Estado + peças
+            s_now = get_state(db, rid)
+            all_pieces_now = s_now.get("pieces") or []
+            seen_pids_now = s_now.get("seen") or []
+
             moving_piece_id = st.session_state.get("moving_piece_id")
             placing_pid = st.session_state.get("placing_pid")
             placing_trainer = st.session_state.get("placing_trainer")
-            
-            state = get_state(db, rid)
-            all_pieces = state.get("pieces") or []
-            seen_pids = state.get("seen") or []
-            
-            if not party_list:
+
+            if not party_list and not is_me:
                 st.caption("Aguardando...")
                 return
-        
-            trainer_piece = next(
-                (p for p in all_pieces if p.get("owner") == p_name and p.get("kind") == "trainer"),
-                None,
-            )
-            p_pieces_on_board = [
-                p for p in all_pieces if p.get("owner") == p_name and p.get("kind") != "trainer"
-            ]
 
+            trainer_piece = next((p for p in all_pieces_now if p.get("owner") == p_name and p.get("kind") == "trainer"), None)
+            p_pieces_on_board = [p for p in all_pieces_now if p.get("owner") == p_name and p.get("kind") != "trainer"]
+
+            def _hp_icon(hp: int) -> str:
+                if hp >= 5:
+                    return "💚"
+                if hp >= 3:
+                    return "🟡"
+                if hp >= 1:
+                    return "🔴"
+                return "💀"
+
+            def _hp_bar(hp: int) -> str:
+                pct = int(max(0, min(100, round((float(hp) / 6.0) * 100))))
+                return f"<div class='pk-hpbar'><div class='pk-hpfill' style='width:{pct}%;'></div></div>"
+
+            def _badges(conds: list) -> str:
+                # badges = apenas status negativos (conforme sua regra)
+                if not conds:
+                    return ""
+                parts = []
+                for s in conds:
+                    s_txt = str(s)
+                    parts.append(f"<span class='pk-badge'>{html.escape(s_txt)}</span>")
+                return "<div class='pk-badges'>" + "".join(parts) + "</div>"
+
+            # Avatar (somente você)
             if is_me:
-                st.markdown("#### 🙂 Meu Avatar")
-                avatar_choice, avatar_path = get_selected_trainer_avatar(user_data)
-                if avatar_path:
-                    st.image(avatar_path, width=96)
+                with st.expander("🙂 Treinador", expanded=False):
+                    avatar_choice, avatar_path = get_selected_trainer_avatar(user_data)
+                    if avatar_path:
+                        st.image(avatar_path, width=96)
+                    else:
+                        st.caption("Escolha um avatar na aba Meu Treinador.")
+
+                    is_busy = (moving_piece_id is not None) or (placing_pid is not None) or bool(placing_trainer)
+
+                    if placing_trainer:
+                        st.info("Clique no mapa para posicionar seu avatar.")
+                        if st.button("🔙 Cancelar avatar", key="cancel_place_trainer"):
+                            st.session_state["placing_trainer"] = None
+                            st.rerun()
+                    else:
+                        if trainer_piece:
+                            c_avatar_1, c_avatar_2, c_avatar_3 = st.columns(3)
+                            with c_avatar_1:
+                                if st.button("🚶 Mover", key="move_trainer", disabled=is_busy):
+                                    st.session_state["moving_piece_id"] = trainer_piece.get("id")
+                                    st.session_state["placing_pid"] = None
+                                    st.session_state["placing_trainer"] = None
+                                    st.rerun()
+                            with c_avatar_2:
+                                trainer_revealed = trainer_piece.get("revealed", True)
+                                if st.button("👁️" if trainer_revealed else "✅", key="toggle_trainer"):
+                                    trainer_piece["revealed"] = not trainer_revealed
+                                    upsert_piece(db, rid, trainer_piece)
+                                    st.rerun()
+                            with c_avatar_3:
+                                if st.button("❌", key="remove_trainer"):
+                                    delete_piece(db, rid, trainer_piece.get("id"))
+                                    if st.session_state.get("moving_piece_id") == trainer_piece.get("id"):
+                                        st.session_state["moving_piece_id"] = None
+                                    st.rerun()
+                        else:
+                            if st.button("📍 Colocar avatar", key="place_trainer", disabled=not avatar_choice or is_busy):
+                                st.session_state["placing_trainer"] = True
+                                st.session_state["placing_pid"] = None
+                                st.session_state["moving_piece_id"] = None
+                                st.rerun()
+
+            # Lista em cards
+            for i, pid in enumerate(party_list):
+                cur_hp, cur_cond, cur_stats, is_shiny, p_form = get_poke_data(p_name, pid)
+
+                is_on_map = any(str(p.get("pid")) == str(pid) for p in p_pieces_on_board)
+                p_obj = next((p for p in p_pieces_on_board if str(p.get("pid")) == str(pid)), None)
+                already_seen = str(pid) in (seen_pids_now or [])
+
+                if p_form:
+                    sprite_url = pokemon_pid_to_image(f"EXT:{p_form}", mode="sprite", shiny=is_shiny)
                 else:
-                    st.caption("Escolha um avatar na aba Meu Treinador.")
+                    sprite_url = pokemon_pid_to_image(pid, mode="sprite", shiny=is_shiny)
+
+                is_moving_this = bool(p_obj and moving_piece_id == p_obj.get("id"))
+                is_placing_this = bool(placing_pid == pid)
+                border_color = "#FFCC00" if is_moving_this else ("#38bdf8" if is_placing_this else "rgba(148,163,184,0.35)")
+
+                # OPONENTE
+                if not is_me:
+                    piece_obj = next((p for p in p_pieces_on_board if str(p.get("pid")) == str(pid)), None)
+                    is_revealed = piece_obj.get("revealed", True) if piece_obj else False
+                    show_full = (piece_obj and is_revealed) or already_seen
+                    status_txt = "(Mochila)" if not piece_obj else ("(Escondido)" if not is_revealed else "")
+
+                    if not show_full:
+                        st.markdown("<div class='pk-card pk-unknown'>", unsafe_allow_html=True)
+                        c1, c2 = st.columns([1, 3], vertical_alignment="center")
+                        with c1:
+                            st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=42)
+                        with c2:
+                            st.markdown("**???**")
+                            st.caption(status_txt)
+                        st.markdown("</div>", unsafe_allow_html=True)
+                        continue
+
+                    p_real_name = get_poke_display_name(pid)
+                    st.markdown(f"<div class='pk-card' style='border-color:{border_color};'>", unsafe_allow_html=True)
+                    c1, c2 = st.columns([1, 3], vertical_alignment="center")
+                    with c1:
+                        if int(cur_hp) == 0:
+                            st.markdown(f'<img src="{sprite_url}" style="width:70px;filter:grayscale(100%);opacity:0.6;">', unsafe_allow_html=True)
+                        else:
+                            st.image(sprite_url, width=70)
+                    with c2:
+                        st.markdown(f"**{p_real_name}**")
+                        st.caption(f"{_hp_icon(int(cur_hp))} HP: {int(cur_hp)}/6 {status_txt}")
+                        st.markdown(_hp_bar(int(cur_hp)), unsafe_allow_html=True)
+                        if cur_cond:
+                            st.markdown(_badges(list(cur_cond)), unsafe_allow_html=True)
+                        if int(cur_hp) == 0:
+                            st.caption("**FAINTED**")
+                    st.markdown("</div>", unsafe_allow_html=True)
+                    continue
+
+                # VOCÊ
+                st.markdown(f"<div class='pk-card pk-me' style='border-color:{border_color};'>", unsafe_allow_html=True)
+
+                c_img, c_info = st.columns([1, 3], vertical_alignment="center")
+                with c_img:
+                    if int(cur_hp) == 0:
+                        st.markdown(f'<img src="{sprite_url}" style="width:72px;filter:grayscale(100%);opacity:0.6;">', unsafe_allow_html=True)
+                    else:
+                        st.image(sprite_url, width=72)
+
+                with c_info:
+                    st.markdown(f"**{get_poke_display_name(pid)}**")
+                    st.caption(f"{_hp_icon(int(cur_hp))} HP: {int(cur_hp)}/6")
+                    st.markdown(_hp_bar(int(cur_hp)), unsafe_allow_html=True)
+                    if cur_cond:
+                        st.markdown(_badges(list(cur_cond)), unsafe_allow_html=True)
+                    if is_moving_this:
+                        st.caption("📍 *Selecione o destino no mapa*")
+                    if is_placing_this:
+                        st.caption("📍 *Clique no mapa para posicionar*")
 
                 is_busy = (moving_piece_id is not None) or (placing_pid is not None) or bool(placing_trainer)
 
-                if placing_trainer:
-                    st.info("Clique no mapa para posicionar seu avatar.")
-                    if st.button("🔙 Cancelar avatar", key="cancel_place_trainer"):
-                        st.session_state["placing_trainer"] = None
-                        st.rerun()
-                else:
-                    if trainer_piece:
-                        c_avatar_1, c_avatar_2, c_avatar_3 = st.columns(3)
-                        with c_avatar_1:
-                            if st.button("🚶 Mover", key="move_trainer", disabled=is_busy):
-                                st.session_state["moving_piece_id"] = trainer_piece.get("id")
-                                st.session_state["placing_pid"] = None
-                                st.session_state["placing_trainer"] = None
-                                st.rerun()
-                        with c_avatar_2:
-                            trainer_revealed = trainer_piece.get("revealed", True)
-                            if st.button("👁️" if trainer_revealed else "✅", key="toggle_trainer"):
-                                trainer_piece["revealed"] = not trainer_revealed
-                                upsert_piece(db, rid, trainer_piece)
-                                st.rerun()
-                        with c_avatar_3:
-                            if st.button("❌", key="remove_trainer"):
-                                delete_piece(db, rid, trainer_piece.get("id"))
-                                if st.session_state.get("moving_piece_id") == trainer_piece.get("id"):
-                                    st.session_state["moving_piece_id"] = None
-                                st.rerun()
-                    else:
-                        if st.button("📍 Colocar avatar", key="place_trainer", disabled=not avatar_choice or is_busy):
-                            st.session_state["placing_trainer"] = True
-                            st.session_state["placing_pid"] = None
+                if is_on_map and p_obj:
+                    c_vis, c_del, c_sp = st.columns([1, 1, 2])
+                    with c_vis:
+                        is_rev = p_obj.get("revealed", True)
+                        if st.button("👁️" if is_rev else "✅", key=f"v_{p_name}_{pid}_{i}", help="Revelar/Esconder"):
+                            p_obj["revealed"] = not is_rev
+                            upsert_piece(db, rid, p_obj)
+                            if p_obj["revealed"]:
+                                mark_pid_seen(db, rid, pid)
+                            st.rerun()
+                    with c_del:
+                        if st.button("❌", key=f"r_{p_name}_{pid}_{i}", help="Remover do Mapa"):
+                            delete_piece(db, rid, p_obj["id"])
+                            add_public_event(db, rid, "pokemon_removed", p_name, {"pid": pid})
                             st.session_state["moving_piece_id"] = None
                             st.rerun()
-        
-            for i, pid in enumerate(party_list):
-                # 1. Agora recuperamos 5 valores (incluindo p_form)
-                cur_hp, cur_cond, cur_stats, is_shiny, p_form = get_poke_data(p_name, pid)
-                
-                is_on_map = any(str(p["pid"]) == str(pid) for p in p_pieces_on_board)
-                p_obj = next((p for p in p_pieces_on_board if str(p["pid"]) == str(pid)), None)
-                already_seen = str(pid) in seen_pids
-                
-                # Ícone de HP
-                if cur_hp >= 5: hpi = "💚"
-                elif cur_hp >= 3: hpi = "🟡"
-                elif cur_hp >= 1: hpi = "🔴"
-                else: hpi = "💀"
-                
-                # 2. Lógica da imagem com prioridade para a Forma
-                if p_form:
-                     sprite_url = pokemon_pid_to_image(f"EXT:{p_form}", mode="sprite", shiny=is_shiny)
+                    with c_sp:
+                        st.caption("")
+
+                if is_moving_this:
+                    if st.button("🔙 Cancelar Mover", key=f"cncl_move_{pid}", use_container_width=True):
+                        st.session_state["moving_piece_id"] = None
+                        st.rerun()
+                elif is_placing_this:
+                    if st.button("🔙 Cancelar", key=f"cncl_place_{pid}", use_container_width=True):
+                        st.session_state["placing_pid"] = None
+                        st.rerun()
                 else:
-                     sprite_url = pokemon_pid_to_image(pid, mode="sprite", shiny=is_shiny)
-        
-                # Checa se ESTE Pokémon específico está realizando uma ação
-                is_moving_this = (p_obj and moving_piece_id == p_obj.get("id"))
-                is_placing_this = (placing_pid == pid)
+                    with st.expander("⚙️ Ajustes", expanded=False):
+                        st.slider(
+                            "HP",
+                            0,
+                            6,
+                            value=int(cur_hp),
+                            key=f"hp_{p_name}_{pid}_{i}",
+                            label_visibility="collapsed",
+                            on_change=update_poke_state_callback,
+                            args=(db, rid, p_name, pid, i),
+                        )
+                        st.multiselect(
+                            "Status (negativos)",
+                            ["⚡", "❄️", "🔥", "💤", "☠️", "💓"],
+                            default=cur_cond,
+                            key=f"cond_{p_name}_{pid}_{i}",
+                            label_visibility="collapsed",
+                            on_change=update_poke_state_callback,
+                            args=(db, rid, p_name, pid, i),
+                        )
 
-                # Estilo da Borda: Amarelo se movendo, Azul se colocando, Padrão caso contrário
-                border_color = "#FFCC00" if is_moving_this else ("#38bdf8" if is_placing_this else None)
-                
-                # Container Visual
-                with st.container():
-                    if is_me:
-                        # Se estiver movendo ou colocando, destaca visualmente
-                        if is_moving_this or is_placing_this:
-                             st.markdown(f"""
-                                <div style="
-                                    background: rgba(0,0,0,0.3); 
-                                    border: 2px solid {border_color}; 
-                                    border-radius: 8px; 
-                                    padding: 5px; 
-                                    text-align: center; 
-                                    margin-bottom: 5px;">
-                                    <div style="font-weight:bold; color:{border_color}; font-size:12px;">
-                                        {'📍 SELECIONE O DESTINO NO MAPA' if is_moving_this else '📍 CLIQUE NO MAPA PARA POSICIONAR'}
-                                    </div>
-                                </div>
-                             """, unsafe_allow_html=True)
-
-                        c_img, c_ctrl = st.columns([1, 2.5])
-                        
-                        with c_img:
-                            # Imagem (Cinza se fainted)
-                            if cur_hp == 0:
-                                st.markdown(f'<img src="{sprite_url}" style="width:100%; filter:grayscale(100%); opacity:0.6;">', unsafe_allow_html=True)
-                                st.caption("**FAINTED**")
-                            else:
-                                st.image(sprite_url, width="stretch")
-        
-                            # Botões de Controle da Peça (Abaixo da imagem)
+                    a1, a2, a3 = st.columns(3)
+                    with a1:
+                        if st.button("✅ Selecionar", key=f"sel_{pid}_{i}", disabled=int(cur_hp) == 0):
+                            st.session_state[f"atk_self_{rid}"] = pid
+                            st.rerun()
+                    with a2:
+                        if int(cur_hp) > 0:
                             if is_on_map and p_obj:
-                                is_rev = p_obj.get("revealed", True)
-                                c_vis, c_del = st.columns(2)
-                                with c_vis:
-                                    if st.button("👁️" if is_rev else "✅", key=f"v_{p_name}_{pid}_{i}", help="Revelar/Esconder"):
-                                        p_obj["revealed"] = not is_rev
-                                        upsert_piece(db, rid, p_obj)
-                                        if p_obj["revealed"]: mark_pid_seen(db, rid, pid)
-                                        st.rerun()
-                                with c_del:
-                                    if st.button("❌", key=f"r_{p_name}_{pid}_{i}", help="Remover do Mapa"):
-                                        delete_piece(db, rid, p_obj["id"])
-                                        add_public_event(db, rid, "pokemon_removed", p_name, {"pid": pid})
-                                        st.session_state["moving_piece_id"] = None # Reseta move se deletar
-                                        st.rerun()
-
-                        with c_ctrl:
-                            # --- LÓGICA DE INTERFACE DE AÇÃO ---
-                            if is_moving_this:
-                                st.info("Clique em um quadrado vazio.")
-                                if st.button("🔙 Cancelar Mover", key=f"cncl_move_{pid}"):
-                                    st.session_state["moving_piece_id"] = None
+                                if st.button("🚶 Mover", key=f"m_{p_name}_{pid}_{i}", disabled=is_busy):
+                                    st.session_state["moving_piece_id"] = p_obj["id"]
                                     st.rerun()
-                            
-                            elif is_placing_this:
-                                st.info("Clique onde quer invocar.")
-                                if st.button("🔙 Cancelar", key=f"cncl_place_{pid}"):
-                                    st.session_state["placing_pid"] = None
-                                    st.rerun()
-                                    
                             else:
-                                # Interface Padrão (HP e Status)
-                                st.markdown(f"**{hpi} HP: {cur_hp}/6**")
-                                
-                                st.slider("HP", 0, 6, value=int(cur_hp), 
-                                         key=f"hp_{p_name}_{pid}_{i}", 
-                                         label_visibility="collapsed", 
-                                         on_change=update_poke_state_callback, 
-                                         args=(db, rid, p_name, pid, i))
-                                
-                                st.multiselect("Status", ["⚡", "❄️", "🔥", "💤", "☠️", "💓"], 
-                                              default=cur_cond, 
-                                              key=f"cond_{p_name}_{pid}_{i}", 
-                                              label_visibility="collapsed", 
-                                              on_change=update_poke_state_callback, 
-                                              args=(db, rid, p_name, pid, i))
+                                if st.button("📍 Colocar", key=f"p_{p_name}_{pid}_{i}", disabled=is_busy):
+                                    st.session_state["placing_pid"] = pid
+                                    st.session_state["placing_effect"] = None
+                                    st.rerun()
+                    with a3:
+                        if st.button("⚔️ Atacar", key=f"atk_{pid}_{i}", disabled=not is_player or int(cur_hp) == 0):
+                            try:
+                                if b_data.get("status") == "idle" and is_player:
+                                    battle_ref.set({"status": "setup", "attacker": trainer_name, "attack_move": None, "logs": []})
+                                st.session_state[f"atk_self_{rid}"] = pid
+                            except Exception:
+                                pass
+                            st.rerun()
 
-                                # Botões de Ação Principal
-                                if cur_hp > 0:
-                                    # Bloqueia botões se outra ação estiver ocorrendo
-                                    is_busy = (moving_piece_id is not None) or (placing_pid is not None) or bool(placing_trainer)
-                                    
-                                    if is_on_map:
-                                        if st.button("🚶 Mover", key=f"m_{p_name}_{pid}_{i}", disabled=is_busy, use_container_width=True):
-                                            st.session_state["moving_piece_id"] = p_obj["id"]
-                                            st.rerun()
-                                    else:
-                                        if st.button("📍 Colocar no Campo", key=f"p_{p_name}_{pid}_{i}", disabled=is_busy, use_container_width=True):
-                                            st.session_state["placing_pid"] = pid
-                                            st.session_state["placing_effect"] = None
-                                            st.rerun()
-        
-                    
-                    else:
-                        # ==========================
-                        # VISÃO DO OPONENTE (Corrigida)
-                        # ==========================
-                        piece_obj = next((p for p in p_pieces_on_board if str(p["pid"]) == str(pid)), None)
-                        is_revealed = piece_obj.get("revealed", True) if piece_obj else False
-                        
-                        # Se estiver no campo e revelado, OU se já foi visto antes (está na bench mas conhecido)
-                        show_full = (piece_obj and is_revealed) or already_seen
-                        
-                        status_txt = "(Mochila)" if not piece_obj else ("(Escondido)" if not is_revealed else "")
-        
-                        if show_full:
-                            p_real_name = get_poke_display_name(pid)
-                            c1, c2 = st.columns([1, 2])
-                            
-                            with c1: 
-                                # ✅ CORREÇÃO 1: Imagem em escala de cinza se HP for 0
-                                # Antes usava st.image direto, que sempre é colorido.
-                                if cur_hp == 0:
-                                    st.markdown(f'<img src="{sprite_url}" style="width:50px; filter:grayscale(100%); opacity:0.6;">', unsafe_allow_html=True)
-                                else:
-                                    st.image(sprite_url, width=50)
-        
-                            with c2:
-                                st.markdown(f"**{p_real_name}**")
-                                st.caption(f"{hpi} HP: {cur_hp}/6 {status_txt}")
-                                
-                                # ✅ CORREÇÃO 2: Exibir ícones de status para o oponente
-                                if cur_cond:
-                                    # Junta os ícones em uma string (ex: "🔥 ☠️")
-                                    cond_str = " ".join(cur_cond)
-                                    st.markdown(f"Status: {cond_str}")
-        
-                                if cur_hp == 0: 
-                                    st.caption("**FAINTED**")
-                        else:
-                            # Pokémon desconhecido / escondido
-                            c1, c2 = st.columns([1, 2])
-                            with c1: st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=40)
-                            with c2: st.caption(f"??? {status_txt}")
-        
+                st.markdown("</div>", unsafe_allow_html=True)
+
         # --- 4. PREPARAÇÃO DE TIMES E VARIÁVEIS (UNIFICADO) ---
         owner_name = (room.get("owner") or {}).get("name", "Host")
         challengers = room.get("challengers") or []
@@ -17344,7 +17421,7 @@ elif page == "PvP – Arena Tática":
             unsafe_allow_html=True,
         )
 
-        tab_arena, tab_combate, tab_log = st.tabs(["🗺️ Arena", "⚔️ Combate", "📜 Log"])
+        tab_arena, tab_combate, tab_inic, tab_log = st.tabs(["🗺️ Arena", "⚔️ Combate", "🧭 Iniciativa", "📜 Log"])
         with tab_combate:
             # ==========================================
             # 🧮 6. CALCULADORA DE COMBATE
@@ -17656,6 +17733,7 @@ elif page == "PvP – Arena Tática":
 
         with tab_arena:
             def _arena_render():
+                click = None
                 # =========================
                 # 7. LAYOUT DAS COLUNAS (EQUILIBRADO PARA 4 JOGADORES)
                 # =========================
@@ -17836,8 +17914,36 @@ elif page == "PvP – Arena Tática":
                             tile_px = TILE_SIZE
                             st.session_state[f"_tile_px_{rid}"] = tile_px
 
-                    with st.container():
-                        click = streamlit_image_coordinates(img_to_show, key=f"map_{rid}")
+
+                    # -------------------------------------------------
+                    # 🧠 Auto-refresh APENAS do Mapa (não afeta botões/colunas)
+                    # -------------------------------------------------
+                    pause_until = float(st.session_state.get(f"arena_pause_until_{rid}", 0) or 0)
+                    in_action = bool(
+                        st.session_state.get("moving_piece_id")
+                        or st.session_state.get("placing_pid")
+                        or st.session_state.get("placing_trainer")
+                        or st.session_state.get("placing_effect")
+                    )
+                    auto_on_map = bool(st.session_state.get(f"arena_auto_{rid}", True)) and (not in_action) and (time.time() >= pause_until)
+
+                    def _map_body():
+                        _click = streamlit_image_coordinates(img_to_show, key=f"map_{rid}")
+                        if _click and "x" in _click and "y" in _click:
+                            st.session_state[f"_map_click_{rid}"] = _click
+
+                    if auto_on_map:
+                        @st.fragment(run_every=2)
+                        def _map_frag_auto():
+                            _map_body()
+                        _map_frag_auto()
+                    else:
+                        @st.fragment
+                        def _map_frag_static():
+                            _map_body()
+                        _map_frag_static()
+
+                    click = st.session_state.pop(f"_map_click_{rid}", None)
                 if c_opps is not None:
                     with c_opps:
                         # ==========================
@@ -17946,7 +18052,7 @@ elif page == "PvP – Arena Tática":
                                 icon = icons[idx] if idx < len(icons) else "⚪"
 
                                 with st.expander(f"{icon} {opp_name}", expanded=True):
-                                    render_player_column(opp_name, f"{icon} {opp_name}", is_me=False)
+                                    render_player_column(opp_name, f"🆚 {opp_name}", is_me=False)
 
                 # =========================
                 # 8. LÓGICA DE CLIQUE
@@ -18080,18 +18186,180 @@ elif page == "PvP – Arena Tática":
                                 st.rerun()
 
                 # Fora da lógica de clique, mas no final da View Battle
-        
 
             # -------------------------------------------------
-            # 🔄 Auto-refresh da Arena (sem atrapalhar cliques)
-            #  - Se você estiver em modo de ação (Mover/Posicionar/Terreno), pausa automaticamente
-            #  - Após um clique no mapa, pausa por alguns segundos para você conseguir apertar botões
+            # 🔄 Auto-refresh (toggle) — o refresh automático roda só no MAPA (via fragment)
             # -------------------------------------------------
             st.toggle(
                 "🔄 Auto-atualizar Arena",
                 value=bool(st.session_state.get(f"arena_auto_{rid}", True)),
                 key=f"arena_auto_{rid}",
-                help="Desligue se o refresh estiver atrapalhando clicar em Mover/Atacar.",
+                help="Desligue se quiser mapa totalmente estático (sem updates a cada 2s).",
+            )
+
+            _arena_render()
+
+
+        
+        with tab_inic:
+            st.markdown("### 🧭 Iniciativa")
+
+            # Lê valores atuais do banco (persistentes na sala)
+            init_map = (b_data.get("initiative") or {})
+            try:
+                init_map = dict(init_map)
+            except Exception:
+                init_map = {}
+
+            # Pega peças/effects atuais (respeita visibilidade)
+            s_now = get_state(db, rid)
+            pieces_now = s_now.get("pieces") or []
+            effects_now = s_now.get("effects") or []
+
+            # Filtra peças visíveis (mesma regra da arena)
+            visible_pieces = []
+            for p in pieces_now:
+                if p.get("kind") == "trainer":
+                    if p.get("owner") == trainer_name or p.get("revealed", True):
+                        visible_pieces.append(p)
+                else:
+                    if p.get("owner") == trainer_name or p.get("revealed", True):
+                        visible_pieces.append(p)
+
+            def _init_update(piece_id: str):
+                key = f"ini_{rid}_{piece_id}"
+                val = int(st.session_state.get(key, 0) or 0)
+                cur = (battle_ref.get().to_dict() or {}).get("initiative") or {}
+                try:
+                    cur = dict(cur)
+                except Exception:
+                    cur = {}
+                cur[str(piece_id)] = val
+                battle_ref.set({"initiative": cur}, merge=True)
+
+            c_top1, c_top2 = st.columns([2, 1])
+            with c_top1:
+                st.caption("Anote a iniciativa de cada item visível na arena. (Persistente na sala)")
+            with c_top2:
+                if trainer_name == owner_name:
+                    if st.button("🧹 Limpar iniciativas", help="Remove todas as iniciativas anotadas (apenas host)."):
+                        battle_ref.set({"initiative": {}}, merge=True)
+                        st.rerun()
+
+            # Lista ordenada por iniciativa desc
+            entries = []
+            for p in visible_pieces:
+                pid = p.get("pid")
+                piece_id = str(p.get("id") or "")
+                if not piece_id:
+                    continue
+                ini_val = int(init_map.get(piece_id, 0) or 0)
+                entries.append((ini_val, p))
+
+            entries.sort(key=lambda x: x[0], reverse=True)
+
+            if not entries and not effects_now:
+                st.info("Nenhum item para iniciativa ainda (coloque peças na arena).")
+
+            # Cards de iniciativa (peças)
+            for ini_val, p in entries:
+                piece_id = str(p.get("id"))
+                owner_p = p.get("owner") or "—"
+                kind_p = p.get("kind") or "pokemon"
+                row_p = p.get("row")
+                col_p = p.get("col")
+
+                if kind_p == "trainer":
+                    title = f"🧍 {owner_p}"
+                    sprite_url = None
+                else:
+                    title = f"{get_poke_display_name(p.get('pid'))} ({owner_p})"
+                    try:
+                        sprite_url = pokemon_pid_to_image(p.get("pid"), mode="sprite", shiny=bool(p.get("shiny", False)))
+                    except Exception:
+                        sprite_url = None
+
+                st.markdown("<div class='init-card'>", unsafe_allow_html=True)
+                c1, c2, c3 = st.columns([1, 4, 1], vertical_alignment="center")
+                with c1:
+                    if sprite_url:
+                        st.image(sprite_url, width=56)
+                    else:
+                        st.markdown("🧭")
+                with c2:
+                    st.markdown(f"**{title}**")
+                    pos_txt = ""
+                    if row_p is not None and col_p is not None:
+                        pos_txt = f" · Pos: ({row_p},{col_p})"
+                    st.caption(f"ID: {piece_id}{pos_txt}")
+                with c3:
+                    st.number_input(
+                        "Ini",
+                        value=int(ini_val),
+                        step=1,
+                        key=f"ini_{rid}_{piece_id}",
+                        label_visibility="collapsed",
+                        on_change=_init_update,
+                        args=(piece_id,),
+                    )
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            # (Opcional) efeitos/terrenos também podem ter iniciativa (por ID)
+            with st.expander("✨ Terrenos/Efeitos (opcional)", expanded=False):
+                eff_entries = []
+                for e in (effects_now or []):
+                    eid = str((e or {}).get("id") or "")
+                    if not eid:
+                        continue
+                    icon = (e or {}).get("icon") or "✨"
+                    r = (e or {}).get("row")
+                    c = (e or {}).get("col")
+                    ini_val = int(init_map.get(f"eff:{eid}", 0) or 0)
+                    eff_entries.append((ini_val, eid, icon, r, c))
+                eff_entries.sort(key=lambda x: x[0], reverse=True)
+
+                def _init_eff_update(eid: str):
+                    key = f"ini_eff_{rid}_{eid}"
+                    val = int(st.session_state.get(key, 0) or 0)
+                    cur = (battle_ref.get().to_dict() or {}).get("initiative") or {}
+                    try:
+                        cur = dict(cur)
+                    except Exception:
+                        cur = {}
+                    cur[f"eff:{eid}"] = val
+                    battle_ref.set({"initiative": cur}, merge=True)
+
+                if not eff_entries:
+                    st.caption("Sem efeitos na arena.")
+                else:
+                    for ini_val, eid, icon, r, c in eff_entries:
+                        st.markdown("<div class='init-card'>", unsafe_allow_html=True)
+                        d1, d2, d3 = st.columns([1, 4, 1], vertical_alignment="center")
+                        with d1:
+                            st.markdown(icon)
+                        with d2:
+                            st.markdown(f"**Efeito {icon}**")
+                            st.caption(f"ID: {eid} · Pos: ({r},{c})")
+                        with d3:
+                            st.number_input(
+                                "Ini",
+                                value=int(ini_val),
+                                step=1,
+                                key=f"ini_eff_{rid}_{eid}",
+                                label_visibility="collapsed",
+                                on_change=_init_eff_update,
+                                args=(eid,),
+                            )
+                        st.markdown("</div>", unsafe_allow_html=True)
+
+        with tab_log:
+            st.markdown("### 📜 Log")
+
+            st.toggle(
+                "🔄 Auto-atualizar Log",
+                value=bool(st.session_state.get(f"log_auto_{rid}", True)),
+                key=f"log_auto_{rid}",
+                help="Desligue se você estiver clicando em ações e não quiser o log mudando na hora.",
             )
 
             pause_until = float(st.session_state.get(f"arena_pause_until_{rid}", 0) or 0)
@@ -18101,25 +18369,21 @@ elif page == "PvP – Arena Tática":
                 or st.session_state.get("placing_trainer")
                 or st.session_state.get("placing_effect")
             )
-            auto_on = bool(st.session_state.get(f"arena_auto_{rid}", True)) and (not in_action) and (time.time() >= pause_until)
+            auto_on = bool(st.session_state.get(f"log_auto_{rid}", True)) and (not in_action) and (time.time() >= pause_until)
+
+            def _render_log():
+                render_public_log_fragment(db, rid, title=None, height=420, show_divider=False, limit=60)
 
             if auto_on:
                 @st.fragment(run_every=2)
-                def _arena_fragment_auto():
-                    _arena_render()
-
-                _arena_fragment_auto()
+                def _log_fragment_auto():
+                    _render_log()
+                _log_fragment_auto()
             else:
                 @st.fragment
-                def _arena_fragment_static():
-                    _arena_render()
-
-                _arena_fragment_static()
-
-
-        with tab_log:
-            st.markdown("### 📜 Log")
-            render_public_log_fragment(db, rid, title=None, height=420, show_divider=False, limit=60)
+                def _log_fragment_static():
+                    _render_log()
+                _log_fragment_static()
 
         st.stop()
 
