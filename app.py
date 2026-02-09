@@ -15964,7 +15964,7 @@ elif page == "Criação Guiada de Fichas":
 
                     st.divider()
                     st.markdown("#### 2) Buscar no banco (rápido)")
-                    q = st.text_input("Digite parte do nome (ex.: thunder, punch, protect)", key="cg_quick_search")
+                    q = st.text_input("Digite parte do nome (ex.: thunder, protect)", key="cg_quick_search")
                     if db_moves_guided is None:
                         st.stop()
 
@@ -15973,6 +15973,18 @@ elif page == "Criação Guiada de Fichas":
                         if not results:
                             sugg = db_moves_guided.suggest_by_description(q.strip(), top_k=8)
                             results = [mv for (mv, _s) in sugg]
+
+                        # ✅ BLINDADO: remove duplicados por nome (evita StreamlitDuplicateElementKey)
+                        if results:
+                            seen = set()
+                            uniq = []
+                            for mv in results:
+                                k = _norm(getattr(mv, "name", "") or "")
+                                if not k or k in seen:
+                                    continue
+                                seen.add(k)
+                                uniq.append(mv)
+                            results = uniq                       
 
                         if results:
                             existing = {_norm(m.get("name", "")) for m in st.session_state.get("cg_moves", [])}
