@@ -17904,22 +17904,26 @@ elif page == "PvP – Arena Tática":
                                 st.session_state["placing_trainer"] = None
                                 st.rerun()
 
-                # Ajustes de visualização do mapa (para caber melhor em 100% e 50% de zoom do browser)
+                # Ajustes de visualização do mapa (zoom automático por tamanho para manter proporção)
                 toolbar = st.columns([1.15, 2.35, 1.0])
                 with toolbar[0]:
                     show_grid = st.checkbox("Grade Tática", value=bool(st.session_state.get(f"grid_{rid}", True)), key=f"grid_{rid}")
+
+                # Menor mapa => maior zoom, com limite para não ficar desproporcional.
+                auto_zoom_by_grid = {
+                    6: 1.15,
+                    8: 1.00,
+                    10: 0.90,
+                    12: 0.82,
+                }
+                map_zoom = float(auto_zoom_by_grid.get(int(grid), 0.90))
+                st.session_state[f"map_zoom_{rid}"] = map_zoom
+
                 with toolbar[1]:
-                    map_zoom = st.slider(
-                        "Zoom do mapa",
-                        min_value=0.60,
-                        max_value=1.20,
-                        value=float(st.session_state.get(f"map_zoom_{rid}", 0.90) or 0.90),
-                        step=0.05,
-                        key=f"map_zoom_{rid}",
-                    )
+                    st.markdown("**Zoom do mapa:** automático")
                 with toolbar[2]:
-                    st.caption(f"{int(float(st.session_state.get(f'map_zoom_{rid}', 0.90) or 0.90) * 100)}%")
-            
+                    st.caption(f"{int(map_zoom * 100)}%")
+
                 # ... (Restante do código de renderização do mapa permanece igual) ...
                 state_updated_at = state.get("updatedAt")
                 map_signature = json.dumps({
