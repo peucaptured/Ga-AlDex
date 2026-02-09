@@ -18202,79 +18202,82 @@ elif page == "PvP – Arena Tática":
 
         with tab_inic:
             st.markdown("### 🧭 Iniciativa")
-            st.caption("Anote e organize a iniciativa de qualquer item/peça presente na arena.")
+            st.caption("Informe apenas o valor **final** da iniciativa dos Pokémon em campo (e do avatar, se estiver em campo).")
 
             s_now = get_state(db, rid)
             _pieces = s_now.get("pieces") or []
-            _effects = s_now.get("effects") or []
             init_store = (b_data.get("initiative") or {})
 
             rows = []
             for p in _pieces:
+                p_kind = str(p.get("kind") or "piece")
+                if p_kind not in {"trainer", "piece"}:
+                    continue
                 pid_label = str(p.get("pid") or "")
-                if p.get("kind") == "trainer":
+                if p_kind == "trainer":
                     label = f"🧍 Treinador • {p.get('owner') or '—'}"
                 else:
                     label = f"🐾 {get_poke_display_name(pid_label)} • {p.get('owner') or '—'}"
 
-                key = f"{p.get('kind','piece')}:{p.get('id')}"
+                key = f"{p_kind}:{p.get('id')}"
                 saved = init_store.get(key) or {}
                 rows.append({
                     "key": key,
+                    "kind": "Avatar" if p_kind == "trainer" else "Pokémon",
                     "item": label,
-                    "pos": f"{int(p.get('row',0))},{int(p.get('col',0))}",
                     "initiative": int(saved.get("initiative") or 0),
-                    "note": str(saved.get("note") or ""),
-                })
-
-            for e in _effects:
-                eid = str(e.get("id") or f"{e.get('row')}_{e.get('col')}_{e.get('icon')}")
-                key = f"effect:{eid}"
-                saved = init_store.get(key) or {}
-                rows.append({
-                    "key": key,
-                    "item": f"🧩 Terreno {str(e.get('icon') or '—')}",
-                    "pos": f"{int(e.get('row',0))},{int(e.get('col',0))}",
-                    "initiative": int(saved.get("initiative") or 0),
-                    "note": str(saved.get("note") or ""),
                 })
 
             if rows:
                 import pandas as _pd
                 df_init = _pd.DataFrame(rows)
+                st.markdown("#### ✍️ Entrada rápida")
                 edited = st.data_editor(
                     df_init,
                     hide_index=True,
                     use_container_width=True,
                     column_config={
                         "key": st.column_config.TextColumn("ID", disabled=True),
+                        "kind": st.column_config.TextColumn("Tipo", disabled=True),
                         "item": st.column_config.TextColumn("Item", disabled=True),
-                        "pos": st.column_config.TextColumn("Pos", disabled=True),
                         "initiative": st.column_config.NumberColumn("Iniciativa", min_value=0, max_value=999, step=1),
-                        "note": st.column_config.TextColumn("Observação"),
                     },
                 )
 
-                c_save, c_sort = st.columns([1, 1])
-                with c_save:
-                    if st.button("💾 Salvar iniciativa", use_container_width=True):
-                        out = {}
-                        for rec in edited.to_dict("records"):
-                            k = str(rec.get("key") or "").strip()
-                            if not k:
-                                continue
-                            out[k] = {
-                                "initiative": int(rec.get("initiative") or 0),
-                                "note": str(rec.get("note") or ""),
-                            }
-                        battle_ref.update({"initiative": out})
-                        st.success("Iniciativa salva ✅")
+                out = {}
+                for rec in edited.to_dict("records"):
+                    k = str(rec.get("key") or "").strip()
+                    if not k:
+                        continue
+                    out[k] = {
+                        "initiative": int(rec.get("initiative") or 0),
+                        "note": "",
+                    }
 
-                with c_sort:
-                    st.caption("Dica: clique no cabeçalho da coluna **Iniciativa** para ordenar.")
+                st.markdown("#### 🏁 Ordem automática")
+                ordered_df = (
+                    edited.sort_values(by=["initiative", "item"], ascending=[False, True])
+                    .reset_index(drop=True)
+                )
+                ordered_df.insert(0, "ordem", ordered_df.index + 1)
+                st.dataframe(
+                    ordered_df[["ordem", "kind", "item", "initiative"]],
+                    hide_index=True,
+                    use_container_width=True,
+                    column_config={
+                        "ordem": st.column_config.NumberColumn("Ordem", format="%d"),
+                        "kind": st.column_config.TextColumn("Tipo"),
+                        "item": st.column_config.TextColumn("Em campo"),
+                        "initiative": st.column_config.NumberColumn("Iniciativa", format="%d"),
+                    },
+                )
+
+                if st.button("💾 Salvar iniciativa", use_container_width=True):
+                    battle_ref.update({"initiative": out})
+                    st.success("Iniciativa salva ✅")
 
             else:
-                st.info("Sem peças/itens na arena para registrar iniciativa.")
+                st.info("Sem Pokémon ou avatares em campo para registrar iniciativa.")
 
         with tab_log:
             st.markdown("### 📜 Log")
