@@ -17947,7 +17947,7 @@ elif page == "PvP – Arena Tática":
                                 icon = icons[idx] if idx < len(icons) else "⚪"
 
                                 with st.expander(f"{icon} {opp_name}", expanded=True):
-                                    render_player_column(db, rid, opp_name, room, is_player=False)
+                                    render_player_column(opp_name, f"{icon} {opp_name}", is_me=False)
 
                 # =========================
                 # 8. LÓGICA DE CLIQUE
