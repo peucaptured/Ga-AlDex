@@ -197,67 +197,6 @@ st.markdown("""
 [data-testid="stVerticalBlock"] > div:has(.box-slot-grass) {
     padding: 0px !important;
 }
-
-/* =========================================
-   🎴 Cards (Arena - Equipes) estilo jogo
-   ========================================= */
-.pk-card{
-  border: 2px solid rgba(148,163,184,0.35);
-  border-radius: 14px;
-  padding: 10px 10px 12px 10px;
-  margin: 10px 0;
-  background: rgba(15,23,42,0.40);
-  box-shadow: inset 0 0 14px rgba(15,23,42,0.45);
-}
-.pk-card.pk-me{
-  background: rgba(15,23,42,0.46);
-}
-.pk-card.pk-unknown{
-  opacity: 0.9;
-}
-.pk-hpbar{
-  width: 100%;
-  height: 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(148,163,184,0.35);
-  background: rgba(148,163,184,0.16);
-  overflow: hidden;
-  margin-top: 6px;
-}
-.pk-hpfill{
-  height: 100%;
-  border-radius: 999px;
-  background: rgba(34,197,94,0.75);
-}
-.pk-badges{
-  display:flex;
-  gap:6px;
-  flex-wrap:wrap;
-  margin-top: 6px;
-}
-.pk-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(248,250,252,0.35);
-  background: rgba(239,68,68,0.15);
-  font-weight: 700;
-  font-size: 12px;
-}
-
-/* =========================================
-   🧭 Cards de iniciativa
-   ========================================= */
-.init-card{
-  border: 1px solid rgba(148,163,184,0.35);
-  border-radius: 12px;
-  padding: 10px;
-  margin: 10px 0;
-  background: rgba(15,23,42,0.35);
-}
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -692,14 +631,17 @@ def render_bgm(track_path: str, volume: float = 0.35) -> None:
 # --- PLANO B: VIGIA DE SINCRONIZAÇÃO ---
 @st.fragment(run_every=2) # Roda esta função sozinha a cada 2 segundos
 def sync_watchdog(db, rid):
-    """Leve verificação de atualização do mapa no servidor.
-
-    IMPORTANTE: Não chama st.rerun() para evitar 'tremedeira' na UI.
-    Em vez disso, apenas marca um 'tick' de sincronização para que fragments
-    (mapa/log) redesenhem no próximo ciclo.
-    """
     if not rid:
         return
+
+    # Evita "tremedeira" e perda de clique durante ações (mover/colocar/terreno).
+    def _pvp_in_action() -> bool:
+        return bool(
+            st.session_state.get("moving_piece_id")
+            or st.session_state.get("placing_pid")
+            or st.session_state.get("placing_trainer")
+            or st.session_state.get("placing_effect")
+        )
 
     try:
         doc_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
@@ -710,30 +652,25 @@ def sync_watchdog(db, rid):
         server_data = snapshot.to_dict() or {}
         server_time = server_data.get("updatedAt")
 
-        # Primeira leitura
         if "last_map_update" not in st.session_state:
             st.session_state["last_map_update"] = server_time
-            st.session_state["pvp_sync_state"] = "synced"
-            st.session_state.setdefault("pvp_sync_tick", 0)
+            st.session_state["pvp_sync_pending"] = False
             return
 
-        # Mudança detectada no servidor
         if server_time != st.session_state.get("last_map_update"):
             st.session_state["last_map_update"] = server_time
-            st.session_state["pvp_sync_state"] = "updating"
-            st.session_state["pvp_sync_tick"] = int(st.session_state.get("pvp_sync_tick", 0) or 0) + 1
 
-            # força regeneração do mapa cacheado quando o fragment rodar
-            st.session_state["map_cache_sig"] = None
-        else:
-            st.session_state["pvp_sync_state"] = "synced"
+            # Se o usuário está no meio de uma ação, marcamos como pendente e não rerunamos agora.
+            if _pvp_in_action() or float(st.session_state.get("arena_pause_until", 0) or 0) > time.time():
+                st.session_state["pvp_sync_pending"] = True
+                return
+
+            st.session_state["pvp_sync_pending"] = False
+            st.rerun()
 
     except Exception:
         # Se der erro de conexão, ignora e tenta na próxima
-        st.session_state["pvp_sync_state"] = "sync_error"
         return
-
-
 
 try:
     from move_interpreter import interpret_effects_to_build
@@ -16996,11 +16933,6 @@ elif page == "PvP – Arena Tática":
         # Definição da Função de Renderização da Coluna (DEFINIDA ANTES DE USAR)
         # Definição da Função de Renderização da Coluna (MELHORADA)
         def render_player_column(p_name, p_label, is_me):
-            """Renderiza a coluna de um jogador em formato de cards (estilo jogos).
-            Mantém a mesma lógica de ações (mover/colocar/revelar/remover/HP/status), mudando só o layout.
-            """
-
-            # Cabeçalho
             if is_me:
                 photo_data = get_trainer_photo_thumb(user_data)
                 if photo_data:
@@ -17012,248 +16944,262 @@ elif page == "PvP – Arena Tática":
                     st.markdown(f"### {p_label}")
             else:
                 st.markdown(f"### {p_label}")
-
-            # Party do jogador (público)
+            
+            # Busca party e estado público
             p_doc_data = db.collection("rooms").document(rid).collection("public_state").document("players").get().to_dict() or {}
-            party_list = (p_doc_data.get(p_name, []) or [])[:8]
-
-            # Estado + peças
-            s_now = get_state(db, rid)
-            all_pieces_now = s_now.get("pieces") or []
-            seen_pids_now = s_now.get("seen") or []
-
+            party_list = p_doc_data.get(p_name, [])[:8] 
+            
+            # Variáveis de Estado de Ação
             moving_piece_id = st.session_state.get("moving_piece_id")
             placing_pid = st.session_state.get("placing_pid")
             placing_trainer = st.session_state.get("placing_trainer")
-
-            if not party_list and not is_me:
+            
+            state = get_state(db, rid)
+            all_pieces = state.get("pieces") or []
+            seen_pids = state.get("seen") or []
+            
+            if not party_list:
                 st.caption("Aguardando...")
                 return
+        
+            trainer_piece = next(
+                (p for p in all_pieces if p.get("owner") == p_name and p.get("kind") == "trainer"),
+                None,
+            )
+            p_pieces_on_board = [
+                p for p in all_pieces if p.get("owner") == p_name and p.get("kind") != "trainer"
+            ]
 
-            trainer_piece = next((p for p in all_pieces_now if p.get("owner") == p_name and p.get("kind") == "trainer"), None)
-            p_pieces_on_board = [p for p in all_pieces_now if p.get("owner") == p_name and p.get("kind") != "trainer"]
-
-            def _hp_icon(hp: int) -> str:
-                if hp >= 5:
-                    return "💚"
-                if hp >= 3:
-                    return "🟡"
-                if hp >= 1:
-                    return "🔴"
-                return "💀"
-
-            def _hp_bar(hp: int) -> str:
-                pct = int(max(0, min(100, round((float(hp) / 6.0) * 100))))
-                return f"<div class='pk-hpbar'><div class='pk-hpfill' style='width:{pct}%;'></div></div>"
-
-            def _badges(conds: list) -> str:
-                # badges = apenas status negativos (conforme sua regra)
-                if not conds:
-                    return ""
-                parts = []
-                for s in conds:
-                    s_txt = str(s)
-                    parts.append(f"<span class='pk-badge'>{html.escape(s_txt)}</span>")
-                return "<div class='pk-badges'>" + "".join(parts) + "</div>"
-
-            # Avatar (somente você)
             if is_me:
-                with st.expander("🙂 Treinador", expanded=False):
-                    avatar_choice, avatar_path = get_selected_trainer_avatar(user_data)
-                    if avatar_path:
-                        st.image(avatar_path, width=96)
-                    else:
-                        st.caption("Escolha um avatar na aba Meu Treinador.")
-
-                    is_busy = (moving_piece_id is not None) or (placing_pid is not None) or bool(placing_trainer)
-
-                    if placing_trainer:
-                        st.info("Clique no mapa para posicionar seu avatar.")
-                        if st.button("🔙 Cancelar avatar", key="cancel_place_trainer"):
-                            st.session_state["placing_trainer"] = None
-                            st.rerun()
-                    else:
-                        if trainer_piece:
-                            c_avatar_1, c_avatar_2, c_avatar_3 = st.columns(3)
-                            with c_avatar_1:
-                                if st.button("🚶 Mover", key="move_trainer", disabled=is_busy):
-                                    st.session_state["moving_piece_id"] = trainer_piece.get("id")
-                                    st.session_state["placing_pid"] = None
-                                    st.session_state["placing_trainer"] = None
-                                    st.rerun()
-                            with c_avatar_2:
-                                trainer_revealed = trainer_piece.get("revealed", True)
-                                if st.button("👁️" if trainer_revealed else "✅", key="toggle_trainer"):
-                                    trainer_piece["revealed"] = not trainer_revealed
-                                    upsert_piece(db, rid, trainer_piece)
-                                    st.rerun()
-                            with c_avatar_3:
-                                if st.button("❌", key="remove_trainer"):
-                                    delete_piece(db, rid, trainer_piece.get("id"))
-                                    if st.session_state.get("moving_piece_id") == trainer_piece.get("id"):
-                                        st.session_state["moving_piece_id"] = None
-                                    st.rerun()
-                        else:
-                            if st.button("📍 Colocar avatar", key="place_trainer", disabled=not avatar_choice or is_busy):
-                                st.session_state["placing_trainer"] = True
-                                st.session_state["placing_pid"] = None
-                                st.session_state["moving_piece_id"] = None
-                                st.rerun()
-
-            # Lista em cards
-            for i, pid in enumerate(party_list):
-                cur_hp, cur_cond, cur_stats, is_shiny, p_form = get_poke_data(p_name, pid)
-
-                is_on_map = any(str(p.get("pid")) == str(pid) for p in p_pieces_on_board)
-                p_obj = next((p for p in p_pieces_on_board if str(p.get("pid")) == str(pid)), None)
-                already_seen = str(pid) in (seen_pids_now or [])
-
-                if p_form:
-                    sprite_url = pokemon_pid_to_image(f"EXT:{p_form}", mode="sprite", shiny=is_shiny)
+                st.markdown("#### 🙂 Meu Avatar")
+                avatar_choice, avatar_path = get_selected_trainer_avatar(user_data)
+                if avatar_path:
+                    st.image(avatar_path, width=96)
                 else:
-                    sprite_url = pokemon_pid_to_image(pid, mode="sprite", shiny=is_shiny)
-
-                is_moving_this = bool(p_obj and moving_piece_id == p_obj.get("id"))
-                is_placing_this = bool(placing_pid == pid)
-                border_color = "#FFCC00" if is_moving_this else ("#38bdf8" if is_placing_this else "rgba(148,163,184,0.35)")
-
-                # OPONENTE
-                if not is_me:
-                    piece_obj = next((p for p in p_pieces_on_board if str(p.get("pid")) == str(pid)), None)
-                    is_revealed = piece_obj.get("revealed", True) if piece_obj else False
-                    show_full = (piece_obj and is_revealed) or already_seen
-                    status_txt = "(Mochila)" if not piece_obj else ("(Escondido)" if not is_revealed else "")
-
-                    if not show_full:
-                        st.markdown("<div class='pk-card pk-unknown'>", unsafe_allow_html=True)
-                        c1, c2 = st.columns([1, 3], vertical_alignment="center")
-                        with c1:
-                            st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=42)
-                        with c2:
-                            st.markdown("**???**")
-                            st.caption(status_txt)
-                        st.markdown("</div>", unsafe_allow_html=True)
-                        continue
-
-                    p_real_name = get_poke_display_name(pid)
-                    st.markdown(f"<div class='pk-card' style='border-color:{border_color};'>", unsafe_allow_html=True)
-                    c1, c2 = st.columns([1, 3], vertical_alignment="center")
-                    with c1:
-                        if int(cur_hp) == 0:
-                            st.markdown(f'<img src="{sprite_url}" style="width:70px;filter:grayscale(100%);opacity:0.6;">', unsafe_allow_html=True)
-                        else:
-                            st.image(sprite_url, width=70)
-                    with c2:
-                        st.markdown(f"**{p_real_name}**")
-                        st.caption(f"{_hp_icon(int(cur_hp))} HP: {int(cur_hp)}/6 {status_txt}")
-                        st.markdown(_hp_bar(int(cur_hp)), unsafe_allow_html=True)
-                        if cur_cond:
-                            st.markdown(_badges(list(cur_cond)), unsafe_allow_html=True)
-                        if int(cur_hp) == 0:
-                            st.caption("**FAINTED**")
-                    st.markdown("</div>", unsafe_allow_html=True)
-                    continue
-
-                # VOCÊ
-                st.markdown(f"<div class='pk-card pk-me' style='border-color:{border_color};'>", unsafe_allow_html=True)
-
-                c_img, c_info = st.columns([1, 3], vertical_alignment="center")
-                with c_img:
-                    if int(cur_hp) == 0:
-                        st.markdown(f'<img src="{sprite_url}" style="width:72px;filter:grayscale(100%);opacity:0.6;">', unsafe_allow_html=True)
-                    else:
-                        st.image(sprite_url, width=72)
-
-                with c_info:
-                    st.markdown(f"**{get_poke_display_name(pid)}**")
-                    st.caption(f"{_hp_icon(int(cur_hp))} HP: {int(cur_hp)}/6")
-                    st.markdown(_hp_bar(int(cur_hp)), unsafe_allow_html=True)
-                    if cur_cond:
-                        st.markdown(_badges(list(cur_cond)), unsafe_allow_html=True)
-                    if is_moving_this:
-                        st.caption("📍 *Selecione o destino no mapa*")
-                    if is_placing_this:
-                        st.caption("📍 *Clique no mapa para posicionar*")
+                    st.caption("Escolha um avatar na aba Meu Treinador.")
 
                 is_busy = (moving_piece_id is not None) or (placing_pid is not None) or bool(placing_trainer)
 
-                if is_on_map and p_obj:
-                    c_vis, c_del, c_sp = st.columns([1, 1, 2])
-                    with c_vis:
-                        is_rev = p_obj.get("revealed", True)
-                        if st.button("👁️" if is_rev else "✅", key=f"v_{p_name}_{pid}_{i}", help="Revelar/Esconder"):
-                            p_obj["revealed"] = not is_rev
-                            upsert_piece(db, rid, p_obj)
-                            if p_obj["revealed"]:
-                                mark_pid_seen(db, rid, pid)
-                            st.rerun()
-                    with c_del:
-                        if st.button("❌", key=f"r_{p_name}_{pid}_{i}", help="Remover do Mapa"):
-                            delete_piece(db, rid, p_obj["id"])
-                            add_public_event(db, rid, "pokemon_removed", p_name, {"pid": pid})
-                            st.session_state["moving_piece_id"] = None
-                            st.rerun()
-                    with c_sp:
-                        st.caption("")
-
-                if is_moving_this:
-                    if st.button("🔙 Cancelar Mover", key=f"cncl_move_{pid}", use_container_width=True):
-                        st.session_state["moving_piece_id"] = None
-                        st.rerun()
-                elif is_placing_this:
-                    if st.button("🔙 Cancelar", key=f"cncl_place_{pid}", use_container_width=True):
-                        st.session_state["placing_pid"] = None
+                if placing_trainer:
+                    st.info("Clique no mapa para posicionar seu avatar.")
+                    if st.button("🔙 Cancelar avatar", key="cancel_place_trainer"):
+                        st.session_state["placing_trainer"] = None
                         st.rerun()
                 else:
-                    with st.expander("⚙️ Ajustes", expanded=False):
-                        st.slider(
-                            "HP",
-                            0,
-                            6,
-                            value=int(cur_hp),
-                            key=f"hp_{p_name}_{pid}_{i}",
-                            label_visibility="collapsed",
-                            on_change=update_poke_state_callback,
-                            args=(db, rid, p_name, pid, i),
-                        )
-                        st.multiselect(
-                            "Status (negativos)",
-                            ["⚡", "❄️", "🔥", "💤", "☠️", "💓"],
-                            default=cur_cond,
-                            key=f"cond_{p_name}_{pid}_{i}",
-                            label_visibility="collapsed",
-                            on_change=update_poke_state_callback,
-                            args=(db, rid, p_name, pid, i),
-                        )
-
-                    a1, a2, a3 = st.columns(3)
-                    with a1:
-                        if st.button("✅ Selecionar", key=f"sel_{pid}_{i}", disabled=int(cur_hp) == 0):
-                            st.session_state[f"atk_self_{rid}"] = pid
+                    if trainer_piece:
+                        c_avatar_1, c_avatar_2, c_avatar_3 = st.columns(3)
+                        with c_avatar_1:
+                            if st.button("🚶 Mover", key="move_trainer", disabled=is_busy):
+                                st.session_state["moving_piece_id"] = trainer_piece.get("id")
+                                st.session_state["arena_pause_until"] = time.time() + 1.2
+                                st.session_state["placing_pid"] = None
+                                st.session_state["placing_trainer"] = None
+                                st.rerun()
+                        with c_avatar_2:
+                            trainer_revealed = trainer_piece.get("revealed", True)
+                            if st.button("👁️" if trainer_revealed else "✅", key="toggle_trainer"):
+                                trainer_piece["revealed"] = not trainer_revealed
+                                upsert_piece(db, rid, trainer_piece)
+                                st.rerun()
+                        with c_avatar_3:
+                            if st.button("❌", key="remove_trainer"):
+                                delete_piece(db, rid, trainer_piece.get("id"))
+                                if st.session_state.get("moving_piece_id") == trainer_piece.get("id"):
+                                    st.session_state["moving_piece_id"] = None
+                                st.rerun()
+                    else:
+                        if st.button("📍 Colocar avatar", key="place_trainer", disabled=not avatar_choice or is_busy):
+                            st.session_state["placing_trainer"] = True
+                            st.session_state["arena_pause_until"] = time.time() + 1.2
+                            st.session_state["placing_pid"] = None
+                            st.session_state["moving_piece_id"] = None
                             st.rerun()
-                    with a2:
-                        if int(cur_hp) > 0:
-                            if is_on_map and p_obj:
-                                if st.button("🚶 Mover", key=f"m_{p_name}_{pid}_{i}", disabled=is_busy):
-                                    st.session_state["moving_piece_id"] = p_obj["id"]
-                                    st.rerun()
+        
+            for i, pid in enumerate(party_list):
+                # 1. Agora recuperamos 5 valores (incluindo p_form)
+                cur_hp, cur_cond, cur_stats, is_shiny, p_form = get_poke_data(p_name, pid)
+                
+                is_on_map = any(str(p["pid"]) == str(pid) for p in p_pieces_on_board)
+                p_obj = next((p for p in p_pieces_on_board if str(p["pid"]) == str(pid)), None)
+                already_seen = str(pid) in seen_pids
+                
+                # Ícone de HP
+                if cur_hp >= 5: hpi = "💚"
+                elif cur_hp >= 3: hpi = "🟡"
+                elif cur_hp >= 1: hpi = "🔴"
+                else: hpi = "💀"
+                
+                # 2. Lógica da imagem com prioridade para a Forma
+                if p_form:
+                     sprite_url = pokemon_pid_to_image(f"EXT:{p_form}", mode="sprite", shiny=is_shiny)
+                else:
+                     sprite_url = pokemon_pid_to_image(pid, mode="sprite", shiny=is_shiny)
+        
+                # Checa se ESTE Pokémon específico está realizando uma ação
+                is_moving_this = (p_obj and moving_piece_id == p_obj.get("id"))
+                is_placing_this = (placing_pid == pid)
+
+                # Estilo da Borda: Amarelo se movendo, Azul se colocando, Padrão caso contrário
+                border_color = "#FFCC00" if is_moving_this else ("#38bdf8" if is_placing_this else None)
+                
+                # Container Visual
+                with st.container():
+                    if is_me:
+                        # Se estiver movendo ou colocando, destaca visualmente
+                        if is_moving_this or is_placing_this:
+                             st.markdown(f"""
+                                <div style="
+                                    background: rgba(0,0,0,0.3); 
+                                    border: 2px solid {border_color}; 
+                                    border-radius: 8px; 
+                                    padding: 5px; 
+                                    text-align: center; 
+                                    margin-bottom: 5px;">
+                                    <div style="font-weight:bold; color:{border_color}; font-size:12px;">
+                                        {'📍 SELECIONE O DESTINO NO MAPA' if is_moving_this else '📍 CLIQUE NO MAPA PARA POSICIONAR'}
+                                    </div>
+                                </div>
+                             """, unsafe_allow_html=True)
+
+                        c_img, c_ctrl = st.columns([1, 2.5])
+                        
+                        with c_img:
+                            # Imagem (Cinza se fainted)
+                            if cur_hp == 0:
+                                st.markdown(f'<img src="{sprite_url}" style="width:100%; filter:grayscale(100%); opacity:0.6;">', unsafe_allow_html=True)
+                                st.caption("**FAINTED**")
                             else:
-                                if st.button("📍 Colocar", key=f"p_{p_name}_{pid}_{i}", disabled=is_busy):
-                                    st.session_state["placing_pid"] = pid
-                                    st.session_state["placing_effect"] = None
+                                st.image(sprite_url, width="stretch")
+        
+                            # Botões de Controle da Peça (Abaixo da imagem)
+                            if is_on_map and p_obj:
+                                is_rev = p_obj.get("revealed", True)
+                                c_vis, c_del = st.columns(2)
+                                with c_vis:
+                                    if st.button("👁️" if is_rev else "✅", key=f"v_{p_name}_{pid}_{i}", help="Revelar/Esconder"):
+                                        p_obj["revealed"] = not is_rev
+                                        upsert_piece(db, rid, p_obj)
+                                        if p_obj["revealed"]: mark_pid_seen(db, rid, pid)
+                                        st.rerun()
+                                with c_del:
+                                    if st.button("❌", key=f"r_{p_name}_{pid}_{i}", help="Remover do Mapa"):
+                                        delete_piece(db, rid, p_obj["id"])
+                                        add_public_event(db, rid, "pokemon_removed", p_name, {"pid": pid})
+                                        st.session_state["moving_piece_id"] = None # Reseta move se deletar
+                                        st.rerun()
+
+                        with c_ctrl:
+                            # --- LÓGICA DE INTERFACE DE AÇÃO ---
+                            if is_moving_this:
+                                st.info("Clique em um quadrado vazio.")
+                                if st.button("🔙 Cancelar Mover", key=f"cncl_move_{pid}"):
+                                    st.session_state["moving_piece_id"] = None
                                     st.rerun()
-                    with a3:
-                        if st.button("⚔️ Atacar", key=f"atk_{pid}_{i}", disabled=not is_player or int(cur_hp) == 0):
-                            try:
-                                if b_data.get("status") == "idle" and is_player:
-                                    battle_ref.set({"status": "setup", "attacker": trainer_name, "attack_move": None, "logs": []})
-                                st.session_state[f"atk_self_{rid}"] = pid
-                            except Exception:
-                                pass
-                            st.rerun()
+                            
+                            elif is_placing_this:
+                                st.info("Clique onde quer invocar.")
+                                if st.button("🔙 Cancelar", key=f"cncl_place_{pid}"):
+                                    st.session_state["placing_pid"] = None
+                                    st.rerun()
+                                    
+                            else:
+                                # Interface Padrão (HP e Status)
+                                # Interface Padrão (HP/Status) em formato de card
+                                p_real_name = get_poke_display_name(pid)
+                                st.markdown(f"#### {p_real_name}")
 
-                st.markdown("</div>", unsafe_allow_html=True)
+                                if cur_cond:
+                                    badges = "".join([f"<span class='pvp-badge'>{c}</span>" for c in cur_cond])
+                                    st.markdown(badges, unsafe_allow_html=True)
+                                else:
+                                    st.caption("Sem status negativos.")
 
+                                try:
+                                    st.progress(float(int(cur_hp)) / 6.0)
+                                except Exception:
+                                    pass
+                                st.caption(f"{hpi} HP: {cur_hp}/6")
+
+                                st.slider(
+                                    "HP",
+                                    0,
+                                    6,
+                                    value=int(cur_hp),
+                                    key=f"hp_{p_name}_{pid}_{i}",
+                                    label_visibility="collapsed",
+                                    on_change=update_poke_state_callback,
+                                    args=(db, rid, p_name, pid, i),
+                                )
+
+                                st.multiselect(
+                                    "Status",
+                                    ["⚡", "❄️", "🔥", "💤", "☠️", "💓"],
+                                    default=cur_cond,
+                                    key=f"cond_{p_name}_{pid}_{i}",
+                                    label_visibility="collapsed",
+                                    on_change=update_poke_state_callback,
+                                    args=(db, rid, p_name, pid, i),
+                                )
+                                # Botões de Ação Principal
+                                if cur_hp > 0:
+                                    # Bloqueia botões se outra ação estiver ocorrendo
+                                    is_busy = (moving_piece_id is not None) or (placing_pid is not None) or bool(placing_trainer)
+                                    
+                                    if is_on_map:
+                                        if st.button("🚶 Mover", key=f"m_{p_name}_{pid}_{i}", disabled=is_busy, use_container_width=True):
+                                            st.session_state["moving_piece_id"] = p_obj["id"]
+                                            st.session_state["arena_pause_until"] = time.time() + 1.2
+                                            st.rerun()
+                                    else:
+                                        if st.button("📍 Colocar no Campo", key=f"p_{p_name}_{pid}_{i}", disabled=is_busy, use_container_width=True):
+                                            st.session_state["placing_pid"] = pid
+                                            st.session_state["arena_pause_until"] = time.time() + 1.2
+                                            st.session_state["placing_effect"] = None
+                                            st.rerun()
+        
+                    
+                    else:
+                        # ==========================
+                        # VISÃO DO OPONENTE (Corrigida)
+                        # ==========================
+                        piece_obj = next((p for p in p_pieces_on_board if str(p["pid"]) == str(pid)), None)
+                        is_revealed = piece_obj.get("revealed", True) if piece_obj else False
+                        
+                        # Se estiver no campo e revelado, OU se já foi visto antes (está na bench mas conhecido)
+                        show_full = (piece_obj and is_revealed) or already_seen
+                        
+                        status_txt = "(Mochila)" if not piece_obj else ("(Escondido)" if not is_revealed else "")
+        
+                        if show_full:
+                            p_real_name = get_poke_display_name(pid)
+                            c1, c2 = st.columns([1, 2])
+                            
+                            with c1: 
+                                # ✅ CORREÇÃO 1: Imagem em escala de cinza se HP for 0
+                                # Antes usava st.image direto, que sempre é colorido.
+                                if cur_hp == 0:
+                                    st.markdown(f'<img src="{sprite_url}" style="width:50px; filter:grayscale(100%); opacity:0.6;">', unsafe_allow_html=True)
+                                else:
+                                    st.image(sprite_url, width=50)
+        
+                            with c2:
+                                st.markdown(f"**{p_real_name}**")
+                                st.caption(f"{hpi} HP: {cur_hp}/6 {status_txt}")
+                                
+                                # ✅ CORREÇÃO 2: Exibir ícones de status para o oponente
+                                if cur_cond:
+                                    # Junta os ícones em uma string (ex: "🔥 ☠️")
+                                    cond_str = " ".join(cur_cond)
+                                    st.markdown(f"Status: {cond_str}")
+        
+                                if cur_hp == 0: 
+                                    st.caption("**FAINTED**")
+                        else:
+                            # Pokémon desconhecido / escondido
+                            c1, c2 = st.columns([1, 2])
+                            with c1: st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", width=40)
+                            with c2: st.caption(f"??? {status_txt}")
+        
         # --- 4. PREPARAÇÃO DE TIMES E VARIÁVEIS (UNIFICADO) ---
         owner_name = (room.get("owner") or {}).get("name", "Host")
         challengers = room.get("challengers") or []
@@ -17318,63 +17264,38 @@ elif page == "PvP – Arena Tática":
         theme_key = room.get("theme", "cave_water")
         grid = int(state.get("gridSize") or room.get("gridSize") or 10)
 
-                # --- 5. BARRA DE STATUS + ABAS ---
-        # (HUD estável; mapa/log atualizam via fragment sem tremedeira)
+        # --- 5. INTERFACE DO TOPO ---
         last_events = list_public_events(db, rid, limit=1)
         last_dice = next((e for e in last_events if e.get("type") == "dice"), None)
 
-        # Estado do combate (para fase/quem age)
-        battle_ref = db.collection("rooms").document(rid).collection("public_state").document("battle")
-        battle_doc = battle_ref.get()
-        b_data = battle_doc.to_dict() or {"status": "idle", "logs": []}
-
-        # Labels
-        phase_raw = str(b_data.get("status") or "idle").strip().lower()
-        phase_map = {"idle": "Idle", "setup": "Setup", "defense": "Defesa", "resultado": "Resultado", "result": "Resultado"}
-        phase_label = phase_map.get(phase_raw, phase_raw.capitalize())
-        acting_label = b_data.get("attacker") or "—"
-        sync_state = st.session_state.get("pvp_sync_state", "synced")
-        if sync_state == "synced":
-            sync_label = "Sincronizado ✓"
-        elif sync_state == "updating":
-            sync_label = "Atualizando…"
-        else:
-            sync_label = "Sync incerto…"
-
-        # Linha de botões (mantém lógica atual)
         top = st.columns([1, 1, 1, 1, 4])
         with top[0]:
             if st.button("⬅️ Lobby"):
                 st.session_state["pvp_view"] = "lobby"
                 st.rerun()
         with top[1]:
-            if st.button("🔄 Atualizar"):
-                st.rerun()
+            if st.button("🔄 Atualizar"): st.rerun()
         with top[2]:
-            if st.button("🎲 d20", disabled=not is_player):
-                roll_die(db, rid, trainer_name, sides=20)
-                st.rerun()
+            if st.button("🎲 d20", disabled=not is_player): roll_die(db, rid, trainer_name, sides=20); st.rerun()
         with top[3]:
-            if st.button("🎲 d6", disabled=not is_player):
-                roll_die(db, rid, trainer_name, sides=6)
-                st.rerun()
+            if st.button("🎲 d6", disabled=not is_player): roll_die(db, rid, trainer_name, sides=6); st.rerun()
         with top[4]:
             if last_dice:
-                pl = last_dice.get("payload", {}) or {}
+                pl = last_dice.get("payload", {})
                 dice_line = f"🎲 {last_dice.get('by')}: <strong>{pl.get('result')}</strong> (d{pl.get('sides')})"
                 dice_bg = "rgba(34, 197, 94, 0.18)"
                 dice_border = "rgba(34, 197, 94, 0.5)"
             else:
-                dice_line = "🎲 Aguardando rolagem…"
+                dice_line = "🎲 Aguardando rolagem..."
                 dice_bg = "rgba(148, 163, 184, 0.15)"
                 dice_border = "rgba(148, 163, 184, 0.35)"
             st.markdown(
                 f"""
                 <div style="
                     min-height: 42px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
                     margin-bottom: 8px;
                     padding: 6px 10px;
                     border-radius: 10px;
@@ -17386,54 +17307,75 @@ elif page == "PvP – Arena Tática":
                 """,
                 unsafe_allow_html=True,
             )
+            # ✅ PEDIDO: Mostrar Código da Sala aqui em cima
+            st.markdown(f"""
+    <div style='display: flex; align-items: center; gap: 10px;'>
+        <span style='font-family: "Press Start 2P"; font-size: 18px;'>🏟️ Arena:</span>
+        <span style='font-family: "Press Start 2P"; font-size: 24px; color: #FFCC00; background: #333; padding: 5px 10px; border-radius: 5px;'>{rid}</span>
+    </div>
+    """, unsafe_allow_html=True) 
 
-        # Barra de status (fase, quem age, sync, room)
+        # ==========================================
+        # 🧮 6. CALCULADORA DE COMBATE
+        # ==========================================
+        battle_ref = db.collection("rooms").document(rid).collection("public_state").document("battle")
+        battle_doc = battle_ref.get()
+        b_data = battle_doc.to_dict() or {"status": "idle", "logs": []}
+
+        # =========================
+        # 🎛️ HUD / Barra de Status
+        # =========================
+        b_status = (b_data.get("status") or "idle")
+        b_attacker = b_data.get("attacker") or "—"
+        sync_badge = "Atualizando…" if st.session_state.get("pvp_sync_pending") else "Sincronizado ✓"
+
+        # CSS leve para cards/badges (aplicado só na Arena PvP)
+        st.markdown("""
+        <style>
+        .pvp-statusbar{
+            display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+            padding:10px 12px; border-radius:14px;
+            border:1px solid rgba(148,163,184,0.35);
+            background: rgba(15,23,42,0.55);
+            box-shadow: inset 0 0 18px rgba(15,23,42,0.35);
+            margin: 6px 0 10px 0;
+        }
+        .pvp-pill{
+            display:inline-flex; gap:8px; align-items:center;
+            padding:6px 10px; border-radius:999px;
+            border:1px solid rgba(148,163,184,0.35);
+            background: rgba(2,6,23,0.35);
+            font-weight:600; font-size:12px;
+        }
+        .pvp-badge{
+            display:inline-flex; align-items:center; justify-content:center;
+            padding:2px 8px; border-radius:999px;
+            background: rgba(56,189,248,0.18);
+            border: 1px solid rgba(56,189,248,0.35);
+            font-size: 12px; font-weight: 700;
+            margin-right: 6px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
         st.markdown(
             f"""
-            <div style="
-                display:flex;
-                gap:10px;
-                flex-wrap:wrap;
-                align-items:center;
-                justify-content:space-between;
-                padding:10px 12px;
-                border-radius:12px;
-                border:1px solid rgba(148,163,184,0.35);
-                background: rgba(15,23,42,0.55);
-                box-shadow: inset 0 0 16px rgba(15,23,42,0.45);
-                margin: 6px 0 12px 0;">
-                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                    <span style="font-family:'Press Start 2P'; font-size:14px;">🏟️ {rid}</span>
-                    <span style="padding:4px 8px; border-radius:999px; border:1px solid rgba(56,189,248,0.45); background: rgba(56,189,248,0.10); font-weight:700;">
-                        Fase: {phase_label}
-                    </span>
-                    <span style="padding:4px 8px; border-radius:999px; border:1px solid rgba(250,204,21,0.45); background: rgba(250,204,21,0.10); font-weight:700;">
-                        Agindo: {acting_label}
-                    </span>
-                </div>
-                <div style="display:flex; gap:10px; align-items:center;">
-                    <span style="padding:4px 8px; border-radius:999px; border:1px solid rgba(34,197,94,0.35); background: rgba(34,197,94,0.08); font-weight:700;">
-                        {sync_label}
-                    </span>
-                </div>
+            <div class="pvp-statusbar">
+              <span class="pvp-pill">🧩 Sala <b>{rid}</b></span>
+              <span class="pvp-pill">🎚️ Fase: <b>{b_status}</b></span>
+              <span class="pvp-pill">⚔️ Agindo: <b>{b_attacker}</b></span>
+              <span class="pvp-pill">📡 {sync_badge}</span>
             </div>
             """,
-            unsafe_allow_html=True,
+            unsafe_allow_html=True
         )
 
         tab_arena, tab_combate, tab_inic, tab_log = st.tabs(["🗺️ Arena", "⚔️ Combate", "🧭 Iniciativa", "📜 Log"])
+        import math
+
         with tab_combate:
-            # ==========================================
-            # 🧮 6. CALCULADORA DE COMBATE
-            # ==========================================
-            import math
-
-            st.markdown("### ⚔️ Combate")
-
-            with st.container():
+            with st.expander("⚔️ Calculadora de Combate", expanded=(b_status != "idle")):
             
-                b_status = (b_data or {}).get("status", "idle")
-
                 # [FASE 0] IDLE
                 if b_status == "idle":
                     if is_player:
@@ -17731,650 +17673,422 @@ elif page == "PvP – Arena Tática":
                         st.info("Aguardando atacante encerrar...")
 
 
-        
-
+            # =========================
         with tab_arena:
-            def _arena_render():
-                click = None
-                # =========================
-                # 7. LAYOUT DAS COLUNAS (EQUILIBRADO PARA 4 JOGADORES)
-                # =========================
-                if seed is None:
-                    st.warning("Sem mapa.")
-                    st.stop()
+            # 7. LAYOUT DAS COLUNAS (EQUILIBRADO PARA 4 JOGADORES)
+            # =========================
+            if seed is None:
+                st.warning("Sem mapa.")
+                st.stop()
 
-                # Proporção [1.8, 4.6, 1.8] dá leve redução do mapa e mantém fôlego nas laterais
-                opponents_list = sorted(list(set([p for p in all_players if p != trainer_name])))
-                if opponents_list:
-                    c_me, c_map, c_opps = st.columns([1.9, 5.2, 1.9])
-                else:
-                    c_me, c_map = st.columns([2.2, 6.0])
-                    c_opps = None
+            # Proporção [1.8, 4.6, 1.8] dá leve redução do mapa e mantém fôlego nas laterais
+            opponents_list = sorted(list(set([p for p in all_players if p != trainer_name])))
+            if opponents_list:
+                c_me, c_map, c_opps = st.columns([1.9, 5.2, 1.9])
+            else:
+                c_me, c_map = st.columns([2.2, 6.0])
+                c_opps = None
 
-                with c_me:
-                    render_player_column(trainer_name, "🎒 Sua Equipe", is_me=True)
+            with c_me:
+                render_player_column(trainer_name, "🎒 Sua Equipe", is_me=True)
 
-                with c_map:
-                    st.markdown(f"### 🗺️ Arena (Sala {rid})")
+            with c_map:
+                st.markdown(f"### 🗺️ Arena (Sala {rid})")
             
-                    # --- ALERTA VISUAL DE AÇÃO NO MAPA ---
-                    #if st.session_state.get("moving_piece_id"):
-                    #    st.warning("🏃 MODO MOVIMENTO: Clique em um quadrado vazio para mover o Pokémon.", icon="📍")
-                    #elif st.session_state.get("placing_pid"):
-                    #    st.info("📍 MODO POSICIONAMENTO: Clique no mapa para colocar o Pokémon.", icon="⬇️")
-                    #elif st.session_state.get("placing_effect"):
-                    #    eff_icon = st.session_state.get("placing_effect")
-                    #    st.info(f"✨ MODO TERRENO: Clique para adicionar {eff_icon}.", icon="✨")
-                    # -------------------------------------
+                # --- ALERTA VISUAL DE AÇÃO NO MAPA ---
+                #if st.session_state.get("moving_piece_id"):
+                #    st.warning("🏃 MODO MOVIMENTO: Clique em um quadrado vazio para mover o Pokémon.", icon="📍")
+                #elif st.session_state.get("placing_pid"):
+                #    st.info("📍 MODO POSICIONAMENTO: Clique no mapa para colocar o Pokémon.", icon="⬇️")
+                #elif st.session_state.get("placing_effect"):
+                #    eff_icon = st.session_state.get("placing_effect")
+                #    st.info(f"✨ MODO TERRENO: Clique para adicionar {eff_icon}.", icon="✨")
+                # -------------------------------------
 
-                                # Ferramentas de Campo (UX melhorada)
-                    moving_piece_id = st.session_state.get("moving_piece_id")
-                    placing_pid = st.session_state.get("placing_pid")
-                    placing_trainer = st.session_state.get("placing_trainer")
-                    placing_eff = st.session_state.get("placing_effect")
+                            # Ferramentas de Campo (UX melhorada)
+                moving_piece_id = st.session_state.get("moving_piece_id")
+                placing_pid = st.session_state.get("placing_pid")
+                placing_trainer = st.session_state.get("placing_trainer")
+                placing_eff = st.session_state.get("placing_effect")
 
-                    # Banner do "modo" atual + botão de cancelar
-                    if moving_piece_id or placing_pid or placing_trainer or placing_eff:
-                        bmsg, bbtn = st.columns([6, 1])
-                        with bmsg:
-                            if moving_piece_id:
-                                st.warning("🏃 MODO MOVIMENTO: clique em um quadrado vazio para mover.", icon="📍")
-                            elif placing_pid:
-                                st.info("📍 MODO POSICIONAMENTO: clique no mapa para colocar o Pokémon.", icon="⬇️")
-                            elif placing_trainer:
-                                st.info("🧍 MODO AVATAR: clique no mapa para posicionar seu treinador.", icon="⬇️")
-                            elif placing_eff == "__erase__":
-                                st.warning("🧽 MODO BORRACHA: clique em um quadrado para REMOVER o efeito.", icon="🧽")
-                            elif placing_eff:
-                                st.info(f"✨ MODO TERRENO: clique para adicionar {placing_eff}.", icon="✨")
-                        with bbtn:
-                            if st.button("✖", key=f"cancel_action_{rid}", help="Cancelar ação atual", use_container_width=True):
+                # Banner do "modo" atual + botão de cancelar
+                if moving_piece_id or placing_pid or placing_trainer or placing_eff:
+                    bmsg, bbtn = st.columns([6, 1])
+                    with bmsg:
+                        if moving_piece_id:
+                            st.warning("🏃 MODO MOVIMENTO: clique em um quadrado vazio para mover.", icon="📍")
+                        elif placing_pid:
+                            st.info("📍 MODO POSICIONAMENTO: clique no mapa para colocar o Pokémon.", icon="⬇️")
+                        elif placing_trainer:
+                            st.info("🧍 MODO AVATAR: clique no mapa para posicionar seu treinador.", icon="⬇️")
+                        elif placing_eff == "__erase__":
+                            st.warning("🧽 MODO BORRACHA: clique em um quadrado para REMOVER o efeito.", icon="🧽")
+                        elif placing_eff:
+                            st.info(f"✨ MODO TERRENO: clique para adicionar {placing_eff}.", icon="✨")
+                    with bbtn:
+                        if st.button("✖", key=f"cancel_action_{rid}", help="Cancelar ação atual", use_container_width=True):
+                            st.session_state["moving_piece_id"] = None
+                            st.session_state["placing_pid"] = None
+                            st.session_state["placing_trainer"] = None
+                            st.session_state["placing_effect"] = None
+                            st.rerun()
+
+                # Ferramentas de Campo
+                with st.expander("🛠️ Itens e Terrenos", expanded=False):
+                    if is_player:
+                        st.checkbox(
+                            "🖌️ Pincel (não desarmar ao clicar)",
+                            value=bool(st.session_state.get(f"effect_brush_{rid}", True)),
+                            key=f"effect_brush_{rid}",
+                            help="Se ligado, você pode clicar várias vezes no mapa sem precisar re-selecionar o ícone.",
+                        )
+
+                        top_tools = st.columns([1.1, 1.1, 2.8])
+                        with top_tools[0]:
+                            erase_curr = (st.session_state.get("placing_effect") == "__erase__")
+                            if st.button(
+                                "🧽 Apagar",
+                                key=f"effect_erase_{rid}",
+                                type=("primary" if erase_curr else "secondary"),
+                                use_container_width=True,
+                                help="Ativa um modo para remover o efeito clicando no mapa.",
+                            ):
+                                st.session_state["placing_effect"] = None if erase_curr else "__erase__"
                                 st.session_state["moving_piece_id"] = None
                                 st.session_state["placing_pid"] = None
                                 st.session_state["placing_trainer"] = None
-                                st.session_state["placing_effect"] = None
+                                st.rerun()
+                        with top_tools[1]:
+                            if st.button(
+                                "🧼 Limpar Tudo",
+                                key=f"effect_clear_{rid}",
+                                use_container_width=True,
+                                help="Remove todos os efeitos do mapa.",
+                            ):
+                                db.collection("rooms").document(rid).collection("public_state").document("state").update({
+                                    "effects": [],
+                                    "updatedAt": firestore.SERVER_TIMESTAMP,
+                                })
+                                st.rerun()
+                        with top_tools[2]:
+                            st.caption("Selecione um ícone e clique no mapa. (Pincel mantém o modo ativo.)")
+
+                        effects_map = {"Fogo":"🔥", "Gelo":"🧊", "Água":"💧", "Rocha":"🪨", "Nuvem":"☁️", "Sol":"☀️", "Grama":"🍃", "Raio":"⚡"}
+                        curr = st.session_state.get("placing_effect")
+
+                        # Contagem dos efeitos atuais (opcional, ajuda a visualizar densidade)
+                        counts = {}
+                        for e in (field_effects or []):
+                            ic = (e or {}).get("icon")
+                            if ic:
+                                counts[ic] = counts.get(ic, 0) + 1
+
+                        cols = st.columns(8)
+                        for i, (k, v) in enumerate(effects_map.items()):
+                            btn_type = "primary" if curr == v else "secondary"
+                            label = f"{v}" + (f" {counts[v]}" if counts.get(v) else "")
+                            if cols[i].button(label, key=f"ef_{rid}_{k}", type=btn_type, use_container_width=True):
+                                st.session_state["placing_effect"] = None if curr == v else v
+                                # Se ativar efeito, cancela outras ações para evitar bugs
+                                st.session_state["moving_piece_id"] = None
+                                st.session_state["placing_pid"] = None
+                                st.session_state["placing_trainer"] = None
                                 st.rerun()
 
-                    # Ferramentas de Campo
-                    with st.expander("🛠️ Itens e Terrenos", expanded=False):
-                        if is_player:
-                            st.checkbox(
-                                "🖌️ Pincel (não desarmar ao clicar)",
-                                value=bool(st.session_state.get(f"effect_brush_{rid}", True)),
-                                key=f"effect_brush_{rid}",
-                                help="Se ligado, você pode clicar várias vezes no mapa sem precisar re-selecionar o ícone.",
-                            )
-
-                            top_tools = st.columns([1.1, 1.1, 2.8])
-                            with top_tools[0]:
-                                erase_curr = (st.session_state.get("placing_effect") == "__erase__")
-                                if st.button(
-                                    "🧽 Apagar",
-                                    key=f"effect_erase_{rid}",
-                                    type=("primary" if erase_curr else "secondary"),
-                                    use_container_width=True,
-                                    help="Ativa um modo para remover o efeito clicando no mapa.",
-                                ):
-                                    st.session_state["placing_effect"] = None if erase_curr else "__erase__"
-                                    st.session_state["moving_piece_id"] = None
-                                    st.session_state["placing_pid"] = None
-                                    st.session_state["placing_trainer"] = None
-                                    st.rerun()
-                            with top_tools[1]:
-                                if st.button(
-                                    "🧼 Limpar Tudo",
-                                    key=f"effect_clear_{rid}",
-                                    use_container_width=True,
-                                    help="Remove todos os efeitos do mapa.",
-                                ):
-                                    db.collection("rooms").document(rid).collection("public_state").document("state").update({
-                                        "effects": [],
-                                        "updatedAt": firestore.SERVER_TIMESTAMP,
-                                    })
-                                    st.rerun()
-                            with top_tools[2]:
-                                st.caption("Selecione um ícone e clique no mapa. (Pincel mantém o modo ativo.)")
-
-                            effects_map = {"Fogo":"🔥", "Gelo":"🧊", "Água":"💧", "Rocha":"🪨", "Nuvem":"☁️", "Sol":"☀️", "Grama":"🍃", "Raio":"⚡"}
-                            curr = st.session_state.get("placing_effect")
-
-                            # Contagem dos efeitos atuais (opcional, ajuda a visualizar densidade)
-                            counts = {}
-                            for e in (field_effects or []):
-                                ic = (e or {}).get("icon")
-                                if ic:
-                                    counts[ic] = counts.get(ic, 0) + 1
-
-                            cols = st.columns(8)
-                            for i, (k, v) in enumerate(effects_map.items()):
-                                btn_type = "primary" if curr == v else "secondary"
-                                label = f"{v}" + (f" {counts[v]}" if counts.get(v) else "")
-                                if cols[i].button(label, key=f"ef_{rid}_{k}", type=btn_type, use_container_width=True):
-                                    st.session_state["placing_effect"] = None if curr == v else v
-                                    # Se ativar efeito, cancela outras ações para evitar bugs
-                                    st.session_state["moving_piece_id"] = None
-                                    st.session_state["placing_pid"] = None
-                                    st.session_state["placing_trainer"] = None
-                                    st.rerun()
-
-                    # Ajustes de visualização do mapa (para caber melhor em 100% e 50% de zoom do browser)
-                    toolbar = st.columns([1.15, 2.35, 1.0])
-                    with toolbar[0]:
-                        show_grid = st.checkbox("Grade Tática", value=bool(st.session_state.get(f"grid_{rid}", True)), key=f"grid_{rid}")
-                    with toolbar[1]:
-                        map_zoom = st.slider(
-                            "Zoom do mapa",
-                            min_value=0.60,
-                            max_value=1.20,
-                            value=float(st.session_state.get(f"map_zoom_{rid}", 0.90) or 0.90),
-                            step=0.05,
-                            key=f"map_zoom_{rid}",
-                        )
-                    with toolbar[2]:
-                        st.caption(f"{int(float(st.session_state.get(f'map_zoom_{rid}', 0.90) or 0.90) * 100)}%")
-            
-                    # ... (Restante do código de renderização do mapa permanece igual) ...
-                    state_updated_at = state.get("updatedAt")
-                    map_signature = json.dumps({
-                        "seed": seed,
-                        "theme": theme_key,
-                        "noWater": no_water_state,
-                        "pieces": pieces_to_draw,
-                        "effects": field_effects,
-                        "grid": show_grid,
-                        "updatedAt": state_updated_at,
-                    }, sort_keys=True, default=str)
-                    if st.session_state.get("map_cache_sig") != map_signature:
-                        st.session_state["map_cache_sig"] = map_signature
-                        st.session_state["map_cache_img"] = render_map_with_pieces(
-                            grid,
-                            theme_key,
-                            seed,
-                            no_water_state,
-                            pieces_to_draw,
-                            trainer_name,
-                            room,
-                            effects=field_effects,
-                            show_grid=show_grid,
-                        )
-                    img = st.session_state.get("map_cache_img")
-
-                    # Zoom do mapa (ajuda a encaixar melhor em 100%/50% de zoom do navegador)
-                    map_zoom = float(st.session_state.get(f"map_zoom_{rid}", 0.90) or 0.90)
-                    tile_px = max(1, int(TILE_SIZE * map_zoom))
-                    st.session_state[f"_tile_px_{rid}"] = tile_px
-
-                    img_to_show = img
-                    if img_to_show and map_zoom != 1.0:
-                        try:
-                            img_to_show = img_to_show.resize(
-                                (max(1, int(img_to_show.width * map_zoom)), max(1, int(img_to_show.height * map_zoom))),
-                                resample=Image.NEAREST,
-                            )
-                        except Exception:
-                            img_to_show = img
-                            tile_px = TILE_SIZE
-                            st.session_state[f"_tile_px_{rid}"] = tile_px
-
-
-                    # -------------------------------------------------
-                    # 🧠 Auto-refresh APENAS do Mapa (não afeta botões/colunas)
-                    # -------------------------------------------------
-                    pause_until = float(st.session_state.get(f"arena_pause_until_{rid}", 0) or 0)
-                    in_action = bool(
-                        st.session_state.get("moving_piece_id")
-                        or st.session_state.get("placing_pid")
-                        or st.session_state.get("placing_trainer")
-                        or st.session_state.get("placing_effect")
+                # Ajustes de visualização do mapa (para caber melhor em 100% e 50% de zoom do browser)
+                toolbar = st.columns([1.15, 2.35, 1.0])
+                with toolbar[0]:
+                    show_grid = st.checkbox("Grade Tática", value=bool(st.session_state.get(f"grid_{rid}", True)), key=f"grid_{rid}")
+                with toolbar[1]:
+                    map_zoom = st.slider(
+                        "Zoom do mapa",
+                        min_value=0.60,
+                        max_value=1.20,
+                        value=float(st.session_state.get(f"map_zoom_{rid}", 0.90) or 0.90),
+                        step=0.05,
+                        key=f"map_zoom_{rid}",
                     )
-                    auto_on_map = bool(st.session_state.get(f"arena_auto_{rid}", True)) and (not in_action) and (time.time() >= pause_until)
+                with toolbar[2]:
+                    st.caption(f"{int(float(st.session_state.get(f'map_zoom_{rid}', 0.90) or 0.90) * 100)}%")
+            
+                # ... (Restante do código de renderização do mapa permanece igual) ...
+                state_updated_at = state.get("updatedAt")
+                map_signature = json.dumps({
+                    "seed": seed,
+                    "theme": theme_key,
+                    "noWater": no_water_state,
+                    "pieces": pieces_to_draw,
+                    "effects": field_effects,
+                    "grid": show_grid,
+                    "updatedAt": state_updated_at,
+                }, sort_keys=True, default=str)
+                if st.session_state.get("map_cache_sig") != map_signature:
+                    st.session_state["map_cache_sig"] = map_signature
+                    st.session_state["map_cache_img"] = render_map_with_pieces(
+                        grid,
+                        theme_key,
+                        seed,
+                        no_water_state,
+                        pieces_to_draw,
+                        trainer_name,
+                        room,
+                        effects=field_effects,
+                        show_grid=show_grid,
+                    )
+                img = st.session_state.get("map_cache_img")
 
-                                        def _handle_map_click(_click):
-                        # Clique dentro do fragment não dispara o script inteiro; então
-                        # processamos o clique AQUI e forçamos rerun apenas quando há interação.
-                        try:
-                            tile_px_eff = int(st.session_state.get(f"_tile_px_{rid}", TILE_SIZE) or TILE_SIZE)
-                            col = int((_click.get("x", 0) or 0) // tile_px_eff)
-                            row = int((_click.get("y", 0) or 0) // tile_px_eff)
-                        except Exception:
-                            return
+                # Zoom do mapa (ajuda a encaixar melhor em 100%/50% de zoom do navegador)
+                map_zoom = float(st.session_state.get(f"map_zoom_{rid}", 0.90) or 0.90)
+                tile_px = max(1, int(TILE_SIZE * map_zoom))
+                st.session_state[f"_tile_px_{rid}"] = tile_px
 
-                        if not (0 <= row < grid and 0 <= col < grid):
-                            return
+                img_to_show = img
+                if img_to_show and map_zoom != 1.0:
+                    try:
+                        img_to_show = img_to_show.resize(
+                            (max(1, int(img_to_show.width * map_zoom)), max(1, int(img_to_show.height * map_zoom))),
+                            resample=Image.NEAREST,
+                        )
+                    except Exception:
+                        img_to_show = img
+                        tile_px = TILE_SIZE
+                        st.session_state[f"_tile_px_{rid}"] = tile_px
 
-                        # salva seleção para painel contextual
-                        st.session_state[f"arena_sel_{rid}"] = {"row": row, "col": col}
-                        # pausa auto-refresh por alguns segundos para permitir cliques nos botões
-                        st.session_state[f"arena_pause_until_{rid}"] = time.time() + 10
+                with st.container():
+                    click = streamlit_image_coordinates(img_to_show, key=f"map_{rid}")
+            if c_opps is not None:
+                with c_opps:
+                    st.markdown("### 🆚 Oponentes")
+                    opponents = opponents_list
 
-                        ppid = st.session_state.get("placing_pid")
-                        peff = st.session_state.get("placing_effect")
-                        moving_piece_id = st.session_state.get("moving_piece_id")
-                        placing_trainer = st.session_state.get("placing_trainer")
+                    if not opponents:
+                        st.caption("Aguardando...")
+                    else:
+                        for idx, opp_name in enumerate(opponents):
+                            icons = ["🔴", "🟡", "🌸"]
+                            icon = icons[idx] if idx < len(icons) else "⚪"
 
-                        # --------- TERRENOS / ITENS (EFEITOS) ----------
-                        if peff:
-                            curr = state.get("effects") or []
-                            brush_on = bool(st.session_state.get(f"effect_brush_{rid}", True))
+                            with st.expander(f"{icon} {opp_name}", expanded=True):
+                                render_player_column(db, rid, opp_name, room, is_player=False)
 
-                            if peff == "__erase__":
-                                new = [
-                                    e for e in curr
-                                    if not (int((e or {}).get("row", -1)) == row and int((e or {}).get("col", -1)) == col)
-                                ]
-                                if len(new) != len(curr):
-                                    db.collection("rooms").document(rid).collection("public_state").document("state").update({
-                                        "effects": new,
-                                        "updatedAt": firestore.SERVER_TIMESTAMP,
-                                    })
-                                    add_public_event(db, rid, "effect_removed", trainer_name, {"to": [row, col]})
+            # =========================
+            # 8. LÓGICA DE CLIQUE
+            # =========================
+            if click and "x" in click and "y" in click:
+                tile_px_eff = int(st.session_state.get(f"_tile_px_{rid}", TILE_SIZE) or TILE_SIZE)
+                col = int(click["x"] // tile_px_eff)
+                row = int(click["y"] // tile_px_eff)
+                if 0 <= row < grid and 0 <= col < grid:
+                    ppid = st.session_state.get("placing_pid")
+                    peff = st.session_state.get("placing_effect")
+                    moving_piece_id = st.session_state.get("moving_piece_id")
+                    placing_trainer = st.session_state.get("placing_trainer")
+                    if peff:
+                        curr = state.get("effects") or []
+                        brush_on = bool(st.session_state.get(f"effect_brush_{rid}", True))
 
-                                if not brush_on:
-                                    st.session_state["placing_effect"] = None
-                                st.rerun()
-
+                        if peff == "__erase__":
+                            # Remove efeito (se existir) no quadrado clicado
                             new = [
                                 e for e in curr
                                 if not (int((e or {}).get("row", -1)) == row and int((e or {}).get("col", -1)) == col)
                             ]
-                            new.append({"icon": peff, "row": row, "col": col, "id": str(uuid.uuid4())[:8]})
-                            db.collection("rooms").document(rid).collection("public_state").document("state").update({
-                                "effects": new,
-                                "updatedAt": firestore.SERVER_TIMESTAMP,
-                            })
-                            add_public_event(db, rid, "effect", trainer_name, {"icon": peff, "to": [row, col]})
+                            if len(new) != len(curr):
+                                db.collection("rooms").document(rid).collection("public_state").document("state").update({
+                                    "effects": new,
+                                    "updatedAt": firestore.SERVER_TIMESTAMP,
+                                })
+                                add_public_event(db, rid, "effect_removed", trainer_name, {"to": [row, col]})
 
                             if not brush_on:
                                 st.session_state["placing_effect"] = None
                             st.rerun()
 
-                        # --------- COLOCAR POKÉMON ----------
-                        if ppid:
-                            new_id = str(uuid.uuid4())[:8]
-                            am_i_shiny = ppid in (user_data.get("shinies", []) or [])
-                            new_piece = {
-                                "id": new_id,
-                                "pid": ppid,
-                                "owner": trainer_name,
-                                "row": row,
-                                "col": col,
-                                "revealed": True,
-                                "status": "active",
-                                "shiny": am_i_shiny,
-                            }
-                            upsert_piece(db, rid, new_piece)
-                            mark_pid_seen(db, rid, ppid)
-                            add_public_event(db, rid, "piece_placed", trainer_name, {"pid": ppid, "to": [row, col]})
-                            st.session_state.pop("placing_pid", None)
-                            st.rerun()
+                        # Aplica/atualiza efeito
+                        new = [
+                            e for e in curr
+                            if not (int((e or {}).get("row", -1)) == row and int((e or {}).get("col", -1)) == col)
+                        ]
+                        new.append({"icon": peff, "row": row, "col": col, "id": str(uuid.uuid4())[:8]})
+                        db.collection("rooms").document(rid).collection("public_state").document("state").update({
+                            "effects": new,
+                            "updatedAt": firestore.SERVER_TIMESTAMP,
+                        })
+                        add_public_event(db, rid, "effect", trainer_name, {"icon": peff, "to": [row, col]})
 
-                        # --------- COLOCAR TREINADOR ----------
-                        if placing_trainer:
-                            s_now = get_state(db, rid)
-                            all_p = s_now.get("pieces") or []
-                            avatar_choice = user_data.get("trainer_profile", {}).get("avatar_choice")
-                            existing_trainer = next(
-                                (p for p in all_p if p.get("owner") == trainer_name and p.get("kind") == "trainer"),
-                                None,
-                            )
-                            if avatar_choice:
-                                if existing_trainer:
-                                    existing_trainer["row"] = row
-                                    existing_trainer["col"] = col
-                                    existing_trainer["avatar"] = avatar_choice
-                                    existing_trainer["revealed"] = True
-                                    upsert_piece(db, rid, existing_trainer)
-                                else:
-                                    new_id = str(uuid.uuid4())[:8]
-                                    new_piece = {
-                                        "id": new_id,
-                                        "kind": "trainer",
-                                        "avatar": avatar_choice,
-                                        "owner": trainer_name,
-                                        "row": row,
-                                        "col": col,
-                                        "revealed": True,
-                                        "status": "active",
-                                    }
-                                    upsert_piece(db, rid, new_piece)
-                                add_public_event(db, rid, "trainer_placed", trainer_name, {"to": [row, col]})
-                            st.session_state["placing_trainer"] = None
-                            st.rerun()
-
-                        # --------- MOVER PEÇA ----------
-                        if moving_piece_id and is_player:
-                            s_now = get_state(db, rid)
-                            all_p = s_now.get("pieces") or []
-                            mover = next((p for p in all_p if p.get("id") == moving_piece_id), None)
-                            if mover:
-                                old_pos = [mover.get("row"), mover.get("col")]
-                                mover["row"] = row
-                                mover["col"] = col
-                                upsert_piece(db, rid, mover)
-                                add_public_event(db, rid, "move", trainer_name, {
-                                    "pid": mover.get("pid"),
-                                    "from": old_pos,
-                                    "to": [row, col],
-                                })
-                                st.session_state["moving_piece_id"] = None
-                            st.rerun()
-
-                        # Só seleção (sem modo ativo): rerun para atualizar painel contextual.
+                        if not brush_on:
+                            st.session_state["placing_effect"] = None
                         st.rerun()
 
-                    def _map_body():
-                        _click = streamlit_image_coordinates(img_to_show, key=f"map_{rid}")
-                        if _click and "x" in _click and "y" in _click:
-                            _handle_map_click(_click)
-
-                    if auto_on_map:
-                        @st.fragment(run_every=2)
-                        def _map_frag_auto():
-                            _map_body()
-                        _map_frag_auto()
-                    else:
-                        @st.fragment
-                        def _map_frag_static():
-                            _map_body()
-                        _map_frag_static()
-if c_opps is not None:
-                    with c_opps:
-                        # ==========================
-                        # 🎯 Painel Contextual (clique no mapa)
-                        # ==========================
-                        sel = st.session_state.get(f"arena_sel_{rid}") or {}
-                        if sel:
-                            srow = int(sel.get("row", -1))
-                            scol = int(sel.get("col", -1))
-                            st.markdown("### 🎯 Seleção")
-                            st.caption(f"Tile: **({srow}, {scol})**")
-
-                            # terreno/efeito no tile
-                            eff_here = None
-                            try:
-                                for e in (field_effects or []):
-                                    if int((e or {}).get("row", -1)) == srow and int((e or {}).get("col", -1)) == scol:
-                                        eff_here = (e or {}).get("type") or (e or {}).get("effect") or (e or {}).get("id")
-                                        break
-                            except Exception:
-                                eff_here = None
-                            st.caption(f"Terreno: **{eff_here or '—'}**")
-
-                            # peça no tile (visível)
-                            piece_here = None
-                            try:
-                                for p in (all_pieces or []):
-                                    if int(p.get("row", -999)) == srow and int(p.get("col", -999)) == scol:
-                                        if p.get("kind") == "trainer":
-                                            # treinador: só mostra se for seu ou se estiver revelado
-                                            if p.get("owner") == trainer_name or p.get("revealed", True):
-                                                piece_here = p
-                                                break
-                                        else:
-                                            # pokemon: só mostra se for seu ou se estiver revelado
-                                            if p.get("owner") == trainer_name or p.get("revealed", True):
-                                                piece_here = p
-                                                break
-                            except Exception:
-                                piece_here = None
-
-                            if piece_here:
-                                owner_p = piece_here.get("owner")
-                                kind_p = piece_here.get("kind")
-                                pid_p = piece_here.get("pid")
-                                st.caption(f"Peça: **{kind_p}** | Dono: **{owner_p}**")
-
-                                # mini-card
-                                if kind_p == "trainer":
-                                    st.info("Treinador no campo.")
-                                else:
-                                    # resolve pid real p/ nome (se for EXT:forma)
-                                    pid_show = pid_p
-                                    p_form = None
-                                    if isinstance(pid_p, str) and pid_p.startswith("EXT:"):
-                                        p_form = pid_p.replace("EXT:", "").strip()
-                                    # hp/cond
-                                    cur_hp, cur_cond, _, is_shiny, _saved_form = get_poke_data(owner_p, pid_p if not p_form else pid_p)
-                                    sprite_url = pokemon_pid_to_image(pid_p, mode="sprite", shiny=is_shiny)
-                                    cpi, cpt = st.columns([1, 2])
-                                    with cpi:
-                                        st.image(sprite_url, width=64)
-                                    with cpt:
-                                        st.markdown(f"**{get_poke_display_name(pid_p)}**")
-                                        st.caption(f"HP: {cur_hp}/6")
-                                        if cur_cond:
-                                            st.caption(" ".join(cur_cond))
-
-                                # botões contextuais
-                                b1, b2 = st.columns(2)
-                                with b1:
-                                    if st.button("🚶 Mover", key=f"ctx_move_{rid}", disabled=not (piece_here.get('owner') == trainer_name and piece_here.get('kind') != 'trainer')):
-                                        st.session_state["moving_piece_id"] = piece_here.get("id")
-                                        st.session_state["placing_pid"] = None
-                                        st.session_state["placing_trainer"] = None
-                                        st.session_state["placing_effect"] = None
-                                        st.rerun()
-                                with b2:
-                                    if st.button("⚔️ Atacar", key=f"ctx_attack_{rid}", disabled=not is_player):
-                                        # inicia combate se estiver idle e você puder agir
-                                        try:
-                                            if b_data.get("status") == "idle" and is_player:
-                                                battle_ref.set({"status": "setup", "attacker": trainer_name, "attack_move": None, "logs": []})
-                                            # pré-seleciona alvo na calculadora (se houver)
-                                            if piece_here.get("kind") != "trainer":
-                                                st.session_state[f"atk_target_{rid}"] = piece_here.get("id")
-                                            # se a peça é sua, preenche atacante também
-                                            if piece_here.get("owner") == trainer_name and piece_here.get("kind") != "trainer":
-                                                st.session_state[f"atk_self_{rid}"] = piece_here.get("pid")
-                                        except Exception:
-                                            pass
-                                        st.rerun()
+                    elif ppid:
+                        new_id = str(uuid.uuid4())[:8]
+                        # Stats já estão no banco, não precisa passar aqui
+                        am_i_shiny = ppid in user_data.get("shinies", [])
+                        new_piece = {
+                            "id": new_id, 
+                            "pid": ppid, 
+                            "owner": trainer_name, 
+                            "row": row, 
+                            "col": col, 
+                            "revealed": True, 
+                            "status": "active",
+                            "shiny": am_i_shiny # <--- SALVA NA PEÇA
+                        }
+                        upsert_piece(db, rid, new_piece)
+                        mark_pid_seen(db, rid, ppid)
+                        add_public_event(db, rid, "piece_placed", trainer_name, {"pid": ppid, "to": [row, col]})
+                        st.session_state.pop("placing_pid", None)
+                        st.rerun()
+                    elif placing_trainer:
+                        s_now = get_state(db, rid)
+                        all_p = s_now.get("pieces") or []
+                        avatar_choice = user_data.get("trainer_profile", {}).get("avatar_choice")
+                        existing_trainer = next(
+                            (p for p in all_p if p.get("owner") == trainer_name and p.get("kind") == "trainer"),
+                            None,
+                        )
+                        if avatar_choice:
+                            if existing_trainer:
+                                existing_trainer["row"] = row
+                                existing_trainer["col"] = col
+                                existing_trainer["avatar"] = avatar_choice
+                                existing_trainer["revealed"] = True
+                                upsert_piece(db, rid, existing_trainer)
                             else:
-                                st.caption("Nenhuma peça visível neste tile.")
-                        else:
-                            st.markdown("### 🎯 Seleção")
-                            st.caption("Clique no mapa para ver detalhes.")
-                        st.markdown("### 🆚 Oponentes")
-                        opponents = opponents_list
-
-                        if not opponents:
-                            st.caption("Aguardando...")
-                        else:
-                            for idx, opp_name in enumerate(opponents):
-                                icons = ["🔴", "🟡", "🌸"]
-                                icon = icons[idx] if idx < len(icons) else "⚪"
-
-                                with st.expander(f"{icon} {opp_name}", expanded=True):
-                                    render_player_column(opp_name, f"🆚 {opp_name}", is_me=False)
-
-                # =========================
-                with tab_inic:
-            st.markdown("### 🧭 Iniciativa")
-
-            # Lê valores atuais do banco (persistentes na sala)
-            init_map = (b_data.get("initiative") or {})
-            try:
-                init_map = dict(init_map)
-            except Exception:
-                init_map = {}
-
-            # Pega peças/effects atuais (respeita visibilidade)
-            s_now = get_state(db, rid)
-            pieces_now = s_now.get("pieces") or []
-            effects_now = s_now.get("effects") or []
-
-            # Filtra peças visíveis (mesma regra da arena)
-            visible_pieces = []
-            for p in pieces_now:
-                if p.get("kind") == "trainer":
-                    if p.get("owner") == trainer_name or p.get("revealed", True):
-                        visible_pieces.append(p)
-                else:
-                    if p.get("owner") == trainer_name or p.get("revealed", True):
-                        visible_pieces.append(p)
-
-            def _init_update(piece_id: str):
-                key = f"ini_{rid}_{piece_id}"
-                val = int(st.session_state.get(key, 0) or 0)
-                cur = (battle_ref.get().to_dict() or {}).get("initiative") or {}
-                try:
-                    cur = dict(cur)
-                except Exception:
-                    cur = {}
-                cur[str(piece_id)] = val
-                battle_ref.set({"initiative": cur}, merge=True)
-
-            c_top1, c_top2 = st.columns([2, 1])
-            with c_top1:
-                st.caption("Anote a iniciativa de cada item visível na arena. (Persistente na sala)")
-            with c_top2:
-                if trainer_name == owner_name:
-                    if st.button("🧹 Limpar iniciativas", help="Remove todas as iniciativas anotadas (apenas host)."):
-                        battle_ref.set({"initiative": {}}, merge=True)
+                                new_id = str(uuid.uuid4())[:8]
+                                new_piece = {
+                                    "id": new_id,
+                                    "kind": "trainer",
+                                    "avatar": avatar_choice,
+                                    "owner": trainer_name,
+                                    "row": row,
+                                    "col": col,
+                                    "revealed": True,
+                                    "status": "active",
+                                }
+                                upsert_piece(db, rid, new_piece)
+                            add_public_event(db, rid, "trainer_placed", trainer_name, {"to": [row, col]})
+                        st.session_state["placing_trainer"] = None
                         st.rerun()
+                    elif moving_piece_id and is_player:
+                        s_now = get_state(db, rid)
+                        all_p = s_now.get("pieces") or []
+                        mover = next((p for p in all_p if p["id"] == moving_piece_id), None)
+                        if mover:
+                            # 1. Guarda a posição antiga para o Log
+                            old_pos = [mover["row"], mover["col"]]
 
-            # Lista ordenada por iniciativa desc
-            entries = []
-            for p in visible_pieces:
-                pid = p.get("pid")
-                piece_id = str(p.get("id") or "")
-                if not piece_id:
-                    continue
-                ini_val = int(init_map.get(piece_id, 0) or 0)
-                entries.append((ini_val, p))
+                            # 2. Atualiza para a nova posição
+                            mover["row"] = row
+                            mover["col"] = col
 
-            entries.sort(key=lambda x: x[0], reverse=True)
+                            # 3. Salva a peça no Firebase
+                            upsert_piece(db, rid, mover)
 
-            if not entries and not effects_now:
-                st.info("Nenhum item para iniciativa ainda (coloque peças na arena).")
+                            # 4. Registra o movimento publicamente NO LOG
+                            add_public_event(db, rid, "move", trainer_name, {
+                                "pid": mover["pid"],
+                                "from": old_pos,
+                                "to": [row, col]
+                            })
 
-            # Cards de iniciativa (peças)
-            for ini_val, p in entries:
-                piece_id = str(p.get("id"))
-                owner_p = p.get("owner") or "—"
-                kind_p = p.get("kind") or "pokemon"
-                row_p = p.get("row")
-                col_p = p.get("col")
 
-                if kind_p == "trainer":
-                    title = f"🧍 {owner_p}"
-                    sprite_url = None
+
+                            # 5. Limpa a seleção e recarrega
+                            st.session_state["moving_piece_id"] = None
+                            st.rerun()
+
+
+        with tab_inic:
+            st.markdown("### 🧭 Iniciativa")
+            st.caption("Anote e organize a iniciativa de qualquer item/peça presente na arena.")
+
+            s_now = get_state(db, rid)
+            _pieces = s_now.get("pieces") or []
+            _effects = s_now.get("effects") or []
+            init_store = (b_data.get("initiative") or {})
+
+            rows = []
+            for p in _pieces:
+                pid_label = str(p.get("pid") or "")
+                if p.get("kind") == "trainer":
+                    label = f"🧍 Treinador • {p.get('owner') or '—'}"
                 else:
-                    title = f"{get_poke_display_name(p.get('pid'))} ({owner_p})"
-                    try:
-                        sprite_url = pokemon_pid_to_image(p.get("pid"), mode="sprite", shiny=bool(p.get("shiny", False)))
-                    except Exception:
-                        sprite_url = None
+                    label = f"🐾 {get_poke_display_name(pid_label)} • {p.get('owner') or '—'}"
 
-                st.markdown("<div class='init-card'>", unsafe_allow_html=True)
-                c1, c2, c3 = st.columns([1, 4, 1], vertical_alignment="center")
-                with c1:
-                    if sprite_url:
-                        st.image(sprite_url, width=56)
-                    else:
-                        st.markdown("🧭")
-                with c2:
-                    st.markdown(f"**{title}**")
-                    pos_txt = ""
-                    if row_p is not None and col_p is not None:
-                        pos_txt = f" · Pos: ({row_p},{col_p})"
-                    st.caption(f"ID: {piece_id}{pos_txt}")
-                with c3:
-                    st.number_input(
-                        "Ini",
-                        value=int(ini_val),
-                        step=1,
-                        key=f"ini_{rid}_{piece_id}",
-                        label_visibility="collapsed",
-                        on_change=_init_update,
-                        args=(piece_id,),
-                    )
-                st.markdown("</div>", unsafe_allow_html=True)
+                key = f"{p.get('kind','piece')}:{p.get('id')}"
+                saved = init_store.get(key) or {}
+                rows.append({
+                    "key": key,
+                    "item": label,
+                    "pos": f"{int(p.get('row',0))},{int(p.get('col',0))}",
+                    "initiative": int(saved.get("initiative") or 0),
+                    "note": str(saved.get("note") or ""),
+                })
 
-            # (Opcional) efeitos/terrenos também podem ter iniciativa (por ID)
-            with st.expander("✨ Terrenos/Efeitos (opcional)", expanded=False):
-                eff_entries = []
-                for e in (effects_now or []):
-                    eid = str((e or {}).get("id") or "")
-                    if not eid:
-                        continue
-                    icon = (e or {}).get("icon") or "✨"
-                    r = (e or {}).get("row")
-                    c = (e or {}).get("col")
-                    ini_val = int(init_map.get(f"eff:{eid}", 0) or 0)
-                    eff_entries.append((ini_val, eid, icon, r, c))
-                eff_entries.sort(key=lambda x: x[0], reverse=True)
+            for e in _effects:
+                eid = str(e.get("id") or f"{e.get('row')}_{e.get('col')}_{e.get('icon')}")
+                key = f"effect:{eid}"
+                saved = init_store.get(key) or {}
+                rows.append({
+                    "key": key,
+                    "item": f"🧩 Terreno {str(e.get('icon') or '—')}",
+                    "pos": f"{int(e.get('row',0))},{int(e.get('col',0))}",
+                    "initiative": int(saved.get("initiative") or 0),
+                    "note": str(saved.get("note") or ""),
+                })
 
-                def _init_eff_update(eid: str):
-                    key = f"ini_eff_{rid}_{eid}"
-                    val = int(st.session_state.get(key, 0) or 0)
-                    cur = (battle_ref.get().to_dict() or {}).get("initiative") or {}
-                    try:
-                        cur = dict(cur)
-                    except Exception:
-                        cur = {}
-                    cur[f"eff:{eid}"] = val
-                    battle_ref.set({"initiative": cur}, merge=True)
+            if rows:
+                import pandas as _pd
+                df_init = _pd.DataFrame(rows)
+                edited = st.data_editor(
+                    df_init,
+                    hide_index=True,
+                    use_container_width=True,
+                    column_config={
+                        "key": st.column_config.TextColumn("ID", disabled=True),
+                        "item": st.column_config.TextColumn("Item", disabled=True),
+                        "pos": st.column_config.TextColumn("Pos", disabled=True),
+                        "initiative": st.column_config.NumberColumn("Iniciativa", min_value=0, max_value=999, step=1),
+                        "note": st.column_config.TextColumn("Observação"),
+                    },
+                )
 
-                if not eff_entries:
-                    st.caption("Sem efeitos na arena.")
-                else:
-                    for ini_val, eid, icon, r, c in eff_entries:
-                        st.markdown("<div class='init-card'>", unsafe_allow_html=True)
-                        d1, d2, d3 = st.columns([1, 4, 1], vertical_alignment="center")
-                        with d1:
-                            st.markdown(icon)
-                        with d2:
-                            st.markdown(f"**Efeito {icon}**")
-                            st.caption(f"ID: {eid} · Pos: ({r},{c})")
-                        with d3:
-                            st.number_input(
-                                "Ini",
-                                value=int(ini_val),
-                                step=1,
-                                key=f"ini_eff_{rid}_{eid}",
-                                label_visibility="collapsed",
-                                on_change=_init_eff_update,
-                                args=(eid,),
-                            )
-                        st.markdown("</div>", unsafe_allow_html=True)
+                c_save, c_sort = st.columns([1, 1])
+                with c_save:
+                    if st.button("💾 Salvar iniciativa", use_container_width=True):
+                        out = {}
+                        for rec in edited.to_dict("records"):
+                            k = str(rec.get("key") or "").strip()
+                            if not k:
+                                continue
+                            out[k] = {
+                                "initiative": int(rec.get("initiative") or 0),
+                                "note": str(rec.get("note") or ""),
+                            }
+                        battle_ref.update({"initiative": out})
+                        st.success("Iniciativa salva ✅")
+
+                with c_sort:
+                    st.caption("Dica: clique no cabeçalho da coluna **Iniciativa** para ordenar.")
+
+            else:
+                st.info("Sem peças/itens na arena para registrar iniciativa.")
 
         with tab_log:
             st.markdown("### 📜 Log")
+            st.caption("Eventos públicos em tempo real (movimentos, efeitos, rolagens, etc.).")
+            render_public_log_fragment(db, rid, title=None, height=320, show_divider=False, limit=60)
 
-            st.toggle(
-                "🔄 Auto-atualizar Log",
-                value=bool(st.session_state.get(f"log_auto_{rid}", True)),
-                key=f"log_auto_{rid}",
-                help="Desligue se você estiver clicando em ações e não quiser o log mudando na hora.",
-            )
-
-            pause_until = float(st.session_state.get(f"arena_pause_until_{rid}", 0) or 0)
-            in_action = bool(
-                st.session_state.get("moving_piece_id")
-                or st.session_state.get("placing_pid")
-                or st.session_state.get("placing_trainer")
-                or st.session_state.get("placing_effect")
-            )
-            auto_on = bool(st.session_state.get(f"log_auto_{rid}", True)) and (not in_action) and (time.time() >= pause_until)
-
-            def _render_log():
-                render_public_log_fragment(db, rid, title=None, height=420, show_divider=False, limit=60)
-
-            if auto_on:
-                @st.fragment(run_every=2)
-                def _log_fragment_auto():
-                    _render_log()
-                _log_fragment_auto()
+            st.markdown("### ⚔️ Logs do combate")
+            logs = list(reversed(b_data.get("logs") or []))[:60]
+            if not logs:
+                st.caption("Sem logs de combate ainda.")
             else:
-                @st.fragment
-                def _log_fragment_static():
-                    _render_log()
-                _log_fragment_static()
+                for line in logs:
+                    st.markdown(f"- {line}")
 
         st.stop()
-
-        
     elif view == "lobby":
             stop_pvp_sync_listener()
             # --- MAPA DE NOMES (Para exibição amigável) ---
