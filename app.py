@@ -17655,8 +17655,7 @@ elif page == "PvP – Arena Tática":
         
 
         with tab_arena:
-            @st.fragment(run_every=2)
-            def _arena_fragment():
+            def _arena_render():
                 # =========================
                 # 7. LAYOUT DAS COLUNAS (EQUILIBRADO PARA 4 JOGADORES)
                 # =========================
@@ -17959,6 +17958,8 @@ elif page == "PvP – Arena Tática":
                     if 0 <= row < grid and 0 <= col < grid:
                         # salva seleção para painel contextual
                         st.session_state[f"arena_sel_{rid}"] = {"row": row, "col": col}
+                        # pausa o auto-refresh por alguns segundos para permitir cliques nos botões contextuais
+                        st.session_state[f"arena_pause_until_{rid}"] = time.time() + 10
                         ppid = st.session_state.get("placing_pid")
                         peff = st.session_state.get("placing_effect")
                         moving_piece_id = st.session_state.get("moving_piece_id")
@@ -18080,7 +18081,41 @@ elif page == "PvP – Arena Tática":
 
                 # Fora da lógica de clique, mas no final da View Battle
         
-            _arena_fragment()
+
+            # -------------------------------------------------
+            # 🔄 Auto-refresh da Arena (sem atrapalhar cliques)
+            #  - Se você estiver em modo de ação (Mover/Posicionar/Terreno), pausa automaticamente
+            #  - Após um clique no mapa, pausa por alguns segundos para você conseguir apertar botões
+            # -------------------------------------------------
+            st.toggle(
+                "🔄 Auto-atualizar Arena",
+                value=bool(st.session_state.get(f"arena_auto_{rid}", True)),
+                key=f"arena_auto_{rid}",
+                help="Desligue se o refresh estiver atrapalhando clicar em Mover/Atacar.",
+            )
+
+            pause_until = float(st.session_state.get(f"arena_pause_until_{rid}", 0) or 0)
+            in_action = bool(
+                st.session_state.get("moving_piece_id")
+                or st.session_state.get("placing_pid")
+                or st.session_state.get("placing_trainer")
+                or st.session_state.get("placing_effect")
+            )
+            auto_on = bool(st.session_state.get(f"arena_auto_{rid}", True)) and (not in_action) and (time.time() >= pause_until)
+
+            if auto_on:
+                @st.fragment(run_every=2)
+                def _arena_fragment_auto():
+                    _arena_render()
+
+                _arena_fragment_auto()
+            else:
+                @st.fragment
+                def _arena_fragment_static():
+                    _arena_render()
+
+                _arena_fragment_static()
+
 
         with tab_log:
             st.markdown("### 📜 Log")
