@@ -17014,7 +17014,56 @@ elif page == "PvP – Arena Tática":
                             st.session_state["placing_pid"] = None
                             st.session_state["moving_piece_id"] = None
                             st.rerun()
-        
+
+            # ==========================
+            # UI compacta: lista + detalhes do selecionado
+            # ==========================
+            sel_key = f"pvp_sel_{rid}_{p_name}"
+            if sel_key not in st.session_state:
+                st.session_state[sel_key] = str(party_list[0]) if party_list else None
+            selected_pid = st.session_state.get(sel_key)
+
+            def _hp_color(hp_val: int) -> str:
+                try:
+                    v = int(hp_val)
+                except Exception:
+                    v = 0
+                if v <= 0:
+                    return "#64748b"  # slate
+                if v <= 2:
+                    return "#ef4444"  # red
+                if v <= 4:
+                    return "#f59e0b"  # amber
+                return "#22c55e"      # green
+
+            def _hp_bar_html(hp_val: int, max_hp: int = 6) -> str:
+                try:
+                    v = int(hp_val)
+                except Exception:
+                    v = 0
+                v = max(0, min(max_hp, v))
+                pct = int(round((v / max_hp) * 100)) if max_hp else 0
+                col = _hp_color(v)
+                return f"""<div style='display:flex;align-items:center;gap:10px;margin-top:4px;'>
+                    <div style='flex:1;height:10px;background:rgba(148,163,184,0.25);border:1px solid rgba(148,163,184,0.22);border-radius:999px;overflow:hidden;'>
+                      <div style='width:{pct}%;height:100%;background:{col};'></div>
+                    </div>
+                    <div style='min-width:48px;text-align:right;font-family:monospace;color:#e2e8f0;'>{v}/{max_hp}</div>
+                </div>"""
+
+            def _badges_html(conds: list[str], limit: int = 3) -> str:
+                conds = conds or []
+                show = conds[:limit]
+                extra = max(0, len(conds) - len(show))
+                chips = "".join([
+                    f"<span class='pvp-badge' style='font-size:11px;padding:2px 8px;border-radius:999px;margin-right:6px;display:inline-block;'>{{c}}</span>"
+                    for c in show
+                ])
+                if extra:
+                    chips += f"<span class='pvp-badge' style='font-size:11px;padding:2px 8px;border-radius:999px;opacity:0.85;'>+{extra}</span>"
+                return chips
+
+
             for i, pid in enumerate(party_list):
                 # 1. Agora recuperamos 5 valores (incluindo p_form)
                 cur_hp, cur_cond, cur_stats, is_shiny, p_form = get_poke_data(p_name, pid)
@@ -17045,81 +17094,132 @@ elif page == "PvP – Arena Tática":
                 # Container Visual
                 with st.container():
                     if is_me:
-                        # Se estiver movendo ou colocando, destaca visualmente
+                        # --- Linha compacta (sempre visível) ---
+                        is_busy = (moving_piece_id is not None) or (placing_pid is not None) or bool(placing_trainer)
+                        is_selected = (str(pid) == str(selected_pid))
+                        p_real_name = get_poke_display_name(pid)
+                        loc_lbl = "No campo" if is_on_map else "Mochila"
+
+                        # Destaque sutil se estiver em ação
                         if is_moving_this or is_placing_this:
-                             st.markdown(f"""
-                                <div style="
-                                    background: rgba(0,0,0,0.3); 
-                                    border: 2px solid {border_color}; 
-                                    border-radius: 8px; 
-                                    padding: 5px; 
-                                    text-align: center; 
-                                    margin-bottom: 5px;">
-                                    <div style="font-weight:bold; color:{border_color}; font-size:12px;">
-                                        {'📍 SELECIONE O DESTINO NO MAPA' if is_moving_this else '📍 CLIQUE NO MAPA PARA POSICIONAR'}
-                                    </div>
-                                </div>
-                             """, unsafe_allow_html=True)
+                            border_color = "#FFCC00" if is_moving_this else "#38bdf8"
+                            st.markdown(
+                                f"<div style='height:2px;background:{border_color};border-radius:999px;margin:4px 0 10px 0;'></div>",
+                                unsafe_allow_html=True,
+                            )
 
-                        c_img, c_ctrl = st.columns([1, 2.5])
-                        
-                        with c_img:
-                            # Imagem (Cinza se fainted)
+                        c_row_img, c_row_mid, c_row_act = st.columns([0.85, 2.85, 1.30])
+
+                        with c_row_img:
                             if cur_hp == 0:
-                                st.markdown(f'<img src="{sprite_url}" style="width:100%; filter:grayscale(100%); opacity:0.6;">', unsafe_allow_html=True)
-                                st.caption("**FAINTED**")
+                                st.markdown(
+                                    f'<img src="{sprite_url}" style="width:56px;filter:grayscale(100%);opacity:0.65;">',
+                                    unsafe_allow_html=True,
+                                )
+                                st.caption("FAINTED")
                             else:
-                                st.image(sprite_url, width="stretch")
-        
-                            # Botões de Controle da Peça (Abaixo da imagem)
-                            if is_on_map and p_obj:
-                                is_rev = p_obj.get("revealed", True)
-                                c_vis, c_del = st.columns(2)
-                                with c_vis:
-                                    if st.button("👁️" if is_rev else "✅", key=f"v_{p_name}_{pid}_{i}", help="Revelar/Esconder"):
-                                        p_obj["revealed"] = not is_rev
-                                        upsert_piece(db, rid, p_obj)
-                                        if p_obj["revealed"]: mark_pid_seen(db, rid, pid)
+                                st.image(sprite_url, width=56)
+
+                        with c_row_mid:
+                            st.markdown(
+                                f"**{p_real_name}** <span style='color:#94a3b8;font-size:12px;margin-left:8px;'>{loc_lbl}</span>",
+                                unsafe_allow_html=True,
+                            )
+                            if cur_cond:
+                                st.markdown(_badges_html(cur_cond, limit=3), unsafe_allow_html=True)
+                            else:
+                                st.markdown(
+                                    "<span style='color:#94a3b8;font-size:12px;'>Sem status negativos.</span>",
+                                    unsafe_allow_html=True,
+                                )
+                            st.markdown(_hp_bar_html(cur_hp, 6), unsafe_allow_html=True)
+
+                        with c_row_act:
+                            a1, a2 = st.columns(2)
+                            with a1:
+                                if st.button(
+                                    "🔍",
+                                    key=f"sel_{p_name}_{pid}_{i}",
+                                    help="Detalhes",
+                                    use_container_width=True,
+                                ):
+                                    st.session_state[sel_key] = str(pid)
+                                    st.rerun()
+
+                            with a2:
+                                main_icon = "🚶" if is_on_map else "📍"
+                                main_help = "Mover" if is_on_map else "Colocar no campo"
+                                disabled_main = is_busy and not (is_moving_this or is_placing_this)
+                                if st.button(
+                                    main_icon,
+                                    key=f"main_{p_name}_{pid}_{i}",
+                                    help=main_help,
+                                    disabled=disabled_main or (cur_hp <= 0),
+                                    use_container_width=True,
+                                ):
+                                    if is_on_map and p_obj:
+                                        st.session_state["moving_piece_id"] = p_obj.get("id")
+                                        st.session_state["arena_pause_until"] = time.time() + 1.2
+                                        st.session_state["placing_pid"] = None
+                                        st.session_state["placing_trainer"] = None
                                         st.rerun()
-                                with c_del:
-                                    if st.button("❌", key=f"r_{p_name}_{pid}_{i}", help="Remover do Mapa"):
-                                        delete_piece(db, rid, p_obj["id"])
-                                        add_public_event(db, rid, "pokemon_removed", p_name, {"pid": pid})
-                                        st.session_state["moving_piece_id"] = None # Reseta move se deletar
+                                    else:
+                                        st.session_state["placing_pid"] = pid
+                                        st.session_state["arena_pause_until"] = time.time() + 1.2
+                                        st.session_state["placing_effect"] = None
+                                        st.session_state["moving_piece_id"] = None
+                                        st.session_state["placing_trainer"] = None
                                         st.rerun()
 
-                        with c_ctrl:
-                            # --- LÓGICA DE INTERFACE DE AÇÃO ---
+                        # --- Detalhes (apenas do selecionado) ---
+                        if is_selected:
+                            st.markdown(
+                                "<div style='height:8px;'></div>",
+                                unsafe_allow_html=True,
+                            )
+
                             if is_moving_this:
-                                st.info("Clique em um quadrado vazio.")
-                                if st.button("🔙 Cancelar Mover", key=f"cncl_move_{pid}"):
+                                st.info("📍 Selecione um quadrado vazio no mapa.")
+                                if st.button("🔙 Cancelar mover", key=f"cncl_move_{p_name}_{pid}_{i}"):
                                     st.session_state["moving_piece_id"] = None
                                     st.rerun()
-                            
+
                             elif is_placing_this:
-                                st.info("Clique onde quer invocar.")
-                                if st.button("🔙 Cancelar", key=f"cncl_place_{pid}"):
+                                st.info("📍 Clique no mapa para posicionar.")
+                                if st.button("🔙 Cancelar posicionamento", key=f"cncl_place_{p_name}_{pid}_{i}"):
                                     st.session_state["placing_pid"] = None
                                     st.rerun()
-                                    
+
                             else:
-                                # Interface Padrão (HP e Status)
-                                # Interface Padrão (HP/Status) em formato de card
-                                p_real_name = get_poke_display_name(pid)
-                                st.markdown(f"#### {p_real_name}")
+                                # Controles do Pokémon no campo (revelar/remover)
+                                if is_on_map and p_obj:
+                                    c_vis, c_del = st.columns(2)
+                                    with c_vis:
+                                        is_rev = p_obj.get("revealed", True)
+                                        if st.button(
+                                            "👁️" if is_rev else "✅",
+                                            key=f"v_{p_name}_{pid}_{i}_detail",
+                                            help="Revelar/Esconder",
+                                            use_container_width=True,
+                                        ):
+                                            p_obj["revealed"] = not is_rev
+                                            upsert_piece(db, rid, p_obj)
+                                            if p_obj["revealed"]:
+                                                mark_pid_seen(db, rid, pid)
+                                            st.rerun()
+                                    with c_del:
+                                        if st.button(
+                                            "❌",
+                                            key=f"r_{p_name}_{pid}_{i}_detail",
+                                            help="Remover do Mapa",
+                                            use_container_width=True,
+                                        ):
+                                            delete_piece(db, rid, p_obj.get("id"))
+                                            add_public_event(db, rid, "pokemon_removed", p_name, {"pid": pid})
+                                            st.session_state["moving_piece_id"] = None
+                                            st.rerun()
 
-                                if cur_cond:
-                                    badges = "".join([f"<span class='pvp-badge'>{c}</span>" for c in cur_cond])
-                                    st.markdown(badges, unsafe_allow_html=True)
-                                else:
-                                    st.caption("Sem status negativos.")
-
-                                try:
-                                    st.progress(float(int(cur_hp)) / 6.0)
-                                except Exception:
-                                    pass
-                                st.caption(f"{hpi} HP: {cur_hp}/6")
-
+                                # Editor de HP / Status (mesmas chaves e callback)
                                 st.slider(
                                     "HP",
                                     0,
@@ -17140,24 +17240,33 @@ elif page == "PvP – Arena Tática":
                                     on_change=update_poke_state_callback,
                                     args=(db, rid, p_name, pid, i),
                                 )
-                                # Botões de Ação Principal
+
+                                # Botão principal grande (opcional) para conforto
                                 if cur_hp > 0:
-                                    # Bloqueia botões se outra ação estiver ocorrendo
-                                    is_busy = (moving_piece_id is not None) or (placing_pid is not None) or bool(placing_trainer)
-                                    
-                                    if is_on_map:
-                                        if st.button("🚶 Mover", key=f"m_{p_name}_{pid}_{i}", disabled=is_busy, use_container_width=True):
-                                            st.session_state["moving_piece_id"] = p_obj["id"]
+                                    if is_on_map and p_obj:
+                                        if st.button(
+                                            "🚶 Mover",
+                                            key=f"m_{p_name}_{pid}_{i}_detail",
+                                            disabled=is_busy,
+                                            use_container_width=True,
+                                        ):
+                                            st.session_state["moving_piece_id"] = p_obj.get("id")
                                             st.session_state["arena_pause_until"] = time.time() + 1.2
                                             st.rerun()
                                     else:
-                                        if st.button("📍 Colocar no Campo", key=f"p_{p_name}_{pid}_{i}", disabled=is_busy, use_container_width=True):
+                                        if st.button(
+                                            "📍 Colocar no Campo",
+                                            key=f"p_{p_name}_{pid}_{i}_detail",
+                                            disabled=is_busy,
+                                            use_container_width=True,
+                                        ):
                                             st.session_state["placing_pid"] = pid
                                             st.session_state["arena_pause_until"] = time.time() + 1.2
                                             st.session_state["placing_effect"] = None
                                             st.rerun()
-        
-                    
+
+                            st.markdown("<hr style='opacity:0.15;margin:10px 0;'>", unsafe_allow_html=True)
+
                     else:
                         # ==========================
                         # VISÃO DO OPONENTE (Corrigida)
