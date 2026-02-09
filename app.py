@@ -12350,27 +12350,27 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
                 if portrait_b64:
                     portrait_html = f"<div class='ds-portrait'><img src='data:image/{ext};base64,{portrait_b64}' /></div>"
 
-                sprites_html = ""
-                if sprite_imgs:
-                    sprites_html = "<div class='ds-sprites'>" + "".join(
-                        f"<img src='{u}' alt='sprite' style='width:72px;height:72px;image-rendering:pixelated;'/>"
-                        for u in sprite_imgs
-                    ) + "</div>"
+                parts = [
+                    '<div class="ds-npc-panel right">',
+                    '  <div class="ds-frame">',
+                    f'    <div class="ds-name">{sel}</div>',
+                    f'    <div class="ds-meta">{meta_line}</div>',
+                ]
 
+                if portrait_html:
+                    parts.append(portrait_html)
 
-                panel_html = f"""
-                <div class="ds-npc-panel right">
-                    <div class="ds-frame">
-                        <div class="ds-name">{sel}</div>
-                        <div class="ds-meta">{meta_line}</div>
-                        {portrait_html}
-                        {sprites_html}
-                        <div class="ds-section-title">História</div>
-                        <div class="ds-history">{h_html}</div>
-                    </div>
-                </div>
-                """
-                st.markdown(panel_html, unsafe_allow_html=True)
+                if sprites_html:
+                    parts.append(sprites_html)
+
+                parts += [
+                    '    <div class="ds-section-title">História</div>',
+                    f'    <div class="ds-history">{h_html}</div>',
+                    '  </div>',
+                    '</div>',
+                ]
+
+                st.markdown("\n".join(parts), unsafe_allow_html=True)
         
         return
 
