@@ -12349,7 +12349,15 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
                 portrait_html = ""
                 if portrait_b64:
                     portrait_html = f"<div class='ds-portrait'><img src='data:image/{ext};base64,{portrait_b64}' /></div>"
+                
+                sprites_html = ""
+                if sprite_imgs:
+                    sprites_html = "<div class='ds-sprites'>" + "".join(
+                        f"<img src='{u}' alt='sprite' style='width:72px;height:72px;image-rendering:pixelated;'/>"
+                        for u in sprite_imgs
+                    ) + "</div>"
 
+                
                 parts = [
                     '<div class="ds-npc-panel right">',
                     '  <div class="ds-frame">',
