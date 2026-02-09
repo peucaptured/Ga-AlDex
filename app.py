@@ -16933,19 +16933,25 @@ elif page == "PvP – Arena Tática":
         # Definição da Função de Renderização da Coluna (DEFINIDA ANTES DE USAR)
         # Definição da Função de Renderização da Coluna (MELHORADA)
         def render_player_column(p_name, p_label, is_me):
-            if is_me:
-                photo_data = get_trainer_photo_thumb(user_data)
-                if photo_data:
-                    st.markdown(
-                        f"### <img src='{photo_data}' style='width:32px;height:32px;object-fit:cover;border-radius:6px;margin-right:6px;vertical-align:middle;'> {p_label}",
-                        unsafe_allow_html=True,
-                    )
+
+            # --- Painel visual (conceito) ---
+            with st.container():
+                st.markdown("<div class='pvp-team-panel-marker'></div>", unsafe_allow_html=True)
+
+                if is_me:
+                    photo_data = get_trainer_photo_thumb(user_data)
+                    if photo_data:
+                        st.markdown(
+                            f"""### <span class='pvp-team-title'><img src='{photo_data}' class='pvp-mini'/> {p_label}</span>""",
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.markdown(f"### {p_label}")
                 else:
                     st.markdown(f"### {p_label}")
-            else:
-                st.markdown(f"### {p_label}")
-            
-            # Busca party e estado público
+
+                # Busca party e estado público
+# Busca party e estado público
             p_doc_data = db.collection("rooms").document(rid).collection("public_state").document("players").get().to_dict() or {}
             party_list = p_doc_data.get(p_name, [])[:8] 
             
@@ -16971,7 +16977,9 @@ elif page == "PvP – Arena Tática":
             ]
 
             if is_me:
-                st.markdown("#### 🙂 Meu Avatar")
+                with st.container():
+                    st.markdown("<div class='pvp-avatar-card-marker'></div>", unsafe_allow_html=True)
+                    st.markdown("#### 🙂 Meu Avatar")
                 avatar_choice, avatar_path = get_selected_trainer_avatar(user_data)
                 if avatar_path:
                     st.image(avatar_path, width=96)
@@ -17093,6 +17101,8 @@ elif page == "PvP – Arena Tática":
                 
                 # Container Visual
                 with st.container():
+                    card_cls = "pvp-mon-card-marker" + (" pvp-selected" if (str(pid) == str(selected_pid)) else "")
+                    st.markdown(f"<div class='{card_cls}'></div>", unsafe_allow_html=True)
                     if is_me:
                         # --- Linha compacta (sempre visível) ---
                         is_busy = (moving_piece_id is not None) or (placing_pid is not None) or bool(placing_trainer)
@@ -17464,6 +17474,83 @@ elif page == "PvP – Arena Tática":
             font-size: 12px; font-weight: 700;
             margin-right: 6px;
         }
+        
+        /* =========================
+           PvP / Arena - Team Panel (conceito)
+           ========================= */
+        [data-testid="stVerticalBlock"]:has(.pvp-team-panel-marker){
+            border-radius: 18px;
+            padding: 14px 14px 10px 14px !important;
+            border: 2px solid rgba(148,163,184,0.35);
+            background: radial-gradient(1200px 500px at 20% 0%, rgba(56,189,248,0.12), transparent 60%),
+                        rgba(15,23,42,0.58);
+            box-shadow: inset 0 0 18px rgba(15,23,42,0.40);
+        }
+        .pvp-team-title{
+            display:flex; align-items:center; gap:10px;
+            font-weight:800;
+            letter-spacing: 0.5px;
+        }
+        .pvp-team-title .pvp-mini{
+            width:32px;height:32px;border-radius:10px;object-fit:cover;
+            border:1px solid rgba(226,232,240,0.28);
+            box-shadow: 0 6px 14px rgba(2,6,23,0.35);
+        }
+
+        /* Card de Avatar (topo) */
+        [data-testid="stVerticalBlock"]:has(.pvp-avatar-card-marker){
+            margin-top: 6px;
+            border-radius: 18px;
+            padding: 12px 12px 12px 12px !important;
+            border: 1px solid rgba(148,163,184,0.28);
+            background: rgba(2,6,23,0.28);
+            box-shadow: inset 0 0 14px rgba(2,6,23,0.22);
+        }
+
+        /* Card de Pokémon (cada linha) */
+        [data-testid="stVerticalBlock"]:has(.pvp-mon-card-marker){
+            border-radius: 18px;
+            padding: 12px 12px 10px 12px !important;
+            border: 1px solid rgba(148,163,184,0.22);
+            background: rgba(2,6,23,0.22);
+            box-shadow: 0 10px 20px rgba(2,6,23,0.18);
+            margin-bottom: 10px;
+        }
+        [data-testid="stVerticalBlock"]:has(.pvp-mon-card-marker.pvp-selected){
+            border: 2px solid rgba(56,189,248,0.55);
+            background: radial-gradient(900px 380px at 15% 0%, rgba(56,189,248,0.12), transparent 60%),
+                        rgba(2,6,23,0.22);
+        }
+
+        /* Botões dentro dos cards (aproxima o conceito) */
+        [data-testid="stVerticalBlock"]:has(.pvp-mon-card-marker) [data-testid="stButton"] button,
+        [data-testid="stVerticalBlock"]:has(.pvp-avatar-card-marker) [data-testid="stButton"] button{
+            border-radius: 14px !important;
+            border: 1px solid rgba(148,163,184,0.28) !important;
+            background: linear-gradient(180deg, rgba(56,189,248,0.55) 0%, rgba(14,165,233,0.35) 100%) !important;
+            box-shadow: 0 8px 18px rgba(2,6,23,0.22);
+            color: #e2e8f0 !important;
+            font-weight: 800 !important;
+        }
+        [data-testid="stVerticalBlock"]:has(.pvp-mon-card-marker) [data-testid="stButton"] button:hover,
+        [data-testid="stVerticalBlock"]:has(.pvp-avatar-card-marker) [data-testid="stButton"] button:hover{
+            filter: brightness(1.08);
+            transform: translateY(-1px);
+        }
+
+        /* Botões "ícone" (🔍 / 📍 / 🚶 / 👁️ / ❌) */
+        [data-testid="stVerticalBlock"]:has(.pvp-mon-card-marker) [data-testid="stButton"] button:has(span){
+            min-height: 40px;
+        }
+
+        /* Remove padding extra do bloco interno quando usamos marcadores */
+        [data-testid="stVerticalBlock"] > div:has(.pvp-team-panel-marker),
+        [data-testid="stVerticalBlock"] > div:has(.pvp-avatar-card-marker),
+        [data-testid="stVerticalBlock"] > div:has(.pvp-mon-card-marker){
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
         </style>
         """, unsafe_allow_html=True)
 
