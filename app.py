@@ -17432,8 +17432,10 @@ elif page == "PvP – Arena Tática":
 
             with st.container():
             
+                b_status = (b_data or {}).get("status", "idle")
+
                 # [FASE 0] IDLE
-                if b_data["status"] == "idle":
+                if b_status == "idle":
                     if is_player:
                         if st.button("Nova Batalha (Atacar)"):
                             battle_ref.set({"status": "setup", "attacker": trainer_name, "attack_move": None, "logs": []})
@@ -17442,7 +17444,7 @@ elif page == "PvP – Arena Tática":
                         st.caption("Aguardando combate...")
             
                 # [FASE 1] CONFIGURAR ATAQUE
-                elif b_data["status"] == "setup":
+                elif b_status == "setup":
                     # CORREÇÃO: Parêntese fechado corretamente aqui
                     st.caption(f"**Atacante:** {b_data.get('attacker')}")
                 
@@ -17592,7 +17594,7 @@ elif page == "PvP – Arena Tática":
                         st.info(f"Aguardando {b_data.get('attacker')}...")
 
                 # [FASE 1.5] DEFESA DE ÁREA
-                elif b_data["status"] == "aoe_defense":
+                elif b_status == "aoe_defense":
                     st.info(b_data["logs"][-1])
                     if b_data.get("target_owner") == trainer_name:
                         st.markdown("### 🏃 Rolar Esquiva (Dodge)")
@@ -17622,7 +17624,7 @@ elif page == "PvP – Arena Tática":
                         st.warning("Aguardando defensor...")
 
                 # [FASE 2] INSERIR DANO (Se acertou)
-                elif b_data["status"] == "hit_confirmed":
+                elif b_status == "hit_confirmed":
                     st.success(b_data["logs"][-1])
                 
                     if b_data.get("attacker") == trainer_name:
@@ -17651,7 +17653,7 @@ elif page == "PvP – Arena Tática":
                     else:
                         st.info("Aguardando atacante definir o dano...")
 
-                elif b_data["status"] == "missed":
+                elif b_status == "missed":
                     st.error(b_data["logs"][-1])
                     if b_data.get("attacker") == trainer_name:
                         if st.button("Encerrar"):
@@ -17659,7 +17661,7 @@ elif page == "PvP – Arena Tática":
                             st.rerun()
 
                 # [FASE 3] RESISTÊNCIA FINAL
-                elif b_data["status"] == "waiting_defense":
+                elif b_status == "waiting_defense":
                     is_eff = b_data.get("is_effect", False)
                     base_val = 10 if is_eff else 15
                     rank = int(b_data.get("dmg_base", 0))
@@ -17707,7 +17709,7 @@ elif page == "PvP – Arena Tática":
                         st.warning("Aguardando defesa...")
 
                 # [FASE 4] FIM / SECUNDÁRIO
-                elif b_data["status"] == "finished":
+                elif b_status == "finished":
                     st.markdown(f"## 🩸 Resultado: -{b_data.get('final_bars')} Barras")
                     for log in b_data.get("logs", []): st.text(log)
                 
@@ -17927,10 +17929,143 @@ elif page == "PvP – Arena Tática":
                     )
                     auto_on_map = bool(st.session_state.get(f"arena_auto_{rid}", True)) and (not in_action) and (time.time() >= pause_until)
 
+                                        def _handle_map_click(_click):
+                        # Clique dentro do fragment não dispara o script inteiro; então
+                        # processamos o clique AQUI e forçamos rerun apenas quando há interação.
+                        try:
+                            tile_px_eff = int(st.session_state.get(f"_tile_px_{rid}", TILE_SIZE) or TILE_SIZE)
+                            col = int((_click.get("x", 0) or 0) // tile_px_eff)
+                            row = int((_click.get("y", 0) or 0) // tile_px_eff)
+                        except Exception:
+                            return
+
+                        if not (0 <= row < grid and 0 <= col < grid):
+                            return
+
+                        # salva seleção para painel contextual
+                        st.session_state[f"arena_sel_{rid}"] = {"row": row, "col": col}
+                        # pausa auto-refresh por alguns segundos para permitir cliques nos botões
+                        st.session_state[f"arena_pause_until_{rid}"] = time.time() + 10
+
+                        ppid = st.session_state.get("placing_pid")
+                        peff = st.session_state.get("placing_effect")
+                        moving_piece_id = st.session_state.get("moving_piece_id")
+                        placing_trainer = st.session_state.get("placing_trainer")
+
+                        # --------- TERRENOS / ITENS (EFEITOS) ----------
+                        if peff:
+                            curr = state.get("effects") or []
+                            brush_on = bool(st.session_state.get(f"effect_brush_{rid}", True))
+
+                            if peff == "__erase__":
+                                new = [
+                                    e for e in curr
+                                    if not (int((e or {}).get("row", -1)) == row and int((e or {}).get("col", -1)) == col)
+                                ]
+                                if len(new) != len(curr):
+                                    db.collection("rooms").document(rid).collection("public_state").document("state").update({
+                                        "effects": new,
+                                        "updatedAt": firestore.SERVER_TIMESTAMP,
+                                    })
+                                    add_public_event(db, rid, "effect_removed", trainer_name, {"to": [row, col]})
+
+                                if not brush_on:
+                                    st.session_state["placing_effect"] = None
+                                st.rerun()
+
+                            new = [
+                                e for e in curr
+                                if not (int((e or {}).get("row", -1)) == row and int((e or {}).get("col", -1)) == col)
+                            ]
+                            new.append({"icon": peff, "row": row, "col": col, "id": str(uuid.uuid4())[:8]})
+                            db.collection("rooms").document(rid).collection("public_state").document("state").update({
+                                "effects": new,
+                                "updatedAt": firestore.SERVER_TIMESTAMP,
+                            })
+                            add_public_event(db, rid, "effect", trainer_name, {"icon": peff, "to": [row, col]})
+
+                            if not brush_on:
+                                st.session_state["placing_effect"] = None
+                            st.rerun()
+
+                        # --------- COLOCAR POKÉMON ----------
+                        if ppid:
+                            new_id = str(uuid.uuid4())[:8]
+                            am_i_shiny = ppid in (user_data.get("shinies", []) or [])
+                            new_piece = {
+                                "id": new_id,
+                                "pid": ppid,
+                                "owner": trainer_name,
+                                "row": row,
+                                "col": col,
+                                "revealed": True,
+                                "status": "active",
+                                "shiny": am_i_shiny,
+                            }
+                            upsert_piece(db, rid, new_piece)
+                            mark_pid_seen(db, rid, ppid)
+                            add_public_event(db, rid, "piece_placed", trainer_name, {"pid": ppid, "to": [row, col]})
+                            st.session_state.pop("placing_pid", None)
+                            st.rerun()
+
+                        # --------- COLOCAR TREINADOR ----------
+                        if placing_trainer:
+                            s_now = get_state(db, rid)
+                            all_p = s_now.get("pieces") or []
+                            avatar_choice = user_data.get("trainer_profile", {}).get("avatar_choice")
+                            existing_trainer = next(
+                                (p for p in all_p if p.get("owner") == trainer_name and p.get("kind") == "trainer"),
+                                None,
+                            )
+                            if avatar_choice:
+                                if existing_trainer:
+                                    existing_trainer["row"] = row
+                                    existing_trainer["col"] = col
+                                    existing_trainer["avatar"] = avatar_choice
+                                    existing_trainer["revealed"] = True
+                                    upsert_piece(db, rid, existing_trainer)
+                                else:
+                                    new_id = str(uuid.uuid4())[:8]
+                                    new_piece = {
+                                        "id": new_id,
+                                        "kind": "trainer",
+                                        "avatar": avatar_choice,
+                                        "owner": trainer_name,
+                                        "row": row,
+                                        "col": col,
+                                        "revealed": True,
+                                        "status": "active",
+                                    }
+                                    upsert_piece(db, rid, new_piece)
+                                add_public_event(db, rid, "trainer_placed", trainer_name, {"to": [row, col]})
+                            st.session_state["placing_trainer"] = None
+                            st.rerun()
+
+                        # --------- MOVER PEÇA ----------
+                        if moving_piece_id and is_player:
+                            s_now = get_state(db, rid)
+                            all_p = s_now.get("pieces") or []
+                            mover = next((p for p in all_p if p.get("id") == moving_piece_id), None)
+                            if mover:
+                                old_pos = [mover.get("row"), mover.get("col")]
+                                mover["row"] = row
+                                mover["col"] = col
+                                upsert_piece(db, rid, mover)
+                                add_public_event(db, rid, "move", trainer_name, {
+                                    "pid": mover.get("pid"),
+                                    "from": old_pos,
+                                    "to": [row, col],
+                                })
+                                st.session_state["moving_piece_id"] = None
+                            st.rerun()
+
+                        # Só seleção (sem modo ativo): rerun para atualizar painel contextual.
+                        st.rerun()
+
                     def _map_body():
                         _click = streamlit_image_coordinates(img_to_show, key=f"map_{rid}")
                         if _click and "x" in _click and "y" in _click:
-                            st.session_state[f"_map_click_{rid}"] = _click
+                            _handle_map_click(_click)
 
                     if auto_on_map:
                         @st.fragment(run_every=2)
@@ -17942,9 +18077,7 @@ elif page == "PvP – Arena Tática":
                         def _map_frag_static():
                             _map_body()
                         _map_frag_static()
-
-                    click = st.session_state.pop(f"_map_click_{rid}", None)
-                if c_opps is not None:
+if c_opps is not None:
                     with c_opps:
                         # ==========================
                         # 🎯 Painel Contextual (clique no mapa)
@@ -18055,153 +18188,7 @@ elif page == "PvP – Arena Tática":
                                     render_player_column(opp_name, f"🆚 {opp_name}", is_me=False)
 
                 # =========================
-                # 8. LÓGICA DE CLIQUE
-                # =========================
-                if click and "x" in click and "y" in click:
-                    tile_px_eff = int(st.session_state.get(f"_tile_px_{rid}", TILE_SIZE) or TILE_SIZE)
-                    col = int(click["x"] // tile_px_eff)
-                    row = int(click["y"] // tile_px_eff)
-                    if 0 <= row < grid and 0 <= col < grid:
-                        # salva seleção para painel contextual
-                        st.session_state[f"arena_sel_{rid}"] = {"row": row, "col": col}
-                        # pausa o auto-refresh por alguns segundos para permitir cliques nos botões contextuais
-                        st.session_state[f"arena_pause_until_{rid}"] = time.time() + 10
-                        ppid = st.session_state.get("placing_pid")
-                        peff = st.session_state.get("placing_effect")
-                        moving_piece_id = st.session_state.get("moving_piece_id")
-                        placing_trainer = st.session_state.get("placing_trainer")
-                        if peff:
-                            curr = state.get("effects") or []
-                            brush_on = bool(st.session_state.get(f"effect_brush_{rid}", True))
-
-                            if peff == "__erase__":
-                                # Remove efeito (se existir) no quadrado clicado
-                                new = [
-                                    e for e in curr
-                                    if not (int((e or {}).get("row", -1)) == row and int((e or {}).get("col", -1)) == col)
-                                ]
-                                if len(new) != len(curr):
-                                    db.collection("rooms").document(rid).collection("public_state").document("state").update({
-                                        "effects": new,
-                                        "updatedAt": firestore.SERVER_TIMESTAMP,
-                                    })
-                                    add_public_event(db, rid, "effect_removed", trainer_name, {"to": [row, col]})
-
-                                if not brush_on:
-                                    st.session_state["placing_effect"] = None
-                                st.rerun()
-
-                            # Aplica/atualiza efeito
-                            new = [
-                                e for e in curr
-                                if not (int((e or {}).get("row", -1)) == row and int((e or {}).get("col", -1)) == col)
-                            ]
-                            new.append({"icon": peff, "row": row, "col": col, "id": str(uuid.uuid4())[:8]})
-                            db.collection("rooms").document(rid).collection("public_state").document("state").update({
-                                "effects": new,
-                                "updatedAt": firestore.SERVER_TIMESTAMP,
-                            })
-                            add_public_event(db, rid, "effect", trainer_name, {"icon": peff, "to": [row, col]})
-
-                            if not brush_on:
-                                st.session_state["placing_effect"] = None
-                            st.rerun()
-
-                        elif ppid:
-                            new_id = str(uuid.uuid4())[:8]
-                            # Stats já estão no banco, não precisa passar aqui
-                            am_i_shiny = ppid in user_data.get("shinies", [])
-                            new_piece = {
-                                "id": new_id, 
-                                "pid": ppid, 
-                                "owner": trainer_name, 
-                                "row": row, 
-                                "col": col, 
-                                "revealed": True, 
-                                "status": "active",
-                                "shiny": am_i_shiny # <--- SALVA NA PEÇA
-                            }
-                            upsert_piece(db, rid, new_piece)
-                            mark_pid_seen(db, rid, ppid)
-                            add_public_event(db, rid, "piece_placed", trainer_name, {"pid": ppid, "to": [row, col]})
-                            st.session_state.pop("placing_pid", None)
-                            st.rerun()
-                        elif placing_trainer:
-                            s_now = get_state(db, rid)
-                            all_p = s_now.get("pieces") or []
-                            avatar_choice = user_data.get("trainer_profile", {}).get("avatar_choice")
-                            existing_trainer = next(
-                                (p for p in all_p if p.get("owner") == trainer_name and p.get("kind") == "trainer"),
-                                None,
-                            )
-                            if avatar_choice:
-                                if existing_trainer:
-                                    existing_trainer["row"] = row
-                                    existing_trainer["col"] = col
-                                    existing_trainer["avatar"] = avatar_choice
-                                    existing_trainer["revealed"] = True
-                                    upsert_piece(db, rid, existing_trainer)
-                                else:
-                                    new_id = str(uuid.uuid4())[:8]
-                                    new_piece = {
-                                        "id": new_id,
-                                        "kind": "trainer",
-                                        "avatar": avatar_choice,
-                                        "owner": trainer_name,
-                                        "row": row,
-                                        "col": col,
-                                        "revealed": True,
-                                        "status": "active",
-                                    }
-                                    upsert_piece(db, rid, new_piece)
-                                add_public_event(db, rid, "trainer_placed", trainer_name, {"to": [row, col]})
-                            st.session_state["placing_trainer"] = None
-                            st.rerun()
-                        elif moving_piece_id and is_player:
-                            s_now = get_state(db, rid)
-                            all_p = s_now.get("pieces") or []
-                            mover = next((p for p in all_p if p["id"] == moving_piece_id), None)
-                            if mover:
-                                # 1. Guarda a posição antiga para o Log
-                                old_pos = [mover["row"], mover["col"]]
-
-                                # 2. Atualiza para a nova posição
-                                mover["row"] = row
-                                mover["col"] = col
-
-                                # 3. Salva a peça no Firebase
-                                upsert_piece(db, rid, mover)
-
-                                # 4. Registra o movimento publicamente NO LOG
-                                add_public_event(db, rid, "move", trainer_name, {
-                                    "pid": mover["pid"],
-                                    "from": old_pos,
-                                    "to": [row, col]
-                                })
-
-
-
-                                # 5. Limpa a seleção e recarrega
-                                st.session_state["moving_piece_id"] = None
-                                st.rerun()
-
-                # Fora da lógica de clique, mas no final da View Battle
-
-            # -------------------------------------------------
-            # 🔄 Auto-refresh (toggle) — o refresh automático roda só no MAPA (via fragment)
-            # -------------------------------------------------
-            st.toggle(
-                "🔄 Auto-atualizar Arena",
-                value=bool(st.session_state.get(f"arena_auto_{rid}", True)),
-                key=f"arena_auto_{rid}",
-                help="Desligue se quiser mapa totalmente estático (sem updates a cada 2s).",
-            )
-
-            _arena_render()
-
-
-        
-        with tab_inic:
+                with tab_inic:
             st.markdown("### 🧭 Iniciativa")
 
             # Lê valores atuais do banco (persistentes na sala)
