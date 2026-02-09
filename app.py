@@ -16614,7 +16614,7 @@ elif page == "Minhas Fichas":
     db, bucket = init_firebase()
     sheets = list_sheets(db, trainer_name)
     party_ids_set = {str(p) for p in (user_data.get("party") or [])}
-
+    
     hub_pokemon_ids = []
     _seen_hub_ids = set()
     for raw_pid in (user_data.get("caught") or []):
@@ -16623,25 +16623,38 @@ elif page == "Minhas Fichas":
             continue
         _seen_hub_ids.add(pid)
         hub_pokemon_ids.append(pid)
-
+    
+    def _sheet_pokemon_name(pid_value: str) -> str:
+        pid = str(pid_value).strip()
+        if not pid:
+            return "Pokémon inválido"
+    
+        # Visitante fora da dex
+        if pid.startswith("EXT:"):
+            return pid.replace("EXT:", "", 1).strip() or "Pokémon Externo"
+    
+        pid_no_zero = pid.lstrip("0") or "0"
+    
+        # Busca no df da Pokédex (colunas Nº e Nome)
+        try:
+            hit = df[df["Nº"].astype(str) == pid_no_zero]
+            if not hit.empty:
+                name = str(hit.iloc[0].get("Nome") or "").strip()
+                if name:
+                    return name
+        except Exception:
+            pass
+    
+        return "Pokémon desconhecido"
+    
     def _hub_pid_label(pid_value: str) -> str:
         pid_norm = str(pid_value).strip()
-        if not pid_norm:
-            return "Pokémon inválido"
-
-        if pid_norm.startswith("EXT:"):
-            pname_local = pid_norm.replace("EXT:", "", 1).strip() or "Pokémon Externo"
-            if pname_local == f"ID {pid_norm}":
-                pid_no_zero = pid_norm.lstrip("0") or "0"
-                pname_local = _get_pokemon_name(pid_no_zero)
-        else:
-            try:
-                pname_local = _get_pokemon_name(pid_norm)
-            except Exception:
-                pname_local = pid_norm
-
+        pname_local = _sheet_pokemon_name(pid_norm)
         location_tag = "Equipe" if pid_norm in party_ids_set else "Box"
         return f"{pname_local} — {location_tag}"
+        # se quiser aparecer SÓ o nome, sem "— Box/Equipe":
+        # return pname_local
+
     if not sheets:
         st.info("Você ainda não tem fichas salvas.")
     else:
