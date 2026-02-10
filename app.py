@@ -16106,15 +16106,16 @@ elif page == "Criação Guiada de Fichas":
                 pp_cap_moves = int(pp_total)
                 acerto_pp_total = sum(_move_accuracy_pp(m) for m in st.session_state.get("cg_moves", []))
                 pp_spent_moves_live = sum((m.get("pp_cost") or 0) for m in st.session_state.get("cg_moves", [])) + acerto_pp_total
+                pp_spent_total_live = float(pp_abilities) + float(pp_defenses) + float(pp_skills) + float(pp_advantages) + float(pp_spent_moves_live)
 
                 cA, cB, cC = st.columns(3)
-                cA.metric("PP gastos (Golpes + Acerto)", int(pp_spent_moves_live))
-                cB.metric("Limite para Golpes", pp_cap_moves)
+                cA.metric("PP total gasto", int(pp_spent_total_live))
+                cB.metric("Limite total", pp_cap_moves)
                 cC.metric("Slots de golpes", len(st.session_state.get("cg_moves", [])))
-                st.progress(min(1.0, float(pp_spent_moves_live) / float(max(1, pp_cap_moves))))
+                st.progress(min(1.0, float(pp_spent_total_live) / float(max(1, pp_cap_moves))))
 
-                if pp_spent_moves_live > pp_cap_moves:
-                    st.error("Você estourou o limite de PP para golpes (mesmo limite do total gasto). Remova golpes, reduza ranks ou acerto.")
+                if pp_spent_total_live > pp_cap_moves:
+                    st.error("Você estourou o limite de PP total. Ajuste golpes, acerto ou outros gastos.")
 
                 sub_tabs = st.tabs([
                     "⚡ Adicionar rápido",
