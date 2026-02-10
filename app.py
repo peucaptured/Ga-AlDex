@@ -18055,7 +18055,7 @@ elif page == "PvP – Arena Tática":
             unsafe_allow_html=True
         )
 
-        tab_arena, tab_combate, tab_inic, tab_log = st.tabs(["🗺️ Arena", "⚔️ Combate", "🧭 Iniciativa", "📜 Log"])
+        tab_arena, tab_combate, tab_inic, tab_fichas, tab_log = st.tabs(["🗺️ Arena", "⚔️ Combate", "🧭 Iniciativa", "📋 Fichas", "📜 Log"])
         import math
 
         with tab_combate:
@@ -18915,6 +18915,148 @@ elif page == "PvP – Arena Tática":
             else:
                 st.info("Sem Pokémon ou avatares em campo para registrar iniciativa.")
 
+        with tab_fichas:
+            st.markdown("### 📋 Fichas")
+            st.caption("Visual rápido: sprite + lista de golpes e um campo de anotação ao lado de cada golpe. (As anotações ficam só no seu navegador/sessão.)")
+        
+            # CSS local (escopo leve)
+            st.markdown("""
+            <style>
+              .pvp-sheet-card{
+                border: 1px solid rgba(255,255,255,0.16);
+                background: rgba(255,255,255,0.04);
+                border-radius: 16px;
+                padding: 14px 14px 10px 14px;
+                margin-bottom: 14px;
+              }
+              .pvp-sheet-top{
+                display:flex;
+                flex-direction:column;
+                align-items:center;
+                gap: 6px;
+              }
+              .pvp-sheet-title{
+                font-weight: 800;
+                letter-spacing: .02em;
+                opacity: .95;
+                margin-top: 2px;
+              }
+              .pvp-sheet-sub{
+                opacity: .78;
+                font-size: .86rem;
+                margin-top: -2px;
+              }
+              .pvp-sheet-divider{
+                height: 1px;
+                background: rgba(255,255,255,0.12);
+                margin: 10px 0 10px 0;
+              }
+              .pvp-move-pill{
+                display:inline-flex;
+                align-items:center;
+                gap:8px;
+                padding: 6px 10px;
+                border-radius: 12px;
+                border: 1px solid rgba(255,255,255,0.14);
+                background: rgba(0,0,0,0.20);
+                font-weight: 700;
+                font-size: .9rem;
+                line-height: 1.2;
+              }
+              /* deixa os inputs mais “limpos” dentro do card */
+              .pvp-sheet-card div[data-testid="stTextInput"] input{
+                border-radius: 12px !important;
+              }
+            </style>
+            """, unsafe_allow_html=True)
+        
+            # ✅ Quais fichas mostrar: por padrão, as fichas da sua party atual (se tiverem sido salvas)
+            sheets_to_show = []
+            for _pid in (current_party or []):
+                sh = (battle_sheets_map or {}).get(str(_pid))
+                if sh:
+                    sheets_to_show.append(sh)
+        
+            if not sheets_to_show:
+                st.info("Não encontrei fichas salvas para a sua party. Vá em **Minhas Fichas** / **Criador de Golpes** e salve uma ficha com golpes para ela aparecer aqui.")
+            else:
+                # grid simples (2 por linha)
+                cols_per_row = 2 if len(sheets_to_show) > 1 else 1
+                _cols = st.columns(cols_per_row)
+        
+                # shiny (se você usa isso no user_data)
+                _shinies = {str(x).strip() for x in (user_data.get("shinies") or [])} if isinstance(user_data, dict) else set()
+        
+                for i_sh, sh in enumerate(sheets_to_show):
+                    with _cols[i_sh % cols_per_row]:
+                        pkm = sh.get("pokemon") or {}
+                        pid = str(pkm.get("id") or "").strip()
+                        pname = str(pkm.get("name") or "").strip() or "Pokémon"
+                        ptypes = pkm.get("types") or []
+                        shiny = pid in _shinies
+        
+                        sprite_url = pokemon_pid_to_image(pid, mode="sprite", shiny=shiny)
+        
+                        moves = sh.get("moves") or []
+                        # suporte a formatos antigos
+                        if isinstance(moves, dict):
+                            moves = list(moves.values())
+                        if not isinstance(moves, list):
+                            moves = []
+        
+                        st.markdown('<div class="pvp-sheet-card">', unsafe_allow_html=True)
+        
+                        # topo (sprite + nome)
+                        st.markdown('<div class="pvp-sheet-top">', unsafe_allow_html=True)
+                        try:
+                            st.image(sprite_url, width=96)
+                        except Exception:
+                            pass
+        
+                        st.markdown(
+                            f'<div class="pvp-sheet-title">{html.escape(pname)} '
+                            f'<span class="pvp-sheet-sub">#{html.escape(pid) if pid else "—"}</span></div>',
+                            unsafe_allow_html=True
+                        )
+                        if ptypes:
+                            st.markdown(
+                                f'<div class="pvp-sheet-sub">{" / ".join([html.escape(str(t)) for t in ptypes if str(t).strip()])}</div>',
+                                unsafe_allow_html=True
+                            )
+                        st.markdown('</div>', unsafe_allow_html=True)
+        
+                        st.markdown('<div class="pvp-sheet-divider"></div>', unsafe_allow_html=True)
+                        st.markdown("**Golpes**")
+        
+                        if not moves:
+                            st.caption("Sem golpes nesta ficha.")
+                        else:
+                            for j, mv in enumerate(moves):
+                                mv = mv or {}
+                                mv_name = str(mv.get("name") or mv.get("Nome") or mv.get("nome") or "Golpe").strip()
+                                mv_rank = mv.get("rank") or mv.get("Rank")
+                                label = mv_name
+                                if mv_rank not in (None, "", 0, "0"):
+                                    try:
+                                        label = f"{mv_name} (R{int(mv_rank)})"
+                                    except Exception:
+                                        label = f"{mv_name} (R{mv_rank})"
+        
+                                c_mv, c_note = st.columns([3, 5])
+                                with c_mv:
+                                    st.markdown(f'<div class="pvp-move-pill">{html.escape(label)}</div>', unsafe_allow_html=True)
+                                with c_note:
+                                    st.text_input(
+                                        label="",
+                                        placeholder="Anotações…",
+                                        key=f"pvp_ficha_note_{rid}_{trainer_name}_{pid}_{j}",
+                                        label_visibility="collapsed",
+                                    )
+        
+                        st.markdown("</div>", unsafe_allow_html=True)
+
+        
+        
         with tab_log:
             st.markdown("### 📜 Log")
             st.caption("Eventos públicos em tempo real (movimentos, efeitos, rolagens, etc.).")
