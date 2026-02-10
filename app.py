@@ -17031,7 +17031,8 @@ elif page == "Minhas Fichas":
                 st.write(f"**Criada em:** {created_at}")
                 st.write(f"**PP Total:** {sheet.get('pp_budget_total', '—')}")
 
-                linked_pid = str(sheet.get("linked_pid", "")).strip()
+                linked_pid = _normalize_hub_pid(sheet.get("linked_pid", ""))
+
                 if linked_pid:
                     st.write(f"**Associada a:** {_hub_pid_label(linked_pid)}")
                 else:
