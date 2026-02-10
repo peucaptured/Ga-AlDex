@@ -1,12 +1,15 @@
 # firebase_bundle.py
 # Extraído de app.py para modularização (Firebase + helpers relacionados)
+from __future__ import annotations
 
 import streamlit as st
-from typing import Optional
+from typing import Optional, Tuple
 
 import os, json, time, io, re, glob
 import pandas as pd
+
 import requests
+from typing import Any, Dict, List, Optional, Tuple, Set
 
 
 # ================================
