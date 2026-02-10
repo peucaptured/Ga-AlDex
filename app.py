@@ -7560,6 +7560,14 @@ def get_pid_from_name(user_name: str, name_map: dict) -> str | None:
     if clean == 'enamorus': clean = 'enamorus-incarnate'
     if clean == 'keldeo': clean = 'keldeo-ordinary'
     if clean == 'meloetta': clean = 'meloetta-aria'
+    if clean == 'darmanitan': clean = 'darmanitan-standard'
+    if clean == 'minior': clean = 'minior-red-meteor'
+
+    # formas especiais que costumam ser digitadas invertidas (forma + espécie)
+    if clean in ('eternal-floette', 'floette-eternal-forme', 'floette-eternal-form'):
+        clean = 'floette-eternal'
+    if clean in ('bloodmoon-ursaluna', 'blood-moon-ursaluna', 'ursaluna-blood-moon'):
+        clean = 'ursaluna-bloodmoon'
 
     # regionais (as mesmas)
     if clean.endswith('-a'): clean = clean[:-2] + '-alola'
@@ -14703,43 +14711,74 @@ if page == "Trainer Hub (Meus Pokémons)":
 
             # painel esquerdo: imagem + notas + ações rápidas
             with cA:
-                # --- LÓGICA DE FORMA DO LYCANROC NO HUB ---
-                # Verifica se é Lycanroc para mostrar o seletor
+                # --- LÓGICA DE TROCA DE FORMA/SPRITE NO HUB ---
                 final_hub_image = _get_artwork(pid) # Imagem padrão (ou shiny se já estiver marcado)
-                
-                if "lycanroc" in pname.lower().strip():
-                    st.caption("Visualizar Forma:")
-                    
-                    # 1. Determina qual está salvo atualmente (ou padrão Midday)
-                    current_saved = user_data.get("forms", {}).get(pid, "lycanroc-midday")
-                    
-                    # Mapeamento: Nome API <-> Nome Bonito
-                    form_map = {
-                        "lycanroc-midday": "Midday",
-                        "lycanroc-midnight": "Midnight", 
-                        "lycanroc-dusk": "Dusk"
-                    }
-                    reverse_map = {v: k for k, v in form_map.items()}
-                    
-                    # Define o index do radio baseado no salvo
-                    options = list(form_map.values())
-                    try:
-                        default_idx = options.index(form_map.get(current_saved, "Midday"))
-                    except:
-                        default_idx = 0
 
-                    lyc_choice = st.radio(
+                normalized_pname = normalize_text(pname).replace(" ", "-")
+                form_selector_options = None
+
+                if "lycanroc" in normalized_pname:
+                    form_selector_options = [
+                        ("Midday", "lycanroc-midday"),
+                        ("Midnight", "lycanroc-midnight"),
+                        ("Dusk", "lycanroc-dusk"),
+                    ]
+                elif "darmanitan" in normalized_pname:
+                    form_selector_options = [
+                        ("Standard", "darmanitan-standard"),
+                        ("Zen", "darmanitan-zen"),
+                        ("Galar Standard", "darmanitan-galar-standard"),
+                        ("Galar Zen", "darmanitan-galar-zen"),
+                    ]
+                elif "minior" in normalized_pname:
+                    form_selector_options = [
+                        ("Red Meteor", "minior-red-meteor"),
+                        ("Orange Meteor", "minior-orange-meteor"),
+                        ("Yellow Meteor", "minior-yellow-meteor"),
+                        ("Green Meteor", "minior-green-meteor"),
+                        ("Blue Meteor", "minior-blue-meteor"),
+                        ("Indigo Meteor", "minior-indigo-meteor"),
+                        ("Violet Meteor", "minior-violet-meteor"),
+                        ("Red Core", "minior-red"),
+                        ("Orange Core", "minior-orange"),
+                        ("Yellow Core", "minior-yellow"),
+                        ("Green Core", "minior-green"),
+                        ("Blue Core", "minior-blue"),
+                        ("Indigo Core", "minior-indigo"),
+                        ("Violet Core", "minior-violet"),
+                    ]
+                elif "floette" in normalized_pname:
+                    form_selector_options = [
+                        ("Padrão", "floette"),
+                        ("Eternal", "floette-eternal"),
+                    ]
+                elif "ursaluna" in normalized_pname:
+                    form_selector_options = [
+                        ("Ursaluna", "ursaluna"),
+                        ("Bloodmoon", "ursaluna-bloodmoon"),
+                    ]
+
+                if form_selector_options:
+                    st.caption("Visualizar Forma:")
+
+                    label_to_api = {label: api_name for label, api_name in form_selector_options}
+                    api_to_label = {api_name: label for label, api_name in form_selector_options}
+                    default_api = form_selector_options[0][1]
+                    current_saved = user_data.get("forms", {}).get(pid, default_api)
+
+                    options = [label for label, _ in form_selector_options]
+                    default_idx = options.index(api_to_label.get(current_saved, api_to_label[default_api]))
+
+                    selected_label = st.radio(
                         "Forma",
                         options,
                         index=default_idx,
                         horizontal=True,
                         label_visibility="collapsed",
-                        key=f"hub_lyc_selector_{pid}"
+                        key=f"hub_form_selector_{pid}"
                     )
-                    
-                    # 2. Se mudou, salva e recarrega
-                    selected_api_name = reverse_map[lyc_choice]
-                    
+
+                    selected_api_name = label_to_api[selected_label]
                     if selected_api_name != current_saved:
                         user_data["forms"][pid] = selected_api_name
                         save_data_cloud(trainer_name, user_data)
