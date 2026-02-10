@@ -13433,14 +13433,36 @@ if page == "Pokédex (Busca)":
         opacity: .95;
         filter: drop-shadow(0 2px 3px rgba(0,0,0,.45));
     }
-    .dex-tcg-name{
-        font-size: 9px;
-        color: #e2e8f0;
-        text-shadow: 0 2px 2px rgba(0,0,0,.55);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        text-align: center;
+    /* (opcional) puxar fonte do Google */
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap');
+        
+        .dex-tcg-name{
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            line-height: 1.05;
+            gap: 1px;
+        
+            font-family: 'Orbitron', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            font-size: 11px;              /* antes era 9px */
+            font-weight: 700;
+        
+            color: #e2e8f0;
+            text-shadow: 0 2px 2px rgba(0,0,0,55);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+        }
+        
+        .dex-tcg-id{
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            font-size: 9px;
+            font-weight: 600;
+            opacity: .9;
+        }
+
     }
     .pokedex-grid{
       display: grid;
@@ -14375,6 +14397,11 @@ if page == "Pokédex (Busca)":
                 grid_id_map[safe_id] = dex_num
                 grid_id_map[safe_id_card] = dex_num
                 grid_id_map[safe_id_img] = dex_num
+                try:
+                    dex_id_txt = f"#{int(dex_num):03d}"
+                except Exception:
+                    dex_id_txt = f"#{dex_num}"
+
 
                 card_nodes.append("\n".join([
                     f'<a href="javascript:void(0)" id="{safe_id}" '
@@ -14385,7 +14412,7 @@ if page == "Pokédex (Busca)":
                 
                     '    <div class="dex-tcg-header" style="pointer-events:none;">',
                     f'      <div class="dex-tcg-statusicon">{status_svg}</div>',
-                    f'      <div class="dex-tcg-name">{p_name}</div>',
+                    f'      <div class="dex-tcg-name"><span>{p_name}</span><span class="dex-tcg-id">{dex_id_txt}</span></div>',
                     f'      <div class="dex-tcg-np">NP {np_val}</div>',
                     '    </div>',
                 
