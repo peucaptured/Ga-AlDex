@@ -6012,13 +6012,16 @@ def create_room(db, trainer_name: str, grid_size: int, theme: str, max_active: i
     })
 
     # estado público inicial
-    room_ref.collection("public_state").document("state").set({
-        "tilesPacked": None,
-        "seed": None,
-        "pieces": [],
-        "effects": [],
-        "updatedAt": firestore.SERVER_TIMESTAMP,
-    })
+    room_ref.collection("public_state").document("battle").set(
+        {
+            "status": "idle",
+            "logs": [],
+            "initiative": {},
+            "createdAt": firestore.SERVER_TIMESTAMP,
+            "updatedAt": firestore.SERVER_TIMESTAMP,
+        },
+        merge=True,
+    )
 
     add_room_to_user(db, trainer_name, rid)
     return rid, None
@@ -17915,8 +17918,23 @@ elif page == "PvP – Arena Tática":
         # ==========================================
         battle_ref = db.collection("rooms").document(rid).collection("public_state").document("battle")
         battle_doc = battle_ref.get()
-        b_data = battle_doc.to_dict() or {"status": "idle", "logs": []}
-
+        
+        # ✅ BLINDAGEM: update() falha se o doc não existe. Então criamos o doc na hora.
+        if not battle_doc.exists:
+            b_data = {"status": "idle", "logs": [], "initiative": {}}
+            battle_ref.set(
+                {
+                    **b_data,
+                    "createdAt": firestore.SERVER_TIMESTAMP,
+                    "updatedAt": firestore.SERVER_TIMESTAMP,
+                },
+                merge=True,
+            )
+        else:
+            b_data = battle_doc.to_dict() or {}
+            b_data.setdefault("status", "idle")
+            b_data.setdefault("logs", [])
+            b_data.setdefault("initiative", {})
         # =========================
         # 🎛️ HUD / Barra de Status
         # =========================
@@ -18971,11 +18989,51 @@ elif page == "PvP – Arena Tática":
             """, unsafe_allow_html=True)
         
             # ✅ Quais fichas mostrar: por padrão, as fichas da sua party atual (se tiverem sido salvas)
+            def _norm_pid(v) -> str:
+                if v is None:
+                    return ""
+                # se for dict (party salva objetos)
+                if isinstance(v, dict):
+                    v = v.get("id") or v.get("pid") or v.get("pokemon_id") or v.get("ID")
+                s = str(v).strip()
+                if not s:
+                    return ""
+                # aceita "ID 283", "#283", etc
+                s = re.sub(r"^\s*id\s*", "", s, flags=re.I).strip()
+                s = s.lstrip("#").strip()
+                return s
+            
+            # extrai ids da party (ordem preservada + sem duplicar)
+            party_ids = []
+            _seen = set()
+            for item in (current_party or []):
+                pid = _norm_pid(item)
+                if not pid:
+                    continue
+                if pid in _seen:
+                    continue
+                _seen.add(pid)
+                party_ids.append(pid)
+            
             sheets_to_show = []
-            for _pid in (current_party or []):
-                sh = (battle_sheets_map or {}).get(str(_pid))
+            missing_ids = []
+            
+            for pid in party_ids:
+                sh = (battle_sheets_map or {}).get(pid)
+            
+                # tenta versão sem zeros (ex.: "0283" -> "283")
+                if not sh and pid.isdigit():
+                    pid2 = (pid.lstrip("0") or "0")
+                    sh = (battle_sheets_map or {}).get(pid2)
+            
                 if sh:
                     sheets_to_show.append(sh)
+                else:
+                    missing_ids.append(pid)
+            
+            if missing_ids:
+                st.caption("Sem ficha salva (ou não pertence ao seu trainer) para: " + ", ".join(missing_ids))
+
         
             if not sheets_to_show:
                 st.info("Não encontrei fichas salvas para a sua party. Vá em **Minhas Fichas** / **Criador de Golpes** e salve uma ficha com golpes para ela aparecer aqui.")
