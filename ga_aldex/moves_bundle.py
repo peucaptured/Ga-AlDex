@@ -2,6 +2,7 @@
 # Extraído do app.py original (MoveDB + Move Creator + utilitários próximos)
 
 import streamlit as st
+from ga_aldex.utils_state import pvp_in_action, request_rerun, flush_pending_rerun, is_busy, set_busy
 import streamlit.components.v1 as components
 
 import pandas as pd
@@ -617,11 +618,7 @@ def render_bgm(track_path: str, volume: float = 0.35) -> None:
 def sync_watchdog(db, rid):
     if not rid:
         return
-
     # Evita "tremedeira" e perda de clique durante ações (mover/colocar/terreno).
-    def _pvp_in_action() -> bool:
-        return bool(
-            st.session_state.get("moving_piece_id")
             or st.session_state.get("placing_pid")
             or st.session_state.get("placing_trainer")
             or st.session_state.get("placing_effect")
@@ -645,12 +642,12 @@ def sync_watchdog(db, rid):
             st.session_state["last_map_update"] = server_time
 
             # Se o usuário está no meio de uma ação, marcamos como pendente e não rerunamos agora.
-            if _pvp_in_action() or float(st.session_state.get("arena_pause_until", 0) or 0) > time.time():
+            if pvp_in_action() or float(st.session_state.get("arena_pause_until", 0) or 0) > time.time():
                 st.session_state["pvp_sync_pending"] = True
                 return
 
             st.session_state["pvp_sync_pending"] = False
-            st.rerun()
+            request_rerun("watchdog", force=False)
 
     except Exception:
         # Se der erro de conexão, ignora e tenta na próxima
