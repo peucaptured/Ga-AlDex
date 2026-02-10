@@ -16737,95 +16737,112 @@ elif page == "Criação Guiada de Fichas":
                         np_value = int(st.session_state.get("cg_np", 0) or 0)
 
                         for i, m_gv in enumerate(list(st.session_state["cg_moves"]), start=1):
-                            c1, c2, c3 = st.columns([6, 2, 1], vertical_alignment="center")
-                            with c1:
-                                accuracy = int(m_gv.get("accuracy", 0) or 0)
-                                pp_here = m_gv.get("pp_cost")
-                                base_rank = int(m_gv.get("rank", 0) or 0)
-                                based_label, stat_val = _move_stat_value(m_gv.get("meta") or {}, stats_now)
-                                final_rank = base_rank + int(stat_val)
-                                mod_acerto = accuracy + final_rank
-                                target_total = 2 * int(np_value)
-                                if based_label == "—":
-                                    rank_label = f"Rank final {final_rank}"
-                                else:
-                                    rank_label = f"Rank final {final_rank} (Base {base_rank} + {based_label} {stat_val})"
-                                st.write(
-                                    f"{i}. **{m_gv.get('name','Golpe')}** ({rank_label}) — "
-                                    f"PP: {pp_here} | Acerto {accuracy} | Mod. acerto {mod_acerto} (2xNP = {target_total})"
-                                )
-                                with st.expander("Descrição do golpe", expanded=False):
-                                    desc_text = None
-                                    if db_moves_guided:
-                                        try:
-                                            mv_desc = db_moves_guided.get_by_name(str(m_gv.get("name") or ""))
-                                        except Exception:
-                                            mv_desc = None
-                                        if mv_desc:
-                                            desc_text = mv_desc.descricao
-                                    st.write(desc_text or "Descrição não disponível.")
-                                if m_gv.get("build"):
-                                    bullets = _summarize_build(m_gv.get("build", ""))
-                                    if bullets:
-                                        st.caption(" • ".join(bullets[:6]))
-                                    with st.expander("Ingredientes do golpe", expanded=False):
-                                        st.code(m_gv["build"], language="text")
-
-                            with c2:
-                                # editar Rank do golpe
-                                cur_rank = int(m_gv.get("rank", 1) or 1)
-                                new_rank = st.number_input(
-                                    "Rank",
-                                    min_value=1,
-                                    max_value=50,
-                                    value=int(cur_rank),
-                                    step=1,
-                                    key=f"cg_guided_move_rank_{i}",
-                                )
-                                if st.button("Definir rank", key=f"cg_guided_move_set_rank_{i}"):
-                                    m_gv["rank"] = int(new_rank)
-                                    pp_recalc, _why = _cg_recalculate_pp(m_gv, int(new_rank), db_moves_guided)
-                                    if pp_recalc is not None:
-                                        m_gv["pp_cost"] = int(pp_recalc)
-                                    if db_moves_guided:
-                                        try:
-                                            mv_db = db_moves_guided.get_by_name(str(m_gv.get("name") or ""))
-                                        except Exception:
-                                            mv_db = None
-                                        if mv_db:
+                            with st.container(border=True):
+                                c1, c2, c3 = st.columns([6, 2, 1], vertical_alignment="center")
+                                with c1:
+                                    meta = m_gv.setdefault("meta", {})
+                                    accuracy = int(m_gv.get("accuracy", 0) or 0)
+                                    pp_here = m_gv.get("pp_cost")
+                                    base_rank = int(m_gv.get("rank", 0) or 0)
+                                    based_label, stat_val = _move_stat_value(meta, stats_now)
+                                    final_rank = base_rank + int(stat_val)
+                                    mod_acerto = accuracy + final_rank
+                                    target_total = 2 * int(np_value)
+                                    if based_label == "—":
+                                        rank_label = f"Rank final {final_rank}"
+                                    else:
+                                        rank_label = f"Rank final {final_rank} (Base {base_rank} + {based_label} {stat_val})"
+                                    st.write(
+                                        f"{i}. **{m_gv.get('name','Golpe')}** ({rank_label}) — "
+                                        f"PP: {pp_here} | Acerto {accuracy} | Mod. acerto {mod_acerto} (2xNP = {target_total})"
+                                    )
+                                    tags = []
+                                    if meta.get("perception_area"):
+                                        tags.append("📍 Área")
+                                    if meta.get("ranged"):
+                                        tags.append("🏹 Ranged")
+                                    if tags:
+                                        st.caption(" • ".join(tags))
+                                    with st.expander("Descrição do golpe", expanded=False):
+                                        desc_text = None
+                                        if db_moves_guided:
                                             try:
-                                                m_gv["build"] = mv_db.render_build(int(new_rank))
+                                                mv_desc = db_moves_guided.get_by_name(str(m_gv.get("name") or ""))
                                             except Exception:
-                                                pass
-                                    st.rerun()
+                                                mv_desc = None
+                                            if mv_desc:
+                                                desc_text = mv_desc.descricao
+                                        st.write(desc_text or "Descrição não disponível.")
+                                    if m_gv.get("build"):
+                                        bullets = _summarize_build(m_gv.get("build", ""))
+                                        if bullets:
+                                            st.caption(" • ".join(bullets[:6]))
+                                        with st.expander("Ingredientes do golpe", expanded=False):
+                                            st.code(m_gv["build"], language="text")
 
-                                acc_limit = _move_accuracy_limit(m_gv, np_value, stats_now)
-                                current_acc = int(m_gv.get("accuracy", 0) or 0)
-                                safe_max = max(int(acc_limit), int(current_acc))
-                                new_acc = st.number_input(
-                                    "Acerto",
-                                    min_value=0,
-                                    max_value=int(safe_max),
-                                    value=int(current_acc),
-                                    step=1,
-                                    key=f"cg_guided_move_acc_{i}",
-                                )
-                                st.caption(f"Limite sugerido: {acc_limit}")
-                                if st.button("Definir acerto", key=f"cg_guided_move_set_{i}"):
-                                    m_gv["accuracy"] = int(new_acc)
-                                    st.rerun()
-
-                                # se o golpe está sem PP, pede preenchimento aqui
-                                if m_gv.get("pp_cost") is None:
-                                    pp_fix = st.number_input("PP do golpe", min_value=1, value=1, step=1, key=f"cg_fix_pp_{i}")
-                                    if st.button("Definir PP", key=f"cg_fix_pp_btn_{i}"):
-                                        m_gv["pp_cost"] = int(pp_fix)
+                                with c2:
+                                    # editar Rank do golpe
+                                    cur_rank = int(m_gv.get("rank", 1) or 1)
+                                    new_rank = st.number_input(
+                                        "Rank",
+                                        min_value=1,
+                                        max_value=50,
+                                        value=int(cur_rank),
+                                        step=1,
+                                        key=f"cg_guided_move_rank_{i}",
+                                    )
+                                    if st.button("Definir rank", key=f"cg_guided_move_set_rank_{i}"):
+                                        m_gv["rank"] = int(new_rank)
+                                        pp_recalc, _why = _cg_recalculate_pp(m_gv, int(new_rank), db_moves_guided)
+                                        if pp_recalc is not None:
+                                            m_gv["pp_cost"] = int(pp_recalc)
+                                        if db_moves_guided:
+                                            try:
+                                                mv_db = db_moves_guided.get_by_name(str(m_gv.get("name") or ""))
+                                            except Exception:
+                                                mv_db = None
+                                            if mv_db:
+                                                try:
+                                                    m_gv["build"] = mv_db.render_build(int(new_rank))
+                                                except Exception:
+                                                    pass
                                         st.rerun()
 
-                            with c3:
-                                if st.button("🗑️ Remover", key=f"cg_guided_move_rm_{i}", use_container_width=True):
-                                    st.session_state["cg_moves"].pop(i - 1)
-                                    st.rerun()
+                                    acc_limit = _move_accuracy_limit(m_gv, np_value, stats_now)
+                                    current_acc = int(m_gv.get("accuracy", 0) or 0)
+                                    safe_max = max(int(acc_limit), int(current_acc))
+                                    new_acc = st.number_input(
+                                        "Acerto",
+                                        min_value=0,
+                                        max_value=int(safe_max),
+                                        value=int(current_acc),
+                                        step=1,
+                                        key=f"cg_guided_move_acc_{i}",
+                                    )
+                                    st.caption(f"Limite sugerido: {acc_limit}")
+                                    if st.button("Definir acerto", key=f"cg_guided_move_set_{i}"):
+                                        m_gv["accuracy"] = int(new_acc)
+                                        st.rerun()
+
+                                    area_checked = st.checkbox(
+                                        "Golpe em área",
+                                        value=bool(m_gv.get("meta", {}).get("perception_area", False)),
+                                        key=f"cg_guided_move_area_{i}",
+                                    )
+                                    if area_checked != bool(m_gv.get("meta", {}).get("perception_area", False)):
+                                        m_gv.setdefault("meta", {})["perception_area"] = bool(area_checked)
+
+                                    # se o golpe está sem PP, pede preenchimento aqui
+                                    if m_gv.get("pp_cost") is None:
+                                        pp_fix = st.number_input("PP do golpe", min_value=1, value=1, step=1, key=f"cg_fix_pp_{i}")
+                                        if st.button("Definir PP", key=f"cg_fix_pp_btn_{i}"):
+                                            m_gv["pp_cost"] = int(pp_fix)
+                                            st.rerun()
+
+                                with c3:
+                                    if st.button("🗑️ Remover", key=f"cg_guided_move_rm_{i}", use_container_width=True):
+                                        st.session_state["cg_moves"].pop(i - 1)
+                                        st.rerun()
                     else:
                         st.info("Nenhum golpe confirmado ainda. Use as abas acima para adicionar e ajustar.")
 
