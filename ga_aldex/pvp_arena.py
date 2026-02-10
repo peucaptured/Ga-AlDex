@@ -13,6 +13,8 @@ import json
 import uuid
 from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
+from ga_aldex.firebase_bundle import list_my_rooms
+
 
 import streamlit as st
 from ga_aldex.utils_state import set_busy, request_rerun, flush_pending_rerun, pvp_in_action

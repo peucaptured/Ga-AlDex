@@ -20,6 +20,32 @@ import streamlit as st
 # Helpers locais (eram funções globais no app.py monolítico)
 # ============================================================
 
+def _extract_viab_code_from_text(txt: str) -> str:
+    """
+    Extrai um "código curto" de viabilidade (ex.: A, B, C, S, SS etc.)
+    a partir do texto da célula. Mantém compatibilidade com variações
+    como 'VIAB: A', 'A+', 'S-', 'SS', etc.
+    """
+    s = (txt or "").strip()
+    if not s:
+        return ""
+
+    # Tenta achar padrões tipo "A", "A+", "A-", "S", "SS", "SS+", etc.
+    m = re.search(r"\b(SSS|SS|S|A|B|C|D|E|F)([+-])?\b", s.upper())
+    if m:
+        return (m.group(1) + (m.group(2) or "")).strip()
+
+    # fallback: pega a primeira palavra curta caso exista
+    head = s.split()[0].upper()
+    if len(head) <= 4:
+        return head
+    return ""
+
+
+
+
+
+
 def _split_types(raw: Any) -> list[str]:
     """Divide o campo 'Tipo' em lista de tipos limpos.
 
