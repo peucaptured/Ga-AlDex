@@ -2,6 +2,8 @@
 # Extraído de app.py para modularização (Firebase + helpers relacionados)
 
 import streamlit as st
+from typing import Optional
+
 import os, json, time, io, re, glob
 import pandas as pd
 import requests
