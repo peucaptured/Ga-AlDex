@@ -620,14 +620,23 @@ def render_bgm(track_path: str, volume: float = 0.35) -> None:
 def sync_watchdog(db, rid):
     if not rid:
         return
+
     # Evita "tremedeira" e perda de clique durante ações (mover/colocar/terreno).
+    def pvp_in_action() -> bool:
+        return bool(
+            st.session_state.get("moving_piece_id")
             or st.session_state.get("placing_pid")
             or st.session_state.get("placing_trainer")
             or st.session_state.get("placing_effect")
         )
 
     try:
-        doc_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
+        doc_ref = (
+            db.collection("rooms")
+            .document(rid)
+            .collection("public_state")
+            .document("state")
+        )
         snapshot = doc_ref.get()
         if not snapshot.exists:
             return
@@ -644,7 +653,10 @@ def sync_watchdog(db, rid):
             st.session_state["last_map_update"] = server_time
 
             # Se o usuário está no meio de uma ação, marcamos como pendente e não rerunamos agora.
-            if pvp_in_action() or float(st.session_state.get("arena_pause_until", 0) or 0) > time.time():
+            if (
+                pvp_in_action()
+                or float(st.session_state.get("arena_pause_until", 0) or 0) > time.time()
+            ):
                 st.session_state["pvp_sync_pending"] = True
                 return
 
@@ -654,11 +666,6 @@ def sync_watchdog(db, rid):
     except Exception:
         # Se der erro de conexão, ignora e tenta na próxima
         return
-
-try:
-    from move_interpreter import interpret_effects_to_build
-except Exception:
-    interpret_effects_to_build = None
 
 @st.cache_resource
 def load_move_db(excel_path: str) -> "MoveDB":
