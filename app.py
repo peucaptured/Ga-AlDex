@@ -14300,6 +14300,7 @@ if page == "Pokédex (Busca)":
                     padding: 4px 8px 2px;
                     background: rgba(15,23,42,0.62);
                     border-bottom: 1px solid rgba(255,255,255,0.12);
+                    position: relative;
                 }
                 .dex-tcg-statusicon{
                     width: 22px; height: 22px;
@@ -14337,9 +14338,13 @@ if page == "Pokédex (Busca)":
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
-                    text-align: left;
+                    text-align: center;
                     margin-top: 2px;
-                    flex: 1;
+                    position: absolute;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    max-width: calc(100% - 145px);
+                    pointer-events: none;
                 }
                 .dex-tcg-np{
                     font-size: 8px;
