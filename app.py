@@ -13420,7 +13420,7 @@ if page == "Pokédex (Busca)":
     .dex-tcg-header{
         height: 30px;
         display: grid;
-        grid-template-columns: 26px 1fr auto;
+        grid-template-columns: auto 1fr auto;
         align-items: center;
         gap: 8px;
         padding: 6px 8px;
@@ -13433,27 +13433,40 @@ if page == "Pokédex (Busca)":
         opacity: .95;
         filter: drop-shadow(0 2px 3px rgba(0,0,0,.45));
     }
+    
+        .dex-tcg-left{
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          min-width: 64px; /* evita “dança” quando muda o status */
+        }
+        
+        .dex-tcg-num{
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: .6px;
+        
+          padding: 1px 6px;
+          border-radius: 999px;
+          background: rgba(15,23,42,0.55);
+          border: 1px solid rgba(255,255,255,0.18);
+          color: rgba(226,232,240,0.95);
+          text-shadow: 0 1px 2px rgba(0,0,0,.55);
+        }
     /* (opcional) puxar fonte do Google */
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap');
         
         .dex-tcg-name{
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            line-height: 1.05;
-            gap: 1px;
-        
-            font-family: 'Orbitron', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-            font-size: 11px;              /* antes era 9px */
-            font-weight: 700;
-        
-            color: #e2e8f0;
-            text-shadow: 0 2px 2px rgba(0,0,0,55);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            text-align: center;
+          font-family: 'Orbitron', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+          font-size: 11px;
+          font-weight: 700;
+          color: #e2e8f0;
+          text-shadow: 0 2px 2px rgba(0,0,0,55);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          text-align: center;
         }
         
         .dex-tcg-id{
@@ -14409,10 +14422,13 @@ if page == "Pokédex (Busca)":
                 
                     f'  <div id="{safe_id_card}" class="dex-tcg-card {status_class}" '
                     f'style="{bg_style}; cursor:pointer;" role="button" tabindex="0">',
-                
+                                    
                     '    <div class="dex-tcg-header" style="pointer-events:none;">',
-                    f'      <div class="dex-tcg-statusicon">{status_svg}</div>',
-                    f'      <div class="dex-tcg-name"><span>{p_name}</span><span class="dex-tcg-id">{dex_id_txt}</span></div>',
+                    f'      <div class="dex-tcg-left">'
+                    f'        <div class="dex-tcg-statusicon">{status_svg}</div>'
+                    f'        <div class="dex-tcg-num">{dex_id_txt}</div>'
+                    f'      </div>',
+                    f'      <div class="dex-tcg-name">{p_name}</div>',
                     f'      <div class="dex-tcg-np">NP {np_val}</div>',
                     '    </div>',
                 
