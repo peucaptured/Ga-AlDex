@@ -147,6 +147,9 @@ def _move_stat_value(move_meta: dict | None, stats: dict) -> tuple[str, int]:
     return based, 0
 
 
+
+
+
 def _move_accuracy_limit(move: dict, np_value: int, stats: dict) -> int:
     rank = int(move.get("rank", 0) or 0)
     _, stat_val = _move_stat_value(move.get("meta") or {}, stats)
@@ -17336,29 +17339,6 @@ elif page == "PvP – Arena Tática":
                                     args=(db, rid, p_name, pid, i),
                                 )
 
-                                # Botão principal grande (opcional) para conforto
-                                if cur_hp > 0:
-                                    if is_on_map and p_obj:
-                                        if st.button(
-                                            "🚶 Mover",
-                                            key=f"m_{p_name}_{pid}_{i}_detail",
-                                            disabled=is_busy,
-                                            use_container_width=True,
-                                        ):
-                                            st.session_state["moving_piece_id"] = p_obj.get("id")
-                                            st.session_state["arena_pause_until"] = time.time() + 1.2
-                                            st.rerun()
-                                    else:
-                                        if st.button(
-                                            "📍 Colocar no Campo",
-                                            key=f"p_{p_name}_{pid}_{i}_detail",
-                                            disabled=is_busy,
-                                            use_container_width=True,
-                                        ):
-                                            st.session_state["placing_pid"] = pid
-                                            st.session_state["arena_pause_until"] = time.time() + 1.2
-                                            st.session_state["placing_effect"] = None
-                                            st.rerun()
 
                             st.markdown("<hr style='opacity:0.15;margin:10px 0;'>", unsafe_allow_html=True)
 
