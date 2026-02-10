@@ -1356,6 +1356,42 @@ def cg_sync_from_widgets():
             d["stats"][k_stat] = st.session_state[k_widget]
 
 
+def cg_reset_for_new_pokemon(pname: str):
+    """Limpa o estado da criação guiada quando o usuário troca o Pokémon."""
+    cg_init(reset=True)
+    st.session_state["cg_draft"]["pname"] = pname
+
+    # Widgets/campos da ficha
+    st.session_state["cg_np"] = 0
+    st.session_state["cg_abilities"] = []
+    st.session_state["cg_advantages"] = []
+    st.session_state["cg_moves"] = []
+    st.session_state["cg_draft"]["moves"] = st.session_state["cg_moves"]
+
+    for k in [
+        "cg_stgr",
+        "cg_int",
+        "cg_dodge",
+        "cg_parry",
+        "cg_thg",
+        "cg_fortitude",
+        "cg_will",
+    ]:
+        st.session_state[k] = 0
+
+    # auxiliares da UI que podem carregar informações da ficha anterior
+    for k in [
+        "cg_quick_pick",
+        "cg_viab_selected",
+        "cg_viab_mode",
+        "cg_imported_name",
+        "cg_imported_types",
+        "cg_imported_abilities",
+        "cg_loaded_sheet_id",
+    ]:
+        st.session_state.pop(k, None)
+
+
 
 
 
@@ -15493,6 +15529,16 @@ elif page == "Criação Guiada de Fichas":
             placeholder="Ex: Blastoise", 
             key="cg_pname"
         )
+
+        pname_norm = _norm(pname) if pname else ""
+        last_pname_norm = st.session_state.get("cg_active_pokemon_norm", "")
+        if pname_norm and last_pname_norm and pname_norm != last_pname_norm:
+            cg_reset_for_new_pokemon(pname)
+        if pname_norm:
+            st.session_state["cg_active_pokemon_norm"] = pname_norm
+        else:
+            st.session_state["cg_active_pokemon_norm"] = ""
+
         # Tenta pegar o NP salvo. Se não existir, assume 0.
         np_salvo = st.session_state.get("cg_np", 0)
         # Garante que é um inteiro (caso tenha vindo None ou string por algum erro estranho)
