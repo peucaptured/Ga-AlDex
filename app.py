@@ -1467,6 +1467,9 @@ def cg_reset_for_new_pokemon(pname: str):
     # auxiliares da UI que podem carregar informações da ficha anterior
     for k in [
         "cg_quick_pick",
+        "cg_viab_sel_idx",
+        "cg_viab_raw_view",
+        "cg_viab_rank_default",
         "cg_viab_selected",
         "cg_viab_mode",
         "cg_imported_name",
@@ -15998,9 +16001,12 @@ elif page == "Criação Guiada de Fichas":
                             if arch.get("partners"):
                                 st.markdown("**Parceiros sugeridos:** " + ", ".join(arch["partners"]))
 
+                            # Com key fixa, o Streamlit prioriza session_state e ignora `value` em trocas
+                            # de arquétipo; sincronizamos explicitamente o conteúdo antes de renderizar.
+                            st.session_state["cg_viab_raw_view"] = str(arch.get("raw", "") or "")
                             st.text_area(
                                 "Texto da Viabilidade (referência)",
-                                value=str(arch.get("raw", "") or ""),
+                                value=st.session_state["cg_viab_raw_view"],
                                 height=120,
                                 key="cg_viab_raw_view",
                                 disabled=True,
