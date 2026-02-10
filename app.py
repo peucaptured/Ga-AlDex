@@ -7560,6 +7560,14 @@ def get_pid_from_name(user_name: str, name_map: dict) -> str | None:
     if clean == 'enamorus': clean = 'enamorus-incarnate'
     if clean == 'keldeo': clean = 'keldeo-ordinary'
     if clean == 'meloetta': clean = 'meloetta-aria'
+    if clean == 'darmanitan': clean = 'darmanitan-standard'
+    if clean == 'minior': clean = 'minior-red-meteor'
+
+    # formas especiais que costumam ser digitadas invertidas (forma + espécie)
+    if clean in ('eternal-floette', 'floette-eternal-forme', 'floette-eternal-form'):
+        clean = 'floette-eternal'
+    if clean in ('bloodmoon-ursaluna', 'blood-moon-ursaluna', 'ursaluna-blood-moon'):
+        clean = 'ursaluna-bloodmoon'
 
     # regionais (as mesmas)
     if clean.endswith('-a'): clean = clean[:-2] + '-alola'
