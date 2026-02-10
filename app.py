@@ -16055,8 +16055,8 @@ elif page == "Criação Guiada de Fichas":
                 if "cg_draft" in st.session_state:
                     st.session_state["cg_draft"]["moves"] = st.session_state["cg_moves"]
 
-                # orçamento (mantém sua regra: PP_total + 20 para golpes)
-                pp_cap_moves = int(pp_total) + 20
+                # orçamento unificado com o total gasto (mesmo limite de PP total)
+                pp_cap_moves = int(pp_total)
                 acerto_pp_total = sum(_move_accuracy_pp(m) for m in st.session_state.get("cg_moves", []))
                 pp_spent_moves_live = sum((m.get("pp_cost") or 0) for m in st.session_state.get("cg_moves", [])) + acerto_pp_total
 
@@ -16067,7 +16067,7 @@ elif page == "Criação Guiada de Fichas":
                 st.progress(min(1.0, float(pp_spent_moves_live) / float(max(1, pp_cap_moves))))
 
                 if pp_spent_moves_live > pp_cap_moves:
-                    st.error("Você estourou o limite de PP para golpes (PP_total + 20). Remova golpes, reduza ranks ou acerto.")
+                    st.error("Você estourou o limite de PP para golpes (mesmo limite do total gasto). Remova golpes, reduza ranks ou acerto.")
 
                 sub_tabs = st.tabs([
                     "⚡ Adicionar rápido",
@@ -16586,7 +16586,7 @@ elif page == "Criação Guiada de Fichas":
                     st.caption("Modo avançado: use a tela completa de criação e edição de golpes.")
                     disabled_add = pp_spent_moves_live >= pp_cap_moves
                     if disabled_add:
-                        st.error("Limite atingido (PP_total + 20).")
+                        st.error("Limite atingido (mesmo limite do total gasto).")
 
                     show_full = st.checkbox("Abrir o criador completo aqui (avançado)", value=False, key="cg_show_full_creator_inline")
                     if show_full:
