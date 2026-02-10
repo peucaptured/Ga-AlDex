@@ -11623,10 +11623,19 @@ def render_compendium_page() -> None:
             --ds-font: 'DarkSouls', serif;
             --ds-gold-dim: rgba(255,215,0,0.55);
         }}
-        /* Fundo preto no compendium */
-        html, body, .stApp, [data-testid="stAppViewContainer"] {{
-            background: #000 !important;
-            color: #f8fafc;
+        /* Fundo preto APENAS quando o Compendium (ds-home) estiver presente */
+        html:has(.ds-home),
+        body:has(.ds-home),
+        .stApp:has(.ds-home),
+        [data-testid="stAppViewContainer"]:has(.ds-home) {{
+          background: #000 !important;
+          color: #f8fafc;
+        }}
+        
+        /* Fonte do Compendium só dentro do Compendium */
+        [data-testid="stAppViewContainer"]:has(.ds-home),
+        [data-testid="stAppViewContainer"]:has(.ds-home) * {{
+          font-family: var(--ds-font) !important;
         }}
         /* Aplica a fonte em tudo na aba compendium */
         [data-testid="stAppViewContainer"], [data-testid="stAppViewContainer"] * {{
@@ -13200,11 +13209,13 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
                 if os.path.exists("assets/" + tentativa + ext):
                     return "assets/" + tentativa + ext
         return None
-# ==============================================================================
-# PÁGINA 1: POKEDEX (VISÃO DE FOCO + CARROSSEL INFERIOR)
-# (As demais abas usam o tema global, sem sobrescritas claras.)
-# ==============================================================================
 if page == "Pokédex (Busca)":
+    # WRAPPER ÚNICO da página (pra escopar blindagens sem afetar Compendium)
+    st.markdown('<div class="pokedex-root">', unsafe_allow_html=True)
+
+    # =========================
+    # CSS PRINCIPAL (mantido)
+    # =========================
     st.markdown("""
     <style>
     /* ============================================================
@@ -13227,12 +13238,12 @@ if page == "Pokédex (Busca)":
         box-shadow: inset 0 0 18px rgba(15, 23, 42, 0.55);
         background: rgba(15, 23, 42, 0.65);
     }
-    
+
     /* Fontes P2 */
     .pokedex-shell, .pokedex-card, .pokedex-info-value, .pokedex-info-title, .pokedex-header {
         font-family: "Press Start 2P", cursive !important;
     }
-    
+
     .pokedex-header {
         display: flex;
         justify-content: space-between;
@@ -13258,7 +13269,7 @@ if page == "Pokédex (Busca)":
         margin-top: 18px;
     }
     .pokedex-detail-grid { display: grid; gap: 12px; }
-    
+
     .pokedex-info-card {
         background: rgba(15, 23, 42, 0.9) !important;
         border: 1px solid rgba(56, 189, 248, 0.4) !important;
@@ -13267,7 +13278,7 @@ if page == "Pokédex (Busca)":
         border-radius: 8px;
     }
     .pokedex-info-card--dark { background: #e2e8f0; }
-    
+
     .pokedex-info-title {
         font-size: 12px;
         color: #38bdf8 !important;
@@ -13281,7 +13292,7 @@ if page == "Pokédex (Busca)":
     .pokedex-info-card--wide { padding: 12px 14px; }
     .pokedex-info-card--wide .pokedex-info-value { font-size: 12px; }
     .pokedex-info-card--wide .section-title { margin-top: 0; }
-    
+
     .pokedex-tags span {
         display: inline-block;
         padding: 2px 8px;
@@ -13333,17 +13344,14 @@ if page == "Pokédex (Busca)":
     @keyframes pageFade { from { opacity: 0.92; } to { opacity: 1; } }
     @keyframes contentSlide { from { transform: translateY(8px); opacity: 0.92; } to { transform: translateY(0); opacity: 1; } }
 
-
     /* ============================================================
        2. O NOVO CSS DOS TILES (CORRIGIDO PARA BATER COM O PYTHON)
        ============================================================ */
-
-    /* MOLDURA DO CARD */
     .dex-card-frame {
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 110px;        
+        height: 110px;
         width: 100%;
         border-radius: 12px;
         margin-bottom: 8px;
@@ -13351,12 +13359,8 @@ if page == "Pokédex (Busca)":
         background: rgba(15, 23, 42, 0.6);
         position: relative;
     }
-    
-    .dex-card-frame:hover {
-        transform: scale(1.02);
-    }
+    .dex-card-frame:hover { transform: scale(1.02); }
 
-    /* A IMAGEM */
     .dex-sprite-img {
         max-width: 80px;
         max-height: 80px;
@@ -13368,43 +13372,31 @@ if page == "Pokédex (Busca)":
         z-index: 1;
     }
 
-    /* --- AQUI ESTAVA O ERRO: NOMES DAS CLASSES --- */
-    /* Antes estava .frame-caught, agora é .dex-frame--caught */
-
-    /* 🟢 CAPTURADO (Verde) */
     .dex-frame--caught {
         border: 2px solid #00ff41;
         box-shadow: 0 0 12px rgba(0, 255, 65, 0.25), inset 0 0 15px rgba(0, 60, 20, 0.6);
         background: rgba(0, 60, 20, 0.4);
     }
-
-    /* 🔵 VISTO (Azul) */
     .dex-frame--seen {
         border: 2px solid #00d0ff;
         box-shadow: 0 0 12px rgba(0, 208, 255, 0.25), inset 0 0 15px rgba(0, 40, 60, 0.6);
         background: rgba(0, 40, 60, 0.4);
     }
-
-    /* ⭐ WISHLIST (Dourado) */
     .dex-frame--wish {
         border: 2px solid #ffd700;
         box-shadow: 0 0 12px rgba(255, 215, 0, 0.25), inset 0 0 15px rgba(60, 50, 0, 0.6);
         background: rgba(60, 50, 0, 0.4);
     }
-
-    /* ⚪ PADRÃO (Cinza) */
     .dex-frame--default {
         border: 2px solid rgba(255, 255, 255, 0.15);
         background: rgba(255, 255, 255, 0.03);
     }
-
     .dex-card-link {
         display: block;
         text-decoration: none;
         color: inherit;
         cursor: pointer;
     }
-    
 
     /* ============================================================
        3. CARDS "TCG" DA POKEDEX (NOVO)
@@ -13417,7 +13409,7 @@ if page == "Pokédex (Busca)":
         width: 100%;
         cursor: pointer;
         box-shadow: 0 10px 22px rgba(0,0,0,0.35);
-        border: 4px solid rgba(255,255,255,0.12); /* será "dominada" pela classe de status */
+        border: 4px solid rgba(255,255,255,0.12);
         transition: transform .15s ease, filter .15s ease;
     }
     .dex-tcg-card:hover{
@@ -13450,24 +13442,15 @@ if page == "Pokédex (Busca)":
         text-overflow: ellipsis;
         text-align: center;
     }
-    /* GRID: sempre no mínimo 6 por fileira */
     .pokedex-grid{
       display: grid;
       grid-template-columns: repeat(6, minmax(0, 1fr));
       gap: 14px;
-    }
-    
-    /* Evita esmagar demais em telas menores: cria scroll horizontal */
-    .pokedex-grid{
       overflow-x: auto;
       padding-bottom: 8px;
       -webkit-overflow-scrolling: touch;
     }
-    
-    /* Opcional: garante um tamanho mínimo agradável pros cards */
-    .dex-tcg-card{
-      min-width: 165px;
-    }
+    .dex-tcg-card{ min-width: 165px; }
 
     .dex-tcg-np{
         font-size: 8px;
@@ -13509,29 +13492,46 @@ if page == "Pokédex (Busca)":
         text-shadow: 0 2px 2px rgba(0,0,0,.55);
     }
 
-</style>
+    /* ===== Blindagem: só dentro da Pokédex ===== */
+    .pokedex-root div[data-testid="stCustomComponentV1"],
+    .pokedex-root div[data-testid="stCustomComponent"],
+    .pokedex-root div[data-testid="stComponentFrame"]{
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+    }
+    .pokedex-root div[data-testid="stCustomComponentV1"] > iframe,
+    .pokedex-root div[data-testid="stCustomComponent"] > iframe,
+    .pokedex-root div[data-testid="stComponentFrame"] > iframe{
+      background: transparent !important;
+      border: 0 !important;
+    }
+    </style>
     """, unsafe_allow_html=True)
 
-
-if page == "Pokédex (Busca)":
+    # =========================
+    # Captura query param (?dex=XXX) uma vez (mantido)
+    # =========================
     dex_param = st.query_params.get("dex", None)
     if dex_param:
         st.session_state["pokedex_selected"] = str(dex_param)
-        st.query_params.clear() # Limpa a URL após capturar
+        st.query_params.clear()
         st.rerun()
+
+    # =========================
+    # Sidebar filtros (mantido)
+    # =========================
     st.sidebar.header("🔍 Filtros")
     search_query = st.sidebar.text_input("Buscar (Nome ou Nº)", "")
 
     # --- FIX REAL: remove a “moldura preta” do click_detector sem afetar o iframe do Compendium ---
     st.markdown("""
     <style>
-    /* Só dentro da Pokédex: wrapper que a gente vai colocar em volta dos click_detector */
     .pokedex-clickwrap,
     .pokedex-clickwrap *{
       background: transparent !important;
     }
-    
-    /* Remove fundo/borda do frame do componente (é isso que costuma aparecer como “contorno preto”) */
     .pokedex-clickwrap div[data-testid="stComponentFrame"],
     .pokedex-clickwrap div[data-testid="stComponentFrame"] > div,
     .pokedex-clickwrap div[data-testid="stElementContainer"],
@@ -13543,8 +13543,6 @@ if page == "Pokédex (Busca)":
       padding: 0 !important;
       margin: 0 !important;
     }
-    
-    /* O iframe real do st_click_detector */
     .pokedex-clickwrap iframe[title^="st_click_detector"],
     .pokedex-clickwrap iframe[title*="click_detector"]{
       background: transparent !important;
@@ -13589,7 +13587,7 @@ if page == "Pokédex (Busca)":
     l3 = sel_speed[0] if sel_speed != "Todos" else ""
 
     # -----------------------------
-    # APLICAÇÃO DOS FILTROS
+    # APLICAÇÃO DOS FILTROS (mantido)
     # -----------------------------
     filtered_df = df.copy()
 
@@ -13611,7 +13609,6 @@ if page == "Pokédex (Busca)":
         ]
 
     if selected_types:
-        # “Combinação”: precisa conter TODOS os tipos marcados
         filtered_df = filtered_df[filtered_df["Tipo"].apply(lambda x: all(t in str(x) for t in selected_types))]
 
     filtered_df = filtered_df[
@@ -13628,11 +13625,10 @@ if page == "Pokédex (Busca)":
                     if ok:
                         return True
             return False
-
         filtered_df = filtered_df[filtered_df["Codigos_Estrategia"].apply(_match_codes)]
 
     # -----------------------------
-    # CSS DO CARROSSEL INFERIOR
+    # CSS DO CARROSSEL INFERIOR (mantido)
     # -----------------------------
     st.markdown(
         """
@@ -13655,7 +13651,7 @@ if page == "Pokédex (Busca)":
     )
 
     # -----------------------------
-    # SESSION STATE (garante que existe)
+    # SESSION STATE (mantido)
     # -----------------------------
     if "pokedex_selected" not in st.session_state:
         st.session_state["pokedex_selected"] = None
@@ -13663,8 +13659,7 @@ if page == "Pokédex (Busca)":
     def select_pokedex_entry(pid: str) -> None:
         st.session_state["pokedex_selected"] = str(pid)
 
-
-    # Se veio por query param (?dex=XXX), seleciona o Pokémon na MESMA ABA
+    # Se veio por query param (?dex=XXX), seleciona o Pokémon na MESMA ABA (mantido)
     try:
         _dex_param = st.query_params.get("dex")
         if isinstance(_dex_param, list):
@@ -13679,6 +13674,7 @@ if page == "Pokédex (Busca)":
         pass
 
     selected_id = st.session_state.get("pokedex_selected")
+
 
     # ==============================================================================
     # VISÃO DE FOCO (selecionado)
@@ -14405,8 +14401,8 @@ if page == "Pokédex (Busca)":
                     st.rerun()
 
 
-st.markdown("</div>", unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)
+    # FECHAMENTO ÚNICO do wrapper da página
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ==============================================================================
