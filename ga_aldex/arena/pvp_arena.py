@@ -20,6 +20,36 @@ from streamlit_image_coordinates import streamlit_image_coordinates
 from ga_aldex.firebase_bundle import *
 from ga_aldex.moves_bundle import *
 
+
+def stop_pvp_sync_listener():
+    """Encerra o listener de sync da arena PvP, se estiver ativo.
+
+    No app monolítico essa função existia no app.py. Após modularizar,
+    ela precisa existir dentro do módulo efetivamente usado pela página
+    (ga_aldex/arena/pvp_arena.py), para evitar NameError.
+    """
+    sync_data = st.session_state.get("pvp_sync_listener")
+    if not sync_data:
+        return
+    for unsubscribe in sync_data.get("unsubscribers", []) or []:
+        try:
+            unsubscribe()
+        except Exception:
+            pass
+    stop_event = sync_data.get("stop_event")
+    event_queue = sync_data.get("queue")
+    if stop_event is not None:
+        try:
+            stop_event.set()
+        except Exception:
+            pass
+    if event_queue is not None:
+        try:
+            event_queue.put({"tag": "stop"})
+        except Exception:
+            pass
+    st.session_state.pop("pvp_sync_listener", None)
+
 def render_pvp_arena_page(*, trainer_name: str, user_data: dict, df):
     """
     Renderiza a página 'PvP – Arena Tática'.

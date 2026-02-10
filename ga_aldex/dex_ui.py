@@ -15,6 +15,63 @@ from typing import Any, Dict
 
 import streamlit as st
 
+
+# ============================================================
+# Helpers locais (eram funções globais no app.py monolítico)
+# ============================================================
+
+def _split_types(raw: Any) -> list[str]:
+    """Divide o campo 'Tipo' em lista de tipos limpos.
+
+    Aceita formatos comuns como:
+    - "Water/Flying"
+    - "Water, Flying"
+    - "Water | Flying"
+    - "Water" (apenas 1)
+    """
+    if raw is None:
+        return []
+    s = str(raw).strip()
+    if not s:
+        return []
+    # Normaliza separadores
+    parts = re.split(r"\s*[/,|;+]\s*", s)
+    out: list[str] = []
+    for p in parts:
+        p = (p or "").strip()
+        if not p:
+            continue
+        # Mantém o texto como veio, mas sem espaços duplicados
+        p = re.sub(r"\s+", " ", p)
+        out.append(p)
+    return out
+
+
+def _type_color(t: str) -> str:
+    """Retorna uma cor (hex) para o tipo Pokémon, para badges/UI."""
+    key = (t or "").strip().lower()
+    palette = {
+        "normal": "#a8a77a",
+        "fire": "#ee8130",
+        "water": "#6390f0",
+        "electric": "#f7d02c",
+        "grass": "#7ac74c",
+        "ice": "#96d9d6",
+        "fighting": "#c22e28",
+        "poison": "#a33ea1",
+        "ground": "#e2bf65",
+        "flying": "#a98ff3",
+        "psychic": "#f95587",
+        "bug": "#a6b91a",
+        "rock": "#b6a136",
+        "ghost": "#735797",
+        "dragon": "#6f35fc",
+        "dark": "#705746",
+        "steel": "#b7b7ce",
+        "fairy": "#d685ad",
+    }
+    return palette.get(key, "#94a3b8")
+
 def render_pokedex_busca_page(*, df, user_data: dict, trainer_name: str, api_name_map: dict, get_pokemon_image_url):
     """
     Renderiza a página 'Pokédex (Busca)'.
