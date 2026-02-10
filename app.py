@@ -14037,6 +14037,24 @@ if page == "Pokédex (Busca)":
             #root, .root, .container, .main, .app {
               background: transparent !important;
             }
+            /* --- BLINDAGEM DO FUNDO PRETO (INLINE) DO st_click_detector --- */
+            /* Ele injeta um <div style="background:rgb(14, 17, 23)"> dentro do iframe */
+            div[style*="background: rgb(14, 17, 23)"],
+            div[style*="background:rgb(14, 17, 23)"],
+            div[style*="background-color: rgb(14, 17, 23)"],
+            div[style*="background-color:rgb(14,17,23)"],
+            div[style*="background: rgb(14,17,23)"],
+            div[style*="background:rgb(14,17,23)"]{
+              background: transparent !important;
+              background-color: transparent !important;
+            }
+            
+            /* Segurança extra: alguns builds usam #app/#stApp dentro do iframe */
+            #app, #stApp, .stApp, [data-testid="stAppViewContainer"]{
+              background: transparent !important;
+              background-color: transparent !important;
+            }
+
 
             .pokedex-grid-note {
                     font-size: 12px;
