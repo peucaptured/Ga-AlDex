@@ -18691,7 +18691,38 @@ elif page == "PvP – Arena Tática":
 
         with tab_inic:
             st.markdown("### 🧭 Iniciativa")
-            st.caption("Informe apenas o valor **final** da iniciativa dos Pokémon em campo (e do avatar, se estiver em campo).")
+            st.caption("O dono da sala pode rolar iniciativa (d20) para Pokémon em campo. Depois disso, cada desafiante informa apenas os ajustes dos próprios Pokémon.")
+
+            def _to_int(v, default=0):
+                try:
+                    return int(float(v))
+                except Exception:
+                    return int(default)
+
+            def _speed_to_initiative_mod(speed_value: int) -> int:
+                if speed_value >= 121:
+                    return 8
+                if speed_value >= 101:
+                    return 4
+                if speed_value >= 81:
+                    return 2
+                if speed_value >= 71:
+                    return 1
+                if speed_value >= 61:
+                    return 0
+                if speed_value >= 41:
+                    return -1
+                if speed_value >= 1:
+                    return -4
+                return 0
+
+            def _extract_speed_from_stats(stats_dict: dict) -> int:
+                if not isinstance(stats_dict, dict):
+                    return 0
+                for k in ["speed", "spe", "spd", "velocidade", "vel"]:
+                    if k in stats_dict:
+                        return _to_int(stats_dict.get(k), 0)
+                return 0
 
             s_now = get_state(db, rid)
             _pieces = s_now.get("pieces") or []
@@ -18705,21 +18736,94 @@ elif page == "PvP – Arena Tática":
                 pid_label = str(p.get("pid") or "")
                 if p_kind == "trainer":
                     label = f"🧍 Treinador • {p.get('owner') or '—'}"
+                    speed_val = 0
+                    speed_mod = 0
                 else:
                     label = f"🐾 {get_poke_display_name(pid_label)} • {p.get('owner') or '—'}"
+                    _, _, poke_stats, _, _ = get_poke_data(p.get("owner"), p.get("pid"))
+                    speed_val = _extract_speed_from_stats(poke_stats)
+                    speed_mod = _speed_to_initiative_mod(speed_val)
 
                 key = f"{p_kind}:{p.get('id')}"
                 saved = init_store.get(key) or {}
+                d20_roll = _to_int(saved.get("d20_roll"), 0)
+                bonus_input = _to_int(saved.get("bonus_input"), 0)
+                manual_input = _to_int(saved.get("manual_input"), _to_int(saved.get("initiative"), 0))
+                final_init = _to_int(saved.get("initiative"), 0)
+                if p_kind == "piece" and d20_roll > 0:
+                    final_init = d20_roll + speed_mod + bonus_input
                 rows.append({
                     "key": key,
+                    "owner": p.get("owner") or "",
                     "kind": "Avatar" if p_kind == "trainer" else "Pokémon",
                     "item": label,
-                    "initiative": int(saved.get("initiative") or 0),
+                    "speed": speed_val,
+                    "mod_speed": speed_mod,
+                    "d20": d20_roll,
+                    "bonus_input": bonus_input,
+                    "manual_input": manual_input,
+                    "initiative": final_init,
                 })
 
             if rows:
                 import pandas as _pd
                 df_init = _pd.DataFrame(rows)
+
+                pokemon_rows = [r for r in rows if r["kind"] == "Pokémon"]
+                if role == "owner":
+                    c_roll1, c_roll2 = st.columns([2, 1])
+                    with c_roll1:
+                        if st.button("🎲 Rolar iniciativas (todos Pokémon em campo)", use_container_width=True):
+                            out_roll = dict(init_store)
+                            for rec in pokemon_rows:
+                                k = rec["key"]
+                                saved = out_roll.get(k) or {}
+                                rolled = random.randint(1, 20)
+                                bonus_value = _to_int(saved.get("bonus_input"), 0)
+                                speed_mod = _to_int(rec.get("mod_speed"), 0)
+                                out_roll[k] = {
+                                    "d20_roll": rolled,
+                                    "speed": _to_int(rec.get("speed"), 0),
+                                    "speed_mod": speed_mod,
+                                    "bonus_input": bonus_value,
+                                    "manual_input": _to_int(saved.get("manual_input"), 0),
+                                    "initiative": rolled + speed_mod + bonus_value,
+                                    "note": "",
+                                }
+                            battle_ref.update({"initiative": out_roll})
+                            st.success("Iniciativas roladas para todos os Pokémon em campo ✅")
+                            st.rerun()
+                    with c_roll2:
+                        single_options = {r["key"]: r["item"] for r in pokemon_rows}
+                        selected_key = st.selectbox(
+                            "Rolar só um Pokémon",
+                            options=list(single_options.keys()),
+                            format_func=lambda x: single_options.get(x, x),
+                            key=f"init_roll_one_{rid}",
+                        ) if single_options else None
+                        if st.button("🎯 Rolar selecionado", disabled=not selected_key, use_container_width=True):
+                            rec = next((x for x in pokemon_rows if x["key"] == selected_key), None)
+                            if rec:
+                                out_roll = dict(init_store)
+                                saved = out_roll.get(selected_key) or {}
+                                rolled = random.randint(1, 20)
+                                speed_mod = _to_int(rec.get("mod_speed"), 0)
+                                bonus_value = _to_int(saved.get("bonus_input"), 0)
+                                out_roll[selected_key] = {
+                                    "d20_roll": rolled,
+                                    "speed": _to_int(rec.get("speed"), 0),
+                                    "speed_mod": speed_mod,
+                                    "bonus_input": bonus_value,
+                                    "manual_input": _to_int(saved.get("manual_input"), 0),
+                                    "initiative": rolled + speed_mod + bonus_value,
+                                    "note": "",
+                                }
+                                battle_ref.update({"initiative": out_roll})
+                                st.success("Iniciativa rolada para o Pokémon selecionado ✅")
+                                st.rerun()
+                else:
+                    st.caption("A opção **Rolar iniciativas** é exclusiva do dono da sala.")
+
                 st.markdown("#### ✍️ Entrada rápida")
                 edited = st.data_editor(
                     df_init,
@@ -18727,34 +18831,77 @@ elif page == "PvP – Arena Tática":
                     use_container_width=True,
                     column_config={
                         "key": st.column_config.TextColumn("ID", disabled=True),
+                        "owner": st.column_config.TextColumn("Dono", disabled=True),
                         "kind": st.column_config.TextColumn("Tipo", disabled=True),
                         "item": st.column_config.TextColumn("Item", disabled=True),
-                        "initiative": st.column_config.NumberColumn("Iniciativa", min_value=0, max_value=999, step=1),
+                        "speed": st.column_config.NumberColumn("Speed", disabled=True),
+                        "mod_speed": st.column_config.NumberColumn("Mod. Speed", disabled=True),
+                        "d20": st.column_config.NumberColumn("d20", disabled=True),
+                        "bonus_input": st.column_config.NumberColumn("Ajuste do jogador", min_value=-99, max_value=99, step=1),
+                        "manual_input": st.column_config.NumberColumn("Iniciativa manual", min_value=0, max_value=999, step=1),
+                        "initiative": st.column_config.NumberColumn("Iniciativa final", disabled=True),
                     },
                 )
 
-                out = {}
+                out = dict(init_store)
+                blocked = []
                 for rec in edited.to_dict("records"):
                     k = str(rec.get("key") or "").strip()
                     if not k:
                         continue
+                    row_owner = str(rec.get("owner") or "")
+                    row_kind = str(rec.get("kind") or "")
+                    can_edit_row = (role == "owner") or (row_owner == trainer_name)
+                    if not can_edit_row:
+                        blocked.append(rec.get("item") or k)
+                        continue
+
+                    saved_prev = out.get(k) or {}
+                    d20_roll = _to_int(saved_prev.get("d20_roll"), _to_int(rec.get("d20"), 0))
+                    speed_mod = _to_int(rec.get("mod_speed"), _to_int(saved_prev.get("speed_mod"), 0))
+                    speed_val = _to_int(rec.get("speed"), _to_int(saved_prev.get("speed"), 0))
+                    bonus_input = _to_int(rec.get("bonus_input"), _to_int(saved_prev.get("bonus_input"), 0))
+                    manual_input = _to_int(rec.get("manual_input"), _to_int(saved_prev.get("manual_input"), 0))
+
+                    final_init = manual_input
+                    if row_kind == "Pokémon" and d20_roll > 0:
+                        final_init = d20_roll + speed_mod + bonus_input
+
                     out[k] = {
-                        "initiative": int(rec.get("initiative") or 0),
+                        "d20_roll": d20_roll,
+                        "speed": speed_val,
+                        "speed_mod": speed_mod,
+                        "bonus_input": bonus_input,
+                        "manual_input": manual_input,
+                        "initiative": final_init,
                         "note": "",
                     }
 
+                if blocked:
+                    st.warning("Algumas linhas não puderam ser editadas porque pertencem a outros desafiantes.")
+
+                st.caption("Tabela Speed → iniciativa: 1-40=-4, 41-60=-1, 61-70=0, 71-80=1, 81-100=2, 101-120=4, 121+=8.")
+
                 st.markdown("#### 🏁 Ordem automática")
+                ordered_source = edited.copy()
+                ordered_vals = []
+                for rec in ordered_source.to_dict("records"):
+                    k = str(rec.get("key") or "")
+                    saved = out.get(k) or {}
+                    ordered_vals.append(_to_int(saved.get("initiative"), 0))
+                ordered_source["initiative"] = ordered_vals
                 ordered_df = (
-                    edited.sort_values(by=["initiative", "item"], ascending=[False, True])
+                    ordered_source.sort_values(by=["initiative", "item"], ascending=[False, True])
                     .reset_index(drop=True)
                 )
                 ordered_df.insert(0, "ordem", ordered_df.index + 1)
                 st.dataframe(
-                    ordered_df[["ordem", "kind", "item", "initiative"]],
+                    ordered_df[["ordem", "owner", "kind", "item", "initiative"]],
                     hide_index=True,
                     use_container_width=True,
                     column_config={
                         "ordem": st.column_config.NumberColumn("Ordem", format="%d"),
+                        "owner": st.column_config.TextColumn("Dono"),
                         "kind": st.column_config.TextColumn("Tipo"),
                         "item": st.column_config.TextColumn("Em campo"),
                         "initiative": st.column_config.NumberColumn("Iniciativa", format="%d"),
