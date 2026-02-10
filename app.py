@@ -628,20 +628,45 @@ def render_bgm(track_path: str, volume: float = 0.35) -> None:
         scrolling=False,
     )
 
+PVP_RERUN_COOLDOWN_SEC = 0.45
+
+
+def pvp_in_action() -> bool:
+    """Retorna True quando o usuário está no meio de uma ação de mapa/PvP."""
+    return bool(
+        st.session_state.get("moving_piece_id")
+        or st.session_state.get("placing_pid")
+        or st.session_state.get("placing_trainer")
+        or st.session_state.get("placing_effect")
+    )
+
+
+def request_rerun(reason: str, *, force: bool = False) -> bool:
+    """Gate único de rerun para evitar cascata/tremedeira no PvP/mapa."""
+    now = time.time()
+    st.session_state["rerun_reason"] = reason
+
+    if not force:
+        if pvp_in_action() or float(st.session_state.get("arena_pause_until", 0) or 0) > now:
+            st.session_state["pvp_sync_pending"] = True
+            return False
+
+        last_rerun_ts = float(st.session_state.get("last_rerun_ts", 0.0) or 0.0)
+        if (now - last_rerun_ts) < PVP_RERUN_COOLDOWN_SEC:
+            st.session_state["pvp_sync_pending"] = True
+            return False
+
+    st.session_state["last_rerun_ts"] = now
+    st.session_state["pvp_sync_pending"] = False
+    st.rerun()
+    return True
+
+
 # --- PLANO B: VIGIA DE SINCRONIZAÇÃO ---
 @st.fragment(run_every=2) # Roda esta função sozinha a cada 2 segundos
 def sync_watchdog(db, rid):
     if not rid:
         return
-
-    # Evita "tremedeira" e perda de clique durante ações (mover/colocar/terreno).
-    def _pvp_in_action() -> bool:
-        return bool(
-            st.session_state.get("moving_piece_id")
-            or st.session_state.get("placing_pid")
-            or st.session_state.get("placing_trainer")
-            or st.session_state.get("placing_effect")
-        )
 
     try:
         doc_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
@@ -661,12 +686,15 @@ def sync_watchdog(db, rid):
             st.session_state["last_map_update"] = server_time
 
             # Se o usuário está no meio de uma ação, marcamos como pendente e não rerunamos agora.
-            if _pvp_in_action() or float(st.session_state.get("arena_pause_until", 0) or 0) > time.time():
+            if pvp_in_action() or float(st.session_state.get("arena_pause_until", 0) or 0) > time.time():
                 st.session_state["pvp_sync_pending"] = True
                 return
 
-            st.session_state["pvp_sync_pending"] = False
-            st.rerun()
+            request_rerun("map_update")
+            return
+
+        if st.session_state.get("pvp_sync_pending"):
+            request_rerun("map_update_pending")
 
     except Exception:
         # Se der erro de conexão, ignora e tenta na próxima
@@ -16992,7 +17020,7 @@ elif page == "PvP – Arena Tática":
                     st.info("Clique no mapa para posicionar seu avatar.")
                     if st.button("🔙 Cancelar avatar", key="cancel_place_trainer"):
                         st.session_state["placing_trainer"] = None
-                        st.rerun()
+                        request_rerun("cancel_place_trainer")
                 else:
                     if trainer_piece:
                         c_avatar_1, c_avatar_2, c_avatar_3 = st.columns(3)
@@ -17002,26 +17030,26 @@ elif page == "PvP – Arena Tática":
                                 st.session_state["arena_pause_until"] = time.time() + 1.2
                                 st.session_state["placing_pid"] = None
                                 st.session_state["placing_trainer"] = None
-                                st.rerun()
+                                request_rerun("move_select", force=True)
                         with c_avatar_2:
                             trainer_revealed = trainer_piece.get("revealed", True)
                             if st.button("👁️" if trainer_revealed else "✅", key="toggle_trainer"):
                                 trainer_piece["revealed"] = not trainer_revealed
                                 upsert_piece(db, rid, trainer_piece)
-                                st.rerun()
+                                request_rerun("toggle_trainer")
                         with c_avatar_3:
                             if st.button("❌", key="remove_trainer"):
                                 delete_piece(db, rid, trainer_piece.get("id"))
                                 if st.session_state.get("moving_piece_id") == trainer_piece.get("id"):
                                     st.session_state["moving_piece_id"] = None
-                                st.rerun()
+                                request_rerun("remove_trainer")
                     else:
                         if st.button("📍 Colocar avatar", key="place_trainer", disabled=not avatar_choice or is_busy):
                             st.session_state["placing_trainer"] = True
                             st.session_state["arena_pause_until"] = time.time() + 1.2
                             st.session_state["placing_pid"] = None
                             st.session_state["moving_piece_id"] = None
-                            st.rerun()
+                            request_rerun("place_trainer_start", force=True)
 
             # ==========================
             # UI compacta: lista + detalhes do selecionado
@@ -17953,7 +17981,7 @@ elif page == "PvP – Arena Tática":
                                 st.session_state["moving_piece_id"] = None
                                 st.session_state["placing_pid"] = None
                                 st.session_state["placing_trainer"] = None
-                                st.rerun()
+                                request_rerun("remove_trainer")
                         with top_tools[1]:
                             if st.button(
                                 "🧼 Limpar Tudo",
@@ -17989,7 +18017,7 @@ elif page == "PvP – Arena Tática":
                                 st.session_state["moving_piece_id"] = None
                                 st.session_state["placing_pid"] = None
                                 st.session_state["placing_trainer"] = None
-                                st.rerun()
+                                request_rerun("remove_trainer")
 
                 # Ajustes de visualização do mapa (zoom automático por tamanho para manter proporção)
                 toolbar = st.columns([1.15, 2.35, 1.0])
@@ -18103,7 +18131,7 @@ elif page == "PvP – Arena Tática":
 
                             if not brush_on:
                                 st.session_state["placing_effect"] = None
-                            st.rerun()
+                            request_rerun("effect_erase")
 
                         # Aplica/atualiza efeito
                         new = [
@@ -18119,7 +18147,7 @@ elif page == "PvP – Arena Tática":
 
                         if not brush_on:
                             st.session_state["placing_effect"] = None
-                        st.rerun()
+                        request_rerun("effect_place")
 
                     elif ppid:
                         new_id = str(uuid.uuid4())[:8]
@@ -18139,7 +18167,7 @@ elif page == "PvP – Arena Tática":
                         mark_pid_seen(db, rid, ppid)
                         add_public_event(db, rid, "piece_placed", trainer_name, {"pid": ppid, "to": [row, col]})
                         st.session_state.pop("placing_pid", None)
-                        st.rerun()
+                        request_rerun("piece_place")
                     elif placing_trainer:
                         s_now = get_state(db, rid)
                         all_p = s_now.get("pieces") or []
@@ -18170,7 +18198,7 @@ elif page == "PvP – Arena Tática":
                                 upsert_piece(db, rid, new_piece)
                             add_public_event(db, rid, "trainer_placed", trainer_name, {"to": [row, col]})
                         st.session_state["placing_trainer"] = None
-                        st.rerun()
+                        request_rerun("trainer_place")
                     elif moving_piece_id and is_player:
                         s_now = get_state(db, rid)
                         all_p = s_now.get("pieces") or []
@@ -18197,7 +18225,7 @@ elif page == "PvP – Arena Tática":
 
                             # 5. Limpa a seleção e recarrega
                             st.session_state["moving_piece_id"] = None
-                            st.rerun()
+                            request_rerun("move_commit")
 
 
         with tab_inic:
