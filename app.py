@@ -14665,14 +14665,37 @@ if page == "Trainer Hub (Meus Pokémons)":
     # Carrega fichas do Firebase (mapa pid -> sheet)
     # ----------------------------
     sheets_map = {}
+
+    def _normalize_hub_pid(pid_value) -> str:
+        pid_str = str(pid_value or "").strip()
+        if not pid_str:
+            return ""
+        if pid_str.startswith("EXT:"):
+            return pid_str
+        return str(int(pid_str)) if pid_str.isdigit() else pid_str
+
+    def _register_sheet(sheet_payload: dict, pid_value) -> None:
+        pid_norm = _normalize_hub_pid(pid_value)
+        if not pid_norm:
+            return
+
+        prev_sheet = sheets_map.get(pid_norm)
+        if prev_sheet is None:
+            sheets_map[pid_norm] = sheet_payload
+            return
+
+        # Se houver conflito, mantém a ficha mais recente.
+        prev_updated = str(prev_sheet.get("updated_at") or "")
+        curr_updated = str(sheet_payload.get("updated_at") or "")
+        if curr_updated >= prev_updated:
+            sheets_map[pid_norm] = sheet_payload
+
     try:
         db, bucket = init_firebase()
         for sh in list_sheets(db, trainer_name) or []:
             p = (sh.get("pokemon") or {})
-            pid = p.get("id")
-            if pid is None:
-                continue
-            sheets_map[str(pid)] = sh
+            _register_sheet(sh, p.get("id"))
+            _register_sheet(sh, sh.get("linked_pid"))
     except Exception:
         sheets_map = {}
 
@@ -14814,7 +14837,7 @@ if page == "Trainer Hub (Meus Pokémons)":
 
             # painel direito: stats + resumo + golpes
             with cB:
-                sheet = sheets_map.get(pid) if (not is_ext) else None
+                sheet = sheets_map.get(_normalize_hub_pid(pid)) if (not is_ext) else None
 
                 if sheet is None:
                     st.warning("Este Pokémon não tem ficha salva. Preencha os atributos mínimos para usar no Hub.")
