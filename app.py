@@ -14667,12 +14667,29 @@ if page == "Trainer Hub (Meus Pokémons)":
     sheets_map = {}
 
     def _normalize_hub_pid(pid_value) -> str:
-        pid_str = str(pid_value or "").strip()
-        if not pid_str:
+        s = str(pid_value or "").strip()
+        if not s:
             return ""
-        if pid_str.startswith("EXT:"):
-            return pid_str
-        return str(int(pid_str)) if pid_str.isdigit() else pid_str
+        if s.startswith("EXT:"):
+            return s
+    
+        # Aceita UID:/PID: (se seu dex-guard tiver esse helper)
+        if s.startswith(("UID:", "PID:")):
+            try:
+                uid_to_pid = st.session_state.get("_dex_uid_to_pid") or {}
+                s2 = _dex_uid_to_pid(s, uid_to_pid)  # usa seu mapper existente
+                s = str(s2).strip() if s2 else s
+            except Exception:
+                pass
+    
+        # Aceita "283", "0283", "283.0", int, float etc.
+        try:
+            if re.fullmatch(r"\d+(\.0+)?", s):
+                return str(int(float(s)))
+        except Exception:
+            pass
+    
+        return s
 
     def _register_sheet(sheet_payload: dict, pid_value) -> None:
         pid_norm = _normalize_hub_pid(pid_value)
@@ -16946,7 +16963,7 @@ elif page == "Minhas Fichas":
     hub_pokemon_ids = []
     _seen_hub_ids = set()
     for raw_pid in (user_data.get("caught") or []):
-        pid = str(raw_pid).strip()
+        pid = _normalize_hub_pid(raw_pid)
         if not pid or pid in _seen_hub_ids:
             continue
         _seen_hub_ids.add(pid)
@@ -17032,7 +17049,7 @@ elif page == "Minhas Fichas":
                     )
 
                     if st.button("💾 Salvar associação", key=f"sheet_assoc_save_{sheet_id}"):
-                        payload = {"linked_pid": selected_assoc or None}
+                        payload = {"linked_pid": _normalize_hub_pid(selected_assoc) or None}
                         save_sheet_to_firestore(db, trainer_name, payload, sheet_id=sheet_id)
                         st.success("Associação atualizada.")
                         st.rerun()
