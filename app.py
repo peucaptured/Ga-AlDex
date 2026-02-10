@@ -15529,30 +15529,20 @@ if page == "Trainer Hub (Meus Pokémons)":
             if not catalog or not index_entries:
                 st.warning("Nenhum avatar encontrado na pasta trainer.")
             else:
-                similar_bases = []
                 random_bases = []
-                best_default_by_base = {}
 
-                if photo_bytes:
-                    try:
-                        photo_img = Image.open(io.BytesIO(photo_bytes))
-                        similar_bases, best_default_by_base = suggest_bases_and_best_skins(
-                            photo_img,
-                            index_entries,
-                            top_bases=5,
-                            per_base_limit=1,
-                        )
-                    except Exception:
-                        similar_bases, best_default_by_base = [], {}
+                available_bases = sorted(catalog.keys())
+                random_suggestions_key = "trainer_random_avatar_bases"
+                random_suggestions_pool_key = "trainer_random_avatar_pool"
+                expected_total = min(10, len(available_bases))
 
-                available_bases = list(catalog.keys())
-                random_pool = [base for base in available_bases if base not in similar_bases]
-                if random_pool:
-                    random_bases = random.sample(random_pool, k=min(5, len(random_pool)))
-
-                if not similar_bases:
-                    st.info("Envie uma foto para ver sugestões parecidas com o seu sprite.")
-
+                if (
+                    st.session_state.get(random_suggestions_pool_key) != available_bases
+                    or len(st.session_state.get(random_suggestions_key, [])) != expected_total
+                ):
+                    st.session_state[random_suggestions_pool_key] = available_bases
+                    st.session_state[random_suggestions_key] = random.sample(available_bases, k=expected_total)
+                random_bases = st.session_state.get(random_suggestions_key, [])
                 chosen_avatar = profile.get("avatar_choice")
 
                 def render_avatar_suggestions(section_id: str, title: str, bases: list[str], best_defaults: dict[str, str]):
@@ -15588,15 +15578,10 @@ if page == "Trainer Hub (Meus Pokémons)":
                                 st.success(f"Avatar selecionado: {selected_skin}.")
                                 st.rerun()
 
-                render_avatar_suggestions(
-                    "similar",
-                    "Sugestões parecidas com o seu sprite",
-                    similar_bases,
-                    best_default_by_base,
-                )
+
                 render_avatar_suggestions(
                     "random",
-                    "Sugestões aleatórias",
+                    "10 sorteados aleatoriamente",
                     random_bases,
                     {},
                 )
