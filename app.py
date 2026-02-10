@@ -17612,6 +17612,19 @@ elif page == "PvP – Arena Tática":
             box-shadow: 0 8px 18px rgba(2,6,23,0.22);
             color: #e2e8f0 !important;
             font-weight: 800 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            line-height: 1 !important;
+        }
+        [data-testid="stVerticalBlock"]:has(.pvp-mon-card-marker) [data-testid="stButton"] button p,
+        [data-testid="stVerticalBlock"]:has(.pvp-avatar-card-marker) [data-testid="stButton"] button p{
+            margin: 0 !important;
+            width: 100%;
+            line-height: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
         [data-testid="stVerticalBlock"]:has(.pvp-mon-card-marker) [data-testid="stButton"] button:hover,
         [data-testid="stVerticalBlock"]:has(.pvp-avatar-card-marker) [data-testid="stButton"] button:hover{
