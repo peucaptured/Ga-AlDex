@@ -17110,6 +17110,22 @@ elif page == "PvP – Arena Tática":
                             st.session_state["placing_pid"] = None
                             st.session_state["moving_piece_id"] = None
                             request_rerun("place_trainer_start", force=True)
+            else:
+                with st.container():
+                    st.markdown("<div class='pvp-avatar-card-marker'></div>", unsafe_allow_html=True)
+                    st.markdown("#### 🙂 Avatar")
+
+                opponent_avatar = trainer_piece.get("avatar") if trainer_piece else None
+                opponent_avatar_path = None
+                if opponent_avatar:
+                    avatar_lookup = build_trainer_avatar_lookup()
+                    avatar_info = avatar_lookup.get(opponent_avatar) or {}
+                    opponent_avatar_path = avatar_info.get("path")
+
+                if opponent_avatar_path:
+                    st.image(opponent_avatar_path, width=96)
+                else:
+                    st.caption("Avatar do oponente ainda não foi revelado no mapa.")
 
             # ==========================
             # UI compacta: lista + detalhes do selecionado
