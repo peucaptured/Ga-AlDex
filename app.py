@@ -1360,7 +1360,6 @@ def cg_reset_for_new_pokemon(pname: str):
     """Limpa o estado da criação guiada quando o usuário troca o Pokémon."""
     cg_init(reset=True)
     st.session_state["cg_draft"]["pname"] = pname
-    st.session_state["cg_pname"] = pname
 
     # Widgets/campos da ficha
     st.session_state["cg_np"] = 0
