@@ -15519,6 +15519,21 @@ elif page == "Criação Guiada de Fichas":
 
             # Atualiza o rascunho com o nome específico da forma
             st.session_state["cg_draft"]["pname"] = pname
+
+            # Quando troca de Pokémon, limpa estado de viabilidade para não reaproveitar
+            # seleção/texto do Pokémon anterior.
+            current_viab_target = _norm(pname)
+            previous_viab_target = st.session_state.get("cg_viab_target")
+            if previous_viab_target != current_viab_target:
+                for k in [
+                    "cg_viab_sel_idx",
+                    "cg_viab_raw_view",
+                    "cg_viab_rank_default",
+                    "cg_viab_selected",
+                    "cg_viab_mode",
+                ]:
+                    st.session_state.pop(k, None)
+                st.session_state["cg_viab_target"] = current_viab_target
     
             # Busca ID no Excel
             row = df[df["Nome"].str.lower() == pname.lower()]
@@ -15684,7 +15699,6 @@ elif page == "Criação Guiada de Fichas":
                                 "Texto da Viabilidade (referência)",
                                 value=str(arch.get("raw", "") or ""),
                                 height=120,
-                                key="cg_viab_raw_view",
                                 disabled=True,
                             )
 
