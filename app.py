@@ -1894,7 +1894,32 @@ def _resolve_asset_path(fname: str) -> str:
         pass
 
     return fname  # fallback (deixa o erro explícito se não achar)
-
+    
+    def _normalize_hub_pid(pid_value) -> str:
+        s = str(pid_value or "").strip()
+        if not s:
+            return ""
+        if s.startswith("EXT:"):
+            return s
+    
+        # Aceita UID:/PID: (se seu dex-guard tiver esse helper)
+        if s.startswith(("UID:", "PID:")):
+            try:
+                uid_to_pid = st.session_state.get("_dex_uid_to_pid") or {}
+                s2 = _dex_uid_to_pid(s, uid_to_pid)  # usa seu mapper existente
+                s = str(s2).strip() if s2 else s
+            except Exception:
+                pass
+    
+        # Aceita "283", "0283", "283.0", int, float etc.
+        try:
+            if re.fullmatch(r"\d+(\.0+)?", s):
+                return str(int(float(s)))
+        except Exception:
+            pass
+    
+        return s
+        
 def _pokeapi_parse_move_names(pjson: dict) -> list[str]:
     out: list[str] = []
     for it in (pjson or {}).get("moves", []) or []:
@@ -14666,30 +14691,7 @@ if page == "Trainer Hub (Meus Pokémons)":
     # ----------------------------
     sheets_map = {}
 
-    def _normalize_hub_pid(pid_value) -> str:
-        s = str(pid_value or "").strip()
-        if not s:
-            return ""
-        if s.startswith("EXT:"):
-            return s
-    
-        # Aceita UID:/PID: (se seu dex-guard tiver esse helper)
-        if s.startswith(("UID:", "PID:")):
-            try:
-                uid_to_pid = st.session_state.get("_dex_uid_to_pid") or {}
-                s2 = _dex_uid_to_pid(s, uid_to_pid)  # usa seu mapper existente
-                s = str(s2).strip() if s2 else s
-            except Exception:
-                pass
-    
-        # Aceita "283", "0283", "283.0", int, float etc.
-        try:
-            if re.fullmatch(r"\d+(\.0+)?", s):
-                return str(int(float(s)))
-        except Exception:
-            pass
-    
-        return s
+
 
     def _register_sheet(sheet_payload: dict, pid_value) -> None:
         pid_norm = _normalize_hub_pid(pid_value)
