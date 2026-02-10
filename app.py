@@ -15842,15 +15842,26 @@ elif page == "Criação Guiada de Fichas":
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
+                    stgr_suggested_max = max(0, int(stgr_base))
+                    stgr_current = int(st.session_state.get("cg_stgr", stgr_suggested_max))
+                    if stgr_current > stgr_suggested_max:
+                        st.session_state["cg_stgr"] = stgr_suggested_max
+                        stgr_current = stgr_suggested_max
                     stgr = st.number_input(
                         "Stgr (Força)",
-                        value=int(st.session_state.get("cg_stgr", stgr_base)),
-                        min_value=0, max_value=99, key="cg_stgr",
+                        value=stgr_current,
+                        min_value=0, max_value=stgr_suggested_max, key="cg_stgr",
                     )
+
+                    int_suggested_max = max(0, int(int_base))
+                    int_current = int(st.session_state.get("cg_int", int_suggested_max))
+                    if int_current > int_suggested_max:
+                        st.session_state["cg_int"] = int_suggested_max
+                        int_current = int_suggested_max
                     intellect = st.number_input(
                         "Int (Intelecto)",
-                        value=int(st.session_state.get("cg_int", int_base)),
-                        min_value=0, max_value=99, key="cg_int",
+                        value=int_current,
+                        min_value=0, max_value=int_suggested_max, key="cg_int",
                     )
                 
                 with col2:
