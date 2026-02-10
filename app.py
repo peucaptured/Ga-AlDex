@@ -13418,12 +13418,11 @@ if page == "Pokédex (Busca)":
     }
 
     .dex-tcg-header{
-        height: 30px;
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        align-items: center;
+        min-height: 30px;
+        display: flex;
+        align-items: flex-start;
         gap: 8px;
-        padding: 6px 8px;
+        padding: 4px 8px 2px;
         background: rgba(15,23,42,0.62);
         border-bottom: 1px solid rgba(255,255,255,0.12);
     }
@@ -13436,9 +13435,9 @@ if page == "Pokédex (Busca)":
     
         .dex-tcg-left{
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           gap: 6px;
-          min-width: 64px; /* evita “dança” quando muda o status */
+          flex-shrink: 0;
         }
         
         .dex-tcg-num{
@@ -13454,19 +13453,21 @@ if page == "Pokédex (Busca)":
           color: rgba(226,232,240,0.95);
           text-shadow: 0 1px 2px rgba(0,0,0,.55);
         }
-    /* (opcional) puxar fonte do Google */
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap');
-        
         .dex-tcg-name{
-          font-family: 'Orbitron', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+          font-family: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
           font-size: 11px;
-          font-weight: 700;
-          color: #e2e8f0;
-          text-shadow: 0 2px 2px rgba(0,0,0,55);
+          font-weight: 900;
+          letter-spacing: .4px;
+          color: #f8fafc;
+          text-shadow: 0 2px 2px rgba(0,0,0,.55);
+          text-transform: uppercase;
+          line-height: 1.1;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          text-align: center;
+          text-align: left;
+          margin-top: 2px;
+          flex: 1;
         }
         
         .dex-tcg-id{
@@ -13495,6 +13496,9 @@ if page == "Pokédex (Busca)":
         border-radius: 999px;
         padding: 2px 7px;
         text-shadow: 0 1px 2px rgba(0,0,0,.55);
+        margin-top: 1px;
+        margin-left: auto;
+        flex-shrink: 0;
     }
 
     .dex-tcg-body{
@@ -14289,12 +14293,11 @@ if page == "Pokédex (Busca)":
                 }
 
                 .dex-tcg-header{
-                    height: 30px;
-                    display: grid;
-                    grid-template-columns: 26px 1fr auto;
-                    align-items: center;
+                    min-height: 30px;
+                    display: flex;
+                    align-items: flex-start;
                     gap: 8px;
-                    padding: 6px 8px;
+                    padding: 4px 8px 2px;
                     background: rgba(15,23,42,0.62);
                     border-bottom: 1px solid rgba(255,255,255,0.12);
                 }
@@ -14304,14 +14307,39 @@ if page == "Pokédex (Busca)":
                     opacity: .95;
                     filter: drop-shadow(0 2px 3px rgba(0,0,0,.45));
                 }
+                .dex-tcg-left{
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    flex-shrink: 0;
+                }
+                .dex-tcg-num{
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+                    font-size: 10px;
+                    font-weight: 800;
+                    letter-spacing: .6px;
+                    padding: 1px 6px;
+                    border-radius: 999px;
+                    background: rgba(15,23,42,0.55);
+                    border: 1px solid rgba(255,255,255,0.18);
+                    color: rgba(226,232,240,0.95);
+                    text-shadow: 0 1px 2px rgba(0,0,0,.55);
+                }
                 .dex-tcg-name{
-                    font-size: 9px;
-                    color: #e2e8f0;
+                    font-family: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
+                    font-size: 11px;
+                    font-weight: 900;
+                    letter-spacing: .4px;
+                    color: #f8fafc;
                     text-shadow: 0 2px 2px rgba(0,0,0,.55);
+                    text-transform: uppercase;
+                    line-height: 1.1;
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
-                    text-align: center;
+                    text-align: left;
+                    margin-top: 2px;
+                    flex: 1;
                 }
                 .dex-tcg-np{
                     font-size: 8px;
@@ -14321,6 +14349,9 @@ if page == "Pokédex (Busca)":
                     border-radius: 999px;
                     padding: 2px 7px;
                     text-shadow: 0 1px 2px rgba(0,0,0,.55);
+                    margin-top: 1px;
+                    margin-left: auto;
+                    flex-shrink: 0;
                 }
 
                 .dex-tcg-body{
