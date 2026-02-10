@@ -78,6 +78,88 @@ def _boolish(v: Any) -> bool:
     x = _norm(_safe_str(v))
     return x in {"sim", "true", "1", "yes", "y"}
 
+# =========================
+# UI helpers: Lista & ajustes (Golpes)
+# =========================
+def _mv_ui_id(m: dict) -> str:
+    """ID estável por golpe para chaves de widgets, mesmo com filtro/ordenação."""
+    if "_ui_id" not in m or not m["_ui_id"]:
+        m["_ui_id"] = uuid.uuid4().hex
+    return str(m["_ui_id"])
+
+def _mv_tags_from_move(m: dict) -> list[str]:
+    meta = (m.get("meta") or {})
+    build = str(m.get("build") or "").lower()
+
+    tags = []
+
+    # Meta/flags que você já usa
+    if meta.get("perception_area"):
+        tags.append("Área")
+    if meta.get("ranged"):
+        tags.append("Ranged")
+
+    # Heurística pelo build (não altera lógica; só UI)
+    if "damage" in build:
+        tags.append("Damage")
+    if "affliction" in build:
+        tags.append("Affliction")
+    if "weaken" in build:
+        tags.append("Weaken")
+    if "linked" in build:
+        tags.append("Linked")
+
+    # Resistências (pra ajudar leitura)
+    if "will" in build:
+        tags.append("Will")
+    if "dodge" in build:
+        tags.append("Dodge")
+    if "toughness" in build or "thg" in build:
+        tags.append("Toughness")
+    if "fortitude" in build:
+        tags.append("Fortitude")
+
+    # Remove duplicados preservando ordem
+    seen = set()
+    out = []
+    for t in tags:
+        if t not in seen:
+            seen.add(t)
+            out.append(t)
+    return out
+
+def _mv_desc_for(db_moves_guided, move_name: str) -> str | None:
+    if not db_moves_guided:
+        return None
+    try:
+        mv_desc = db_moves_guided.get_by_name(str(move_name or ""))
+    except Exception:
+        mv_desc = None
+    if mv_desc and getattr(mv_desc, "descricao", None):
+        return mv_desc.descricao
+    return None
+
+def _mv_preview(text: str | None, n: int = 180) -> str:
+    t = (text or "").strip()
+    if not t:
+        return "Descrição não disponível."
+    if len(t) <= n:
+        return t
+    return t[:n].rstrip() + "…"
+
+def _mv_sort_key(sort_mode: str, name: str, pp: int, final_rank: int, acc: int, mod_acc: int):
+    # retornos “compatíveis” com sorted()
+    if sort_mode == "Nome (A→Z)":
+        return (name.lower(),)
+    if sort_mode == "PP (maior→menor)":
+        return (-pp, name.lower())
+    if sort_mode == "Rank final (maior→menor)":
+        return (-final_rank, name.lower())
+    if sort_mode == "Acerto (maior→menor)":
+        return (-acc, name.lower())
+    if sort_mode == "Mod. acerto (maior→menor)":
+        return (-mod_acc, name.lower())
+    return (name.lower(),)
 
 def _draw_tactical_grid(img, grid, tile_size: int):
     """
@@ -1847,7 +1929,30 @@ def _cg_init_defenses_if_missing(dodge_base, fort_base):
     if "cg_thg" not in st.session_state:
         st.session_state["cg_thg"] = max(0, min(99, cap - int(st.session_state["cg_dodge"])))
 
-
+def _normalize_hub_pid(pid_value) -> str:
+    s = str(pid_value or "").strip()
+    if not s:
+        return ""
+    if s.startswith("EXT:"):
+        return s
+    
+    # Aceita UID:/PID: (se seu dex-guard tiver esse helper)
+    if s.startswith(("UID:", "PID:")):
+        try:
+            uid_to_pid = st.session_state.get("_dex_uid_to_pid") or {}
+            s2 = _dex_uid_to_pid(s, uid_to_pid)  # usa seu mapper existente
+            s = str(s2).strip() if s2 else s
+        except Exception:
+            pass
+    
+    # Aceita "283", "0283", "283.0", int, float etc.
+    try:
+        if re.fullmatch(r"\d+(\.0+)?", s):
+            return str(int(float(s)))
+    except Exception:
+        pass
+    
+    return s
 
 # ----------------------------
 # Helpers UX (Criação Guiada)
@@ -1895,30 +2000,7 @@ def _resolve_asset_path(fname: str) -> str:
 
     return fname  # fallback (deixa o erro explícito se não achar)
     
-    def _normalize_hub_pid(pid_value) -> str:
-        s = str(pid_value or "").strip()
-        if not s:
-            return ""
-        if s.startswith("EXT:"):
-            return s
     
-        # Aceita UID:/PID: (se seu dex-guard tiver esse helper)
-        if s.startswith(("UID:", "PID:")):
-            try:
-                uid_to_pid = st.session_state.get("_dex_uid_to_pid") or {}
-                s2 = _dex_uid_to_pid(s, uid_to_pid)  # usa seu mapper existente
-                s = str(s2).strip() if s2 else s
-            except Exception:
-                pass
-    
-        # Aceita "283", "0283", "283.0", int, float etc.
-        try:
-            if re.fullmatch(r"\d+(\.0+)?", s):
-                return str(int(float(s)))
-        except Exception:
-            pass
-    
-        return s
         
 def _pokeapi_parse_move_names(pjson: dict) -> list[str]:
     out: list[str] = []
@@ -16727,7 +16809,31 @@ elif page == "Criação Guiada de Fichas":
                 # --------------------------
                 with sub_tabs[3]:
                     st.markdown("#### 📦 Golpes confirmados nesta ficha")
-                    if st.session_state.get("cg_moves"):
+                
+                    # CSS local (não interfere no resto do app)
+                    st.markdown("""
+                    <style>
+                      .mv-kpi { opacity: .92; font-size: 0.92rem; }
+                      .mv-muted { opacity: .75; }
+                      .mv-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+                      .mv-chip {
+                        display:inline-flex; align-items:center; gap:6px;
+                        padding: 2px 10px; border-radius: 999px;
+                        border: 1px solid rgba(255,255,255,0.14);
+                        background: rgba(255,255,255,0.06);
+                        font-size: 0.82rem;
+                      }
+                      .mv-warn {
+                        border-left: 4px solid rgba(255, 180, 0, 0.9);
+                        padding-left: 10px;
+                      }
+                    </style>
+                    """, unsafe_allow_html=True)
+                
+                    if not st.session_state.get("cg_moves"):
+                        st.info("Nenhum golpe confirmado ainda. Use as abas acima para adicionar e ajustar.")
+                    else:
+                        # Stats atuais (mesma lógica que você já usa)
                         stats_fallback = st.session_state.get("cg_draft", {}).get("stats", {})
                         stats_now = {
                             "stgr": int(st.session_state.get("cg_stgr", stats_fallback.get("stgr", 0)) or 0),
@@ -16737,55 +16843,150 @@ elif page == "Criação Guiada de Fichas":
                             "thg": int(st.session_state.get("cg_thg", stats_fallback.get("thg", 0)) or 0),
                             "fortitude": int(st.session_state.get("cg_fortitude", stats_fallback.get("fortitude", 0)) or 0),
                             "will": int(st.session_state.get("cg_will", stats_fallback.get("will", 0)) or 0),
-                        }                        
+                        }
                         np_value = int(st.session_state.get("cg_np", 0) or 0)
-
-                        for i, m_gv in enumerate(list(st.session_state["cg_moves"]), start=1):
+                        target_total = 2 * int(np_value)
+                
+                        # -------- Toolbar: busca / filtros / ordenação / compacto --------
+                        all_moves = st.session_state["cg_moves"]
+                
+                        # prepara lista com índices reais (pra editar/remover sem bagunçar)
+                        entries = []
+                        all_tags_set = set()
+                        for real_idx, m in enumerate(all_moves):
+                            ui_id = _mv_ui_id(m)
+                            name = str(m.get("name") or "Golpe")
+                            tags = _mv_tags_from_move(m)
+                            all_tags_set.update(tags)
+                
+                            meta = m.setdefault("meta", {})
+                            accuracy = int(m.get("accuracy", 0) or 0)
+                            pp_here = int(m.get("pp_cost") or 0) if m.get("pp_cost") is not None else 0
+                            base_rank = int(m.get("rank", 0) or 0)
+                            based_label, stat_val = _move_stat_value(meta, stats_now)
+                            final_rank = base_rank + int(stat_val)
+                            mod_acerto = accuracy + final_rank
+                
+                            entries.append({
+                                "real_idx": real_idx,
+                                "ui_id": ui_id,
+                                "name": name,
+                                "tags": tags,
+                                "accuracy": accuracy,
+                                "pp": pp_here,
+                                "base_rank": base_rank,
+                                "final_rank": final_rank,
+                                "mod_acerto": mod_acerto,
+                                "based_label": based_label,
+                                "stat_val": int(stat_val),
+                            })
+                
+                        tcol1, tcol2, tcol3, tcol4 = st.columns([4, 3, 3, 2], vertical_alignment="center")
+                        with tcol1:
+                            q = st.text_input("Buscar golpe", value="", placeholder="Digite parte do nome…", key="mv_list_q")
+                        with tcol2:
+                            tag_opts = sorted(all_tags_set)
+                            tag_pick = st.multiselect("Filtrar por tags", options=tag_opts, default=[], key="mv_list_tags")
+                        with tcol3:
+                            sort_mode = st.selectbox(
+                                "Ordenar",
+                                ["Nome (A→Z)", "PP (maior→menor)", "Rank final (maior→menor)", "Acerto (maior→menor)", "Mod. acerto (maior→menor)"],
+                                index=0,
+                                key="mv_list_sort",
+                            )
+                        with tcol4:
+                            compact = st.toggle("Compacto", value=False, key="mv_list_compact")
+                
+                        # aplica busca/filtro
+                        qn = (q or "").strip().lower()
+                        if qn:
+                            entries = [e for e in entries if qn in e["name"].lower()]
+                
+                        if tag_pick:
+                            need = set(tag_pick)
+                            entries = [e for e in entries if need.issubset(set(e["tags"]))]
+                
+                        # ordena
+                        entries = sorted(
+                            entries,
+                            key=lambda e: _mv_sort_key(sort_mode, e["name"], e["pp"], e["final_rank"], e["accuracy"], e["mod_acerto"])
+                        )
+                
+                        # -------- Render dos cards --------
+                        for order_i, e in enumerate(entries, start=1):
+                            m_gv = all_moves[e["real_idx"]]
+                            ui_id = e["ui_id"]
+                            meta = m_gv.setdefault("meta", {})
+                
+                            desc_text = _mv_desc_for(db_moves_guided, m_gv.get("name"))
+                            preview = _mv_preview(desc_text, 200)
+                
+                            # limites
+                            acc_limit = _move_accuracy_limit(m_gv, np_value, stats_now)
+                            current_acc = int(m_gv.get("accuracy", 0) or 0)
+                            base_rank = int(m_gv.get("rank", 0) or 0)
+                            based_label, stat_val = _move_stat_value(meta, stats_now)
+                            final_rank = base_rank + int(stat_val)
+                            mod_acerto = current_acc + final_rank
+                
+                            # card
                             with st.container(border=True):
-                                c1, c2, c3 = st.columns([6, 2, 1], vertical_alignment="center")
-                                with c1:
-                                    meta = m_gv.setdefault("meta", {})
-                                    accuracy = int(m_gv.get("accuracy", 0) or 0)
+                                left, right = st.columns([7, 3], vertical_alignment="top")
+                
+                                with left:
+                                    st.markdown(f"### {order_i}. {m_gv.get('name','Golpe')}")
+                                    if e["tags"]:
+                                        chips_html = '<div class="mv-chips">' + "".join([f'<span class="mv-chip">{t}</span>' for t in e["tags"]]) + "</div>"
+                                        st.markdown(chips_html, unsafe_allow_html=True)
+                
+                                    # linha de KPIs (compacta, sem poluir)
                                     pp_here = m_gv.get("pp_cost")
-                                    base_rank = int(m_gv.get("rank", 0) or 0)
-                                    based_label, stat_val = _move_stat_value(meta, stats_now)
-                                    final_rank = base_rank + int(stat_val)
-                                    mod_acerto = accuracy + final_rank
-                                    target_total = 2 * int(np_value)
+                                    pp_show = "—" if pp_here is None else str(pp_here)
+                
                                     if based_label == "—":
                                         rank_label = f"Rank final {final_rank}"
                                     else:
                                         rank_label = f"Rank final {final_rank} (Base {base_rank} + {based_label} {stat_val})"
-                                    st.write(
-                                        f"{i}. **{m_gv.get('name','Golpe')}** ({rank_label}) — "
-                                        f"PP: {pp_here} | Acerto {accuracy} | Mod. acerto {mod_acerto} (2xNP = {target_total})"
+                
+                                    st.markdown(
+                                        f"<div class='mv-kpi'>"
+                                        f"<b>{rank_label}</b> &nbsp;•&nbsp; "
+                                        f"<b>PP:</b> {pp_show} &nbsp;•&nbsp; "
+                                        f"<b>Acerto:</b> {current_acc} &nbsp;•&nbsp; "
+                                        f"<b>Mod. acerto:</b> {mod_acerto} <span class='mv-muted'>(2×NP = {target_total})</span>"
+                                        f"</div>",
+                                        unsafe_allow_html=True,
                                     )
-                                    tags = []
-                                    if meta.get("perception_area"):
-                                        tags.append("📍 Área")
-                                    if meta.get("ranged"):
-                                        tags.append("🏹 Ranged")
-                                    if tags:
-                                        st.caption(" • ".join(tags))
-                                    with st.expander("Descrição do golpe", expanded=False):
-                                        desc_text = None
-                                        if db_moves_guided:
-                                            try:
-                                                mv_desc = db_moves_guided.get_by_name(str(m_gv.get("name") or ""))
-                                            except Exception:
-                                                mv_desc = None
-                                            if mv_desc:
-                                                desc_text = mv_desc.descricao
+                
+                                    # avisos de leitura
+                                    warn_lines = []
+                                    if current_acc > int(acc_limit):
+                                        warn_lines.append(f"Acerto acima do sugerido ({current_acc} > {acc_limit}).")
+                                    if mod_acerto > target_total:
+                                        warn_lines.append(f"Mod. acerto acima de 2×NP ({mod_acerto} > {target_total}).")
+                
+                                    if warn_lines:
+                                        st.markdown(
+                                            "<div class='mv-warn mv-muted'>⚠️ " + " ".join(warn_lines) + "</div>",
+                                            unsafe_allow_html=True,
+                                        )
+                
+                                    if not compact:
+                                        st.caption(preview)
+                
+                                    # Detalhes (mantém tudo que existia)
+                                    with st.expander("📘 Detalhes", expanded=False):
+                                        st.markdown("**Descrição completa**")
                                         st.write(desc_text or "Descrição não disponível.")
-                                    if m_gv.get("build"):
-                                        bullets = _summarize_build(m_gv.get("build", ""))
-                                        if bullets:
-                                            st.caption(" • ".join(bullets[:6]))
-                                        with st.expander("Ingredientes do golpe", expanded=False):
+                                        if m_gv.get("build"):
+                                            bullets = _summarize_build(m_gv.get("build", ""))
+                                            if bullets:
+                                                st.caption(" • ".join(bullets[:8]))
+                                            st.markdown("**Ingredientes / Build**")
                                             st.code(m_gv["build"], language="text")
-
-                                with c2:
-                                    # editar Rank do golpe
+                
+                                with right:
+                                    # Ajustes (mantém suas funções)
                                     cur_rank = int(m_gv.get("rank", 1) or 1)
                                     new_rank = st.number_input(
                                         "Rank",
@@ -16793,13 +16994,15 @@ elif page == "Criação Guiada de Fichas":
                                         max_value=50,
                                         value=int(cur_rank),
                                         step=1,
-                                        key=f"cg_guided_move_rank_{i}",
+                                        key=f"mv_rank_{ui_id}",
                                     )
-                                    if st.button("Definir rank", key=f"cg_guided_move_set_rank_{i}"):
+                                    if st.button("Definir rank", key=f"mv_set_rank_{ui_id}", use_container_width=True):
                                         m_gv["rank"] = int(new_rank)
                                         pp_recalc, _why = _cg_recalculate_pp(m_gv, int(new_rank), db_moves_guided)
                                         if pp_recalc is not None:
                                             m_gv["pp_cost"] = int(pp_recalc)
+                
+                                        # atualiza build renderizado quando possível (mesmo comportamento atual)
                                         if db_moves_guided:
                                             try:
                                                 mv_db = db_moves_guided.get_by_name(str(m_gv.get("name") or ""))
@@ -16811,7 +17014,8 @@ elif page == "Criação Guiada de Fichas":
                                                 except Exception:
                                                     pass
                                         st.rerun()
-
+                
+                                    # Acerto (mantém limite sugerido)
                                     acc_limit = _move_accuracy_limit(m_gv, np_value, stats_now)
                                     current_acc = int(m_gv.get("accuracy", 0) or 0)
                                     safe_max = max(int(acc_limit), int(current_acc))
@@ -16821,40 +17025,47 @@ elif page == "Criação Guiada de Fichas":
                                         max_value=int(safe_max),
                                         value=int(current_acc),
                                         step=1,
-                                        key=f"cg_guided_move_acc_{i}",
+                                        key=f"mv_acc_{ui_id}",
                                     )
                                     st.caption(f"Limite sugerido: {acc_limit}")
-                                    if st.button("Definir acerto", key=f"cg_guided_move_set_{i}"):
+                                    if st.button("Definir acerto", key=f"mv_set_acc_{ui_id}", use_container_width=True):
                                         m_gv["accuracy"] = int(new_acc)
                                         st.rerun()
-
+                
                                     area_checked = st.checkbox(
                                         "Golpe em área",
                                         value=bool(m_gv.get("meta", {}).get("perception_area", False)),
-                                        key=f"cg_guided_move_area_{i}",
+                                        key=f"mv_area_{ui_id}",
                                     )
                                     if area_checked != bool(m_gv.get("meta", {}).get("perception_area", False)):
                                         m_gv.setdefault("meta", {})["perception_area"] = bool(area_checked)
-
-                                    # se o golpe está sem PP, pede preenchimento aqui
+                
+                                    # Se o golpe está sem PP, mantém fix manual
                                     if m_gv.get("pp_cost") is None:
-                                        pp_fix = st.number_input("PP do golpe", min_value=1, value=1, step=1, key=f"cg_fix_pp_{i}")
-                                        if st.button("Definir PP", key=f"cg_fix_pp_btn_{i}"):
+                                        pp_fix = st.number_input(
+                                            "PP do golpe",
+                                            min_value=1,
+                                            value=1,
+                                            step=1,
+                                            key=f"mv_fix_pp_{ui_id}",
+                                        )
+                                        if st.button("Definir PP", key=f"mv_fix_pp_btn_{ui_id}", use_container_width=True):
                                             m_gv["pp_cost"] = int(pp_fix)
                                             st.rerun()
-
-                                with c3:
-                                    if st.button("🗑️ Remover", key=f"cg_guided_move_rm_{i}", use_container_width=True):
-                                        st.session_state["cg_moves"].pop(i - 1)
+                
+                                    if st.button("🗑️ Remover", key=f"mv_rm_{ui_id}", use_container_width=True):
+                                        st.session_state["cg_moves"].pop(e["real_idx"])
                                         st.rerun()
-                    else:
-                        st.info("Nenhum golpe confirmado ainda. Use as abas acima para adicionar e ajustar.")
+                
+                        # Totais (mantém seu cálculo)
+                        acerto_pp_total = sum(_move_accuracy_pp(m) for m in st.session_state.get("cg_moves", []))
+                        pp_spent_moves_live = sum((m.get("pp_cost") or 0) for m in st.session_state.get("cg_moves", [])) + acerto_pp_total
+                        st.info(f"PP de Acerto (soma): {acerto_pp_total}")
+                        st.info(f"PP gastos em Golpes (incluindo acerto): **{int(pp_spent_moves_live)}** / **{pp_cap_moves}**")
+                
+                    # atualiza para a aba de revisão (mantém seu fluxo)
+                    pp_moves = pp_spent_moves_live if st.session_state.get("cg_moves") else 0
 
-                    # Totais
-                    acerto_pp_total = sum(_move_accuracy_pp(m) for m in st.session_state.get("cg_moves", []))
-                    pp_spent_moves_live = sum((m.get("pp_cost") or 0) for m in st.session_state.get("cg_moves", [])) + acerto_pp_total
-                    st.info(f"PP de Acerto (soma): {acerto_pp_total}")
-                    st.info(f"PP gastos em Golpes (incluindo acerto): **{int(pp_spent_moves_live)}** / **{pp_cap_moves}**")
 
                 # atualiza para a aba de revisão
                 pp_moves = pp_spent_moves_live
