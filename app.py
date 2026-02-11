@@ -18766,31 +18766,75 @@ elif page == "PvP – Arena Tática":
 
         with tab_inic:
             st.markdown("### 🧭 Iniciativa")
-            st.caption("O dono da sala pode rolar iniciativa (d20) para Pokémon em campo. Depois disso, cada desafiante informa apenas os ajustes dos próprios Pokémon.")
-
+            st.caption(
+                "Speed vem da Pokédex (get_poke_data). Mod Speed vem da tabela. "
+                "O dono da sala pode rolar todos; cada jogador pode rolar apenas os próprios Pokémon."
+            )
+        
+            st.markdown("""
+            <style>
+              .init-wrap{
+                border: 1px solid rgba(255,255,255,.14);
+                background: rgba(255,255,255,.035);
+                border-radius: 16px;
+                padding: 12px;
+              }
+              .init-row{
+                border: 1px solid rgba(255,255,255,.10);
+                background: rgba(0,0,0,.18);
+                border-radius: 14px;
+                padding: 8px 10px;
+                margin: 8px 0;
+              }
+              .init-title{
+                font-weight: 900;
+                font-size: .95rem;
+                line-height: 1.05;
+              }
+              .init-sub{
+                opacity:.8;
+                font-size: .78rem;
+                margin-top: 1px;
+              }
+              .init-badge{
+                display:inline-flex;
+                align-items:center;
+                padding: 4px 8px;
+                border-radius: 999px;
+                border: 1px solid rgba(255,255,255,.16);
+                background: rgba(255,255,255,.06);
+                font-weight: 900;
+                font-size: .78rem;
+                line-height: 1;
+                white-space: nowrap;
+              }
+              .init-badge-strong{ background: rgba(59,130,246,.12); border-color: rgba(59,130,246,.22); }
+              .init-badge-ok{ background: rgba(34,197,94,.10); border-color: rgba(34,197,94,.22); }
+              .init-badge-warn{ background: rgba(245,158,11,.10); border-color: rgba(245,158,11,.22); }
+              .init-divider{ height: 1px; background: rgba(255,255,255,.10); margin: 10px 0; }
+              .init-head{
+                display:flex; align-items:center; justify-content:space-between; gap: 10px;
+                margin-bottom: 6px;
+              }
+            </style>
+            """, unsafe_allow_html=True)
+        
             def _to_int(v, default=0):
                 try:
                     return int(float(v))
                 except Exception:
                     return int(default)
-
+        
             def _speed_to_initiative_mod(speed_value: int) -> int:
-                if speed_value >= 121:
-                    return 8
-                if speed_value >= 101:
-                    return 4
-                if speed_value >= 81:
-                    return 2
-                if speed_value >= 71:
-                    return 1
-                if speed_value >= 61:
-                    return 0
-                if speed_value >= 41:
-                    return -1
-                if speed_value >= 1:
-                    return -4
+                if speed_value >= 121: return 8
+                if speed_value >= 101: return 4
+                if speed_value >= 81:  return 2
+                if speed_value >= 71:  return 1
+                if speed_value >= 61:  return 0
+                if speed_value >= 41:  return -1
+                if speed_value >= 1:   return -4
                 return 0
-
+        
             def _extract_speed_from_stats(stats_dict: dict) -> int:
                 if not isinstance(stats_dict, dict):
                     return 0
@@ -18798,180 +18842,255 @@ elif page == "PvP – Arena Tática":
                     if k in stats_dict:
                         return _to_int(stats_dict.get(k), 0)
                 return 0
-
+        
+            # Estado da sala (peças em campo)
             s_now = get_state(db, rid)
-            _pieces = s_now.get("pieces") or []
-            init_store = (b_data.get("initiative") or {})
-
+            pieces = s_now.get("pieces") or []
+        
+            # Armazenamento sincronizado da iniciativa (fica salvo na sala via battle_ref)
+            init_store = (b_data.get("initiative") or {})  # dict[str, dict]
+        
+            # Monta linhas (Pokémon + (opcional) Treinador)
             rows = []
-            for p in _pieces:
+            for p in pieces:
                 p_kind = str(p.get("kind") or "piece")
                 if p_kind not in {"trainer", "piece"}:
                     continue
-                pid_label = str(p.get("pid") or "")
+        
+                key = f"{p_kind}:{p.get('id')}"
+                owner = str(p.get("owner") or "")
+        
                 if p_kind == "trainer":
-                    label = f"🧍 Treinador • {p.get('owner') or '—'}"
+                    # Sem sprite de pokémon
+                    label = f"Treinador"
+                    display = f"🧍 {owner}" if owner else "🧍 Treinador"
+                    pid = ""
                     speed_val = 0
                     speed_mod = 0
+                    sprite_url = None
                 else:
-                    label = f"🐾 {get_poke_display_name(pid_label)} • {p.get('owner') or '—'}"
-                    _, _, poke_stats, _, _ = get_poke_data(p.get("owner"), p.get("pid"))
+                    pid = str(p.get("pid") or "")
+                    display = get_poke_display_name(pid)
+                    label = f"Pokémon"
+                    _, _, poke_stats, _, _ = get_poke_data(owner, pid)
                     speed_val = _extract_speed_from_stats(poke_stats)
                     speed_mod = _speed_to_initiative_mod(speed_val)
-
-                key = f"{p_kind}:{p.get('id')}"
+                    sprite_url = pokemon_pid_to_image(pid, mode="sprite", shiny=(str(pid) in {str(x).strip() for x in (user_data.get("shinies") or [])} if isinstance(user_data, dict) else set()))
+        
                 saved = init_store.get(key) or {}
                 d20_roll = _to_int(saved.get("d20_roll"), 0)
                 bonus_input = _to_int(saved.get("bonus_input"), 0)
-                manual_input = _to_int(saved.get("manual_input"), _to_int(saved.get("initiative"), 0))
-                final_init = _to_int(saved.get("initiative"), 0)
+        
+                # iniciativa final (Pokémon: d20 + mod + ajuste; Treinador: só ajuste por enquanto)
                 if p_kind == "piece" and d20_roll > 0:
                     final_init = d20_roll + speed_mod + bonus_input
+                else:
+                    final_init = bonus_input if p_kind == "trainer" else 0
+        
                 rows.append({
                     "key": key,
-                    "owner": p.get("owner") or "",
+                    "owner": owner,
                     "kind": "Avatar" if p_kind == "trainer" else "Pokémon",
-                    "item": label,
+                    "pid": pid,
+                    "display": display,
+                    "label": label,
+                    "sprite": sprite_url,
                     "speed": speed_val,
                     "mod_speed": speed_mod,
                     "d20": d20_roll,
-                    "bonus_input": bonus_input,
-                    "manual_input": manual_input,
-                    "initiative": final_init,
+                    "bonus": bonus_input,
+                    "initiative": final_init
                 })
-
-            if rows:
-                import pandas as _pd
-                df_init = _pd.DataFrame(rows)
-
+        
+            if not rows:
+                st.info("Sem peças em campo para registrar iniciativa.")
+            else:
+                st.markdown('<div class="init-wrap">', unsafe_allow_html=True)
+        
+                # Ações de rolagem (permissões)
                 pokemon_rows = [r for r in rows if r["kind"] == "Pokémon"]
-                if role == "owner":
-                    c_roll1, c_roll2 = st.columns([2, 1])
-                    with c_roll1:
-                        if st.button("🎲 Rolar iniciativas (todos Pokémon em campo)", use_container_width=True):
-                            out_roll = dict(init_store)
+                my_pokemon_rows = [r for r in pokemon_rows if r["owner"] == trainer_name]
+        
+                st.markdown('<div class="init-head">', unsafe_allow_html=True)
+                st.markdown("**Controles de rolagem**", unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+        
+                c1, c2, c3 = st.columns([2, 2, 2])
+        
+                # Dono: rolar todos
+                with c1:
+                    if role == "owner":
+                        if st.button("🎲 Rolar todos (Pokémon em campo)", use_container_width=True):
+                            out = dict(init_store)
                             for rec in pokemon_rows:
                                 k = rec["key"]
-                                saved = out_roll.get(k) or {}
+                                prev = out.get(k) or {}
                                 rolled = random.randint(1, 20)
-                                bonus_value = _to_int(saved.get("bonus_input"), 0)
+                                bonus_val = _to_int(prev.get("bonus_input"), _to_int(rec.get("bonus"), 0))
                                 speed_mod = _to_int(rec.get("mod_speed"), 0)
-                                out_roll[k] = {
+                                out[k] = {
                                     "d20_roll": rolled,
                                     "speed": _to_int(rec.get("speed"), 0),
                                     "speed_mod": speed_mod,
-                                    "bonus_input": bonus_value,
-                                    "manual_input": _to_int(saved.get("manual_input"), 0),
-                                    "initiative": rolled + speed_mod + bonus_value,
+                                    "bonus_input": bonus_val,
+                                    "initiative": rolled + speed_mod + bonus_val,
                                     "note": "",
                                 }
-                            battle_ref.update({"initiative": out_roll})
-                            st.success("Iniciativas roladas para todos os Pokémon em campo ✅")
+                            battle_ref.update({"initiative": out})
+                            st.success("Iniciativas roladas ✅")
                             st.rerun()
-                    with c_roll2:
-                        single_options = {r["key"]: r["item"] for r in pokemon_rows}
-                        selected_key = st.selectbox(
-                            "Rolar só um Pokémon",
-                            options=list(single_options.keys()),
-                            format_func=lambda x: single_options.get(x, x),
-                            key=f"init_roll_one_{rid}",
-                        ) if single_options else None
-                        if st.button("🎯 Rolar selecionado", disabled=not selected_key, use_container_width=True):
-                            rec = next((x for x in pokemon_rows if x["key"] == selected_key), None)
-                            if rec:
-                                out_roll = dict(init_store)
-                                saved = out_roll.get(selected_key) or {}
+                    else:
+                        st.caption("Apenas o dono rola todos.")
+        
+                # Todos: rolar selecionado (dono rola qualquer; outros rolam apenas os próprios)
+                with c2:
+                    if role == "owner":
+                        pool = pokemon_rows
+                        help_txt = "Selecione qualquer Pokémon em campo."
+                    else:
+                        pool = my_pokemon_rows
+                        help_txt = "Selecione um dos seus Pokémon em campo."
+        
+                    options = {r["key"]: f"{r['display']} • {r['owner']}" for r in pool}
+                    sel = st.selectbox(
+                        "Rolar selecionado",
+                        options=list(options.keys()) if options else [],
+                        format_func=lambda k: options.get(k, k),
+                        key=f"init_sel_{rid}_{trainer_name}",
+                    )
+                    st.caption(help_txt)
+        
+                with c3:
+                    can_roll_sel = bool(sel)
+                    if st.button("🎯 Rolar selecionado", disabled=not can_roll_sel, use_container_width=True):
+                        rec = next((x for x in pokemon_rows if x["key"] == sel), None)
+                        if rec:
+                            # valida permissão
+                            if role != "owner" and rec["owner"] != trainer_name:
+                                st.error("Você só pode rolar iniciativa dos seus próprios Pokémon.")
+                            else:
+                                out = dict(init_store)
+                                prev = out.get(sel) or {}
                                 rolled = random.randint(1, 20)
                                 speed_mod = _to_int(rec.get("mod_speed"), 0)
-                                bonus_value = _to_int(saved.get("bonus_input"), 0)
-                                out_roll[selected_key] = {
+                                bonus_val = _to_int(prev.get("bonus_input"), _to_int(rec.get("bonus"), 0))
+                                out[sel] = {
                                     "d20_roll": rolled,
                                     "speed": _to_int(rec.get("speed"), 0),
                                     "speed_mod": speed_mod,
-                                    "bonus_input": bonus_value,
-                                    "manual_input": _to_int(saved.get("manual_input"), 0),
-                                    "initiative": rolled + speed_mod + bonus_value,
+                                    "bonus_input": bonus_val,
+                                    "initiative": rolled + speed_mod + bonus_val,
                                     "note": "",
                                 }
-                                battle_ref.update({"initiative": out_roll})
-                                st.success("Iniciativa rolada para o Pokémon selecionado ✅")
+                                battle_ref.update({"initiative": out})
+                                st.success("Rolado ✅")
                                 st.rerun()
-                else:
-                    st.caption("A opção **Rolar iniciativas** é exclusiva do dono da sala.")
-
-                st.markdown("#### ✍️ Entrada rápida")
-                edited = st.data_editor(
-                    df_init,
-                    hide_index=True,
-                    use_container_width=True,
-                    column_config={
-                        "key": st.column_config.TextColumn("ID", disabled=True),
-                        "owner": st.column_config.TextColumn("Dono", disabled=True),
-                        "kind": st.column_config.TextColumn("Tipo", disabled=True),
-                        "item": st.column_config.TextColumn("Item", disabled=True),
-                        "speed": st.column_config.NumberColumn("Speed", disabled=True),
-                        "mod_speed": st.column_config.NumberColumn("Mod. Speed", disabled=True),
-                        "d20": st.column_config.NumberColumn("d20", disabled=True),
-                        "bonus_input": st.column_config.NumberColumn("Ajuste do jogador", min_value=-99, max_value=99, step=1),
-                        "manual_input": st.column_config.NumberColumn("Iniciativa manual", min_value=0, max_value=999, step=1),
-                        "initiative": st.column_config.NumberColumn("Iniciativa final", disabled=True),
-                    },
-                )
-
+        
+                st.markdown('<div class="init-divider"></div>', unsafe_allow_html=True)
+                st.caption("Tabela Speed → Mod: 1-40=-4, 41-60=-1, 61-70=0, 71-80=1, 81-100=2, 101-120=4, 121+=8.")
+        
+                # Editor clean por linha (sincroniza no botão salvar)
                 out = dict(init_store)
-                blocked = []
-                for rec in edited.to_dict("records"):
-                    k = str(rec.get("key") or "").strip()
-                    if not k:
-                        continue
-                    row_owner = str(rec.get("owner") or "")
-                    row_kind = str(rec.get("kind") or "")
-                    can_edit_row = (role == "owner") or (row_owner == trainer_name)
-                    if not can_edit_row:
-                        blocked.append(rec.get("item") or k)
-                        continue
-
-                    saved_prev = out.get(k) or {}
-                    d20_roll = _to_int(saved_prev.get("d20_roll"), _to_int(rec.get("d20"), 0))
-                    speed_mod = _to_int(rec.get("mod_speed"), _to_int(saved_prev.get("speed_mod"), 0))
-                    speed_val = _to_int(rec.get("speed"), _to_int(saved_prev.get("speed"), 0))
-                    bonus_input = _to_int(rec.get("bonus_input"), _to_int(saved_prev.get("bonus_input"), 0))
-                    manual_input = _to_int(rec.get("manual_input"), _to_int(saved_prev.get("manual_input"), 0))
-
-                    final_init = manual_input
-                    if row_kind == "Pokémon" and d20_roll > 0:
-                        final_init = d20_roll + speed_mod + bonus_input
-
+        
+                for rec in rows:
+                    k = rec["key"]
+                    owner = rec["owner"]
+                    kind = rec["kind"]
+        
+                    can_edit = (role == "owner") or (owner == trainer_name)
+        
+                    # carrega do store (pra refletir sincronizado)
+                    saved = out.get(k) or {}
+                    d20 = _to_int(saved.get("d20_roll"), _to_int(rec.get("d20"), 0))
+                    spd = _to_int(rec.get("speed"), 0)
+                    spd_mod = _to_int(rec.get("mod_speed"), 0)
+                    bonus_prev = _to_int(saved.get("bonus_input"), _to_int(rec.get("bonus"), 0))
+        
+                    # calc
+                    if kind == "Pokémon" and d20 > 0:
+                        init_final = d20 + spd_mod + bonus_prev
+                    else:
+                        init_final = bonus_prev if kind == "Avatar" else 0
+        
+                    st.markdown('<div class="init-row">', unsafe_allow_html=True)
+                    cA, cB, cC, cD, cE, cF, cG = st.columns([0.9, 2.7, 1.1, 1.1, 0.9, 1.5, 1.2])
+        
+                    # Sprite
+                    with cA:
+                        if kind == "Pokémon" and rec.get("sprite"):
+                            st.image(rec["sprite"], width=38)
+                        else:
+                            st.markdown('<span class="init-badge">🧍</span>', unsafe_allow_html=True)
+        
+                    # Nome + dono
+                    with cB:
+                        st.markdown(f'<div class="init-title">{html.escape(rec["display"])}</div>', unsafe_allow_html=True)
+                        st.markdown(f'<div class="init-sub">{html.escape(owner) if owner else "—"} • {html.escape(kind)}</div>', unsafe_allow_html=True)
+        
+                    # Speed
+                    with cC:
+                        st.markdown('<span class="init-badge">Speed</span>', unsafe_allow_html=True)
+                        st.markdown(f'<span class="init-badge init-badge-ok">{spd}</span>', unsafe_allow_html=True)
+        
+                    # Mod Speed
+                    with cD:
+                        st.markdown('<span class="init-badge">Mod</span>', unsafe_allow_html=True)
+                        st.markdown(f'<span class="init-badge init-badge-warn">{spd_mod:+d}</span>', unsafe_allow_html=True)
+        
+                    # d20
+                    with cE:
+                        st.markdown('<span class="init-badge">d20</span>', unsafe_allow_html=True)
+                        st.markdown(f'<span class="init-badge init-badge-strong">{d20}</span>', unsafe_allow_html=True)
+        
+                    # Ajuste do jogador (editável)
+                    with cF:
+                        new_bonus = st.number_input(
+                            "Ajuste",
+                            value=int(bonus_prev),
+                            step=1,
+                            min_value=-99,
+                            max_value=99,
+                            key=f"init_bonus_{rid}_{k}",
+                            disabled=not can_edit,
+                            label_visibility="collapsed",
+                        )
+        
+                    # Iniciativa final
+                    with cG:
+                        st.markdown('<span class="init-badge">Final</span>', unsafe_allow_html=True)
+                        st.markdown(f'<span class="init-badge init-badge-strong">{init_final}</span>', unsafe_allow_html=True)
+        
+                    # Atualiza out em memória
                     out[k] = {
-                        "d20_roll": d20_roll,
-                        "speed": speed_val,
-                        "speed_mod": speed_mod,
-                        "bonus_input": bonus_input,
-                        "manual_input": manual_input,
-                        "initiative": final_init,
+                        "d20_roll": d20,
+                        "speed": spd,
+                        "speed_mod": spd_mod,
+                        "bonus_input": _to_int(new_bonus, 0),
+                        "initiative": (d20 + spd_mod + _to_int(new_bonus, 0)) if (kind == "Pokémon" and d20 > 0) else (_to_int(new_bonus, 0) if kind == "Avatar" else 0),
                         "note": "",
                     }
-
-                if blocked:
-                    st.warning("Algumas linhas não puderam ser editadas porque pertencem a outros desafiantes.")
-
-                st.caption("Tabela Speed → iniciativa: 1-40=-4, 41-60=-1, 61-70=0, 71-80=1, 81-100=2, 101-120=4, 121+=8.")
-
+                    st.markdown('</div>', unsafe_allow_html=True)
+        
+                st.markdown('<div class="init-divider"></div>', unsafe_allow_html=True)
+        
+                # Ordem automática enumerada
                 st.markdown("#### 🏁 Ordem automática")
-                ordered_source = edited.copy()
-                ordered_vals = []
-                for rec in ordered_source.to_dict("records"):
-                    k = str(rec.get("key") or "")
-                    saved = out.get(k) or {}
-                    ordered_vals.append(_to_int(saved.get("initiative"), 0))
-                ordered_source["initiative"] = ordered_vals
-                ordered_df = (
-                    ordered_source.sort_values(by=["initiative", "item"], ascending=[False, True])
-                    .reset_index(drop=True)
-                )
-                ordered_df.insert(0, "ordem", ordered_df.index + 1)
+                order_rows = []
+                for rec in rows:
+                    saved = out.get(rec["key"]) or {}
+                    order_rows.append({
+                        "owner": rec["owner"],
+                        "kind": rec["kind"],
+                        "item": (f"{rec['display']} • {rec['owner']}" if rec["owner"] else rec["display"]),
+                        "initiative": _to_int(saved.get("initiative"), 0),
+                    })
+        
+                import pandas as _pd
+                df_order = _pd.DataFrame(order_rows).sort_values(by=["initiative", "item"], ascending=[False, True]).reset_index(drop=True)
+                df_order.insert(0, "ordem", df_order.index + 1)
+        
                 st.dataframe(
-                    ordered_df[["ordem", "owner", "kind", "item", "initiative"]],
+                    df_order[["ordem", "owner", "kind", "item", "initiative"]],
                     hide_index=True,
                     use_container_width=True,
                     column_config={
@@ -18982,13 +19101,13 @@ elif page == "PvP – Arena Tática":
                         "initiative": st.column_config.NumberColumn("Iniciativa", format="%d"),
                     },
                 )
-
+        
+                # Salvar (sincroniza)
                 if st.button("💾 Salvar iniciativa", use_container_width=True):
                     battle_ref.update({"initiative": out})
-                    st.success("Iniciativa salva ✅")
-
-            else:
-                st.info("Sem Pokémon ou avatares em campo para registrar iniciativa.")
+                    st.success("Iniciativa salva e sincronizada ✅")
+        
+                st.markdown('</div>', unsafe_allow_html=True)
 
         with tab_fichas:
             st.markdown("### 📋 Fichas")
