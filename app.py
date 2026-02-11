@@ -17184,6 +17184,8 @@ elif page == "Minhas Fichas":
         # Visitante fora da dex
         if pid.startswith("EXT:"):
             return pid.replace("EXT:", "", 1).strip() or "Pokémon Externo"
+        if pid.startswith("PID:"):
+            pid = pid.replace("PID:", "", 1).strip()
     
         pid_no_zero = pid.lstrip("0") or "0"
     
