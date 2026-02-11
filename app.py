@@ -18112,13 +18112,27 @@ elif page == "PvP – Arena Tática":
                         else:
                             st.info("Sua party está vazia para selecionar o atacante.")
                         # Busca peças de TODOS os outros jogadores que não são você
+                        # Busca peças de TODOS os outros jogadores (somente Pokémon com pid)
                         target_options = {}
-                        for p_name, p_pieces in player_pieces_map.items():
-                            if p_name != trainer_name:
-                                for p in p_pieces:
-                                    # Nome do Pokemon + Dono para identificar no 2v1 ou 2v2
-                                    label = f"{get_poke_display_name(p['pid'])} ({p_name})"
-                                    target_options[p['id']] = label
+                        for p_owner, p_pieces in (player_pieces_map or {}).items():
+                            if p_owner == trainer_name:
+                                continue
+                        
+                            for p in (p_pieces or []):
+                                piece_id = p.get("id")
+                                pid = p.get("pid")
+                                kind = (p.get("kind") or "").lower()
+                        
+                                # ignora peças inválidas / não-Pokémon
+                                if not piece_id:
+                                    continue
+                                if kind == "trainer":
+                                    continue
+                                if pid in (None, "", 0, "0"):
+                                    continue
+                        
+                                label = f"{get_poke_display_name(pid)} ({p_owner})"
+                                target_options[piece_id] = label
                     
                         c_atk1, c_atk2, c_atk3 = st.columns(3)
                     
@@ -18129,28 +18143,50 @@ elif page == "PvP – Arena Tática":
                                         key=f"atk_target_{rid}") if target_options else None
                     
                         with c_atk2:
-                            attack_mode = st.radio("Modo", ["Normal", "Área"], horizontal=True, key=f"atk_mode_{rid}")
-                    
+                            attack_mode = st.radio(
+                                "Modo",
+                                ["Normal", "Área"],
+                                horizontal=True,
+                                key=f"atk_mode_{rid}"
+                            )
+                        
                         # Se for Área
                         if attack_mode == "Área":
                             st.info("Ataque em Área: Dodge (CD 10 + Nível) reduz dano pela metade.")
                             lvl_effect = st.number_input("Nível do Efeito / Dano", min_value=1, value=1)
                             is_eff_area = st.checkbox("É Efeito? (Affliction)", key=f"area_eff_{rid}")
-
+                        
                             if st.button("🚀 Lançar Área"):
-                                if target_id:
-                                    t_p = next((p for p in all_pieces if p['id'] == target_id), None)
-                                    battle_ref.update({
-                                        "status": "aoe_defense",
-                                        "target_id": target_id,
-                                        "target_owner": t_p['owner'],
-                                        "target_pid": t_p['pid'],
-                                        "aoe_dc": lvl_effect + 10,
-                                        "dmg_base": lvl_effect,
-                                        "is_effect": is_eff_area,
-                                        "logs": [f"{trainer_name} lançou Área (Nv {lvl_effect}). Defensor rola Dodge (CD {lvl_effect+10})."]
-                                    })
-                                    st.rerun()
+                                if not target_id:
+                                    st.warning("Selecione um alvo.")
+                                    st.stop()
+                        
+                                # Busca a peça alvo de forma blindada
+                                t_p = next((p for p in (all_pieces or []) if p.get("id") == target_id), None)
+                                if not t_p:
+                                    st.error("Alvo inválido (não encontrado no mapa).")
+                                    st.stop()
+                        
+                                t_owner = t_p.get("owner")
+                                t_pid = t_p.get("pid")
+                        
+                                # Se não tiver pid, não é Pokémon (ou está incompleto)
+                                if not t_pid:
+                                    st.error("Esse alvo não é um Pokémon (sem pid).")
+                                    st.stop()
+                        
+                                battle_ref.update({
+                                    "status": "aoe_defense",
+                                    "target_id": target_id,
+                                    "target_owner": t_owner,
+                                    "target_pid": t_pid,
+                                    "aoe_dc": int(lvl_effect) + 10,
+                                    "dmg_base": int(lvl_effect),
+                                    "is_effect": bool(is_eff_area),
+                                    "logs": [f"{trainer_name} lançou Área (Nv {lvl_effect}). Defensor rola Dodge (CD {int(lvl_effect)+10})."]
+                                })
+                                st.rerun()
+
                         else:
                             # Normal
                             with c_atk3:
@@ -18210,31 +18246,50 @@ elif page == "PvP – Arena Tática":
                                     st.caption("Sem acerto sugerido.")
                         
                             if st.button("⚔️ Rolar Ataque"):
-                                if target_id:
-                                    d20 = random.randint(1, 20)
-                                    t_p = next((p for p in all_pieces if p['id'] == target_id), None)
-                                
-                                    # Pega stats do alvo
-                                    _, _, t_stats, _, _ = get_poke_data(t_p['owner'], t_p['pid'])
-                                    dodge = int(t_stats.get("dodge", 0))
-                                    parry = int(t_stats.get("parry", 0))
-                                
-                                    defense_val = dodge if "Distância" in atk_type else parry
-                                    needed = defense_val + 10
-                                    total_atk = atk_mod + d20
-                                
-                                    hit = total_atk >= needed
-                                    result_msg = "ACERTOU! ✅" if hit else "ERROU! ❌"
-                                
-                                    battle_ref.update({
-                                        "status": "hit_confirmed" if hit else "missed",
-                                        "target_id": target_id,
-                                        "target_owner": t_p['owner'],
-                                        "target_pid": t_p['pid'],
-                                        "attack_move": move_payload,
-                                        "logs": [f"{trainer_name} rolou {d20}+{atk_mod}=**{total_atk}** (vs Def {needed} [{defense_val}+10])... {result_msg}"]
-                                    })
-                                    st.rerun()
+                                if not target_id:
+                                    st.warning("Selecione um alvo.")
+                                    st.stop()
+                            
+                                d20 = random.randint(1, 20)
+                            
+                                # Busca a peça alvo de forma blindada
+                                t_p = next((p for p in (all_pieces or []) if p.get("id") == target_id), None)
+                                if not t_p:
+                                    st.error("Alvo inválido (não encontrado no mapa).")
+                                    st.stop()
+                            
+                                t_owner = t_p.get("owner")
+                                t_pid = t_p.get("pid")
+                            
+                                # Se não tiver pid, não é Pokémon (ou está incompleto)
+                                if not t_pid:
+                                    st.error("Esse alvo não é um Pokémon (sem pid).")
+                                    st.stop()
+                            
+                                # Pega stats do alvo
+                                _, _, t_stats, _, _ = get_poke_data(t_owner, t_pid)
+                                dodge = int((t_stats or {}).get("dodge", 0))
+                                parry = int((t_stats or {}).get("parry", 0))
+                            
+                                defense_val = dodge if ("Distância" in (atk_type or "")) else parry
+                                needed = defense_val + 10
+                                total_atk = int(atk_mod) + int(d20)
+                            
+                                hit = total_atk >= needed
+                                result_msg = "ACERTOU! ✅" if hit else "ERROU! ❌"
+                            
+                                battle_ref.update({
+                                    "status": "hit_confirmed" if hit else "missed",
+                                    "target_id": target_id,
+                                    "target_owner": t_owner,
+                                    "target_pid": t_pid,
+                                    "attack_move": move_payload,
+                                    "logs": [
+                                        f"{trainer_name} rolou {d20}+{atk_mod}=**{total_atk}** (vs Def {needed} [{defense_val}+10])... {result_msg}"
+                                    ],
+                                })
+                                st.rerun()
+
                     else:
                         st.info(f"Aguardando {b_data.get('attacker')}...")
 
