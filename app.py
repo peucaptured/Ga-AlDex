@@ -27,6 +27,8 @@ from advantages_engine import suggest_advantages
 import queue
 import threading
 import time
+import hashlib
+
 import mimetypes
 from PIL import Image, ImageDraw, ImageEnhance
 
@@ -8706,7 +8708,6 @@ if page != "PvP – Arena Tática":
 # ==============================================================================
 
 from pathlib import Path
-import hashlib
 
 try:
     from docx import Document
@@ -18671,7 +18672,14 @@ elif page == "PvP – Arena Tática":
 
 
                 with st.container():
-                    click = streamlit_image_coordinates(img_to_show, key=f"map_{rid}")
+                    sig = st.session_state.get("map_cache_sig", "") or ""
+                    sig_short = hashlib.md5(sig.encode("utf-8")).hexdigest()[:10]
+                    zoom_tag = int(float(map_zoom) * 100)
+                    
+                    # Key muda quando o visual do mapa muda (assinatura) ou quando muda o zoom
+                    map_widget_key = f"map_{rid}_{sig_short}_{zoom_tag}"
+                    
+                    click = streamlit_image_coordinates(img_to_show, key=map_widget_key)
             if c_opps is not None:
                 with c_opps:
                     st.markdown("### 🆚 Oponentes")
