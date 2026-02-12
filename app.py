@@ -6152,19 +6152,18 @@ def join_room_as_spectator(db, rid: str, trainer_name: str):
     return "OK"
 
 def add_public_event(db, rid: str, event_type: str, by: str, payload: dict):
-    # 1. Adiciona o evento no histórico (como antes)
     db.collection("rooms").document(rid).collection("public_events").add({
         "type": event_type,
         "by": by,
         "payload": payload or {},
         "ts": firestore.SERVER_TIMESTAMP,
     })
-    
-    # 2. NOVO: Atualiza o timestamp do ESTADO para disparar o sync_watchdog de todos
-    # Isso garante que quem está na sala veja o dado/log aparecer sozinho
-    db.collection("rooms").document(rid).collection("public_state").document("state").update({
+
+    # ✅ bump do estado: cria se não existir e atualiza updatedAt
+    db.collection("rooms").document(rid).collection("public_state").document("state").set({
         "updatedAt": firestore.SERVER_TIMESTAMP
-    })
+    }, merge=True)
+
     
 def state_ref_for(db, rid: str):
     return (
@@ -6231,7 +6230,7 @@ def upsert_piece(db, rid: str, piece: dict):
 
     sref.set({
         "pieces": new_pieces,
-        "updatedAt": firestore.SERVER_TIMESTAMP, # <--- GATILHO DO SYNC
+        "updatedAt": firestore.SERVER_TIMESTAMP,  # ✅
     }, merge=True)
 
 def delete_piece(db, rid: str, piece_id: str):
@@ -10381,6 +10380,10 @@ def save_sessions_data(data: dict, db=None, trainer_name: str | None = None) -> 
                   .document("sessions")
             )
             ref.set(data, merge=True)
+            # ✅ avisa a sala toda que “algo mudou”
+            db.collection("rooms").document(rid).collection("public_state").document("state").set({
+                "updatedAt": firestore.SERVER_TIMESTAMP
+            }, merge=True)
             return  # sucesso no Firestore -> não precisa arquivo
     except Exception:
         pass
@@ -17347,6 +17350,7 @@ elif page == "PvP – Arena Tática":
             st.rerun()
     
         ensure_pvp_sync_listener(db, rid)
+        sync_watchdog(db, rid)
             
         # --- AQUI: INICIA O SISTEMA DE SYNC AUTOMÁTICO ---
         # Isso cria a thread que fica "dormindo" até o Firebase avisar de uma mudança.
