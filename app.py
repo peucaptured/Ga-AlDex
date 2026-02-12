@@ -285,6 +285,17 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
+    
+@st.cache_resource(show_spinner=False)
+def load_effect_icon_rgba(path: str):
+    try:
+        if not path or not os.path.exists(path):
+            return None
+        return Image.open(path).convert("RGBA")
+    except Exception:
+        return None
+
 # ----------------------------
 # Data model
 # ----------------------------
@@ -713,7 +724,7 @@ def render_bgm(track_path: str, volume: float = 0.35) -> None:
         scrolling=False,
     )
 
-PVP_RERUN_COOLDOWN_SEC = 0.45
+PVP_RERUN_COOLDOWN_SEC = 0.05
 
 
 def pvp_in_action() -> bool:
@@ -3534,42 +3545,52 @@ def ensure_pvp_sync_listener(db, rid):
                 enqueue("new_event", "log")
 
     # --- WORKER: A Thread que força o RERUN do Streamlit ---
+    # --- WORKER: A Thread que força o RERUN do Streamlit ---
     def rerun_worker():
-        # Anexa esta thread à sessão do usuário (CRUCIAL para o st.rerun funcionar)
         if ctx:
             add_script_run_ctx(threading.current_thread(), ctx)
-        
+    
+        last_req = 0.0
+        min_gap = 0.06  # 60ms: bem responsivo e ainda evita tremedeira
+    
         while not stop_event.is_set():
             try:
-                # Espera passiva: não gasta CPU, fica travado aqui até o Firebase mandar algo
-                # Timeout de 3s para checar se deve parar
-                item = event_queue.get(timeout=3) 
-                
+                item = event_queue.get(timeout=3)
                 if item.get("tag") == "stop":
                     break
-                
-                # Se houver contexto, solicita o Rerun
+    
+                # Drena rapidamente a fila pra juntar bursts em 1 rerun só
+                drain_until = time.time() + 0.02
+                while time.time() < drain_until:
+                    try:
+                        nxt = event_queue.get_nowait()
+                        if nxt.get("tag") == "stop":
+                            stop_event.set()
+                            break
+                    except queue.Empty:
+                        break
+    
                 if ctx and ctx.script_requests:
-                    # Cria a solicitação de rerun (A "mágica" do refresh)
+                    now = time.time()
+                    if (now - last_req) < min_gap:
+                        time.sleep(min_gap - (now - last_req))
+    
                     rerun_data = scriptrunner.RerunData(
                         query_string=ctx.query_string,
                         page_script_hash=ctx.page_script_hash,
                         cached_message_hashes=ctx.cached_message_hashes,
                     )
                     ctx.script_requests.request_rerun(rerun_data)
-                    
-                    # Pequena pausa para evitar "piscar" demais se vierem muitos eventos juntos
-                    time.sleep(0.5) 
+                    last_req = time.time()
                 else:
-                    # Se perdeu o contexto (usuário fechou a aba), para a thread
                     break
-                    
+    
             except queue.Empty:
-                continue # Timeout do get, volta a esperar
+                continue
             except Exception as e:
                 print(f"Erro no worker de sync: {e}")
-                # Não damos break aqui para tentar recuperar em próximos eventos
-                time.sleep(1)
+                time.sleep(0.2)
+
 
     # --- REGISTRO DOS LISTENERS NO FIREBASE ---
     try:
@@ -7552,17 +7573,16 @@ def render_map_with_pieces(grid, theme_key, seed, no_water, pieces, viewer_name,
                 path = EMOJI_TO_PATH.get(icon_char)
                 
                 if path and os.path.exists(path):
-                    icon_img = Image.open(path).convert("RGBA")
-                    # Ajusta o tamanho do ícone para 70% do tile
-                    icon_img.thumbnail((int(TILE_SIZE * 0.7), int(TILE_SIZE * 0.7)))
-                    
-                    # Centraliza o ícone no tile
-                    ix = x + (TILE_SIZE - icon_img.size[0]) // 2
-                    iy = y + (TILE_SIZE - icon_img.size[1]) // 2
-                    img.alpha_composite(icon_img, (ix, iy))
-                else:
-                    # Fallback visual caso o arquivo não seja encontrado
-                    draw.ellipse([x+16, y+16, x+TILE_SIZE-16, y+TILE_SIZE-16], fill=(255, 255, 255, 150))
+                    base_icon = load_effect_icon_rgba(path)
+                    if base_icon is not None:
+                        icon_img = base_icon.copy()  # importante: não mutar o cache
+                        icon_img.thumbnail((int(TILE_SIZE * 0.7), int(TILE_SIZE * 0.7)))
+                        ix = x + (TILE_SIZE - icon_img.size[0]) // 2
+                        iy = y + (TILE_SIZE - icon_img.size[1]) // 2
+                        img.alpha_composite(icon_img, (ix, iy))
+                    else:
+                        draw.ellipse([x+16, y+16, x+TILE_SIZE-16, y+TILE_SIZE-16], fill=(255, 255, 255, 150))
+
             except Exception as e:
                 # Opcional: imprimir o erro no console para debug
                 print(f"Erro ao renderizar efeito {icon_char}: {e}")
@@ -17320,7 +17340,7 @@ elif page == "PvP – Arena Tática":
     # VIEW: BATTLE (CÓDIGO CONSOLIDADO E CORRIGIDO)
     # =========================
     if view == "battle":
-        sync_watchdog(db, rid)
+        ensure_pvp_sync_listener(db, rid)
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
@@ -17487,7 +17507,7 @@ elif page == "PvP – Arena Tática":
                         with c_avatar_1:
                             if st.button("🚶 Mover", key="move_trainer", disabled=is_busy):
                                 st.session_state["moving_piece_id"] = trainer_piece.get("id")
-                                st.session_state["arena_pause_until"] = time.time() + 1.2
+                                st.session_state["arena_pause_until"] = time.time() + 0.15
                                 st.session_state["placing_pid"] = None
                                 st.session_state["placing_trainer"] = None
                                 request_rerun("move_select", force=True)
@@ -18525,10 +18545,7 @@ elif page == "PvP – Arena Tática":
                                 use_container_width=True,
                                 help="Remove todos os efeitos do mapa.",
                             ):
-                                db.collection("rooms").document(rid).collection("public_state").document("state").update({
-                                    "effects": [],
-                                    "updatedAt": firestore.SERVER_TIMESTAMP,
-                                })
+                                
                                 st.rerun()
                         with top_tools[2]:
                             st.caption("Selecione um ícone e clique no mapa. (Pincel mantém o modo ativo.)")
@@ -18576,16 +18593,38 @@ elif page == "PvP – Arena Tática":
                     st.caption(f"{int(map_zoom * 100)}%")
 
                 # ... (Restante do código de renderização do mapa permanece igual) ...
-                state_updated_at = state.get("updatedAt")
+                # --- assinatura SOMENTE do que muda o VISUAL do mapa ---
+                def _compact_piece(p: dict) -> dict:
+                    # mantenha só o que altera o desenho
+                    return {
+                        "id": p.get("id"),
+                        "row": int(p.get("row", -1) or -1),
+                        "col": int(p.get("col", -1) or -1),
+                        "kind": p.get("kind"),
+                        "pid": str(p.get("pid", "")),
+                        "shiny": bool(p.get("shiny", False)),
+                        "owner": p.get("owner"),
+                        "avatar": p.get("avatar"),
+                    }
+                
+                def _compact_eff(e: dict) -> dict:
+                    return {
+                        "row": int(e.get("row", -1) or -1),
+                        "col": int(e.get("col", -1) or -1),
+                        "icon": e.get("icon"),
+                    }
+                
                 map_signature = json.dumps({
-                    "seed": seed,
-                    "theme": theme_key,
-                    "noWater": no_water_state,
-                    "pieces": pieces_to_draw,
-                    "effects": field_effects,
-                    "grid": show_grid,
-                    "updatedAt": state_updated_at,
+                    "seed": int(seed or 0),
+                    "theme": str(theme_key or ""),
+                    "noWater": bool(no_water_state),
+                    "grid": bool(show_grid),
+                
+                    # IMPORTANTE: não use `updatedAt` aqui
+                    "pieces": sorted([_compact_piece(p) for p in (pieces_to_draw or [])], key=lambda x: (x["id"] or "", x["row"], x["col"])),
+                    "effects": sorted([_compact_eff(e) for e in (field_effects or [])], key=lambda x: (x["row"], x["col"], str(x["icon"]))),
                 }, sort_keys=True, default=str)
+
                 if st.session_state.get("map_cache_sig") != map_signature:
                     st.session_state["map_cache_sig"] = map_signature
                     st.session_state["map_cache_img"] = render_map_with_pieces(
@@ -18607,16 +18646,29 @@ elif page == "PvP – Arena Tática":
                 st.session_state[f"_tile_px_{rid}"] = tile_px
 
                 img_to_show = img
+                
+                # Cache do resize por (sala, assinatura do mapa, zoom)
+                scale_key = (rid, st.session_state.get("map_cache_sig"), float(map_zoom))
+                
                 if img_to_show and map_zoom != 1.0:
-                    try:
-                        img_to_show = img_to_show.resize(
-                            (max(1, int(img_to_show.width * map_zoom)), max(1, int(img_to_show.height * map_zoom))),
-                            resample=Image.NEAREST,
-                        )
-                    except Exception:
-                        img_to_show = img
-                        tile_px = TILE_SIZE
-                        st.session_state[f"_tile_px_{rid}"] = tile_px
+                    if st.session_state.get("map_scaled_key") != scale_key:
+                        st.session_state["map_scaled_key"] = scale_key
+                        try:
+                            st.session_state["map_scaled_img"] = img_to_show.resize(
+                                (
+                                    max(1, int(img_to_show.width * map_zoom)),
+                                    max(1, int(img_to_show.height * map_zoom)),
+                                ),
+                                resample=Image.NEAREST,
+                            )
+                        except Exception:
+                            # Mantém o seu fallback original
+                            st.session_state["map_scaled_img"] = img_to_show
+                            tile_px = TILE_SIZE
+                            st.session_state[f"_tile_px_{rid}"] = tile_px
+                
+                    img_to_show = st.session_state.get("map_scaled_img") or img_to_show
+
 
                 with st.container():
                     click = streamlit_image_coordinates(img_to_show, key=f"map_{rid}")
