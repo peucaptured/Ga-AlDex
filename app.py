@@ -3578,10 +3578,11 @@ def ensure_pvp_sync_listener(db, rid):
                         time.sleep(min_gap - (now - last_req))
     
                     rerun_data = scriptrunner.RerunData(
-                        query_string=ctx.query_string,
+                        query_string="",  # <<< limpa params da URL pra não “teleportar” de page
                         page_script_hash=ctx.page_script_hash,
                         cached_message_hashes=ctx.cached_message_hashes,
                     )
+
                     ctx.script_requests.request_rerun(rerun_data)
                     last_req = time.time()
                 else:
@@ -17341,11 +17342,12 @@ elif page == "PvP – Arena Tática":
     # VIEW: BATTLE (CÓDIGO CONSOLIDADO E CORRIGIDO)
     # =========================
     if view == "battle":
-        ensure_pvp_sync_listener(db, rid)
         if not rid or not room:
             st.session_state["pvp_view"] = "lobby"
             st.rerun()
-        
+    
+        ensure_pvp_sync_listener(db, rid)
+            
         # --- AQUI: INICIA O SISTEMA DE SYNC AUTOMÁTICO ---
         # Isso cria a thread que fica "dormindo" até o Firebase avisar de uma mudança.
         # -------------------------------------------------
@@ -19615,6 +19617,16 @@ elif page == "PvP – Arena Tática":
                                 "updatedAt": firestore.SERVER_TIMESTAMP,
                             }, merge=True)
                             st.session_state["pvp_view"] = "battle"
+
+                            # limpa qualquer query param antigo (compendium/login/etc)
+                            try:
+                                st.query_params.clear()
+                            except Exception:
+                                try:
+                                    st.experimental_set_query_params()
+                                except Exception:
+                                    pass
+                            
                             st.rerun()
                     else:
                         show_grid = st.checkbox("Mostrar grade tática", value=False, key=f"show_grid_preview_{rid}")
@@ -19623,8 +19635,18 @@ elif page == "PvP – Arena Tática":
                         
                         if st.button("⚔️ IR PARA O CAMPO DE BATALHA", type="primary"):
                             st.session_state["pvp_view"] = "battle"
+
+                            # limpa qualquer query param antigo (compendium/login/etc)
+                            try:
+                                st.query_params.clear()
+                            except Exception:
+                                try:
+                                    st.experimental_set_query_params()
+                                except Exception:
+                                    pass
+                            
                             st.rerun()
-                        
+                                                    
                         if st.button("🔁 Regerar Mapa", disabled=not is_player):
                              seed = generate_biome_seed()
                              state_ref.set({"seed": seed, "tilesPacked": None, "noWater": bool(no_water)}, merge=True)
