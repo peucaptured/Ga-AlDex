@@ -803,6 +803,41 @@ try:
 except Exception:
     interpret_effects_to_build = None
 
+
+
+
+@st.fragment(run_every=2)
+def battle_watchdog(db, rid):
+    if not rid:
+        return
+    try:
+        doc_ref = db.collection("rooms").document(rid).collection("public_state").document("battle")
+        snapshot = doc_ref.get()
+        if not snapshot.exists:
+            return
+
+        server_data = snapshot.to_dict() or {}
+        server_time = server_data.get("updatedAt")
+
+        if "last_battle_update" not in st.session_state:
+            st.session_state["last_battle_update"] = server_time
+            return
+
+        if server_time != st.session_state.get("last_battle_update"):
+            st.session_state["last_battle_update"] = server_time
+
+            if pvp_in_action() or float(st.session_state.get("arena_pause_until", 0) or 0) > time.time():
+                st.session_state["pvp_sync_pending"] = True
+                return
+
+            request_rerun("battle_update")
+            return
+
+    except Exception:
+        return
+
+
+
 @st.cache_resource
 def load_move_db(excel_path: str) -> "MoveDB":
     return MoveDB.from_excel(excel_path, sheet_name="Golpes_MM")
@@ -17351,6 +17386,8 @@ elif page == "PvP – Arena Tática":
     
         ensure_pvp_sync_listener(db, rid)
         sync_watchdog(db, rid)
+        battle_watchdog(db, rid)
+
             
         # --- AQUI: INICIA O SISTEMA DE SYNC AUTOMÁTICO ---
         # Isso cria a thread que fica "dormindo" até o Firebase avisar de uma mudança.
@@ -18900,7 +18937,42 @@ elif page == "PvP – Arena Tática":
                 if speed_value >= 41:  return -1
                 if speed_value >= 1:   return -4
                 return 0
-        
+            
+            def _get_speed_value(pid: str, display_name: str, stats_dict: dict) -> int:
+                # 1) tenta vir do stats_dict (se algum dia você passar a salvar speed lá)
+                v = _extract_speed_from_stats(stats_dict)
+                if v > 0:
+                    return v
+            
+                # 2) tenta pela PokeAPI usando o ID, se for numérico
+                try:
+                    pid_s = str(pid).strip()
+                    if pid_s.isdigit():
+                        pjson = pokeapi_get_pokemon(pid_s)
+                        base = pokeapi_parse_stats(pjson)
+                        v2 = _to_int(base.get("speed", 0), 0)
+                        if v2 > 0:
+                            return v2
+                except Exception:
+                    pass
+            
+                # 3) tenta pela PokeAPI usando o nome (limpando prefixos tipo "EXT:")
+                try:
+                    name = str(display_name or "").strip()
+                    name = name.replace("EXT:", "").strip()
+                    # se tiver sufixos seus tipo " - Delta", corta aqui:
+                    name = name.split(" - ")[0].strip()
+                    if name:
+                        pjson = pokeapi_get_pokemon(name)
+                        base = pokeapi_parse_stats(pjson)
+                        return _to_int(base.get("speed", 0), 0)
+                except Exception:
+                    return 0
+            
+                return 0
+
+
+            
             def _extract_speed_from_stats(stats_dict: dict) -> int:
                 if not isinstance(stats_dict, dict):
                     return 0
@@ -18939,7 +19011,7 @@ elif page == "PvP – Arena Tática":
                     display = get_poke_display_name(pid)
                     label = f"Pokémon"
                     _, _, poke_stats, _, _ = get_poke_data(owner, pid)
-                    speed_val = _extract_speed_from_stats(poke_stats)
+                    speed_val = _get_speed_value(pid, display, poke_stats)
                     speed_mod = _speed_to_initiative_mod(speed_val)
                     sprite_url = pokemon_pid_to_image(pid, mode="sprite", shiny=(str(pid) in {str(x).strip() for x in (user_data.get("shinies") or [])} if isinstance(user_data, dict) else set()))
         
@@ -19002,7 +19074,10 @@ elif page == "PvP – Arena Tática":
                                     "initiative": rolled + speed_mod + bonus_val,
                                     "note": "",
                                 }
-                            battle_ref.update({"initiative": out})
+                            battle_ref.update({
+                                "initiative": out,
+                                "updatedAt": firestore.SERVER_TIMESTAMP,
+                            })
                             st.success("Iniciativas roladas ✅")
                             st.rerun()
                     else:
@@ -19048,7 +19123,10 @@ elif page == "PvP – Arena Tática":
                                     "initiative": rolled + speed_mod + bonus_val,
                                     "note": "",
                                 }
-                                battle_ref.update({"initiative": out})
+                                battle_ref.update({
+                                    "initiative": out,
+                                    "updatedAt": firestore.SERVER_TIMESTAMP,
+                                })
                                 st.success("Rolado ✅")
                                 st.rerun()
         
@@ -19170,7 +19248,10 @@ elif page == "PvP – Arena Tática":
         
                 # Salvar (sincroniza)
                 if st.button("💾 Salvar iniciativa", use_container_width=True):
-                    battle_ref.update({"initiative": out})
+                    battle_ref.update({
+                        "initiative": out,
+                        "updatedAt": firestore.SERVER_TIMESTAMP,
+                    })
                     st.success("Iniciativa salva e sincronizada ✅")
         
                 st.markdown('</div>', unsafe_allow_html=True)
