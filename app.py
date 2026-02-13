@@ -17376,7 +17376,7 @@ elif page == "PvP – Arena Tática":
 
 
 
-# =========================
+    # =========================
     # VIEW: BATTLE (CÓDIGO CONSOLIDADO E CORRIGIDO)
     # =========================
     if view == "battle":
@@ -17632,7 +17632,7 @@ elif page == "PvP – Arena Tática":
                 show = conds[:limit]
                 extra = max(0, len(conds) - len(show))
                 chips = "".join([
-                    f"<span class='pvp-badge' style='font-size:11px;padding:2px 8px;border-radius:999px;margin-right:6px;display:inline-block;'>{{c}}</span>"
+                    f"<span class='pvp-badge' style='font-size:11px;padding:2px 8px;border-radius:999px;margin-right:6px;display:inline-block;'>{c}</span>"
                     for c in show
                 ])
                 if extra:
@@ -18304,7 +18304,7 @@ elif page == "PvP – Arena Tática":
 
                             ac1, ac2 = st.columns([2, 1])
                             with ac1:
-                                atk_mod = st.number_input("Acerto (Modificador)", value=0, step=1)
+                                atk_mod = st.number_input("Acerto (Modificador)", value=int(selected_accuracy or 0), step=1)
                             with ac2:
                                 if selected_accuracy is not None:
                                     st.markdown(f"**Acerto sugerido:** {selected_accuracy}")
@@ -18315,59 +18315,64 @@ elif page == "PvP – Arena Tática":
                                 if not target_id:
                                     st.warning("Selecione um alvo.")
                                     st.stop()
-                            
-                                d20 = random.randint(1, 20)
 
-                                # RAW M&M
-                                if d20 == 1:
-                                    hit = False
-                                    crit_bonus = 0
-                                elif d20 == 20:
-                                    hit = True
-                                    crit_bonus = 5   # simplificação: sempre "Increased Effect"
-                                else:
-                                    hit = (total_atk >= needed)
-                                    crit_bonus = 0
-                                
-                                battle_ref.update({
-                                   ...
-                                   "crit_bonus": crit_bonus,
-                                })
-                                                            
                                 # Busca a peça alvo de forma blindada
                                 t_p = next((p for p in (all_pieces or []) if p.get("id") == target_id), None)
                                 if not t_p:
                                     st.error("Alvo inválido (não encontrado no mapa).")
                                     st.stop()
-                            
+
                                 t_owner = t_p.get("owner")
                                 t_pid = t_p.get("pid")
-                            
+
                                 # Se não tiver pid, não é Pokémon (ou está incompleto)
                                 if not t_pid:
                                     st.error("Esse alvo não é um Pokémon (sem pid).")
                                     st.stop()
-                            
+
                                 # Pega stats do alvo
                                 _, _, t_stats, _, _ = get_poke_data(t_owner, t_pid)
                                 dodge = int((t_stats or {}).get("dodge", 0))
                                 parry = int((t_stats or {}).get("parry", 0))
-                            
+
                                 defense_val = dodge if ("Distância" in (atk_type or "")) else parry
                                 needed = defense_val + 10
+
+                                d20 = random.randint(1, 20)
                                 total_atk = int(atk_mod) + int(d20)
-                            
-                                hit = total_atk >= needed
+
+                                # RAW M&M (simplificado)
+                                if d20 == 1:
+                                    hit = False
+                                    crit_bonus = 0
+                                elif d20 == 20:
+                                    # 20 natural: acerta automaticamente e consideramos "Increased Effect" (+5)
+                                    hit = True
+                                    crit_bonus = 5
+                                else:
+                                    hit = (total_atk >= needed)
+                                    crit_bonus = 0
+
                                 result_msg = "ACERTOU! ✅" if hit else "ERROU! ❌"
-                            
+                                crit_txt = " (CRÍTICO +5)" if crit_bonus else ""
+
                                 battle_ref.update({
                                     "status": "hit_confirmed" if hit else "missed",
+                                    "attacker": trainer_name,
+                                    "attacker_pid": attacker_pid,
                                     "target_id": target_id,
                                     "target_owner": t_owner,
                                     "target_pid": t_pid,
                                     "attack_move": move_payload,
+                                    "attack_range": atk_type,
+                                    "atk_mod": int(atk_mod),
+                                    "d20": int(d20),
+                                    "defense_val": int(defense_val),
+                                    "needed": int(needed),
+                                    "total_atk": int(total_atk),
+                                    "crit_bonus": int(crit_bonus),
                                     "logs": [
-                                        f"{trainer_name} rolou {d20}+{atk_mod}=**{total_atk}** (vs Def {needed} [{defense_val}+10])... {result_msg}"
+                                        f"{trainer_name} rolou {d20}+{atk_mod}=**{total_atk}** (vs Def {needed} [{defense_val}+10]){crit_txt}... {result_msg}"
                                     ],
                                 })
                                 st.rerun()
@@ -18378,57 +18383,56 @@ elif page == "PvP – Arena Tática":
                 # [FASE 1.5] DEFESA DE ÁREA
                 elif b_status == "aoe_defense":
                     st.info(b_data["logs"][-1])
+
                     if b_data.get("target_owner") == trainer_name:
-                        st.markdown("### 🏃 Rolar Esquiva (Dodge)")
-                        if st.button("Rolar Dodge"):
+                        st.markdown("### 🛡️ Defesa (Área)")
+                        st.caption("Regra-base: Dodge (CD 10 + Nível) reduz o Rank pela metade. (Aqui você pode escolher qualquer defesa.)")
+
+                        c1, c2, c3, c4 = st.columns(4)
+                        chosen = None
+                        if c1.button("Dodge"): chosen = "dodge"
+                        if c2.button("Parry"): chosen = "parry"
+                        if c3.button("Fort"): chosen = "fort"
+                        if c4.button("Will"): chosen = "will"
+                        if st.button("THG (Toughness)"): chosen = "thg"
+
+                        if chosen:
                             d20 = random.randint(1, 20)
-                            _, _, t_stats, _, _ = get_poke_data(trainer_name, b_data.get('target_pid'))
-                            dodge_val = int(t_stats.get("dodge", 0))
-                        
-                            total_roll = d20 + dodge_val
-                            dc = b_data.get("aoe_dc", 10)
-                            base_rank = b_data.get("dmg_base", 0)
-                        
+                            _, _, t_stats, _, _ = get_poke_data(trainer_name, b_data.get("target_pid"))
+                            stat_val = int((t_stats or {}).get(chosen, 0))
+
+                            total_roll = d20 + stat_val
+                            dc = int(b_data.get("aoe_dc", 10))
+                            base_rank = int(b_data.get("dmg_base", 0))
+
                             if total_roll >= dc:
                                 final_rank = max(1, math.floor(base_rank / 2))
-                                msg = f"Sucesso! ({total_roll} vs {dc}). Rank reduzido: {base_rank} -> {final_rank}."
+                                msg = f"Sucesso! ({total_roll} vs {dc}) com {chosen.upper()}. Rank reduzido: {base_rank} -> {final_rank}."
                             else:
                                 final_rank = base_rank
-                                msg = f"Falha! ({total_roll} vs {dc}). Rank total: {final_rank}."
-                        
+                                msg = f"Falha! ({total_roll} vs {dc}) com {chosen.upper()}. Rank total: {final_rank}."
+
                             battle_ref.update({
                                 "status": "waiting_defense",
-                                "dmg_base": final_rank,
+                                "dmg_base": int(final_rank),
                                 "logs": firestore.ArrayUnion([msg + " Escolha a resistência agora."])
                             })
                             st.rerun()
                     else:
-                        st.warning("Aguardando defensor...")
+                        st.warning("Aguardando defesa de área...")
 
-                # [FASE 2] INSERIR DANO (Se acertou)
+                # [FASE 2] CONFIRMAÇÃO DE ACERTO / DEFINIR RANK
                 elif b_status == "hit_confirmed":
                     st.success(b_data["logs"][-1])
-                
                     if b_data.get("attacker") == trainer_name:
-                        move_payload = b_data.get("attack_move") or {}
-                        suggested_damage = move_payload.get("damage")
+                        dmg_input = st.number_input("Rank do Dano / Efeito", min_value=0, value=int(b_data.get("attack_move",{}).get("damage",0) if b_data.get("attack_move") else 0), step=1)
+                        is_eff_check = st.checkbox("É efeito? (Affliction)", value=False)
 
-                        c1, c2, c3 = st.columns([2, 1, 1])
-                        with c1:
-                            dmg_input = st.number_input("Dano Base / Rank", min_value=0, value=0)
-                        with c2:
-                            if suggested_damage is not None:
-                                st.markdown(f"**Dano sugerido:** {suggested_damage}")
-                            else:
-                                st.caption("Sem dano sugerido.")
-                        with c3:
-                            is_eff_check = st.checkbox("É Efeito?", value=False, key=f"norm_eff_{rid}", help="Se marcado, CD base será 10. Se não, 15.")
-                    
-                        if st.button("Enviar Dano/Efeito"):
+                        if st.button("Confirmar Rank"):
                             battle_ref.update({
                                 "status": "waiting_defense",
-                                "dmg_base": dmg_input,
-                                "is_effect": is_eff_check,
+                                "dmg_base": int(dmg_input),
+                                "is_effect": bool(is_eff_check),
                                 "logs": firestore.ArrayUnion([f"Rank/Dano: {dmg_input} ({'Efeito' if is_eff_check else 'Dano'}). Aguardando resistência..."])
                             })
                             st.rerun()
@@ -18510,7 +18514,8 @@ elif page == "PvP – Arena Tática":
                             })
                             st.rerun()
                     else:
-                        st.info("Aguardando atacante encerrar...")
+                        st.info("Aguardando encerramento do atacante...")
+
 
 
             # =========================
