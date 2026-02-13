@@ -18317,7 +18317,23 @@ elif page == "PvP – Arena Tática":
                                     st.stop()
                             
                                 d20 = random.randint(1, 20)
-                            
+
+                                # RAW M&M
+                                if d20 == 1:
+                                    hit = False
+                                    crit_bonus = 0
+                                elif d20 == 20:
+                                    hit = True
+                                    crit_bonus = 5   # simplificação: sempre "Increased Effect"
+                                else:
+                                    hit = (total_atk >= needed)
+                                    crit_bonus = 0
+                                
+                                battle_ref.update({
+                                   ...
+                                   "crit_bonus": crit_bonus,
+                                })
+                                                            
                                 # Busca a peça alvo de forma blindada
                                 t_p = next((p for p in (all_pieces or []) if p.get("id") == target_id), None)
                                 if not t_p:
@@ -18374,7 +18390,7 @@ elif page == "PvP – Arena Tática":
                             base_rank = b_data.get("dmg_base", 0)
                         
                             if total_roll >= dc:
-                                final_rank = math.floor(base_rank / 2)
+                                final_rank = max(1, math.floor(base_rank / 2))
                                 msg = f"Sucesso! ({total_roll} vs {dc}). Rank reduzido: {base_rank} -> {final_rank}."
                             else:
                                 final_rank = base_rank
@@ -18431,7 +18447,7 @@ elif page == "PvP – Arena Tática":
                     is_eff = b_data.get("is_effect", False)
                     base_val = 10 if is_eff else 15
                     rank = int(b_data.get("dmg_base", 0))
-                    dc_total = base_val + rank
+                    dc_total = base_val + rank + int(b_data.get("crit_bonus", 0))
                 
                     st.info(f"Resistir contra: **CD {dc_total}** ({base_val} + {rank})")
                 
