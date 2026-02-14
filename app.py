@@ -4789,6 +4789,14 @@ def _dex_uid_from_row(name: str, region: str | None = None) -> str:
         base = f"{base}|{reg}"
     return f"UID:{base}"
 
+def _dex_norm_pid(v: str) -> str:
+    s = str(v or "").strip().replace("#", "")
+    # normaliza números tipo "001" -> "1"
+    if s.isdigit():
+        s = s.lstrip("0") or "0"
+    return s
+
+
 def _dex_build_uid_maps(df_local: pd.DataFrame) -> tuple[dict[str, str], dict[str, str]]:
     pid_to_uid: dict[str, str] = {}
     uid_to_pid: dict[str, str] = {}
@@ -4800,7 +4808,7 @@ def _dex_build_uid_maps(df_local: pd.DataFrame) -> tuple[dict[str, str], dict[st
 
     for _, r in df_local.iterrows():
         try:
-            pid = str(r.get("Nº", "")).strip().replace("#", "")
+            pid = _dex_norm_pid(r.get("Nº", ""))
         except Exception:
             pid = ""
         if not pid:
@@ -4862,15 +4870,31 @@ def _dex_to_uid(item: str, pid_to_uid: dict[str, str], legacy_pid_to_uid: dict[s
     s = str(item).strip()
     if not s:
         return s
-    if s.startswith("UID:") or s.startswith("EXT:") or s.startswith("PID:"):
+
+    # EXT e UID já são estáveis
+    if s.startswith("UID:") or s.startswith("EXT:"):
         return s
-    if s.isdigit():
-        if legacy_pid_to_uid and s in legacy_pid_to_uid:
-            return legacy_pid_to_uid[s]
-        if s in pid_to_uid:
-            return pid_to_uid[s]
-        return f"PID:{s}"  # fallback estável (sem nome)
-    return s  # wishlist por texto etc.
+
+    # Se já está no fallback PID:xxx, tenta converter agora (descongela)
+    if s.startswith("PID:"):
+        raw = _dex_norm_pid(s.replace("PID:", "", 1))
+        if legacy_pid_to_uid and raw in legacy_pid_to_uid:
+            return legacy_pid_to_uid[raw]
+        if raw in pid_to_uid:
+            return pid_to_uid[raw]
+        return f"PID:{raw}"
+
+    # PID numérico normal
+    raw = _dex_norm_pid(s)
+    if raw.isdigit():
+        if legacy_pid_to_uid and raw in legacy_pid_to_uid:
+            return legacy_pid_to_uid[raw]
+        if raw in pid_to_uid:
+            return pid_to_uid[raw]
+        return f"PID:{raw}"
+
+    return s
+
 
 def _dex_uid_to_pid(item: str, uid_to_pid: dict[str, str]) -> str | None:
     s = str(item).strip()
@@ -4881,7 +4905,7 @@ def _dex_uid_to_pid(item: str, uid_to_pid: dict[str, str]) -> str | None:
     if s.startswith("UID:"):
         return uid_to_pid.get(s)
     if s.startswith("PID:"):
-        return s.replace("PID:", "", 1)
+        return _dex_norm_pid(s.replace("PID:", "", 1))
     # texto livre (wishlist manual)
     return s
 
