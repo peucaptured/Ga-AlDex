@@ -19286,7 +19286,7 @@ elif page == "PvP – Arena Tática":
             st.session_state.setdefault("pvp_sheet_selected_pid", None)
         
             # =========================
-            # CSS (cards + painel)
+            # CSS (cards + painel) - ROBUSTO
             # =========================
             st.markdown("""
             <style>
@@ -19296,6 +19296,7 @@ elif page == "PvP – Arena Tática":
                 border: 1px solid rgba(255,255,255,.14);
                 background: rgba(255,255,255,.04);
                 margin-bottom: 10px;
+                overflow: hidden;
               }
               .pvp-card-selected{
                 box-shadow: 0 0 0 2px rgba(59,130,246,.35) inset, 0 10px 30px rgba(0,0,0,.25);
@@ -19305,6 +19306,7 @@ elif page == "PvP – Arena Tática":
                 display:flex;
                 gap:10px;
                 align-items:center;
+                min-width: 0;
               }
               .pvp-card-title{
                 font-weight: 900;
@@ -19366,6 +19368,7 @@ elif page == "PvP – Arena Tática":
                 text-overflow: ellipsis;
                 white-space: nowrap;
                 max-width: 240px;
+                min-width: 0;
               }
               .pvp-move-badges{
                 display:flex;
@@ -19379,6 +19382,7 @@ elif page == "PvP – Arena Tática":
                 border: 1px solid rgba(255,255,255,.14);
                 background: rgba(255,255,255,.04);
                 padding: 14px;
+                overflow: hidden;
               }
               .pvp-panel-title{
                 font-weight: 950;
@@ -19438,24 +19442,22 @@ elif page == "PvP – Arena Tática":
             def _auto_thg_from_pokedex(pid: str, display_name: str, np_: int) -> int:
                 cap = max(0, 2 * int(np_ or 0))
                 try:
-                    # tenta por ID numérico
                     if str(pid).strip().isdigit():
                         pjson = pokeapi_get_pokemon(str(pid).strip())
                     else:
-                        # tenta por nome (remove EXT: e sufixos tipo " - Delta")
                         name = str(display_name or "").replace("EXT:", "").split(" - ")[0].strip()
                         pjson = pokeapi_get_pokemon(name)
-            
+        
                     base = pokeapi_parse_stats(pjson)
                     def_ = int(base.get("defense", 10) or 10)
                     spe  = int(base.get("speed", 10) or 10)
-            
+        
                     den = max(1, def_ + spe)
                     thg_base = round((def_ / den) * cap)
                     return int(max(0, thg_base))
                 except Exception:
                     return 0
-
+        
             def _hex_to_rgba(hex_color: str, a: float) -> str:
                 hc = (hex_color or "").lstrip("#").strip()
                 if len(hc) != 6:
@@ -19476,6 +19478,23 @@ elif page == "PvP – Arena Tática":
                 s = re.sub(r"^\s*id\s*", "", s, flags=re.I).strip()
                 s = s.lstrip("#").strip()
                 return s
+        
+            def _safe_pid(v) -> str:
+                """
+                Normaliza pid para evitar '87.0', espaços, '#87', etc.
+                Mantém EXT:... como está.
+                """
+                s = _norm_pid(v)
+                if not s:
+                    return ""
+                if s.upper().startswith("EXT:"):
+                    return s
+                # tenta converter floats ("87.0") e strings com lixo
+                try:
+                    s2 = str(int(float(s)))
+                    return s2
+                except Exception:
+                    return s
         
             def _norm_name(s: str) -> str:
                 try:
@@ -19509,18 +19528,12 @@ elif page == "PvP – Arena Tática":
                 return rank_total, acc_base, str(based_label), stat_val, _mv_is_area(mv)
         
             def _fav_moves_for_pid(pid: str) -> list[str]:
-                """
-                Trainer Hub salva em user_data["favorite_moves"] como {pid: [move_name,...]}.
-                Aceita variações do pid (com/sem zeros).
-                """
                 fav = (user_data.get("favorite_moves") or {}) if isinstance(user_data, dict) else {}
                 pid_s = str(pid or "").strip()
         
-                # 1) direto
                 if pid_s in fav and isinstance(fav[pid_s], list):
                     return fav[pid_s]
         
-                # 2) sem zeros
                 if pid_s.isdigit():
                     pid2 = (pid_s.lstrip("0") or "0")
                     if pid2 in fav and isinstance(fav[pid2], list):
@@ -19536,13 +19549,36 @@ elif page == "PvP – Arena Tática":
                 bd  = _hex_to_rgba(t1, 0.45)
                 return f"background: linear-gradient(135deg, {bg1}, {bg2}); border-color: {bd};"
         
+            def _img_fallback(pid: str, shiny: bool, prefer_art: bool = True) -> str:
+                """
+                Tenta artwork -> sprite -> pokebola.
+                Para EXT:... geralmente só sprite existe.
+                """
+                pid = _safe_pid(pid)
+                pokeball = "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
+        
+                url = None
+                if prefer_art:
+                    try:
+                        url = pokemon_pid_to_image(pid, mode="artwork", shiny=shiny)
+                    except Exception:
+                        url = None
+        
+                if not url:
+                    try:
+                        url = pokemon_pid_to_image(pid, mode="sprite", shiny=shiny)
+                    except Exception:
+                        url = None
+        
+                return url or pokeball
+        
             # =========================
             # Resolve fichas da party
             # =========================
             party_ids = []
             _seen = set()
             for item in (current_party or []):
-                pid = _norm_pid(item)
+                pid = _safe_pid(item)
                 if not pid or pid in _seen:
                     continue
                 _seen.add(pid)
@@ -19554,7 +19590,6 @@ elif page == "PvP – Arena Tática":
             for pid in party_ids:
                 sh = (battle_sheets_map or {}).get(pid)
         
-                # tenta versão sem zeros (ex.: "0283" -> "283")
                 if not sh and pid.isdigit():
                     pid2 = (pid.lstrip("0") or "0")
                     sh = (battle_sheets_map or {}).get(pid2)
@@ -19570,15 +19605,14 @@ elif page == "PvP – Arena Tática":
             if not sheets_to_show:
                 st.info("Não encontrei fichas salvas para a sua party. Vá em **Minhas Fichas** / **Criação Guiada de Fichas** e salve uma ficha para ela aparecer aqui.")
             else:
-                # default: seleciona o primeiro
                 if not st.session_state.get("pvp_sheet_selected_pid"):
                     p0 = (sheets_to_show[0].get("pokemon") or {}).get("id")
-                    st.session_state["pvp_sheet_selected_pid"] = str(p0 or "")
+                    st.session_state["pvp_sheet_selected_pid"] = _safe_pid(p0)
         
-                selected_pid = str(st.session_state.get("pvp_sheet_selected_pid") or "")
+                selected_pid = _safe_pid(st.session_state.get("pvp_sheet_selected_pid") or "")
                 selected_sheet = None
                 for sh in sheets_to_show:
-                    spid = str((sh.get("pokemon") or {}).get("id") or "")
+                    spid = _safe_pid((sh.get("pokemon") or {}).get("id") or "")
                     if spid == selected_pid:
                         selected_sheet = sh
                         break
@@ -19601,13 +19635,13 @@ elif page == "PvP – Arena Tática":
                     for i_sh, sh in enumerate(sheets_to_show):
                         with card_cols[i_sh % cols_per_row]:
                             pkm = sh.get("pokemon") or {}
-                            pid = str(pkm.get("id") or "").strip()
+                            pid = _safe_pid(pkm.get("id") or "")
                             pname = str(pkm.get("name") or "").strip() or "Pokémon"
                             ptypes = pkm.get("types") or []
                             np_ = sh.get("np", pkm.get("np", "—"))
         
-                            shiny = pid in _shinies
-                            sprite_url = pokemon_pid_to_image(pid, mode="sprite", shiny=shiny)
+                            shiny = str(pid) in _shinies
+                            sprite_url = _img_fallback(pid, shiny=shiny, prefer_art=False)
         
                             moves = sh.get("moves") or []
                             if isinstance(moves, dict):
@@ -19617,7 +19651,6 @@ elif page == "PvP – Arena Tática":
         
                             stats = sh.get("stats") or {}
         
-                            # favoritos do Trainer Hub
                             fav_names = _fav_moves_for_pid(pid)
                             mv_by_name = { _norm_name(m.get("name") or m.get("Nome") or m.get("nome") or ""): m for m in moves if isinstance(m, dict) }
         
@@ -19627,20 +19660,23 @@ elif page == "PvP – Arena Tática":
                                 if key in mv_by_name:
                                     fav_moves.append(mv_by_name[key])
         
-                            # fallback: se não tiver favoritos, mostra os 3 primeiros
                             if not fav_moves:
                                 fav_moves = [m for m in moves[:3] if isinstance(m, dict)]
         
                             is_selected = (pid == selected_pid)
                             card_class = "pvp-card pvp-card-selected" if is_selected else "pvp-card"
         
+                            # ✅ WRAPPER REAL (segura tudo no card)
                             st.markdown(f'<div class="{card_class}" style="{_type_bg_style(ptypes)}">', unsafe_allow_html=True)
         
+                            # header
                             st.markdown('<div class="pvp-card-head">', unsafe_allow_html=True)
-                            try:
-                                st.image(sprite_url, width=72)
-                            except Exception:
-                                pass
+        
+                            # imagem (HTML pra garantir enquadramento dentro do card)
+                            st.markdown(
+                                f'<img src="{html.escape(sprite_url)}" style="width:72px;height:72px;object-fit:contain;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.12);padding:6px;">',
+                                unsafe_allow_html=True
+                            )
         
                             sub = []
                             if pid:
@@ -19672,7 +19708,6 @@ elif page == "PvP – Arena Tática":
                                     mv_name = str(mv.get("name") or mv.get("Nome") or mv.get("nome") or "Golpe").strip()
                                     rk_total, acc_base, based_label, stat_val, is_area = _mv_summary(mv, stats)
         
-                                    # breakdown: (R8+11 Stgr) / (R8)
                                     base_rank = int(mv.get("rank") or mv.get("Rank") or 0)
                                     if based_label in ("Stgr", "Int") and int(stat_val) != 0:
                                         rk_break = f"(R{base_rank}+{int(stat_val)} {based_label})"
@@ -19698,7 +19733,7 @@ elif page == "PvP – Arena Tática":
                                         unsafe_allow_html=True,
                                     )
         
-                            # botão de selecionar (fica dentro do card)
+                            # botão de selecionar
                             if st.button(
                                 "Abrir ficha ➜",
                                 key=f"pvp_open_sheet_{rid}_{trainer_name}_{pid}",
@@ -19707,7 +19742,7 @@ elif page == "PvP – Arena Tática":
                                 st.session_state["pvp_sheet_selected_pid"] = pid
                                 st.rerun()
         
-                            st.markdown("</div>", unsafe_allow_html=True)  # card end
+                            st.markdown("</div>", unsafe_allow_html=True)  # ✅ card end
         
                 # =========================
                 # RIGHT: painel ficha completa
@@ -19717,10 +19752,13 @@ elif page == "PvP – Arena Tática":
         
                     sh = selected_sheet or {}
                     pkm = sh.get("pokemon") or {}
-                    pid = str(pkm.get("id") or "").strip()
+                    pid = _safe_pid(pkm.get("id") or "")
                     pname = str(pkm.get("name") or "").strip() or "Pokémon"
                     ptypes = pkm.get("types") or []
-                    np_ = int(sh.get("np", pkm.get("np", 0)) or 0)
+                    try:
+                        np_ = int(sh.get("np", pkm.get("np", 0)) or 0)
+                    except Exception:
+                        np_ = 0
         
                     stats = sh.get("stats") or {}
                     stgr = int(stats.get("stgr", 0) or 0)
@@ -19730,21 +19768,17 @@ elif page == "PvP – Arena Tática":
                     fort = int(stats.get("fortitude", 0) or 0)
                     will = int(stats.get("will", 0) or 0)
         
-                    # THG: se não existir salvo, aplica o teu padrão do import (cap 2*NP - dodge)
                     thg = int(stats.get("thg", 0) or 0)
-
-                    # se thg não veio salvo, calcula igual a Criação Guiada (defense vs speed)
                     if thg <= 0:
                         thg = _auto_thg_from_pokedex(pid, pname, np_)
-                    
-                    # (opcional) se dodge também estiver vazio/zerado, completa para fechar o cap
+        
                     cap = 2 * int(np_ or 0)
                     if int(stats.get("dodge", 0) or 0) <= 0 and cap > 0 and thg > 0:
                         dodge = max(0, cap - thg)
         
-                    # artwork (não sprite)
-                    shiny = pid in _shinies
-                    art_url = pokemon_pid_to_image(pid, mode="artwork", shiny=shiny)
+                    shiny = str(pid) in _shinies
+                    # ✅ fallback art->sprite->pokebola (corrige Weavile sem imagem)
+                    art_url = _img_fallback(pid, shiny=shiny, prefer_art=True)
         
                     skills = sh.get("skills") or []
                     if isinstance(skills, dict):
@@ -19766,13 +19800,12 @@ elif page == "PvP – Arena Tática":
         
                     st.markdown(f'<div class="pvp-panel" style="{_type_bg_style(ptypes)}">', unsafe_allow_html=True)
         
-                    # header com imagem
                     cA, cB = st.columns([1, 1.1])
                     with cA:
                         try:
                             st.image(art_url, use_container_width=True)
                         except Exception:
-                            pass
+                            st.image("https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg", use_container_width=True)
         
                     with cB:
                         st.markdown(f'<div class="pvp-panel-title">{html.escape(pname)}</div>', unsafe_allow_html=True)
@@ -19859,11 +19892,9 @@ elif page == "PvP – Arena Tática":
         
                             header = f"{mv_name} • A+{int(acc_base)} • R{int(rk_total)} ({rk_break})"
                             with st.expander(header, expanded=False):
-                                # tags
                                 if tags:
                                     st.markdown('<div class="pvp-chips">' + ''.join([f'<span class="pvp-chip">{html.escape(t)}</span>' for t in tags]) + '</div>', unsafe_allow_html=True)
         
-                                # descrição/build
                                 desc = mv.get("description") or mv.get("desc")
                                 build = mv.get("build")
                                 if isinstance(desc, str) and desc.strip():
@@ -19873,7 +19904,6 @@ elif page == "PvP – Arena Tática":
                                 else:
                                     st.caption("Descrição não disponível.")
         
-                                # (opcional) notas locais por golpe
                                 st.text_input(
                                     "Notas (local)",
                                     key=f"pvp_sheet_notes_{rid}_{trainer_name}_{pid}_{j}",
@@ -19881,6 +19911,7 @@ elif page == "PvP – Arena Tática":
                                 )
         
                     st.markdown("</div>", unsafe_allow_html=True)  # panel end
+
 
         
         
