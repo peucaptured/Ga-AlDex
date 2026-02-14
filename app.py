@@ -17253,6 +17253,10 @@ elif page == "Criação Guiada de Fichas":
 elif page == "Minhas Fichas":
     st.title("📚 Minhas Fichas")
     st.caption("Veja e gerencie as fichas salvas na nuvem.")
+    try:
+        _dex_guard_once(user_data, df)
+    except Exception:
+        pass
 
     with st.expander("📥 Importar ficha via PDF", expanded=False):
         st.caption("Envie um PDF exportado aqui para recriar a ficha automaticamente.")
@@ -17270,16 +17274,57 @@ elif page == "Minhas Fichas":
 
     db, bucket = init_firebase()
     sheets = list_sheets(db, trainer_name)
-    party_ids_set = {str(p) for p in (user_data.get("party") or [])}
+    # Mapas UID <-> PID da dex atual (garante que existem)
+    pid_to_uid = st.session_state.get("_dex_pid_to_uid") or {}
+    uid_to_pid = st.session_state.get("_dex_uid_to_pid") or {}
+    if not pid_to_uid or not uid_to_pid:
+        try:
+            pid_to_uid, uid_to_pid = _dex_build_uid_maps(df)
+            st.session_state["_dex_pid_to_uid"] = pid_to_uid
+            st.session_state["_dex_uid_to_pid"] = uid_to_pid
+        except Exception:
+            pid_to_uid, uid_to_pid = {}, {}
     
-    hub_pokemon_ids = []
-    _seen_hub_ids = set()
+    def _to_uid_ref(v) -> str:
+        """Converte qualquer coisa (PID/UID/PID:/EXT:) para um ref estável."""
+        s = str(v or "").strip()
+        if not s:
+            return ""
+        if s.startswith("EXT:"):
+            return s
+        # Se já for UID, mantém
+        if s.startswith("UID:"):
+            return s
+        # Se vier PID:xxx
+        if s.startswith("PID:"):
+            s = s.replace("PID:", "", 1).strip()
+    
+        # Normaliza numérico (028 -> 28)
+        try:
+            if re.fullmatch(r"\d+(\.0+)?", s):
+                s = str(int(float(s)))
+        except Exception:
+            pass
+    
+        # Converte PID numérico para UID pelo mapa
+        if s.isdigit() and s in pid_to_uid:
+            return pid_to_uid[s]
+    
+        # Fallback: mantém como PID: (ainda assim é estável e não vira "desconhecido" no select)
+        return f"PID:{s}" if s else ""
+    
+    # Sets para marcar Box/Equipe (agora em UID)
+    party_uids_set = {_to_uid_ref(p) for p in (user_data.get("party") or [])}
+    
+    hub_refs = []
+    _seen = set()
     for raw_pid in (user_data.get("caught") or []):
-        pid = _normalize_hub_pid(raw_pid)
-        if not pid or pid in _seen_hub_ids:
+        ref = _to_uid_ref(raw_pid)
+        if not ref or ref in _seen:
             continue
-        _seen_hub_ids.add(pid)
-        hub_pokemon_ids.append(pid)
+        _seen.add(ref)
+        hub_refs.append(ref)
+
     
     def _sheet_pokemon_name(pid_value: str) -> str:
         pid = str(pid_value).strip()
@@ -17345,29 +17390,77 @@ elif page == "Minhas Fichas":
                 st.write(f"**Criada em:** {created_at}")
                 st.write(f"**PP Total:** {sheet.get('pp_budget_total', '—')}")
 
-                linked_pid = _normalize_hub_pid(sheet.get("linked_pid", ""))
+                linked_ref = str(sheet.get("linked_pid", "") or "").strip()  # pode ser PID, UID, EXT, PID:
+                linked_ref = _to_uid_ref(linked_ref)  # força UID/EXT/PID:
+                
+                def _pretty_name_from_uid(uid: str) -> str:
+                    # UID:bulbasaur|kanto -> "Bulbasaur"
+                    base = uid.replace("UID:", "", 1).split("|", 1)[0].strip()
+                    return base.replace("-", " ").title() if base else "Pokémon"
+                
+                def _hub_ref_label(ref: str) -> str:
+                    ref = str(ref or "").strip()
+                    if not ref:
+                        return "❌ Sem associação"
+                    if ref.startswith("EXT:"):
+                        name = ref.replace("EXT:", "", 1).strip() or "Visitante"
+                        location_tag = "Equipe" if ref in party_uids_set else "Box"
+                        return f"{name} — {location_tag}"
+                
+                    if ref.startswith("UID:"):
+                        # tenta mostrar o nome “oficial” do df (se conseguir converter UID->PID)
+                        pid = uid_to_pid.get(ref)
+                        if pid:
+                            try:
+                                hit = df[df["Nº"].astype(str) == str(pid)]
+                                if not hit.empty:
+                                    name = str(hit.iloc[0].get("Nome") or "").strip()
+                                    if name:
+                                        location_tag = "Equipe" if ref in party_uids_set else "Box"
+                                        return f"{name} — {location_tag}"
+                            except Exception:
+                                pass
+                        # fallback pelo próprio UID
+                        name = _pretty_name_from_uid(ref)
+                        location_tag = "Equipe" if ref in party_uids_set else "Box"
+                        return f"{name} — {location_tag}"
+                
+                    # PID:xxx ou número puro
+                    name = "Pokémon"
+                    if ref.startswith("PID:"):
+                        pid_raw = ref.replace("PID:", "", 1).strip()
+                    else:
+                        pid_raw = ref
+                    try:
+                        hit = df[df["Nº"].astype(str) == str(pid_raw)]
+                        if not hit.empty:
+                            name = str(hit.iloc[0].get("Nome") or "").strip() or f"ID {pid_raw}"
+                        else:
+                            name = f"ID {pid_raw}"
+                    except Exception:
+                        name = f"ID {pid_raw}"
+                
+                    location_tag = "Equipe" if _to_uid_ref(ref) in party_uids_set else "Box"
+                    return f"{name} — {location_tag}"
+                
+                # opções agora são refs (UID/EXT/PID:)
+                assoc_options = [""] + hub_refs
+                current_assoc = linked_ref if linked_ref in hub_refs else ""
+                
+                selected_assoc = st.selectbox(
+                    "Associar ficha a um Pokémon do Trainer Hub",
+                    options=assoc_options,
+                    index=assoc_options.index(current_assoc),
+                    format_func=_hub_ref_label,
+                    key=f"sheet_assoc_select_{sheet_id}",
+                )
+                
+                if st.button("💾 Salvar associação", key=f"sheet_assoc_save_{sheet_id}"):
+                    payload = {"linked_pid": (_to_uid_ref(selected_assoc) or None)}
+                    save_sheet_to_firestore(db, trainer_name, payload, sheet_id=sheet_id)
+                    st.success("Associação atualizada.")
+                    st.rerun()
 
-                if linked_pid:
-                    st.write(f"**Associada a:** {_hub_pid_label(linked_pid)}")
-                else:
-                    st.caption("Sem Pokémon associado nesta ficha.")
-
-                if hub_pokemon_ids:
-                    assoc_options = [""] + hub_pokemon_ids
-                    current_assoc = linked_pid if linked_pid in hub_pokemon_ids else ""
-                    selected_assoc = st.selectbox(
-                        "Associar ficha a um Pokémon do Trainer Hub",
-                        options=assoc_options,
-                        index=assoc_options.index(current_assoc),
-                        format_func=lambda opt: "❌ Sem associação" if not opt else _hub_pid_label(opt),
-                        key=f"sheet_assoc_select_{sheet_id}",
-                    )
-
-                    if st.button("💾 Salvar associação", key=f"sheet_assoc_save_{sheet_id}"):
-                        payload = {"linked_pid": _normalize_hub_pid(selected_assoc) or None}
-                        save_sheet_to_firestore(db, trainer_name, payload, sheet_id=sheet_id)
-                        st.success("Associação atualizada.")
-                        st.rerun()
                 else:
                     st.caption("Capture Pokémon no Trainer Hub para habilitar associações.")
 
