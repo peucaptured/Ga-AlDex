@@ -16,7 +16,20 @@
         "Visão": "Ao sul da Baía Morta, onde as correntes ficam mais frias e o mar muda de cor, as Ruínas de Celeste surgem como um quebra-mar antigo e fraturado. Em maré baixa, linhas de pedra branca aparecem sob o lodo salgado; em maré cheia, tudo vira uma silhueta fantasmagórica sob a água turva. O ar ali cheira a sal velho e algas, e o som das ondas batendo nas colunas partidas cria um ritmo que lembra passos dentro de um salão vazio.\n\nCeleste é um lugar de passagem curta e atenção constante: o piso escorrega, a visibilidade muda de um instante para outro, e qualquer movimento parece ecoar demais. Use as ruínas como ponto de descoberta (relíquias, inscrições, rastros) ou como cenário de encontro tenso — a maré determina quanto tempo os personagens têm antes que corredores e escadarias voltem a ser engolidos pelo mar.\n\nPontos rápidos (para uso em mesa e indexação):\n\nGalerias de Maré\nTúneis semi-alagados que se abrem com a maré baixa; paredes lisas, marcas de sal e um silêncio que amplifica qualquer conversa.\n\nPátio das Colunas\nUm pátio aberto, tomado por areia e detritos; colunas rachadas formam sombras compridas ao entardecer e escondem linhas de visão.\n\nPlataforma do Farol Quebrado\nRestos de uma estrutura elevada com vista para o litoral; vento forte, aves e sinais de que alguém ainda observa a baía dali.",
         "Visão da Região": "A Baía Morta é a face mais exposta de Ga’Al: aberta ao mar, ao comércio e ao olhar estrangeiro, mas também à instabilidade que acompanha tudo o que chega de fora. Suas cidades cresceram de maneiras distintas em torno da mesma promessa — acesso, progresso e relevância — e todas pagaram um preço por isso. Portos movimentados, rotas aéreas, centros de pesquisa e polos culturais coexistem com ressentimentos antigos, desconfiança em relação a treinadores Pokémon e uma memória coletiva marcada por decisões tomadas longe da população comum. Aqui, nada permanece isolado por muito tempo: crises se espalham com a mesma velocidade que mercadorias e boatos.\n\nApesar da aparência cosmopolita, a Baía Morta não é homogênea. Obsidian concentra poder, ciência e infraestrutura; Aspargo carrega o peso de ter sido deixada para trás; e Dainise vive no limite entre a civilização e o avanço do ambiente selvagem. O cheiro de sal, óleo e pedra úmida é constante, assim como a sensação de que algo pode sair do controle a qualquer momento. Para viajantes e treinadores, a região oferece oportunidades únicas — visibilidade, recursos e influência — mas também cobra atenção redobrada: na Baía Morta, cada escolha ecoa além da cidade onde foi feita."
       },
-      "sublocais": [],
+      "sublocais": [
+        {
+          "name": "Galerias de Maré",
+          "text": "Túneis semi-alagados que se abrem com a maré baixa; paredes lisas, marcas de sal e um silêncio que amplifica qualquer conversa."
+        },
+        {
+          "name": "Pátio das Colunas",
+          "text": "Um pátio aberto, tomado por areia e detritos; colunas rachadas formam sombras compridas ao entardecer e escondem linhas de visão."
+        },
+        {
+          "name": "Plataforma do Farol Quebrado",
+          "text": "Restos de uma estrutura elevada com vista para o litoral; vento forte, aves e sinais de que alguém ainda observa a baía dali."
+        }
+      ],
       "img": "Assets/cities/ruinas_de_celeste.png"
     },
     "Borgonha": {
@@ -30,10 +43,6 @@
         "Visão da Região": "Terras Fluviais — Dossiê Regional (Versão para Jogadores)\n\nCompilação pública para consulta rápida (com foco em sublocais). Alguns detalhes podem variar conforme relatos locais."
       },
       "sublocais": [
-        {
-          "name": "NPCs associados (informações públicas)",
-          "text": "Eneias\n\nIdade: 36\n\nLocal de Nascimento: Kalos.\n\nPokémons conhecidos: Yamma, Beedrill, Scolipede.\n\nOcupação atual: Líder de ginásio em Borgonha. Na adolescência era apaixonado por insetos e colecionava exoesqueletos; publicava vídeos com curiosidades sobre o tipo, o que chamou a atenção de Viola, que o convidou para ser assistente em seu ginásio. Subiu de patente até virar vice-líder.\n\nQuando os convites para vir a Ga'Al foram enviados, pediu autorização a Viola para um intercâmbio no ginásio de Less. Não chegou a conhecê-la: membros da Team Keneze a assassinaram. Com a vaga vazia, articulou seu objetivo e, graças ao contato com Viola, recebeu o posto de líder por recomendação da própria Associação de Batalhas. Ainda não possui vice.\n\nEstado atual: Em Borgonha.\n\nPesquisa: inspirado na mentora, foca na utilização de insetos na construção civil.\n\nPontos: 1"
-        },
         {
           "name": "Ginásio Escaravelho",
           "text": "O ginásio não nasceu da vila: Less, antiga e falecida líder, montou seu ginásio nas costas de um escaravelho robótico — uma estrutura de metal do tamanho de meio estádio de futebol. Quando o inseto abre as asas, um campo de batalha se revela, com direito a pequenas árvores. A sala de comandos fica na cabeça do animal. Less veio a Borgonha para testar sistemas de natação; a máquina atravessou o Plessi, escalou a lateral da gruta e entrou pela abertura superior, instalando-se no atracadouro. Eneias manteve o ginásio parado dentro da vila, como respeito à líder e para que permanecesse junto do corpo dela. Hoje, virou ponto turístico; o novo ginásio de Eneias é um campo de terra batida à margem do rio, do lado de fora da gruta.\n\nO metal do escaravelho guarda marcas de uso e chuva, e o cheiro é uma mistura de ferrugem, óleo e madeira úmida do atracadouro. Mesmo parado, ele impõe presença — como se a vila tivesse um monumento ambulante estacionado no quintal. É fácil imaginar porque virou atração: ele é assombro e orgulho ao mesmo tempo."
@@ -97,7 +106,28 @@
         "Visão": "Dainise se ergue na borda onde a Baía Morta encontra o Coração Verde — um limite nítido entre ar seco e floresta viva. Da parte alta, dá para sentir a mudança: a brisa salgada perde força e dá lugar ao perfume de folhas, resina e terra quente. O som também troca de pele: motores e trilhos ficam para trás, e passam a dominar os cantos de Pokémon, o farfalhar das copas e o murmúrio de água escondida.\n\nDainise se mistura com a natureza: passarelas suspensas conectam copas de árvores gigantes, e casas de madeira recebem revestimentos especiais para manter o interior fresco. À noite, fungos bioluminescentes iluminam caminhos e varandas, criando uma luz suave que parece ‘viva’. O resultado é quase mágico — mas não inocente. A proximidade com o Coração Verde faz com que a cidade trate o ambiente como aliado e ameaça ao mesmo tempo.",
         "Visão da Região": "A Baía Morta é a face mais exposta de Ga’Al: aberta ao mar, ao comércio e ao olhar estrangeiro, mas também à instabilidade que acompanha tudo o que chega de fora. Suas cidades cresceram de maneiras distintas em torno da mesma promessa — acesso, progresso e relevância — e todas pagaram um preço por isso. Portos movimentados, rotas aéreas, centros de pesquisa e polos culturais coexistem com ressentimentos antigos, desconfiança em relação a treinadores Pokémon e uma memória coletiva marcada por decisões tomadas longe da população comum. Aqui, nada permanece isolado por muito tempo: crises se espalham com a mesma velocidade que mercadorias e boatos.\n\nApesar da aparência cosmopolita, a Baía Morta não é homogênea. Obsidian concentra poder, ciência e infraestrutura; Aspargo carrega o peso de ter sido deixada para trás; e Dainise vive no limite entre a civilização e o avanço do ambiente selvagem. O cheiro de sal, óleo e pedra úmida é constante, assim como a sensação de que algo pode sair do controle a qualquer momento. Para viajantes e treinadores, a região oferece oportunidades únicas — visibilidade, recursos e influência — mas também cobra atenção redobrada: na Baía Morta, cada escolha ecoa além da cidade onde foi feita."
       },
-      "sublocais": [],
+      "sublocais": [
+        {
+          "name": "Centro dos Rangers",
+          "text": "No centro da cidade, é o núcleo de operações dos Pokémon Rangers. O som de passos apressados nas passarelas e o cheiro de resina fresca acompanham o movimento constante de equipes, suprimentos e comunicados."
+        },
+        {
+          "name": "Estação Metroviária",
+          "text": "Uma das ligações mais importantes entre Dainise e o restante da região. O piso exibe um mosaico peculiar de um Shaymin; muitos viajantes param ali por um instante, como se o desenho pudesse oferecer sorte antes de seguir viagem."
+        },
+        {
+          "name": "Teatro Arbóreo",
+          "text": "Esculpido na própria madeira, na copa de uma árvore, o teatro foi palco dos antigos festivais. Hoje, está abandonado: cadeiras vazias, cortinas gastas e o eco de vozes que já não voltam — um lembrete silencioso do que Dainise perdeu."
+        },
+        {
+          "name": "Casa do Berney",
+          "text": "Na periferia, Berney — especialista em Berries — mantém sua casa e seus cultivos. O ar ali tem perfume de frutas maduras e folhas esmagadas, e visitantes atentos notam como cada variedade parece escolhida para uma finalidade específica."
+        },
+        {
+          "name": "Observatório das Copas",
+          "text": "Construído sobre a árvore mais alta de Ga’Al, ao lado do prédio dos Rangers, o observatório se eleva muito acima das copas ao redor. Dali, a vista alcança o Coração Verde e a Baía Morta: um mar de folhas de um lado, a dureza do terreno do outro — e a sensação de estar na beira de dois mundos."
+        }
+      ],
       "img": "Assets/cities/dainise.png"
     },
     "Gamborre": {
@@ -489,10 +519,6 @@
         "Visão da Região": "Terras Fluviais — Dossiê Regional (Versão para Jogadores)\n\nCompilação pública para consulta rápida (com foco em sublocais). Alguns detalhes podem variar conforme relatos locais."
       },
       "sublocais": [
-        {
-          "name": "NPCs associados (informações públicas)",
-          "text": "Alfonso\n\nIdade: 38\n\nLocal de Nascimento: Ga'Al\n\nPokémons conhecidos: Vaporeon, Toxapex, Slowking, Gyarados.\n\nOcupação atual: Líder de ginásio em Turquesa. Assumiu o posto ainda muito novo e foi treinado por Mike Aqua para se especializar no tipo Água, mas não teve o resultado que a Elite esperava; por isso, permanece como líder de ginásio e não está entre os mais fortes. Foi rival de Stenio por muito tempo (na arqueologia e em batalhas) e chegou a se dedicar ao tipo Água para derrotá-lo, sem sucesso. Também ajudou o caçador a esconder alguns Pokémon roubados. Durante a chuva ácida, salvou a cidade com uma bolha que impedia a entrada do ácido e, após a tempestade, moradores juram tê-lo visto nas costas de Lugia.\n\nPesquisa: Reversão de polaridade e como se aproveitar da mesma.\n\nEstado atual: Em Turquesa.\n\nObjetivos: ???\n\nPontos: 2\n\nLarissa\n\nIdade: 26\n\nLocal de Nascimento: Ga'Al\n\nPokémons conhecidos: Miolotic, Peliper, Seismtoad, Corsola.\n\nOcupação atual: Vice-líder no ginásio de Turquesa. Como Alfonso está ocupado na maior parte do tempo, é ela quem costuma receber os desafiantes; por isso, em algumas batalhas se apresenta como líder, o que alimenta intrigas. Há rumores de que ela vem pedindo à Associação de Batalhas para receber oficialmente o cargo de líder.\n\nEstado atual: Em Turquesa.\n\nObjetivos: ???\n\nEstratégia de batalha do ginásio: aproveitar as grandes dimensões da arena e o fato de ser mar aberto para desestabilizar os Pokémon inimigos."
-        },
         {
           "name": "Recife de Corais",
           "text": "Recife artificial criado em volta da cidade, responsável por manter as boias flutuantes protegidas das ondas. Onde antes havia diversidade de Pokémon, hoje restam espaços mais vazios: a coleta predatória de treinadores empurrou muitos deles para o mar aberto, deixando apenas o som constante da água batendo e a sensação de que algo foi levado embora.\n\nDe perto, o recife revela cicatrizes: estruturas reparadas, trechos mais ‘lisos’ de tanto toque e retirada, e espaços que deveriam estar cheios de vida. É um lugar onde a cidade parece respirar junto do mar — e onde qualquer coisa fora do lugar se nota rápido (uma bóia desviada, um brilho estranho sob a água, uma sombra grande demais)."
