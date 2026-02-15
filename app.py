@@ -17765,10 +17765,16 @@ elif page == "PvP – Arena Tática":
                         c_avatar_1, c_avatar_2, c_avatar_3 = st.columns(3)
                         with c_avatar_1:
                             if st.button("🚶 Mover", key="move_trainer", disabled=is_busy):
-                                st.session_state["moving_piece_id"] = trainer_piece.get("id")
-                                st.session_state["arena_pause_until"] = time.time() + 0.15
-                                st.session_state["placing_pid"] = None
-                                st.session_state["placing_trainer"] = None
+                            # ✅ reseta o estado do clique do mapa (evita reaproveitar clique antigo)
+                            st.session_state["map_click_token"] = str(uuid.uuid4())[:8]
+                        
+                            st.session_state["moving_piece_id"] = trainer_piece.get("id")
+                            st.session_state["arena_pause_until"] = time.time() + 0.15
+                            st.session_state["placing_pid"] = None
+                            st.session_state["placing_trainer"] = None
+                            st.session_state["placing_effect"] = None
+                            st.rerun()
+
                         with c_avatar_2:
                             trainer_revealed = trainer_piece.get("revealed", True)
                             if st.button("👁️" if trainer_revealed else "✅", key="toggle_trainer"):
@@ -17947,10 +17953,14 @@ elif page == "PvP – Arena Tática":
                                     use_container_width=True,
                                 ):
                                     if is_on_map and p_obj:
+                                        # ✅ reseta o estado do clique do mapa (evita reaproveitar clique antigo)
+                                        st.session_state["map_click_token"] = str(uuid.uuid4())[:8]
+                                    
                                         st.session_state["moving_piece_id"] = p_obj.get("id")
                                         st.session_state["arena_pause_until"] = time.time() + 1.2
                                         st.session_state["placing_pid"] = None
                                         st.session_state["placing_trainer"] = None
+                                        st.session_state["placing_effect"] = None  # ✅ garante que nada “roube” o clique
                                         st.rerun()
                                     else:
                                         st.session_state["placing_pid"] = pid
@@ -18952,12 +18962,15 @@ elif page == "PvP – Arena Tática":
 
 
                 with st.container():
+                    # ✅ Token pra "resetar" o clique do componente quando entrar/sair do modo mover/posicionar
+                    st.session_state.setdefault("map_click_token", "0")
+                
                     sig = st.session_state.get("map_cache_sig", "") or ""
                     sig_short = hashlib.md5(sig.encode("utf-8")).hexdigest()[:10]
                     zoom_tag = int(float(map_zoom) * 100)
                     
-                    # Key muda quando o visual do mapa muda (assinatura) ou quando muda o zoom
-                    map_widget_key = f"map_{rid}_{sig_short}_{zoom_tag}"
+                    # ✅ Inclui token no key para evitar clique antigo (stale click) ser reaproveitado
+                    map_widget_key = f"map_{rid}_{sig_short}_{zoom_tag}_{st.session_state['map_click_token']}"
                     
                     click = streamlit_image_coordinates(img_to_show, key=map_widget_key)
             if c_opps is not None:
