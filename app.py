@@ -17765,15 +17765,14 @@ elif page == "PvP – Arena Tática":
                         c_avatar_1, c_avatar_2, c_avatar_3 = st.columns(3)
                         with c_avatar_1:
                             if st.button("🚶 Mover", key="move_trainer", disabled=is_busy):
-                            # ✅ reseta o estado do clique do mapa (evita reaproveitar clique antigo)
-                            st.session_state["map_click_token"] = str(uuid.uuid4())[:8]
-                        
-                            st.session_state["moving_piece_id"] = trainer_piece.get("id")
-                            st.session_state["arena_pause_until"] = time.time() + 0.15
-                            st.session_state["placing_pid"] = None
-                            st.session_state["placing_trainer"] = None
-                            st.session_state["placing_effect"] = None
-                            st.rerun()
+                                # ✅ reseta o estado do clique do mapa (evita reaproveitar clique antigo)
+                                st.session_state["map_click_token"] = str(uuid.uuid4())[:8]
+                                st.session_state["moving_piece_id"] = trainer_piece.get("id")
+                                st.session_state["arena_pause_until"] = time.time() + 0.15
+                                st.session_state["placing_pid"] = None
+                                st.session_state["placing_trainer"] = None
+                                st.session_state["placing_effect"] = None
+                                st.rerun()
 
                         with c_avatar_2:
                             trainer_revealed = trainer_piece.get("revealed", True)
