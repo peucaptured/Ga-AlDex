@@ -6238,11 +6238,12 @@ def get_state(db, rid: str) -> dict:
     doc = state_ref_for(db, rid).get()
     state = doc.to_dict() if doc.exists else {}
 
+    deleted_piece_ids_map = state.get("deletedPieceIds") or {}
     deleted_piece_ids = {
         str(pid)
-        for pid, is_deleted in (state.get("deletedPieceIds") or {}).items()
+        for pid, is_deleted in deleted_piece_ids_map.items()
         if bool(is_deleted)
-    }
+    } if isinstance(deleted_piece_ids_map, dict) else set()
 
     legacy_pieces = state.get("pieces") or []
     pieces_map = {
@@ -6313,6 +6314,10 @@ def upsert_piece(db, rid: str, piece: dict):
     }, merge=True)
 
 def delete_piece(db, rid: str, piece_id: str):
+    piece_id = str(piece_id or "").strip()
+    if not piece_id:
+        return
+
     sref = state_ref_for(db, rid)
     sref.set({
         f"piecesById.{piece_id}": firestore.DELETE_FIELD,
