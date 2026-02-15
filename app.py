@@ -18078,12 +18078,19 @@ elif page == "PvP – Arena Tática":
                 st.session_state["pvp_view"] = "lobby"
                 st.rerun()
         with top[1]:
-            if st.button("🔄 Atualizar"): st.rerun()
+            st.button("🔄 Atualizar")
         with top[2]:
-            if st.button("🎲 d20", disabled=not is_player): roll_die(db, rid, trainer_name, sides=20); st.rerun()
+            rolled_d20 = st.button("🎲 d20", disabled=not is_player)
+            if rolled_d20:
+                roll_die(db, rid, trainer_name, sides=20)
         with top[3]:
-            if st.button("🎲 d6", disabled=not is_player): roll_die(db, rid, trainer_name, sides=6); st.rerun()
+            rolled_d6 = st.button("🎲 d6", disabled=not is_player)
+            if rolled_d6:
+                roll_die(db, rid, trainer_name, sides=6)
         with top[4]:
+            if rolled_d20 or rolled_d6:
+                last_events = list_public_events(db, rid, limit=1)
+                last_dice = next((e for e in last_events if e.get("type") == "dice"), None)
             if last_dice:
                 pl = last_dice.get("payload", {})
                 dice_line = f"🎲 {last_dice.get('by')}: <strong>{pl.get('result')}</strong> (d{pl.get('sides')})"
