@@ -6273,6 +6273,10 @@ def upsert_piece(db, rid: str, piece: dict):
     }, merge=True)
 
 def delete_piece(db, rid: str, piece_id: str):
+    piece_id = str(piece_id or "").strip()
+    if not piece_id:
+        return
+
     sref = state_ref_for(db, rid)
     sref.set({
         f"piecesById.{piece_id}": firestore.DELETE_FIELD,

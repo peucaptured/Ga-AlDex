@@ -5972,7 +5972,33 @@ def state_ref_for(db, rid: str):
 
 def get_state(db, rid: str) -> dict:
     doc = state_ref_for(db, rid).get()
-    return doc.to_dict() if doc.exists else {}
+    state = doc.to_dict() if doc.exists else {}
+
+    deleted_piece_ids = {
+        str(pid)
+        for pid, is_deleted in (state.get("deletedPieceIds") or {}).items()
+        if bool(is_deleted)
+    }
+
+    legacy_pieces = state.get("pieces") or []
+    pieces_map = {
+        str(p.get("id")): p
+        for p in legacy_pieces
+        if isinstance(p, dict) and p.get("id") is not None
+    }
+
+    pieces_by_id = state.get("piecesById") or {}
+    if isinstance(pieces_by_id, dict):
+        for pid, piece in pieces_by_id.items():
+            if isinstance(piece, dict):
+                pieces_map[str(pid)] = piece
+
+    if deleted_piece_ids:
+        for pid in deleted_piece_ids:
+            pieces_map.pop(pid, None)
+
+    state["pieces"] = list(pieces_map.values())
+    return state
 
 def update_party_state(db, rid, trainer_name, pid, hp, conditions):
     ref = db.collection("rooms").document(rid).collection("public_state").document("party_states")
@@ -6011,32 +6037,26 @@ def update_party_state(db, rid, trainer_name, pid, hp, conditions):
                     upsert_piece(db, rid, p)
 
 def upsert_piece(db, rid: str, piece: dict):
-    # Garante que o ID existe
+    piece_id = str(piece.get("id") or "").strip()
+    if not piece_id:
+        return
+
     sref = state_ref_for(db, rid)
-    # Precisamos ler o estado atual para não perder as outras peças
-    # (Ou usar arrayUnion se fosse uma lista simples, mas é lista de dicts)
-    
-    # Melhor abordagem para evitar race conditions em real-time: Transação
-    # Mas para simplificar no seu código atual:
-    stt = get_state(db, rid)
-    pieces = stt.get("pieces") or []
-
-    # Remove a versão antiga da peça, se existir
-    new_pieces = [p for p in pieces if p.get("id") != piece.get("id")]
-    new_pieces.append(piece)
-
     sref.set({
-        "pieces": new_pieces,
-        "updatedAt": firestore.SERVER_TIMESTAMP, # <--- GATILHO DO SYNC
+        f"piecesById.{piece_id}": piece,
+        f"deletedPieceIds.{piece_id}": firestore.DELETE_FIELD,
+        "updatedAt": firestore.SERVER_TIMESTAMP,
     }, merge=True)
 
 def delete_piece(db, rid: str, piece_id: str):
+    piece_id = str(piece_id or "").strip()
+    if not piece_id:
+        return
+
     sref = state_ref_for(db, rid)
-    stt = get_state(db, rid)
-    pieces = stt.get("pieces") or []
-    new_pieces = [p for p in pieces if p.get("id") != piece_id]
     sref.set({
-        "pieces": new_pieces,
+        f"piecesById.{piece_id}": firestore.DELETE_FIELD,
+        f"deletedPieceIds.{piece_id}": True,
         "updatedAt": firestore.SERVER_TIMESTAMP,
     }, merge=True)
 
