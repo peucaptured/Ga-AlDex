@@ -6241,24 +6241,24 @@ def update_party_state(db, rid, trainer_name, pid, hp, conditions):
     ref.set(data, merge=True)
     
     # Se o HP for 0, precisamos atualizar a peça no tabuleiro para 'fainted' (se ela estiver lá)
-    if hp == 0:
-        # Busca peças desse treinador e desse PID
-        state_doc = db.collection("rooms").document(rid).collection("public_state").document("state").get()
-        if state_doc.exists:
-            pieces = state_doc.to_dict().get("pieces", [])
-            for p in pieces:
-                if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid):
+    # Se o HP for 0, precisamos atualizar a peça no tabuleiro para 'fainted' (se ela estiver lá)
+    if int(hp) == 0:
+        pieces = (get_state(db, rid).get("pieces") or [])
+        for p in pieces:
+            if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid):
+                if p.get("status") != "fainted":
                     p["status"] = "fainted"
                     upsert_piece(db, rid, p)
+    
     # Se HP > 0 e estava fainted, revive
-    elif hp > 0:
-        state_doc = db.collection("rooms").document(rid).collection("public_state").document("state").get()
-        if state_doc.exists:
-            pieces = state_doc.to_dict().get("pieces", [])
-            for p in pieces:
-                if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid) and p.get("status") == "fainted":
+    elif int(hp) > 0:
+        pieces = (get_state(db, rid).get("pieces") or [])
+        for p in pieces:
+            if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid):
+                if p.get("status") == "fainted":
                     p["status"] = "active"
                     upsert_piece(db, rid, p)
+
 
 def upsert_piece(db, rid: str, piece: dict):
     piece_id = str(piece.get("id") or "").strip()
@@ -10418,9 +10418,7 @@ def save_sessions_data(data: dict, db=None, trainer_name: str | None = None) -> 
             )
             ref.set(data, merge=True)
             # ✅ avisa a sala toda que “algo mudou”
-            db.collection("rooms").document(rid).collection("public_state").document("state").set({
-                "updatedAt": firestore.SERVER_TIMESTAMP
-            }, merge=True)
+            
             return  # sucesso no Firestore -> não precisa arquivo
     except Exception:
         pass
@@ -19884,7 +19882,14 @@ elif page == "PvP – Arena Tática":
                             
                               {mv_html}
                             
-                              <a class="pvp-open" href="{open_href}">Abrir ficha &rarr;</a>
+                              <a class="pvp-open" href="#"
+                               onclick="(function(){
+                                 const u = new URL(window.location.href);
+                                 u.searchParams.set('sheet','{pid_sheet}');
+                                 window.location.href = u.toString();
+                               })(); return false;">
+                               Abrir ficha &rarr;
+                            </a>
                             </div>
                             """).strip()
                             
