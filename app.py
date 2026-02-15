@@ -19965,11 +19965,11 @@ elif page == "PvP – Arena Tática":
                               {mv_html}
                             
                               <a class="pvp-open" href="#"
-                               onclick="(function(){
-                                 const u = new URL(window.location.href);
-                                 u.searchParams.set('sheet','{pid_sheet}');
-                                 window.location.href = u.toString();
-                               })(); return false;">
+                               onclick="(function(){{
+                                  const u = new URL(window.location.href);
+                                  u.searchParams.set('sheet','{pid_sheet}');
+                                  window.location.href = u.toString();
+                                }})(); return false;">
                                Abrir ficha &rarr;
                             </a>
                             </div>
