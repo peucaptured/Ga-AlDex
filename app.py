@@ -6014,28 +6014,18 @@ def update_poke_state_callback(db, rid, trainer_name, pid, index):
     
     # Lógica de Fainted no Mapa (Visual) - Mantém igual
     if new_hp == 0:
-        state_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
-        stt = state_ref.get().to_dict() or {}
-        pieces = stt.get("pieces") or []
-        dirty = False
+        pieces = (get_state(db, rid).get("pieces") or [])
         for p in pieces:
-            if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid):
-                if p.get("status") != "fainted":
-                    p["status"] = "fainted"
-                    dirty = True
-        if dirty: state_ref.update({"pieces": pieces})
+            if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid) and p.get("status") != "fainted":
+                p["status"] = "fainted"
+                upsert_piece(db, rid, p)
             
     elif new_hp > 0:
-        state_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
-        stt = state_ref.get().to_dict() or {}
-        pieces = stt.get("pieces") or []
-        dirty = False
+        pieces = (get_state(db, rid).get("pieces") or [])
         for p in pieces:
-            if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid):
-                if p.get("status") == "fainted":
-                    p["status"] = "active"
-                    dirty = True
-        if dirty: state_ref.update({"pieces": pieces})
+            if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid) and p.get("status") == "fainted":
+                p["status"] = "active"
+                upsert_piece(db, rid, p)
 
 
 def create_room(db, trainer_name: str, grid_size: int, theme: str, max_active: int = 5):
@@ -6195,11 +6185,6 @@ def add_public_event(db, rid: str, event_type: str, by: str, payload: dict):
         "ts": firestore.SERVER_TIMESTAMP,
     })
 
-    # ✅ bump do estado: cria se não existir e atualiza updatedAt
-    db.collection("rooms").document(rid).collection("public_state").document("state").set({
-        "updatedAt": firestore.SERVER_TIMESTAMP
-    }, merge=True)
-
     
 def state_ref_for(db, rid: str):
     return (
@@ -6211,7 +6196,33 @@ def state_ref_for(db, rid: str):
 
 def get_state(db, rid: str) -> dict:
     doc = state_ref_for(db, rid).get()
-    return doc.to_dict() if doc.exists else {}
+    state = doc.to_dict() if doc.exists else {}
+
+    deleted_piece_ids = {
+        str(pid)
+        for pid, is_deleted in (state.get("deletedPieceIds") or {}).items()
+        if bool(is_deleted)
+    }
+
+    legacy_pieces = state.get("pieces") or []
+    pieces_map = {
+        str(p.get("id")): p
+        for p in legacy_pieces
+        if isinstance(p, dict) and p.get("id") is not None
+    }
+
+    pieces_by_id = state.get("piecesById") or {}
+    if isinstance(pieces_by_id, dict):
+        for pid, piece in pieces_by_id.items():
+            if isinstance(piece, dict):
+                pieces_map[str(pid)] = piece
+
+    if deleted_piece_ids:
+        for pid in deleted_piece_ids:
+            pieces_map.pop(pid, None)
+
+    state["pieces"] = list(pieces_map.values())
+    return state
 
 def update_party_state(db, rid, trainer_name, pid, hp, conditions):
     ref = db.collection("rooms").document(rid).collection("public_state").document("party_states")
@@ -6250,32 +6261,22 @@ def update_party_state(db, rid, trainer_name, pid, hp, conditions):
                     upsert_piece(db, rid, p)
 
 def upsert_piece(db, rid: str, piece: dict):
-    # Garante que o ID existe
+    piece_id = str(piece.get("id") or "").strip()
+    if not piece_id:
+        return
+
     sref = state_ref_for(db, rid)
-    # Precisamos ler o estado atual para não perder as outras peças
-    # (Ou usar arrayUnion se fosse uma lista simples, mas é lista de dicts)
-    
-    # Melhor abordagem para evitar race conditions em real-time: Transação
-    # Mas para simplificar no seu código atual:
-    stt = get_state(db, rid)
-    pieces = stt.get("pieces") or []
-
-    # Remove a versão antiga da peça, se existir
-    new_pieces = [p for p in pieces if p.get("id") != piece.get("id")]
-    new_pieces.append(piece)
-
     sref.set({
-        "pieces": new_pieces,
-        "updatedAt": firestore.SERVER_TIMESTAMP,  # ✅
+        f"piecesById.{piece_id}": piece,
+        f"deletedPieceIds.{piece_id}": firestore.DELETE_FIELD,
+        "updatedAt": firestore.SERVER_TIMESTAMP,
     }, merge=True)
 
 def delete_piece(db, rid: str, piece_id: str):
     sref = state_ref_for(db, rid)
-    stt = get_state(db, rid)
-    pieces = stt.get("pieces") or []
-    new_pieces = [p for p in pieces if p.get("id") != piece_id]
     sref.set({
-        "pieces": new_pieces,
+        f"piecesById.{piece_id}": firestore.DELETE_FIELD,
+        f"deletedPieceIds.{piece_id}": True,
         "updatedAt": firestore.SERVER_TIMESTAMP,
     }, merge=True)
 
@@ -18932,7 +18933,6 @@ elif page == "PvP – Arena Tática":
 
                             if not brush_on:
                                 st.session_state["placing_effect"] = None
-                            request_rerun("effect_erase")
 
                         # Aplica/atualiza efeito
                         new = [
@@ -18948,7 +18948,6 @@ elif page == "PvP – Arena Tática":
 
                         if not brush_on:
                             st.session_state["placing_effect"] = None
-                        request_rerun("effect_place")
 
                     elif ppid:
                         new_id = str(uuid.uuid4())[:8]
@@ -18968,7 +18967,6 @@ elif page == "PvP – Arena Tática":
                         mark_pid_seen(db, rid, ppid)
                         add_public_event(db, rid, "piece_placed", trainer_name, {"pid": ppid, "to": [row, col]})
                         st.session_state.pop("placing_pid", None)
-                        request_rerun("piece_place")
                     elif placing_trainer:
                         s_now = get_state(db, rid)
                         all_p = s_now.get("pieces") or []
@@ -18999,7 +18997,6 @@ elif page == "PvP – Arena Tática":
                                 upsert_piece(db, rid, new_piece)
                             add_public_event(db, rid, "trainer_placed", trainer_name, {"to": [row, col]})
                         st.session_state["placing_trainer"] = None
-                        request_rerun("trainer_place")
                     elif moving_piece_id and is_player:
                         s_now = get_state(db, rid)
                         all_p = s_now.get("pieces") or []
@@ -19024,9 +19021,8 @@ elif page == "PvP – Arena Tática":
 
 
 
-                            # 5. Limpa a seleção e recarrega
+                            # 5. Limpa a seleção
                             st.session_state["moving_piece_id"] = None
-                            request_rerun("move_commit")
 
 
         with tab_inic:
@@ -20258,8 +20254,7 @@ elif page == "PvP – Arena Tática":
                     st.info(f"📍 **Arena {rid}** | {room.get('theme')} | {owner} vs {chal_name}")
     
                     state_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
-                    state_doc = state_ref.get()
-                    state = state_doc.to_dict() if state_doc.exists else {}
+                    state = get_state(db, rid)
     
                     grid = int(room.get("gridSize") or 6)
                     theme_key = room.get("theme") or "cave_water"
