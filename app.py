@@ -728,6 +728,8 @@ def render_bgm(track_path: str, volume: float = 0.35) -> None:
     )
 
 PVP_RERUN_COOLDOWN_SEC = 0.05
+PVP_PLAYERS_SYNC_MIN_INTERVAL_SEC = 1.0
+PVP_PARTY_STATES_SYNC_MIN_INTERVAL_SEC = 1.0
 
 
 def pvp_in_action() -> bool:
@@ -761,6 +763,13 @@ def request_rerun(reason: str, *, force: bool = False) -> bool:
     return True
 
 
+def _stable_hash_payload(payload) -> str:
+    try:
+        return hashlib.sha1(json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str).encode("utf-8")).hexdigest()
+    except Exception:
+        return ""
+
+
 # --- PLANO B: VIGIA DE SINCRONIZAÇÃO ---
 @st.fragment(run_every=2) # Roda esta função sozinha a cada 2 segundos
 def sync_watchdog(db, rid):
@@ -776,6 +785,10 @@ def sync_watchdog(db, rid):
         and hasattr(stop_ev, "is_set")
         and (not stop_ev.is_set())
     )
+
+    # Com listener real-time ativo, evitar polling extra (reduz delay e leituras).
+    if listener_active:
+        return
 
     try:
         doc_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
@@ -794,11 +807,6 @@ def sync_watchdog(db, rid):
         if server_time != st.session_state.get("last_map_update"):
             st.session_state["last_map_update"] = server_time
 
-            # Se o listener real-time está ativo, ele mesmo vai disparar rerun.
-            if listener_active:
-                st.session_state["pvp_sync_pending"] = False
-                return
-
             # Se o usuário está no meio de uma ação, marcamos como pendente e não rerunamos agora.
             if pvp_in_action() or float(st.session_state.get("arena_pause_until", 0) or 0) > time.time():
                 st.session_state["pvp_sync_pending"] = True
@@ -807,8 +815,8 @@ def sync_watchdog(db, rid):
             request_rerun("map_update")
             return
 
-        # Só tenta "despendurar" se NÃO houver listener ativo
-        if (not listener_active) and st.session_state.get("pvp_sync_pending"):
+        # Só tenta "despendurar" quando estiver pendente
+        if st.session_state.get("pvp_sync_pending"):
             request_rerun("map_update_pending")
 
     except Exception:
@@ -838,6 +846,10 @@ def battle_watchdog(db, rid):
         and (not stop_ev.is_set())
     )
 
+    # Com listener real-time ativo, evitar polling extra (reduz delay e leituras).
+    if listener_active:
+        return
+
     try:
         doc_ref = db.collection("rooms").document(rid).collection("public_state").document("battle")
         snapshot = doc_ref.get()
@@ -853,10 +865,6 @@ def battle_watchdog(db, rid):
 
         if server_time != st.session_state.get("last_battle_update"):
             st.session_state["last_battle_update"] = server_time
-
-            # Se o listener real-time está ativo, ele mesmo vai disparar rerun.
-            if listener_active:
-                return
 
             if pvp_in_action() or float(st.session_state.get("arena_pause_until", 0) or 0) > time.time():
                 st.session_state["pvp_sync_pending"] = True
@@ -17585,15 +17593,29 @@ elif page == "PvP – Arena Tática":
 
         # --- 1. SINCRONIZAÇÃO DE DADOS ---
         current_party = user_data.get("party") or []
-        db.collection("rooms").document(rid).collection("public_state").document("players").set(
-            {trainer_name: current_party}, merge=True
+        now_ts = time.time()
+
+        players_payload = {trainer_name: current_party}
+        players_hash = _stable_hash_payload(players_payload)
+        last_players_hash = st.session_state.get("pvp_players_sync_hash")
+        last_players_at = float(st.session_state.get("pvp_players_sync_at", 0.0) or 0.0)
+        should_sync_players = (
+            players_hash != last_players_hash
+            or (now_ts - last_players_at) >= PVP_PLAYERS_SYNC_MIN_INTERVAL_SEC
         )
+
+        if should_sync_players:
+            db.collection("rooms").document(rid).collection("public_state").document("players").set(
+                players_payload, merge=True
+            )
+            st.session_state["pvp_players_sync_hash"] = players_hash
+            st.session_state["pvp_players_sync_at"] = now_ts
 
         if "stats" in user_data:
             # Prepara um dicionário estruturado para o merge funcionar direito
             # Estrutura: { "NomeTreinador": { "ID_Pokemon": { "stats": {...} } } }
             nested_update = {}
-            
+
             for pid in current_party:
                 is_shiny = pid in user_data.get("shinies", [])
                 hub_stats = user_data["stats"].get(pid, {})
@@ -17602,25 +17624,34 @@ elif page == "PvP – Arena Tática":
                     # Se o treinador ainda não está no dicionário, cria
                     if trainer_name not in nested_update:
                         nested_update[trainer_name] = {}
-                    
-                    clean_stats = {
-                        "dodge": int(hub_stats.get("dodge", 0)),
-                        "parry": int(hub_stats.get("parry", 0)),
-                        "will": int(hub_stats.get("will", 0)),
-                        "fort": int(hub_stats.get("fort", 0)),
-                        "thg": int(hub_stats.get("thg", 0)),
-                    }
+
                     # Adiciona os dados do Pokémon
                     nested_update[trainer_name][str(pid)] = {
-                        "stats": hub_stats,
+                        "stats": {
+                            "dodge": int(hub_stats.get("dodge", 0)),
+                            "parry": int(hub_stats.get("parry", 0)),
+                            "will": int(hub_stats.get("will", 0)),
+                            "fort": int(hub_stats.get("fort", 0)),
+                            "thg": int(hub_stats.get("thg", 0)),
+                        },
                         "shiny": is_shiny,
-                        "form": saved_form, # ✅ ENVIANDO PARA O BANCO
-                        "updatedAt": str(datetime.now())
+                        "form": saved_form,
                     }
-            
+
             if nested_update:
-                # Agora o .set(..., merge=True) vai entender a estrutura aninhada corretamente!
-                db.collection("rooms").document(rid).collection("public_state").document("party_states").set(nested_update, merge=True)
+                party_hash = _stable_hash_payload(nested_update)
+                last_party_hash = st.session_state.get("pvp_party_states_sync_hash")
+                last_party_at = float(st.session_state.get("pvp_party_states_sync_at", 0.0) or 0.0)
+                should_sync_party = (
+                    party_hash != last_party_hash
+                    or (now_ts - last_party_at) >= PVP_PARTY_STATES_SYNC_MIN_INTERVAL_SEC
+                )
+
+                if should_sync_party:
+                    nested_update[trainer_name]["updatedAt"] = firestore.SERVER_TIMESTAMP
+                    db.collection("rooms").document(rid).collection("public_state").document("party_states").set(nested_update, merge=True)
+                    st.session_state["pvp_party_states_sync_hash"] = party_hash
+                    st.session_state["pvp_party_states_sync_at"] = now_ts
 
         # --- 2. CARREGAMENTO DO ESTADO ---
         state = get_state(db, rid)
