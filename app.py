@@ -5878,11 +5878,20 @@ def roll_die(db, rid: str, by: str, sides: int = 20):
     
 def get_role(room: dict, trainer_name: str) -> str:
     owner = (room.get("owner") or {}).get("name")
-    
-    # CORREÇÃO: Pega a lista de desafiantes (plural)
-    challengers = room.get("challengers") or []
-    # Cria uma lista apenas com os nomes dos desafiantes
-    challenger_names = [c.get("name") for c in challengers]
+
+    # Compatibilidade com os dois formatos já usados no banco:
+    # - novo: "challengers": [{"name": ...}, ...]
+    # - legado: "challenger": {"name": ...} ou "challenger": "Nome"
+    challenger_names = [
+        c.get("name")
+        for c in (room.get("challengers") or [])
+        if isinstance(c, dict) and c.get("name")
+    ]
+    legacy_challenger = room.get("challenger")
+    if isinstance(legacy_challenger, dict) and legacy_challenger.get("name"):
+        challenger_names.append(legacy_challenger.get("name"))
+    elif isinstance(legacy_challenger, str) and legacy_challenger.strip():
+        challenger_names.append(legacy_challenger.strip())
 
     if trainer_name == owner:
         return "owner"
@@ -19042,10 +19051,14 @@ elif page == "PvP – Arena Tática":
                             upsert_piece(db, rid, mover)
 
                             # 4. Registra o movimento publicamente NO LOG
-                            add_public_event(db, rid, "move", trainer_name, {
-                                "pid": mover["pid"],
+                            move_payload = {
                                 "from": old_pos,
-                                "to": [row, col]
+                                "to": [row, col],
+                            }
+                            if mover.get("kind") != "trainer" and mover.get("pid") is not None:
+                                move_payload["pid"] = mover.get("pid")
+                            add_public_event(db, rid, "move", trainer_name, {
+                                **move_payload,
                             })
 
 
