@@ -764,8 +764,18 @@ def request_rerun(reason: str, *, force: bool = False) -> bool:
 # --- PLANO B: VIGIA DE SINCRONIZAÇÃO ---
 @st.fragment(run_every=2) # Roda esta função sozinha a cada 2 segundos
 def sync_watchdog(db, rid):
+    # Plano B (fallback) — evita cascata quando o listener em tempo real está ativo.
     if not rid:
         return
+
+    listener = st.session_state.get("pvp_sync_listener") or {}
+    stop_ev = listener.get("stop_event")
+    listener_active = bool(
+        listener.get("rid") == rid
+        and stop_ev is not None
+        and hasattr(stop_ev, "is_set")
+        and (not stop_ev.is_set())
+    )
 
     try:
         doc_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
@@ -784,6 +794,11 @@ def sync_watchdog(db, rid):
         if server_time != st.session_state.get("last_map_update"):
             st.session_state["last_map_update"] = server_time
 
+            # Se o listener real-time está ativo, ele mesmo vai disparar rerun.
+            if listener_active:
+                st.session_state["pvp_sync_pending"] = False
+                return
+
             # Se o usuário está no meio de uma ação, marcamos como pendente e não rerunamos agora.
             if pvp_in_action() or float(st.session_state.get("arena_pause_until", 0) or 0) > time.time():
                 st.session_state["pvp_sync_pending"] = True
@@ -792,7 +807,8 @@ def sync_watchdog(db, rid):
             request_rerun("map_update")
             return
 
-        if st.session_state.get("pvp_sync_pending"):
+        # Só tenta "despendurar" se NÃO houver listener ativo
+        if (not listener_active) and st.session_state.get("pvp_sync_pending"):
             request_rerun("map_update_pending")
 
     except Exception:
@@ -809,8 +825,19 @@ except Exception:
 
 @st.fragment(run_every=2)
 def battle_watchdog(db, rid):
+    # Plano B (fallback) — evita cascata quando o listener em tempo real está ativo.
     if not rid:
         return
+
+    listener = st.session_state.get("pvp_sync_listener") or {}
+    stop_ev = listener.get("stop_event")
+    listener_active = bool(
+        listener.get("rid") == rid
+        and stop_ev is not None
+        and hasattr(stop_ev, "is_set")
+        and (not stop_ev.is_set())
+    )
+
     try:
         doc_ref = db.collection("rooms").document(rid).collection("public_state").document("battle")
         snapshot = doc_ref.get()
@@ -826,6 +853,10 @@ def battle_watchdog(db, rid):
 
         if server_time != st.session_state.get("last_battle_update"):
             st.session_state["last_battle_update"] = server_time
+
+            # Se o listener real-time está ativo, ele mesmo vai disparar rerun.
+            if listener_active:
+                return
 
             if pvp_in_action() or float(st.session_state.get("arena_pause_until", 0) or 0) > time.time():
                 st.session_state["pvp_sync_pending"] = True
@@ -17684,7 +17715,6 @@ elif page == "PvP – Arena Tática":
                     st.info("Clique no mapa para posicionar seu avatar.")
                     if st.button("🔙 Cancelar avatar", key="cancel_place_trainer"):
                         st.session_state["placing_trainer"] = None
-                        request_rerun("cancel_place_trainer")
                 else:
                     if trainer_piece:
                         c_avatar_1, c_avatar_2, c_avatar_3 = st.columns(3)
@@ -17694,26 +17724,22 @@ elif page == "PvP – Arena Tática":
                                 st.session_state["arena_pause_until"] = time.time() + 0.15
                                 st.session_state["placing_pid"] = None
                                 st.session_state["placing_trainer"] = None
-                                request_rerun("move_select", force=True)
                         with c_avatar_2:
                             trainer_revealed = trainer_piece.get("revealed", True)
                             if st.button("👁️" if trainer_revealed else "✅", key="toggle_trainer"):
                                 trainer_piece["revealed"] = not trainer_revealed
                                 upsert_piece(db, rid, trainer_piece)
-                                request_rerun("toggle_trainer")
                         with c_avatar_3:
                             if st.button("❌", key="remove_trainer"):
                                 delete_piece(db, rid, trainer_piece.get("id"))
                                 if st.session_state.get("moving_piece_id") == trainer_piece.get("id"):
                                     st.session_state["moving_piece_id"] = None
-                                request_rerun("remove_trainer")
                     else:
                         if st.button("📍 Colocar avatar", key="place_trainer", disabled=not avatar_choice or is_busy):
                             st.session_state["placing_trainer"] = True
                             st.session_state["arena_pause_until"] = time.time() + 1.2
                             st.session_state["placing_pid"] = None
                             st.session_state["moving_piece_id"] = None
-                            request_rerun("place_trainer_start", force=True)
             else:
                 with st.container():
                     st.markdown("<div class='pvp-avatar-card-marker'></div>", unsafe_allow_html=True)
@@ -18749,7 +18775,6 @@ elif page == "PvP – Arena Tática":
                                 st.session_state["moving_piece_id"] = None
                                 st.session_state["placing_pid"] = None
                                 st.session_state["placing_trainer"] = None
-                                request_rerun("remove_trainer")
                         with top_tools[1]:
                             if st.button(
                                 "🧼 Limpar Tudo",
@@ -18782,7 +18807,6 @@ elif page == "PvP – Arena Tática":
                                 st.session_state["moving_piece_id"] = None
                                 st.session_state["placing_pid"] = None
                                 st.session_state["placing_trainer"] = None
-                                request_rerun("remove_trainer")
 
                 # Ajustes de visualização do mapa (zoom automático por tamanho para manter proporção)
                 toolbar = st.columns([1.15, 2.35, 1.0])
