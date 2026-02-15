@@ -19096,11 +19096,13 @@ elif page == "PvP – Arena Tática":
                             add_public_event(db, rid, "move", trainer_name, {
                                 **move_payload,
                             })
-
-
-
                             # 5. Limpa a seleção
                             st.session_state["moving_piece_id"] = None
+                            
+                            # força redesenhar já com a posição nova
+                            st.session_state["map_cache_sig"] = None
+                            st.session_state["map_scaled_key"] = None
+                            st.rerun()
 
 
         with tab_inic:
