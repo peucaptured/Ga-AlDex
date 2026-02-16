@@ -5865,6 +5865,98 @@ def safe_doc_id(name: str) -> str:
         name = str(name)
     return re.sub(r"[^a-zA-Z0-9_\-\.]", "_", name).strip("_")[:80] or "user"
 
+
+# ================================
+# FIRESTORE SYNC (Perfil → Sala)
+# - espelha dados do jogador (avatar/party/fichas) para:
+#   users/<uid>
+#   rooms/<rid>/players/<uid>
+# Isso é o "contrato" para o site exclusivo da batalha.
+# ================================
+
+def _uid_from_trainer(trainer_name: str) -> str:
+    # UID estável (server-side). No site (frontend) você pode trocar por Firebase Auth UID.
+    return safe_doc_id(trainer_name or "user")
+
+def _build_party_snapshot_for_room(db, trainer_name: str, user_data: dict, limit_sheets: int = 120) -> list[dict]:
+    party_ids = []
+    if isinstance(user_data, dict):
+        raw = user_data.get("party")
+        if isinstance(raw, list):
+            party_ids = [str(x) for x in raw if str(x).strip()]
+
+    # puxa fichas mais recentes e tenta casar por pokemon.id (pid)
+    by_pid: dict[str, dict] = {}
+    try:
+        sheets = list_sheets(db, trainer_name, limit=limit_sheets)  # usa sua coleção trainers/<id>/sheets
+        for sh in sheets:
+            p = (sh.get("pokemon") or {})
+            pid = str(p.get("id") or "").strip()
+            if pid and pid not in by_pid:
+                by_pid[pid] = {
+                    "sheet_id": sh.get("_sheet_id"),
+                    "pokemon": {"id": p.get("id"), "name": p.get("name"), "types": p.get("types")},
+                    "np": sh.get("np"),
+                    "updated_at": sh.get("updated_at"),
+                }
+    except Exception:
+        pass
+
+    out = []
+    for pid in party_ids:
+        base = {"pid": pid}
+        if pid in by_pid:
+            base.update(by_pid[pid])
+        out.append(base)
+    return out
+
+def _build_avatar_snapshot(user_data: dict) -> dict:
+    if not isinstance(user_data, dict):
+        return {}
+    prof = user_data.get("trainer_profile") if isinstance(user_data.get("trainer_profile"), dict) else {}
+    # thumb é pequeno; não mande photo_b64 inteira
+    return {
+        "avatar_choice": prof.get("avatar_choice"),
+        "photo_thumb_b64": prof.get("photo_thumb_b64"),
+    }
+
+def sync_user_profile_to_firestore(db, trainer_name: str, user_data: dict):
+    uid = _uid_from_trainer(trainer_name)
+    payload = {
+        "uid": uid,
+        "displayName": trainer_name,
+        "avatar": _build_avatar_snapshot(user_data),
+        "party": (user_data or {}).get("party", []) if isinstance(user_data, dict) else [],
+        "updatedAt": firestore.SERVER_TIMESTAMP,
+    }
+    db.collection("users").document(uid).set(payload, merge=True)
+    return uid
+
+def sync_room_player_to_firestore(db, rid: str, trainer_name: str, role: str, user_data: dict):
+    uid = _uid_from_trainer(trainer_name)
+    party_snapshot = _build_party_snapshot_for_room(db, trainer_name, user_data)
+
+    db.collection("rooms").document(rid).collection("players").document(uid).set(
+        {
+            "uid": uid,
+            "trainer_name": trainer_name,
+            "role": role,  # owner | challenger | spectator
+            "avatar": _build_avatar_snapshot(user_data),
+            "party_snapshot": party_snapshot,   # pronto pro site de batalha
+            "joinedAt": firestore.SERVER_TIMESTAMP,
+            "lastSeenAt": firestore.SERVER_TIMESTAMP,
+            "updatedAt": firestore.SERVER_TIMESTAMP,
+        },
+        merge=True,
+    )
+    return uid
+
+def sync_me_into_room(db, rid: str, trainer_name: str, role: str):
+    # wrapper seguro pra chamar no lobby (onde user_data está em session_state)
+    user_data = st.session_state.get("user_data") or {}
+    sync_user_profile_to_firestore(db, trainer_name, user_data)
+    sync_room_player_to_firestore(db, rid, trainer_name, role, user_data)
+
 def get_item_image_url(item_name):
     if not item_name:
         return "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/question-mark.png"
@@ -6061,11 +6153,14 @@ def create_room(db, trainer_name: str, grid_size: int, theme: str, max_active: i
 
     room_ref.set({
         "createdAt": firestore.SERVER_TIMESTAMP,
+        "updatedAt": firestore.SERVER_TIMESTAMP,
         "status": "lobby",
         "gridSize": int(grid_size),
         "theme": theme,
         "owner": {"name": trainer_name},
+        "ownerUid": _uid_from_trainer(trainer_name),
         "challenger": None,
+        "challengers": [],
         "spectators": [],
         "turn": "owner",
         "turnNumber": 1,
@@ -6078,6 +6173,7 @@ def create_room(db, trainer_name: str, grid_size: int, theme: str, max_active: i
             "logs": [],
             "initiative": {},
             "createdAt": firestore.SERVER_TIMESTAMP,
+        "updatedAt": firestore.SERVER_TIMESTAMP,
             "updatedAt": firestore.SERVER_TIMESTAMP,
         },
         merge=True,
@@ -18040,6 +18136,7 @@ elif page == "PvP – Arena Tática":
                 {
                     **b_data,
                     "createdAt": firestore.SERVER_TIMESTAMP,
+        "updatedAt": firestore.SERVER_TIMESTAMP,
                     "updatedAt": firestore.SERVER_TIMESTAMP,
                 },
                 merge=True,
@@ -20059,6 +20156,7 @@ elif page == "PvP – Arena Tática":
                     else:
                         st.success(f"Arena criada! Código: **{rid}**")
                         st.session_state["active_room_id"] = rid
+                        sync_me_into_room(db, rid, trainer_name, role="owner")
                         st.rerun()
         
             st.markdown("---")
@@ -20113,10 +20211,12 @@ elif page == "PvP – Arena Tática":
                         res = join_room_as_challenger(db, code.strip(), trainer_name)
                         if res == "OK":
                             st.session_state["active_room_id"] = code.strip()
+                            sync_me_into_room(db, code.strip(), trainer_name, role="challenger")
                             st.rerun()
                         elif res == "ALREADY_OWNER":
                             st.warning("Você é o dono desta sala.")
                             st.session_state["active_room_id"] = code.strip()
+                            sync_me_into_room(db, code.strip(), trainer_name, role="owner")
                             st.rerun()
                         else:
                             st.error(res)
@@ -20129,6 +20229,7 @@ elif page == "PvP – Arena Tática":
                         res = join_room_as_spectator(db, code.strip(), trainer_name)
                         if res in ["OK", "PLAYER"]:
                             st.session_state["active_room_id"] = code.strip()
+                            sync_me_into_room(db, code.strip(), trainer_name, role="spectator")
                             st.rerun()
                         else:
                             st.error(res)
