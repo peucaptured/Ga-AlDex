@@ -11,7 +11,6 @@ import json
 import requests
 import unicodedata
 import os
-from textwrap import dedent
 import io
 import html
 import re
@@ -728,8 +727,6 @@ def render_bgm(track_path: str, volume: float = 0.35) -> None:
     )
 
 PVP_RERUN_COOLDOWN_SEC = 0.05
-PVP_PLAYERS_SYNC_MIN_INTERVAL_SEC = 1.0
-PVP_PARTY_STATES_SYNC_MIN_INTERVAL_SEC = 1.0
 
 
 def pvp_in_action() -> bool:
@@ -761,48 +758,12 @@ def request_rerun(reason: str, *, force: bool = False) -> bool:
     st.session_state["pvp_sync_pending"] = False
     st.rerun()
     return True
-    
-def after_map_commit(reason: str):
-    """Após escrever no Firestore via clique no mapa, força redesenho imediato."""
-    # desbloqueia qualquer debounce que esteja impedindo rerun
-    st.session_state["arena_pause_until"] = 0.0
-
-    # garante que o mapa vai redesenhar (evita reaproveitar imagem/cache)
-    st.session_state["map_cache_sig"] = None
-    st.session_state["map_scaled_key"] = None
-
-    # evita clique "stale" do componente
-    st.session_state["map_click_token"] = str(uuid.uuid4())[:8]
-
-    # força rerun (sem ficar preso no gate/cooldown)
-    request_rerun(reason, force=True)
-
-
-def _stable_hash_payload(payload) -> str:
-    try:
-        return hashlib.sha1(json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str).encode("utf-8")).hexdigest()
-    except Exception:
-        return ""
 
 
 # --- PLANO B: VIGIA DE SINCRONIZAÇÃO ---
 @st.fragment(run_every=2) # Roda esta função sozinha a cada 2 segundos
 def sync_watchdog(db, rid):
-    # Plano B (fallback) — evita cascata quando o listener em tempo real está ativo.
     if not rid:
-        return
-
-    listener = st.session_state.get("pvp_sync_listener") or {}
-    stop_ev = listener.get("stop_event")
-    listener_active = bool(
-        listener.get("rid") == rid
-        and stop_ev is not None
-        and hasattr(stop_ev, "is_set")
-        and (not stop_ev.is_set())
-    )
-
-    # Com listener real-time ativo, evitar polling extra (reduz delay e leituras).
-    if listener_active:
         return
 
     try:
@@ -830,7 +791,6 @@ def sync_watchdog(db, rid):
             request_rerun("map_update")
             return
 
-        # Só tenta "despendurar" quando estiver pendente
         if st.session_state.get("pvp_sync_pending"):
             request_rerun("map_update_pending")
 
@@ -848,23 +808,8 @@ except Exception:
 
 @st.fragment(run_every=2)
 def battle_watchdog(db, rid):
-    # Plano B (fallback) — evita cascata quando o listener em tempo real está ativo.
     if not rid:
         return
-
-    listener = st.session_state.get("pvp_sync_listener") or {}
-    stop_ev = listener.get("stop_event")
-    listener_active = bool(
-        listener.get("rid") == rid
-        and stop_ev is not None
-        and hasattr(stop_ev, "is_set")
-        and (not stop_ev.is_set())
-    )
-
-    # Com listener real-time ativo, evitar polling extra (reduz delay e leituras).
-    if listener_active:
-        return
-
     try:
         doc_ref = db.collection("rooms").document(rid).collection("public_state").document("battle")
         snapshot = doc_ref.get()
@@ -5901,20 +5846,11 @@ def roll_die(db, rid: str, by: str, sides: int = 20):
     
 def get_role(room: dict, trainer_name: str) -> str:
     owner = (room.get("owner") or {}).get("name")
-
-    # Compatibilidade com os dois formatos já usados no banco:
-    # - novo: "challengers": [{"name": ...}, ...]
-    # - legado: "challenger": {"name": ...} ou "challenger": "Nome"
-    challenger_names = [
-        c.get("name")
-        for c in (room.get("challengers") or [])
-        if isinstance(c, dict) and c.get("name")
-    ]
-    legacy_challenger = room.get("challenger")
-    if isinstance(legacy_challenger, dict) and legacy_challenger.get("name"):
-        challenger_names.append(legacy_challenger.get("name"))
-    elif isinstance(legacy_challenger, str) and legacy_challenger.strip():
-        challenger_names.append(legacy_challenger.strip())
+    
+    # CORREÇÃO: Pega a lista de desafiantes (plural)
+    challengers = room.get("challengers") or []
+    # Cria uma lista apenas com os nomes dos desafiantes
+    challenger_names = [c.get("name") for c in challengers]
 
     if trainer_name == owner:
         return "owner"
@@ -6077,18 +6013,28 @@ def update_poke_state_callback(db, rid, trainer_name, pid, index):
     
     # Lógica de Fainted no Mapa (Visual) - Mantém igual
     if new_hp == 0:
-        pieces = (get_state(db, rid).get("pieces") or [])
+        state_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
+        stt = state_ref.get().to_dict() or {}
+        pieces = stt.get("pieces") or []
+        dirty = False
         for p in pieces:
-            if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid) and p.get("status") != "fainted":
-                p["status"] = "fainted"
-                upsert_piece(db, rid, p)
+            if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid):
+                if p.get("status") != "fainted":
+                    p["status"] = "fainted"
+                    dirty = True
+        if dirty: state_ref.update({"pieces": pieces})
             
     elif new_hp > 0:
-        pieces = (get_state(db, rid).get("pieces") or [])
+        state_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
+        stt = state_ref.get().to_dict() or {}
+        pieces = stt.get("pieces") or []
+        dirty = False
         for p in pieces:
-            if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid) and p.get("status") == "fainted":
-                p["status"] = "active"
-                upsert_piece(db, rid, p)
+            if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid):
+                if p.get("status") == "fainted":
+                    p["status"] = "active"
+                    dirty = True
+        if dirty: state_ref.update({"pieces": pieces})
 
 
 def create_room(db, trainer_name: str, grid_size: int, theme: str, max_active: int = 5):
@@ -6248,6 +6194,11 @@ def add_public_event(db, rid: str, event_type: str, by: str, payload: dict):
         "ts": firestore.SERVER_TIMESTAMP,
     })
 
+    # ✅ bump do estado: cria se não existir e atualiza updatedAt
+    db.collection("rooms").document(rid).collection("public_state").document("state").set({
+        "updatedAt": firestore.SERVER_TIMESTAMP
+    }, merge=True)
+
     
 def state_ref_for(db, rid: str):
     return (
@@ -6259,34 +6210,7 @@ def state_ref_for(db, rid: str):
 
 def get_state(db, rid: str) -> dict:
     doc = state_ref_for(db, rid).get()
-    state = doc.to_dict() if doc.exists else {}
-
-    deleted_piece_ids_map = state.get("deletedPieceIds") or {}
-    deleted_piece_ids = {
-        str(pid)
-        for pid, is_deleted in deleted_piece_ids_map.items()
-        if bool(is_deleted)
-    } if isinstance(deleted_piece_ids_map, dict) else set()
-
-    legacy_pieces = state.get("pieces") or []
-    pieces_map = {
-        str(p.get("id")): p
-        for p in legacy_pieces
-        if isinstance(p, dict) and p.get("id") is not None
-    }
-
-    pieces_by_id = state.get("piecesById") or {}
-    if isinstance(pieces_by_id, dict):
-        for pid, piece in pieces_by_id.items():
-            if isinstance(piece, dict):
-                pieces_map[str(pid)] = piece
-
-    if deleted_piece_ids:
-        for pid in deleted_piece_ids:
-            pieces_map.pop(pid, None)
-
-    state["pieces"] = list(pieces_map.values())
-    return state
+    return doc.to_dict() if doc.exists else {}
 
 def update_party_state(db, rid, trainer_name, pid, hp, conditions):
     ref = db.collection("rooms").document(rid).collection("public_state").document("party_states")
@@ -6305,46 +6229,52 @@ def update_party_state(db, rid, trainer_name, pid, hp, conditions):
     ref.set(data, merge=True)
     
     # Se o HP for 0, precisamos atualizar a peça no tabuleiro para 'fainted' (se ela estiver lá)
-    # Se o HP for 0, precisamos atualizar a peça no tabuleiro para 'fainted' (se ela estiver lá)
-    if int(hp) == 0:
-        pieces = (get_state(db, rid).get("pieces") or [])
-        for p in pieces:
-            if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid):
-                if p.get("status") != "fainted":
+    if hp == 0:
+        # Busca peças desse treinador e desse PID
+        state_doc = db.collection("rooms").document(rid).collection("public_state").document("state").get()
+        if state_doc.exists:
+            pieces = state_doc.to_dict().get("pieces", [])
+            for p in pieces:
+                if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid):
                     p["status"] = "fainted"
                     upsert_piece(db, rid, p)
-    
     # Se HP > 0 e estava fainted, revive
-    elif int(hp) > 0:
-        pieces = (get_state(db, rid).get("pieces") or [])
-        for p in pieces:
-            if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid):
-                if p.get("status") == "fainted":
+    elif hp > 0:
+        state_doc = db.collection("rooms").document(rid).collection("public_state").document("state").get()
+        if state_doc.exists:
+            pieces = state_doc.to_dict().get("pieces", [])
+            for p in pieces:
+                if p.get("owner") == trainer_name and str(p.get("pid")) == str(pid) and p.get("status") == "fainted":
                     p["status"] = "active"
                     upsert_piece(db, rid, p)
 
-
 def upsert_piece(db, rid: str, piece: dict):
-    piece_id = str(piece.get("id") or "").strip()
-    if not piece_id:
-        return
-
+    # Garante que o ID existe
     sref = state_ref_for(db, rid)
+    # Precisamos ler o estado atual para não perder as outras peças
+    # (Ou usar arrayUnion se fosse uma lista simples, mas é lista de dicts)
+    
+    # Melhor abordagem para evitar race conditions em real-time: Transação
+    # Mas para simplificar no seu código atual:
+    stt = get_state(db, rid)
+    pieces = stt.get("pieces") or []
+
+    # Remove a versão antiga da peça, se existir
+    new_pieces = [p for p in pieces if p.get("id") != piece.get("id")]
+    new_pieces.append(piece)
+
     sref.set({
-        f"piecesById.{piece_id}": piece,
-        f"deletedPieceIds.{piece_id}": firestore.DELETE_FIELD,
-        "updatedAt": firestore.SERVER_TIMESTAMP,
+        "pieces": new_pieces,
+        "updatedAt": firestore.SERVER_TIMESTAMP,  # ✅
     }, merge=True)
 
 def delete_piece(db, rid: str, piece_id: str):
-    piece_id = str(piece_id or "").strip()
-    if not piece_id:
-        return
-
     sref = state_ref_for(db, rid)
+    stt = get_state(db, rid)
+    pieces = stt.get("pieces") or []
+    new_pieces = [p for p in pieces if p.get("id") != piece_id]
     sref.set({
-        f"piecesById.{piece_id}": firestore.DELETE_FIELD,
-        f"deletedPieceIds.{piece_id}": True,
+        "pieces": new_pieces,
         "updatedAt": firestore.SERVER_TIMESTAMP,
     }, merge=True)
 
@@ -10486,7 +10416,9 @@ def save_sessions_data(data: dict, db=None, trainer_name: str | None = None) -> 
             )
             ref.set(data, merge=True)
             # ✅ avisa a sala toda que “algo mudou”
-            
+            db.collection("rooms").document(rid).collection("public_state").document("state").set({
+                "updatedAt": firestore.SERVER_TIMESTAMP
+            }, merge=True)
             return  # sucesso no Firestore -> não precisa arquivo
     except Exception:
         pass
@@ -13361,24 +13293,12 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
                     _push_loc_section(k, v)
 
             else:
-                sublocs = cobj.get("sublocais") or []
-                if isinstance(sublocs, dict):
-                    sl_obj = sublocs.get(sl_now) or {}
-                elif isinstance(sublocs, list):
-                    sl_obj = next(
-                        (x for x in sublocs
-                         if isinstance(x, dict) and _norm(x.get("name","")) == _norm(sl_now)),
-                        {}
-                    )
-                else:
-                    sl_obj = {}
-            
+                sublocs = cobj.get("sublocais") or {}
+                sl_obj = (sublocs.get(sl_now) or {}) if isinstance(sublocs, dict) else {}
                 txt = (sl_obj.get("text") or "").strip()
-                if txt:
-                    _push_loc_section(sl_now, txt)
-            
-            lore_html = "".join(lore_html_parts) or "<div class='ds-history'>(Sem lore cadastrada)</div>"
+                _push_loc_section(sl_now, txt)
 
+            lore_html = "".join(lore_html_parts) or "<div class='ds-history'>(Sem lore cadastrada)</div>"
 
             right_html = f"""
             <div class='ds-loc-right-content'>
@@ -17254,50 +17174,18 @@ elif page == "Criação Guiada de Fichas":
                     db_fs, bkt_fs = init_firebase()
                     skills_payload = []
                     for sk_n, sk_r in st.session_state.get("cg_skills", {}).items():
-                        if int(sk_r) > 0:
-                            skills_payload.append({"name": sk_n, "ranks": int(sk_r)})
+                        if int(sk_r) > 0: skills_payload.append({"name": sk_n, "ranks": int(sk_r)})
                     for row_sk in st.session_state.get("cg_skill_custom", []):
                         if row_sk.get("name") and int(row_sk.get("ranks", 0)) > 0:
                             skills_payload.append({"name": row_sk["name"], "ranks": int(row_sk["ranks"])})
-                
-                    # =========================
-                    # FIX: resolve ID real antes de salvar (evita salvar como 0)
-                    # =========================
-                    pid_save = 0
-                
-                    try:
-                        # tenta resolver pelo nome (padrão EXT), ex: "EXT:Zoroark"
-                        resolved = _resolve_base_pid(f"EXT:{pname}", pname)
-                        if resolved is not None and str(resolved).isdigit():
-                            pid_save = int(resolved)
-                    except Exception:
-                        pid_save = 0
-                
-                    # fallback: usa o pid atual se for numérico
-                    if pid_save == 0:
-                        try:
-                            if pid is not None and str(pid).isdigit():
-                                pid_save = int(pid)
-                        except Exception:
-                            pid_save = 0
-                
+    
                     payload_fs = {
-                        "pokemon": {"id": int(pid_save), "name": pname, "types": types, "abilities": chosen_abilities},
+                        "pokemon": {"id": int(pid), "name": pname, "types": types, "abilities": chosen_abilities},
                         "np": int(np_), "pp_budget_total": int(pp_total), "pp_spent_total": float(pp_spent_total),
                         "stats": {"stgr": int(stgr), "int": int(intellect), "dodge": int(dodge), "parry": int(parry), "fortitude": int(fortitude), "will": int(will)},
-                        "advantages": chosen_adv,
-                        "skills": skills_payload,
-                        "moves": st.session_state.get("cg_moves", [])
+                        "advantages": chosen_adv, "skills": skills_payload, "moves": st.session_state.get("cg_moves", [])
                     }
-                
-                    sid_fs, _ = save_sheet_with_pdf(
-                        db=db_fs,
-                        bucket=bkt_fs,
-                        trainer_name=trainer_name,
-                        sheet_payload=payload_fs,
-                        pdf_bytes=pdf_bytes,
-                        sheet_id=st.session_state.get("cg_edit_sheet_id")
-                    )
+                    sid_fs, _ = save_sheet_with_pdf(db=db_fs, bucket=bkt_fs, trainer_name=trainer_name, sheet_payload=payload_fs, pdf_bytes=pdf_bytes, sheet_id=st.session_state.get("cg_edit_sheet_id"))
                     st.success(f"✅ Salva! ID: {sid_fs}")
                     st.session_state["cg_edit_sheet_id"] = None
     
@@ -17320,10 +17208,6 @@ elif page == "Criação Guiada de Fichas":
 elif page == "Minhas Fichas":
     st.title("📚 Minhas Fichas")
     st.caption("Veja e gerencie as fichas salvas na nuvem.")
-    try:
-        _dex_guard_once(user_data, df)
-    except Exception:
-        pass
 
     with st.expander("📥 Importar ficha via PDF", expanded=False):
         st.caption("Envie um PDF exportado aqui para recriar a ficha automaticamente.")
@@ -17341,57 +17225,16 @@ elif page == "Minhas Fichas":
 
     db, bucket = init_firebase()
     sheets = list_sheets(db, trainer_name)
-    # Mapas UID <-> PID da dex atual (garante que existem)
-    pid_to_uid = st.session_state.get("_dex_pid_to_uid") or {}
-    uid_to_pid = st.session_state.get("_dex_uid_to_pid") or {}
-    if not pid_to_uid or not uid_to_pid:
-        try:
-            pid_to_uid, uid_to_pid = _dex_build_uid_maps(df)
-            st.session_state["_dex_pid_to_uid"] = pid_to_uid
-            st.session_state["_dex_uid_to_pid"] = uid_to_pid
-        except Exception:
-            pid_to_uid, uid_to_pid = {}, {}
+    party_ids_set = {str(p) for p in (user_data.get("party") or [])}
     
-    def _to_uid_ref(v) -> str:
-        """Converte qualquer coisa (PID/UID/PID:/EXT:) para um ref estável."""
-        s = str(v or "").strip()
-        if not s:
-            return ""
-        if s.startswith("EXT:"):
-            return s
-        # Se já for UID, mantém
-        if s.startswith("UID:"):
-            return s
-        # Se vier PID:xxx
-        if s.startswith("PID:"):
-            s = s.replace("PID:", "", 1).strip()
-    
-        # Normaliza numérico (028 -> 28)
-        try:
-            if re.fullmatch(r"\d+(\.0+)?", s):
-                s = str(int(float(s)))
-        except Exception:
-            pass
-    
-        # Converte PID numérico para UID pelo mapa
-        if s.isdigit() and s in pid_to_uid:
-            return pid_to_uid[s]
-    
-        # Fallback: mantém como PID: (ainda assim é estável e não vira "desconhecido" no select)
-        return f"PID:{s}" if s else ""
-    
-    # Sets para marcar Box/Equipe (agora em UID)
-    party_uids_set = {_to_uid_ref(p) for p in (user_data.get("party") or [])}
-    
-    hub_refs = []
-    _seen = set()
+    hub_pokemon_ids = []
+    _seen_hub_ids = set()
     for raw_pid in (user_data.get("caught") or []):
-        ref = _to_uid_ref(raw_pid)
-        if not ref or ref in _seen:
+        pid = _normalize_hub_pid(raw_pid)
+        if not pid or pid in _seen_hub_ids:
             continue
-        _seen.add(ref)
-        hub_refs.append(ref)
-
+        _seen_hub_ids.add(pid)
+        hub_pokemon_ids.append(pid)
     
     def _sheet_pokemon_name(pid_value: str) -> str:
         pid = str(pid_value).strip()
@@ -17457,77 +17300,29 @@ elif page == "Minhas Fichas":
                 st.write(f"**Criada em:** {created_at}")
                 st.write(f"**PP Total:** {sheet.get('pp_budget_total', '—')}")
 
-                linked_ref = str(sheet.get("linked_pid", "") or "").strip()  # pode ser PID, UID, EXT, PID:
-                linked_ref = _to_uid_ref(linked_ref)  # força UID/EXT/PID:
-                
-                def _pretty_name_from_uid(uid: str) -> str:
-                    # UID:bulbasaur|kanto -> "Bulbasaur"
-                    base = uid.replace("UID:", "", 1).split("|", 1)[0].strip()
-                    return base.replace("-", " ").title() if base else "Pokémon"
-                
-                def _hub_ref_label(ref: str) -> str:
-                    ref = str(ref or "").strip()
-                    if not ref:
-                        return "❌ Sem associação"
-                    if ref.startswith("EXT:"):
-                        name = ref.replace("EXT:", "", 1).strip() or "Visitante"
-                        location_tag = "Equipe" if ref in party_uids_set else "Box"
-                        return f"{name} — {location_tag}"
-                
-                    if ref.startswith("UID:"):
-                        # tenta mostrar o nome “oficial” do df (se conseguir converter UID->PID)
-                        pid = uid_to_pid.get(ref)
-                        if pid:
-                            try:
-                                hit = df[df["Nº"].astype(str) == str(pid)]
-                                if not hit.empty:
-                                    name = str(hit.iloc[0].get("Nome") or "").strip()
-                                    if name:
-                                        location_tag = "Equipe" if ref in party_uids_set else "Box"
-                                        return f"{name} — {location_tag}"
-                            except Exception:
-                                pass
-                        # fallback pelo próprio UID
-                        name = _pretty_name_from_uid(ref)
-                        location_tag = "Equipe" if ref in party_uids_set else "Box"
-                        return f"{name} — {location_tag}"
-                
-                    # PID:xxx ou número puro
-                    name = "Pokémon"
-                    if ref.startswith("PID:"):
-                        pid_raw = ref.replace("PID:", "", 1).strip()
-                    else:
-                        pid_raw = ref
-                    try:
-                        hit = df[df["Nº"].astype(str) == str(pid_raw)]
-                        if not hit.empty:
-                            name = str(hit.iloc[0].get("Nome") or "").strip() or f"ID {pid_raw}"
-                        else:
-                            name = f"ID {pid_raw}"
-                    except Exception:
-                        name = f"ID {pid_raw}"
-                
-                    location_tag = "Equipe" if _to_uid_ref(ref) in party_uids_set else "Box"
-                    return f"{name} — {location_tag}"
-                
-                # opções agora são refs (UID/EXT/PID:)
-                assoc_options = [""] + hub_refs
-                current_assoc = linked_ref if linked_ref in hub_refs else ""
-                
-                selected_assoc = st.selectbox(
-                    "Associar ficha a um Pokémon do Trainer Hub",
-                    options=assoc_options,
-                    index=assoc_options.index(current_assoc),
-                    format_func=_hub_ref_label,
-                    key=f"sheet_assoc_select_{sheet_id}",
-                )
-                
-                if st.button("💾 Salvar associação", key=f"sheet_assoc_save_{sheet_id}"):
-                    payload = {"linked_pid": (_to_uid_ref(selected_assoc) or None)}
-                    save_sheet_to_firestore(db, trainer_name, payload, sheet_id=sheet_id)
-                    st.success("Associação atualizada.")
-                    st.rerun()
+                linked_pid = _normalize_hub_pid(sheet.get("linked_pid", ""))
 
+                if linked_pid:
+                    st.write(f"**Associada a:** {_hub_pid_label(linked_pid)}")
+                else:
+                    st.caption("Sem Pokémon associado nesta ficha.")
+
+                if hub_pokemon_ids:
+                    assoc_options = [""] + hub_pokemon_ids
+                    current_assoc = linked_pid if linked_pid in hub_pokemon_ids else ""
+                    selected_assoc = st.selectbox(
+                        "Associar ficha a um Pokémon do Trainer Hub",
+                        options=assoc_options,
+                        index=assoc_options.index(current_assoc),
+                        format_func=lambda opt: "❌ Sem associação" if not opt else _hub_pid_label(opt),
+                        key=f"sheet_assoc_select_{sheet_id}",
+                    )
+
+                    if st.button("💾 Salvar associação", key=f"sheet_assoc_save_{sheet_id}"):
+                        payload = {"linked_pid": _normalize_hub_pid(selected_assoc) or None}
+                        save_sheet_to_firestore(db, trainer_name, payload, sheet_id=sheet_id)
+                        st.success("Associação atualizada.")
+                        st.rerun()
                 else:
                     st.caption("Capture Pokémon no Trainer Hub para habilitar associações.")
 
@@ -17573,12 +17368,9 @@ elif page == "PvP – Arena Tática":
             for sh in list_sheets(db, trainer_name) or []:
                 p = (sh.get("pokemon") or {})
                 pid = p.get("id")
-                if pid is not None:
-                    battle_sheets_map[str(pid)] = sh
-    
-                lpid = sh.get("linked_pid")
-                if lpid:
-                    battle_sheets_map[str(lpid)] = sh
+                if pid is None:
+                    continue
+                battle_sheets_map[str(pid)] = sh
         except Exception:
             battle_sheets_map = {}
 
@@ -17608,29 +17400,15 @@ elif page == "PvP – Arena Tática":
 
         # --- 1. SINCRONIZAÇÃO DE DADOS ---
         current_party = user_data.get("party") or []
-        now_ts = time.time()
-
-        players_payload = {trainer_name: current_party}
-        players_hash = _stable_hash_payload(players_payload)
-        last_players_hash = st.session_state.get("pvp_players_sync_hash")
-        last_players_at = float(st.session_state.get("pvp_players_sync_at", 0.0) or 0.0)
-        should_sync_players = (
-            players_hash != last_players_hash
-            or (now_ts - last_players_at) >= PVP_PLAYERS_SYNC_MIN_INTERVAL_SEC
+        db.collection("rooms").document(rid).collection("public_state").document("players").set(
+            {trainer_name: current_party}, merge=True
         )
-
-        if should_sync_players:
-            db.collection("rooms").document(rid).collection("public_state").document("players").set(
-                players_payload, merge=True
-            )
-            st.session_state["pvp_players_sync_hash"] = players_hash
-            st.session_state["pvp_players_sync_at"] = now_ts
 
         if "stats" in user_data:
             # Prepara um dicionário estruturado para o merge funcionar direito
             # Estrutura: { "NomeTreinador": { "ID_Pokemon": { "stats": {...} } } }
             nested_update = {}
-
+            
             for pid in current_party:
                 is_shiny = pid in user_data.get("shinies", [])
                 hub_stats = user_data["stats"].get(pid, {})
@@ -17639,34 +17417,25 @@ elif page == "PvP – Arena Tática":
                     # Se o treinador ainda não está no dicionário, cria
                     if trainer_name not in nested_update:
                         nested_update[trainer_name] = {}
-
+                    
+                    clean_stats = {
+                        "dodge": int(hub_stats.get("dodge", 0)),
+                        "parry": int(hub_stats.get("parry", 0)),
+                        "will": int(hub_stats.get("will", 0)),
+                        "fort": int(hub_stats.get("fort", 0)),
+                        "thg": int(hub_stats.get("thg", 0)),
+                    }
                     # Adiciona os dados do Pokémon
                     nested_update[trainer_name][str(pid)] = {
-                        "stats": {
-                            "dodge": int(hub_stats.get("dodge", 0)),
-                            "parry": int(hub_stats.get("parry", 0)),
-                            "will": int(hub_stats.get("will", 0)),
-                            "fort": int(hub_stats.get("fort", 0)),
-                            "thg": int(hub_stats.get("thg", 0)),
-                        },
+                        "stats": hub_stats,
                         "shiny": is_shiny,
-                        "form": saved_form,
+                        "form": saved_form, # ✅ ENVIANDO PARA O BANCO
+                        "updatedAt": str(datetime.now())
                     }
-
+            
             if nested_update:
-                party_hash = _stable_hash_payload(nested_update)
-                last_party_hash = st.session_state.get("pvp_party_states_sync_hash")
-                last_party_at = float(st.session_state.get("pvp_party_states_sync_at", 0.0) or 0.0)
-                should_sync_party = (
-                    party_hash != last_party_hash
-                    or (now_ts - last_party_at) >= PVP_PARTY_STATES_SYNC_MIN_INTERVAL_SEC
-                )
-
-                if should_sync_party:
-                    nested_update[trainer_name]["updatedAt"] = firestore.SERVER_TIMESTAMP
-                    db.collection("rooms").document(rid).collection("public_state").document("party_states").set(nested_update, merge=True)
-                    st.session_state["pvp_party_states_sync_hash"] = party_hash
-                    st.session_state["pvp_party_states_sync_at"] = now_ts
+                # Agora o .set(..., merge=True) vai entender a estrutura aninhada corretamente!
+                db.collection("rooms").document(rid).collection("public_state").document("party_states").set(nested_update, merge=True)
 
         # --- 2. CARREGAMENTO DO ESTADO ---
         state = get_state(db, rid)
@@ -17775,36 +17544,36 @@ elif page == "PvP – Arena Tática":
                     st.info("Clique no mapa para posicionar seu avatar.")
                     if st.button("🔙 Cancelar avatar", key="cancel_place_trainer"):
                         st.session_state["placing_trainer"] = None
+                        request_rerun("cancel_place_trainer")
                 else:
                     if trainer_piece:
                         c_avatar_1, c_avatar_2, c_avatar_3 = st.columns(3)
                         with c_avatar_1:
                             if st.button("🚶 Mover", key="move_trainer", disabled=is_busy):
-                                # ✅ reseta o estado do clique do mapa (evita reaproveitar clique antigo)
-                                st.session_state["map_click_token"] = str(uuid.uuid4())[:8]
                                 st.session_state["moving_piece_id"] = trainer_piece.get("id")
                                 st.session_state["arena_pause_until"] = time.time() + 0.15
                                 st.session_state["placing_pid"] = None
                                 st.session_state["placing_trainer"] = None
-                                st.session_state["placing_effect"] = None
-                                st.rerun()
-
+                                request_rerun("move_select", force=True)
                         with c_avatar_2:
                             trainer_revealed = trainer_piece.get("revealed", True)
                             if st.button("👁️" if trainer_revealed else "✅", key="toggle_trainer"):
                                 trainer_piece["revealed"] = not trainer_revealed
                                 upsert_piece(db, rid, trainer_piece)
+                                request_rerun("toggle_trainer")
                         with c_avatar_3:
                             if st.button("❌", key="remove_trainer"):
                                 delete_piece(db, rid, trainer_piece.get("id"))
                                 if st.session_state.get("moving_piece_id") == trainer_piece.get("id"):
                                     st.session_state["moving_piece_id"] = None
+                                request_rerun("remove_trainer")
                     else:
                         if st.button("📍 Colocar avatar", key="place_trainer", disabled=not avatar_choice or is_busy):
                             st.session_state["placing_trainer"] = True
                             st.session_state["arena_pause_until"] = time.time() + 1.2
                             st.session_state["placing_pid"] = None
                             st.session_state["moving_piece_id"] = None
+                            request_rerun("place_trainer_start", force=True)
             else:
                 with st.container():
                     st.markdown("<div class='pvp-avatar-card-marker'></div>", unsafe_allow_html=True)
@@ -17967,14 +17736,10 @@ elif page == "PvP – Arena Tática":
                                     use_container_width=True,
                                 ):
                                     if is_on_map and p_obj:
-                                        # ✅ reseta o estado do clique do mapa (evita reaproveitar clique antigo)
-                                        st.session_state["map_click_token"] = str(uuid.uuid4())[:8]
-                                    
                                         st.session_state["moving_piece_id"] = p_obj.get("id")
                                         st.session_state["arena_pause_until"] = time.time() + 1.2
                                         st.session_state["placing_pid"] = None
                                         st.session_state["placing_trainer"] = None
-                                        st.session_state["placing_effect"] = None  # ✅ garante que nada “roube” o clique
                                         st.rerun()
                                     else:
                                         st.session_state["placing_pid"] = pid
@@ -18173,19 +17938,12 @@ elif page == "PvP – Arena Tática":
                 st.session_state["pvp_view"] = "lobby"
                 st.rerun()
         with top[1]:
-            st.button("🔄 Atualizar")
+            if st.button("🔄 Atualizar"): st.rerun()
         with top[2]:
-            rolled_d20 = st.button("🎲 d20", disabled=not is_player)
-            if rolled_d20:
-                roll_die(db, rid, trainer_name, sides=20)
+            if st.button("🎲 d20", disabled=not is_player): roll_die(db, rid, trainer_name, sides=20); st.rerun()
         with top[3]:
-            rolled_d6 = st.button("🎲 d6", disabled=not is_player)
-            if rolled_d6:
-                roll_die(db, rid, trainer_name, sides=6)
+            if st.button("🎲 d6", disabled=not is_player): roll_die(db, rid, trainer_name, sides=6); st.rerun()
         with top[4]:
-            if rolled_d20 or rolled_d6:
-                last_events = list_public_events(db, rid, limit=1)
-                last_dice = next((e for e in last_events if e.get("type") == "dice"), None)
             if last_dice:
                 pl = last_dice.get("payload", {})
                 dice_line = f"🎲 {last_dice.get('by')}: <strong>{pl.get('result')}</strong> (d{pl.get('sides')})"
@@ -18844,6 +18602,7 @@ elif page == "PvP – Arena Tática":
                                 st.session_state["moving_piece_id"] = None
                                 st.session_state["placing_pid"] = None
                                 st.session_state["placing_trainer"] = None
+                                request_rerun("remove_trainer")
                         with top_tools[1]:
                             if st.button(
                                 "🧼 Limpar Tudo",
@@ -18876,6 +18635,7 @@ elif page == "PvP – Arena Tática":
                                 st.session_state["moving_piece_id"] = None
                                 st.session_state["placing_pid"] = None
                                 st.session_state["placing_trainer"] = None
+                                request_rerun("remove_trainer")
 
                 # Ajustes de visualização do mapa (zoom automático por tamanho para manter proporção)
                 toolbar = st.columns([1.15, 2.35, 1.0])
@@ -18976,15 +18736,12 @@ elif page == "PvP – Arena Tática":
 
 
                 with st.container():
-                    # ✅ Token pra "resetar" o clique do componente quando entrar/sair do modo mover/posicionar
-                    st.session_state.setdefault("map_click_token", "0")
-                
                     sig = st.session_state.get("map_cache_sig", "") or ""
                     sig_short = hashlib.md5(sig.encode("utf-8")).hexdigest()[:10]
                     zoom_tag = int(float(map_zoom) * 100)
                     
-                    # ✅ Inclui token no key para evitar clique antigo (stale click) ser reaproveitado
-                    map_widget_key = f"map_{rid}_{sig_short}_{zoom_tag}_{st.session_state['map_click_token']}"
+                    # Key muda quando o visual do mapa muda (assinatura) ou quando muda o zoom
+                    map_widget_key = f"map_{rid}_{sig_short}_{zoom_tag}"
                     
                     click = streamlit_image_coordinates(img_to_show, key=map_widget_key)
             if c_opps is not None:
@@ -19018,34 +18775,23 @@ elif page == "PvP – Arena Tática":
                     if peff:
                         curr = state.get("effects") or []
                         brush_on = bool(st.session_state.get(f"effect_brush_{rid}", True))
-                    
+
                         if peff == "__erase__":
-                            new = [e for e in curr if not (int((e or {}).get("row", -1)) == row and int((e or {}).get("col", -1)) == col)]
+                            # Remove efeito (se existir) no quadrado clicado
+                            new = [
+                                e for e in curr
+                                if not (int((e or {}).get("row", -1)) == row and int((e or {}).get("col", -1)) == col)
+                            ]
                             if len(new) != len(curr):
                                 db.collection("rooms").document(rid).collection("public_state").document("state").update({
                                     "effects": new,
                                     "updatedAt": firestore.SERVER_TIMESTAMP,
                                 })
                                 add_public_event(db, rid, "effect_removed", trainer_name, {"to": [row, col]})
-                    
-                            if not brush_on:
-                                st.session_state["placing_effect"] = None
-                    
-                            after_map_commit("effect_erase")  # ✅
-                        else:
-                            new = [e for e in curr if not (int((e or {}).get("row", -1)) == row and int((e or {}).get("col", -1)) == col)]
-                            new.append({"icon": peff, "row": row, "col": col, "id": str(uuid.uuid4())[:8]})
-                            db.collection("rooms").document(rid).collection("public_state").document("state").update({
-                                "effects": new,
-                                "updatedAt": firestore.SERVER_TIMESTAMP,
-                            })
-                            add_public_event(db, rid, "effect", trainer_name, {"icon": peff, "to": [row, col]})
-                    
-                            if not brush_on:
-                                st.session_state["placing_effect"] = None
-                    
-                            after_map_commit("effect_place")  # ✅
 
+                            if not brush_on:
+                                st.session_state["placing_effect"] = None
+                            request_rerun("effect_erase")
 
                         # Aplica/atualiza efeito
                         new = [
@@ -19061,6 +18807,7 @@ elif page == "PvP – Arena Tática":
 
                         if not brush_on:
                             st.session_state["placing_effect"] = None
+                        request_rerun("effect_place")
 
                     elif ppid:
                         new_id = str(uuid.uuid4())[:8]
@@ -19080,8 +18827,7 @@ elif page == "PvP – Arena Tática":
                         mark_pid_seen(db, rid, ppid)
                         add_public_event(db, rid, "piece_placed", trainer_name, {"pid": ppid, "to": [row, col]})
                         st.session_state.pop("placing_pid", None)
-                        after_map_commit("piece_place")  # ✅
-
+                        request_rerun("piece_place")
                     elif placing_trainer:
                         s_now = get_state(db, rid)
                         all_p = s_now.get("pieces") or []
@@ -19112,8 +18858,7 @@ elif page == "PvP – Arena Tática":
                                 upsert_piece(db, rid, new_piece)
                             add_public_event(db, rid, "trainer_placed", trainer_name, {"to": [row, col]})
                         st.session_state["placing_trainer"] = None
-                        after_map_commit("trainer_place")  # ✅
-
+                        request_rerun("trainer_place")
                     elif moving_piece_id and is_player:
                         s_now = get_state(db, rid)
                         all_p = s_now.get("pieces") or []
@@ -19130,22 +18875,17 @@ elif page == "PvP – Arena Tática":
                             upsert_piece(db, rid, mover)
 
                             # 4. Registra o movimento publicamente NO LOG
-                            move_payload = {
-                                "from": old_pos,
-                                "to": [row, col],
-                            }
-                            if mover.get("kind") != "trainer" and mover.get("pid") is not None:
-                                move_payload["pid"] = mover.get("pid")
                             add_public_event(db, rid, "move", trainer_name, {
-                                **move_payload,
+                                "pid": mover["pid"],
+                                "from": old_pos,
+                                "to": [row, col]
                             })
-                            # 5. Limpa a seleção
+
+
+
+                            # 5. Limpa a seleção e recarrega
                             st.session_state["moving_piece_id"] = None
-                            
-                            # força redesenhar já com a posição nova
-                            st.session_state["map_cache_sig"] = None
-                            st.session_state["map_scaled_key"] = None
-                            after_map_commit("move_commit")
+                            request_rerun("move_commit")
 
 
         with tab_inic:
@@ -19849,47 +19589,41 @@ elif page == "PvP – Arena Tática":
                     continue
                 _seen.add(raw)
                 party_ids_raw.append(raw)
-            
+        
             sheets_to_show = []
             missing_ids = []
-            
+        
             for raw_pid in party_ids_raw:
                 # raw_pid pode ser "87" ou "EXT:Hydreigon"
-                base_pid = raw_pid if raw_pid.isdigit() else str(_resolve_base_pid(raw_pid, raw_pid) or raw_pid)
-            
-                # tenta por base_pid
-                sh = (battle_sheets_map or {}).get(str(base_pid))
-            
-                # se ainda não achou, tenta pelo raw_pid direto (EXT:...)
-                if not sh:
-                    sh = (battle_sheets_map or {}).get(str(raw_pid))
-            
-                # normaliza "00087" -> "87"
-                if not sh and base_pid and str(base_pid).isdigit():
-                    pid2 = (str(base_pid).lstrip("0") or "0")
+                base_pid = raw_pid if raw_pid.isdigit() else _resolve_base_pid(raw_pid, raw_pid)
+        
+                # tenta achar ficha por base_pid numérico
+                sh = (battle_sheets_map or {}).get(base_pid) if base_pid else None
+                if not sh and base_pid and base_pid.isdigit():
+                    pid2 = (base_pid.lstrip("0") or "0")
                     sh = (battle_sheets_map or {}).get(pid2)
-            
+        
                 if sh:
+                    # ✅ guarda também o "pid original" pra imagem (EXT) se existir
                     sh = dict(sh)
                     sh["_party_pid_raw"] = raw_pid
                     sh["_party_pid_base"] = base_pid
                     sheets_to_show.append(sh)
                 else:
                     missing_ids.append(raw_pid)
-            
+        
             if missing_ids:
                 st.caption("Sem ficha salva (ou não pertence ao seu trainer) para: " + ", ".join(missing_ids))
-            
+        
             if not sheets_to_show:
                 st.info("Não encontrei fichas salvas para a sua party. Vá em **Minhas Fichas** / **Criação Guiada de Fichas** e salve uma ficha para ela aparecer aqui.")
             else:
                 # default: seleciona o primeiro
                 if not st.session_state.get("pvp_sheet_selected_pid"):
                     p0 = (sheets_to_show[0].get("pokemon") or {}).get("id")
-                    st.session_state["pvp_sheet_selected_pid"] = str(p0) if p0 is not None else ""
-            
+                    st.session_state["pvp_sheet_selected_pid"] = _safe_pid(p0)
+        
                 selected_pid = _safe_pid(st.session_state.get("pvp_sheet_selected_pid") or "")
-
         
                 # tenta achar sheet pelo id salvo
                 selected_sheet = None
@@ -19965,7 +19699,7 @@ elif page == "PvP – Arena Tática":
                                     rk_break = f"(R{base_rank})"
                                 area_txt = "Área" if is_area else "Alvo"
         
-                                mv_html += dedent(f"""\
+                                mv_html += f"""
                                 <div class="pvp-move-row">
                                   <div class="pvp-move-name">{html.escape(mv_name)}</div>
                                   <div class="pvp-move-badges">
@@ -19977,7 +19711,7 @@ elif page == "PvP – Arena Tática":
                                 <div style="opacity:.78;font-weight:900;font-size:.73rem;margin-top:3px;">
                                   {html.escape(rk_break)}
                                 </div>
-                                """)
+                                """
         
                             if not mv_html:
                                 mv_html = "<div style='opacity:.75;font-weight:900;'>Sem golpes nesta ficha.</div>"
@@ -19989,12 +19723,12 @@ elif page == "PvP – Arena Tática":
         
                             fav_label = "Favoritos" if fav_names else "Golpes (sem favoritos)"
 
-                            _tpl = dedent("""
+                            _tpl = """
                             <div class="{card_class}" style="{bg_style}">
                               <div class="pvp-card-head">
                                 <img src="{sprite_url}"
-                                     style="width:72px;height:72px;object-fit:contain;border-radius:12px;border:1px solid rgba(255,255,255,12);
-                                            background:rgba(0,0,0,12);padding:6px;">
+                                     style="width:72px;height:72px;object-fit:contain;border-radius:12px;border:1px solid rgba(255,255,255,.12);
+                                            background:rgba(0,0,0,.12);padding:6px;">
                                 <div style="flex:1;min-width:0;">
                                   <div class="pvp-card-title">{pname}</div>
                                   <div class="pvp-card-sub">#{pid_sheet} &bull; NP {np_}</div>
@@ -20007,16 +19741,9 @@ elif page == "PvP – Arena Tática":
                             
                               {mv_html}
                             
-                              <a class="pvp-open" href="#"
-                               onclick="(function(){{
-                                  const u = new URL(window.location.href);
-                                  u.searchParams.set('sheet','{pid_sheet}');
-                                  window.location.href = u.toString();
-                                }})(); return false;">
-                               Abrir ficha &rarr;
-                            </a>
+                              <a class="pvp-open" href="{open_href}">Abrir ficha &rarr;</a>
                             </div>
-                            """).strip()
+                            """
                             
                             st.markdown(
                                 _tpl.format(
@@ -20384,7 +20111,8 @@ elif page == "PvP – Arena Tática":
                     st.info(f"📍 **Arena {rid}** | {room.get('theme')} | {owner} vs {chal_name}")
     
                     state_ref = db.collection("rooms").document(rid).collection("public_state").document("state")
-                    state = get_state(db, rid)
+                    state_doc = state_ref.get()
+                    state = state_doc.to_dict() if state_doc.exists else {}
     
                     grid = int(room.get("gridSize") or 6)
                     theme_key = room.get("theme") or "cave_water"
