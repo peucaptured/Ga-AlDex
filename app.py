@@ -761,6 +761,21 @@ def request_rerun(reason: str, *, force: bool = False) -> bool:
     st.session_state["pvp_sync_pending"] = False
     st.rerun()
     return True
+    
+def after_map_commit(reason: str):
+    """Após escrever no Firestore via clique no mapa, força redesenho imediato."""
+    # desbloqueia qualquer debounce que esteja impedindo rerun
+    st.session_state["arena_pause_until"] = 0.0
+
+    # garante que o mapa vai redesenhar (evita reaproveitar imagem/cache)
+    st.session_state["map_cache_sig"] = None
+    st.session_state["map_scaled_key"] = None
+
+    # evita clique "stale" do componente
+    st.session_state["map_click_token"] = str(uuid.uuid4())[:8]
+
+    # força rerun (sem ficar preso no gate/cooldown)
+    request_rerun(reason, force=True)
 
 
 def _stable_hash_payload(payload) -> str:
@@ -19003,22 +19018,34 @@ elif page == "PvP – Arena Tática":
                     if peff:
                         curr = state.get("effects") or []
                         brush_on = bool(st.session_state.get(f"effect_brush_{rid}", True))
-
+                    
                         if peff == "__erase__":
-                            # Remove efeito (se existir) no quadrado clicado
-                            new = [
-                                e for e in curr
-                                if not (int((e or {}).get("row", -1)) == row and int((e or {}).get("col", -1)) == col)
-                            ]
+                            new = [e for e in curr if not (int((e or {}).get("row", -1)) == row and int((e or {}).get("col", -1)) == col)]
                             if len(new) != len(curr):
                                 db.collection("rooms").document(rid).collection("public_state").document("state").update({
                                     "effects": new,
                                     "updatedAt": firestore.SERVER_TIMESTAMP,
                                 })
                                 add_public_event(db, rid, "effect_removed", trainer_name, {"to": [row, col]})
-
+                    
                             if not brush_on:
                                 st.session_state["placing_effect"] = None
+                    
+                            after_map_commit("effect_erase")  # ✅
+                        else:
+                            new = [e for e in curr if not (int((e or {}).get("row", -1)) == row and int((e or {}).get("col", -1)) == col)]
+                            new.append({"icon": peff, "row": row, "col": col, "id": str(uuid.uuid4())[:8]})
+                            db.collection("rooms").document(rid).collection("public_state").document("state").update({
+                                "effects": new,
+                                "updatedAt": firestore.SERVER_TIMESTAMP,
+                            })
+                            add_public_event(db, rid, "effect", trainer_name, {"icon": peff, "to": [row, col]})
+                    
+                            if not brush_on:
+                                st.session_state["placing_effect"] = None
+                    
+                            after_map_commit("effect_place")  # ✅
+
 
                         # Aplica/atualiza efeito
                         new = [
@@ -19053,6 +19080,8 @@ elif page == "PvP – Arena Tática":
                         mark_pid_seen(db, rid, ppid)
                         add_public_event(db, rid, "piece_placed", trainer_name, {"pid": ppid, "to": [row, col]})
                         st.session_state.pop("placing_pid", None)
+                        after_map_commit("piece_place")  # ✅
+
                     elif placing_trainer:
                         s_now = get_state(db, rid)
                         all_p = s_now.get("pieces") or []
@@ -19083,6 +19112,8 @@ elif page == "PvP – Arena Tática":
                                 upsert_piece(db, rid, new_piece)
                             add_public_event(db, rid, "trainer_placed", trainer_name, {"to": [row, col]})
                         st.session_state["placing_trainer"] = None
+                        after_map_commit("trainer_place")  # ✅
+
                     elif moving_piece_id and is_player:
                         s_now = get_state(db, rid)
                         all_p = s_now.get("pieces") or []
@@ -19114,7 +19145,7 @@ elif page == "PvP – Arena Tática":
                             # força redesenhar já com a posição nova
                             st.session_state["map_cache_sig"] = None
                             st.session_state["map_scaled_key"] = None
-                            st.rerun()
+                            after_map_commit("move_commit")
 
 
         with tab_inic:
