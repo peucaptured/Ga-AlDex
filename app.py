@@ -11,6 +11,7 @@ import json
 import requests
 import unicodedata
 import os
+from textwrap import dedent
 import io
 import html
 import re
@@ -13293,12 +13294,24 @@ div[data-testid="stMainBlockContainer"]:has(.ds-home) {{
                     _push_loc_section(k, v)
 
             else:
-                sublocs = cobj.get("sublocais") or {}
-                sl_obj = (sublocs.get(sl_now) or {}) if isinstance(sublocs, dict) else {}
+                sublocs = cobj.get("sublocais") or []
+                if isinstance(sublocs, dict):
+                    sl_obj = sublocs.get(sl_now) or {}
+                elif isinstance(sublocs, list):
+                    sl_obj = next(
+                        (x for x in sublocs
+                         if isinstance(x, dict) and _norm(x.get("name","")) == _norm(sl_now)),
+                        {}
+                    )
+                else:
+                    sl_obj = {}
+            
                 txt = (sl_obj.get("text") or "").strip()
-                _push_loc_section(sl_now, txt)
-
+                if txt:
+                    _push_loc_section(sl_now, txt)
+            
             lore_html = "".join(lore_html_parts) or "<div class='ds-history'>(Sem lore cadastrada)</div>"
+
 
             right_html = f"""
             <div class='ds-loc-right-content'>
@@ -17174,18 +17187,50 @@ elif page == "Criação Guiada de Fichas":
                     db_fs, bkt_fs = init_firebase()
                     skills_payload = []
                     for sk_n, sk_r in st.session_state.get("cg_skills", {}).items():
-                        if int(sk_r) > 0: skills_payload.append({"name": sk_n, "ranks": int(sk_r)})
+                        if int(sk_r) > 0:
+                            skills_payload.append({"name": sk_n, "ranks": int(sk_r)})
                     for row_sk in st.session_state.get("cg_skill_custom", []):
                         if row_sk.get("name") and int(row_sk.get("ranks", 0)) > 0:
                             skills_payload.append({"name": row_sk["name"], "ranks": int(row_sk["ranks"])})
-    
+                
+                    # =========================
+                    # FIX: resolve ID real antes de salvar (evita salvar como 0)
+                    # =========================
+                    pid_save = 0
+                
+                    try:
+                        # tenta resolver pelo nome (padrão EXT), ex: "EXT:Zoroark"
+                        resolved = _resolve_base_pid(f"EXT:{pname}", pname)
+                        if resolved is not None and str(resolved).isdigit():
+                            pid_save = int(resolved)
+                    except Exception:
+                        pid_save = 0
+                
+                    # fallback: usa o pid atual se for numérico
+                    if pid_save == 0:
+                        try:
+                            if pid is not None and str(pid).isdigit():
+                                pid_save = int(pid)
+                        except Exception:
+                            pid_save = 0
+                
                     payload_fs = {
-                        "pokemon": {"id": int(pid), "name": pname, "types": types, "abilities": chosen_abilities},
+                        "pokemon": {"id": int(pid_save), "name": pname, "types": types, "abilities": chosen_abilities},
                         "np": int(np_), "pp_budget_total": int(pp_total), "pp_spent_total": float(pp_spent_total),
                         "stats": {"stgr": int(stgr), "int": int(intellect), "dodge": int(dodge), "parry": int(parry), "fortitude": int(fortitude), "will": int(will)},
-                        "advantages": chosen_adv, "skills": skills_payload, "moves": st.session_state.get("cg_moves", [])
+                        "advantages": chosen_adv,
+                        "skills": skills_payload,
+                        "moves": st.session_state.get("cg_moves", [])
                     }
-                    sid_fs, _ = save_sheet_with_pdf(db=db_fs, bucket=bkt_fs, trainer_name=trainer_name, sheet_payload=payload_fs, pdf_bytes=pdf_bytes, sheet_id=st.session_state.get("cg_edit_sheet_id"))
+                
+                    sid_fs, _ = save_sheet_with_pdf(
+                        db=db_fs,
+                        bucket=bkt_fs,
+                        trainer_name=trainer_name,
+                        sheet_payload=payload_fs,
+                        pdf_bytes=pdf_bytes,
+                        sheet_id=st.session_state.get("cg_edit_sheet_id")
+                    )
                     st.success(f"✅ Salva! ID: {sid_fs}")
                     st.session_state["cg_edit_sheet_id"] = None
     
@@ -17368,9 +17413,12 @@ elif page == "PvP – Arena Tática":
             for sh in list_sheets(db, trainer_name) or []:
                 p = (sh.get("pokemon") or {})
                 pid = p.get("id")
-                if pid is None:
-                    continue
-                battle_sheets_map[str(pid)] = sh
+                if pid is not None:
+                    battle_sheets_map[str(pid)] = sh
+    
+                lpid = sh.get("linked_pid")
+                if lpid:
+                    battle_sheets_map[str(lpid)] = sh
         except Exception:
             battle_sheets_map = {}
 
@@ -19589,41 +19637,47 @@ elif page == "PvP – Arena Tática":
                     continue
                 _seen.add(raw)
                 party_ids_raw.append(raw)
-        
+            
             sheets_to_show = []
             missing_ids = []
-        
+            
             for raw_pid in party_ids_raw:
                 # raw_pid pode ser "87" ou "EXT:Hydreigon"
-                base_pid = raw_pid if raw_pid.isdigit() else _resolve_base_pid(raw_pid, raw_pid)
-        
-                # tenta achar ficha por base_pid numérico
-                sh = (battle_sheets_map or {}).get(base_pid) if base_pid else None
-                if not sh and base_pid and base_pid.isdigit():
-                    pid2 = (base_pid.lstrip("0") or "0")
+                base_pid = raw_pid if raw_pid.isdigit() else str(_resolve_base_pid(raw_pid, raw_pid) or raw_pid)
+            
+                # tenta por base_pid
+                sh = (battle_sheets_map or {}).get(str(base_pid))
+            
+                # se ainda não achou, tenta pelo raw_pid direto (EXT:...)
+                if not sh:
+                    sh = (battle_sheets_map or {}).get(str(raw_pid))
+            
+                # normaliza "00087" -> "87"
+                if not sh and base_pid and str(base_pid).isdigit():
+                    pid2 = (str(base_pid).lstrip("0") or "0")
                     sh = (battle_sheets_map or {}).get(pid2)
-        
+            
                 if sh:
-                    # ✅ guarda também o "pid original" pra imagem (EXT) se existir
                     sh = dict(sh)
                     sh["_party_pid_raw"] = raw_pid
                     sh["_party_pid_base"] = base_pid
                     sheets_to_show.append(sh)
                 else:
                     missing_ids.append(raw_pid)
-        
+            
             if missing_ids:
                 st.caption("Sem ficha salva (ou não pertence ao seu trainer) para: " + ", ".join(missing_ids))
-        
+            
             if not sheets_to_show:
                 st.info("Não encontrei fichas salvas para a sua party. Vá em **Minhas Fichas** / **Criação Guiada de Fichas** e salve uma ficha para ela aparecer aqui.")
             else:
                 # default: seleciona o primeiro
                 if not st.session_state.get("pvp_sheet_selected_pid"):
                     p0 = (sheets_to_show[0].get("pokemon") or {}).get("id")
-                    st.session_state["pvp_sheet_selected_pid"] = _safe_pid(p0)
-        
+                    st.session_state["pvp_sheet_selected_pid"] = str(p0) if p0 is not None else ""
+            
                 selected_pid = _safe_pid(st.session_state.get("pvp_sheet_selected_pid") or "")
+
         
                 # tenta achar sheet pelo id salvo
                 selected_sheet = None
@@ -19699,7 +19753,7 @@ elif page == "PvP – Arena Tática":
                                     rk_break = f"(R{base_rank})"
                                 area_txt = "Área" if is_area else "Alvo"
         
-                                mv_html += f"""
+                                mv_html += dedent(f"""\
                                 <div class="pvp-move-row">
                                   <div class="pvp-move-name">{html.escape(mv_name)}</div>
                                   <div class="pvp-move-badges">
@@ -19711,7 +19765,7 @@ elif page == "PvP – Arena Tática":
                                 <div style="opacity:.78;font-weight:900;font-size:.73rem;margin-top:3px;">
                                   {html.escape(rk_break)}
                                 </div>
-                                """
+                                """)
         
                             if not mv_html:
                                 mv_html = "<div style='opacity:.75;font-weight:900;'>Sem golpes nesta ficha.</div>"
@@ -19723,12 +19777,12 @@ elif page == "PvP – Arena Tática":
         
                             fav_label = "Favoritos" if fav_names else "Golpes (sem favoritos)"
 
-                            _tpl = """
+                            _tpl = dedent("""
                             <div class="{card_class}" style="{bg_style}">
                               <div class="pvp-card-head">
                                 <img src="{sprite_url}"
-                                     style="width:72px;height:72px;object-fit:contain;border-radius:12px;border:1px solid rgba(255,255,255,.12);
-                                            background:rgba(0,0,0,.12);padding:6px;">
+                                     style="width:72px;height:72px;object-fit:contain;border-radius:12px;border:1px solid rgba(255,255,255,12);
+                                            background:rgba(0,0,0,12);padding:6px;">
                                 <div style="flex:1;min-width:0;">
                                   <div class="pvp-card-title">{pname}</div>
                                   <div class="pvp-card-sub">#{pid_sheet} &bull; NP {np_}</div>
@@ -19743,7 +19797,7 @@ elif page == "PvP – Arena Tática":
                             
                               <a class="pvp-open" href="{open_href}">Abrir ficha &rarr;</a>
                             </div>
-                            """
+                            """).strip()
                             
                             st.markdown(
                                 _tpl.format(
