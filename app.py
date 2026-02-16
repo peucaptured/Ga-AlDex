@@ -19795,7 +19795,7 @@ elif page == "PvP – Arena Tática":
                             
                               {mv_html}
                             
-                              <a class="pvp-open" href="{open_href}">Abrir ficha &rarr;</a>
+                              <a class="pvp-open" href="{open_href}" target="_self">Abrir ficha &rarr;</a>
                             </div>
                             """).strip()
                             
