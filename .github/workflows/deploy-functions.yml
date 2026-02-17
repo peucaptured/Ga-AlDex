@@ -1,12 +1,14 @@
 name: Deploy Firebase Functions
 
 on:
+  workflow_dispatch:
   push:
     branches: ["main"]
     paths:
       - "functions/**"
       - "firebase.json"
       - ".firebaserc"
+      - ".github/workflows/deploy-functions.yml"
 
 jobs:
   deploy:
@@ -18,14 +20,20 @@ jobs:
         with:
           node-version: "18"
 
-      - name: Install dependencies
+      - name: Install deps (functions)
         working-directory: functions
-        run: npm install
+        run: npm ci || npm i
 
-      - name: Deploy functions
-        uses: w9jds/firebase-action@v2.2.0
-        with:
-          args: deploy --only functions
+      - name: Install Firebase CLI
+        run: npm i -g firebase-tools
+
+      - name: Write service account key
+        run: |
+          echo '${{ secrets.GCP_SA_KEY }}' > gcp-sa.json
+
+      - name: Deploy functions (verbose)
         env:
-          FIREBASE_TOKEN: ""
-          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-sa.json
+        run: |
+          firebase --version
+          firebase deploy --only functions --project batalhas-de-gaal --debug
