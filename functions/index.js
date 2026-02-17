@@ -12,9 +12,13 @@ exports.applyRoomAction = functions.firestore
     const { rid, actionId } = context.params;
     const action = snap.data() || {};
 
+    functions.logger.info("ACTION_RECEIVED", { rid, actionId, raw: action });
+    
     const type = String(action.type || "").toUpperCase();
     const by = String(action.by || "unknown");
     const payload = action.payload || {};
+    
+    functions.logger.info("ACTION_PARSED", { rid, actionId, type, by, payload });
 
     const stateRef = db.doc(`rooms/${rid}/public_state/state`);
     const battleRef = db.doc(`rooms/${rid}/public_state/battle`);
