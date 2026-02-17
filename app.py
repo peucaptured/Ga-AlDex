@@ -23,6 +23,7 @@ from streamlit_image_coordinates import streamlit_image_coordinates
 import random
 import gzip
 import base64
+import urllib.parse
 import streamlit.components.v1 as components
 from advantages_engine import suggest_advantages
 import queue
@@ -1572,6 +1573,47 @@ def upload_png_to_storage(bucket, png_bytes: bytes, storage_path: str):
     blob = bucket.blob(storage_path)
     blob.upload_from_string(png_bytes, content_type="image/png")
     return storage_path
+def upload_png_to_storage_with_token(bucket, png_bytes: bytes, storage_path: str) -> dict:
+    """Upload PNG ao Firebase Storage com download token e retorna {storage_path, token, url}."""
+    blob = bucket.blob(storage_path)
+    token = uuid.uuid4().hex
+    try:
+        blob.metadata = (blob.metadata or {})
+        blob.metadata["firebaseStorageDownloadTokens"] = token
+    except Exception:
+        pass
+    blob.upload_from_string(png_bytes, content_type="image/png")
+    try:
+        blob.patch()
+    except Exception:
+        pass
+
+    bucket_name = getattr(bucket, "name", None) or "batalhas-de-gaal.firebasestorage.app"
+    enc_path = urllib.parse.quote(storage_path, safe="")
+    url = f"https://firebasestorage.googleapis.com/v0/b/{bucket_name}/o/{enc_path}?alt=media&token={token}"
+    return {"storage_path": storage_path, "token": token, "url": url}
+
+def ensure_room_map_published(db, bucket, rid: str, grid: int, theme_key: str, seed: int, no_water: bool, show_grid: bool = True):
+    """Gera o mapa base (sem peças) e publica no Storage, salvando mapUrl/mapStoragePath em public_state/state."""
+    try:
+        img = render_biome_map_png(grid, theme_key, seed, no_water, show_grid=show_grid).convert("RGB")
+        import io
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        storage_path = f"rooms/{rid}/maps/{grid}x{grid}_{theme_key}_{seed}_{'nowater' if no_water else 'water'}{'_grid' if show_grid else ''}.png"
+        out = upload_png_to_storage_with_token(bucket, buf.getvalue(), storage_path)
+        state_ref = db.collection("rooms").document(str(rid)).collection("public_state").document("state")
+        state_ref.set(
+            {"mapStoragePath": out["storage_path"], "mapUrl": out["url"], "mapUpdatedAt": firestore.SERVER_TIMESTAMP},
+            merge=True,
+        )
+        return out
+    except Exception as e:
+        try:
+            st.warning(f"Falha ao publicar mapa no Storage: {e}")
+        except Exception:
+            pass
+        return None
 
 @st.cache_data(show_spinner=False, ttl=3600)
 def download_storage_bytes(storage_path: str) -> bytes | None:
@@ -20280,6 +20322,28 @@ elif page == "PvP – Arena Tática":
                     is_player = role in ["owner", "challenger"]
                     
                     no_water = st.checkbox("🚫 Gerar sem água", value=no_water_state, disabled=not is_player)
+
+# ✅ Se a sala já tem seed mas ainda não tem mapUrl no Firestore, publique o mapa (1 vez por sessão).
+try:
+    if seed is not None and not state.get("mapUrl") and is_player:
+        key_flag = f"pvp_map_published_{rid}_{seed}_{int(grid)}_{theme_key}_{int(bool(no_water_state))}"
+        if not st.session_state.get(key_flag):
+            _, bucket = init_firebase()
+            ensure_room_map_published(db, bucket, rid=str(rid), grid=int(grid), theme_key=str(theme_key), seed=int(seed), no_water=bool(no_water_state), show_grid=True)
+            st.session_state[key_flag] = True
+except Exception:
+    pass
+
+if seed is not None and not state.get("mapUrl") and is_player:
+    if st.button("📤 Publicar mapa no site", help="Gera e envia o mapa base ao Firebase Storage e grava mapUrl no public_state/state."):
+        try:
+            _, bucket = init_firebase()
+            ensure_room_map_published(db, bucket, rid=str(rid), grid=int(grid), theme_key=str(theme_key), seed=int(seed), no_water=bool(no_water_state), show_grid=True)
+            st.success("Mapa publicado! Recarregue o battle-site.")
+        except Exception as e:
+            st.error(f"Falha ao publicar mapa: {e}")
+        st.rerun()
+
                     
                     if seed is None:
                         if st.button("🗺️ Gerar mapa (pixel art)", disabled=not is_player):
@@ -20289,6 +20353,13 @@ elif page == "PvP – Arena Tática":
                                 "tilesPacked": None, "noWater": bool(no_water),
                                 "updatedAt": firestore.SERVER_TIMESTAMP,
                             }, merge=True)
+                            # ✅ publica mapa base no Storage para o battle-site consumir (mapUrl)
+                            try:
+                                _, bucket = init_firebase()
+                                ensure_room_map_published(db, bucket, rid=str(rid), grid=int(grid), theme_key=str(theme_key), seed=int(seed), no_water=bool(no_water), show_grid=True)
+                            except Exception:
+                                pass
+
                             st.session_state["pvp_view"] = "battle"
 
                             # limpa qualquer query param antigo (compendium/login/etc)
