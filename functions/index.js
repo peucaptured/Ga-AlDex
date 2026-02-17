@@ -16,17 +16,21 @@ function safeId(name) {
     .replace(/^_+|_+$/g, "");
 }
 
-exports.syncSavedataToFirestore = functions.https.onRequest(async (req, res) => {
+exports.syncSavedataToFirestore = functions
+  .region("southamerica-east1")
+  .https.onRequest(async (req, res) => {
   try {
     // ✅ 1) CONFIG: troque aqui
-    const SPREADSHEET_ID = "COLE_AQUI_O_ID_DA_PLANILHA";
+    const SPREADSHEET_ID = "1Z887EqYOatQ6ebMjYcjsCX4ZcTWi30F6Gf4zbCC_WZ8";
     const SHEET_NAME = "Página1"; // igual aparece no seu print
 
     // ✅ 2) Autenticação do Google Sheets via service account
     // Você vai colar o JSON da gcp_service_account como config do functions (passo abaixo)
     const gcpSa = functions.config().gcp_sa;
-    if (!gcpSa || !gcpSa.client_email) {
-      return res.status(500).send("Falta configurar gcp_sa nas functions config.");
+    if (!gcpSa || !gcpSa.client_email || !gcpSa.private_key) {
+      return res.status(500).send("Falta configurar gcp_sa (client_email/private_key) nas functions config.");
+    }
+
     }
 
     const jwt = new google.auth.JWT(
