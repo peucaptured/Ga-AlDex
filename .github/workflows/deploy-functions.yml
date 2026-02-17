@@ -29,7 +29,14 @@ jobs:
 
       - name: Write service account key
         run: |
-          echo '${{ secrets.GCP_SA_KEY }}' > gcp-sa.json
+          cat > gcp-sa.json <<'EOF'
+          ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          EOF
+
+      - name: Sanity check key file (no secret leak)
+        run: |
+          node -e "const fs=require('fs'); const p='gcp-sa.json'; const s=fs.readFileSync(p,'utf8'); console.log('len=',s.length); JSON.parse(s); console.log('json ok');"
+
 
       - name: Deploy functions (verbose)
         env:
