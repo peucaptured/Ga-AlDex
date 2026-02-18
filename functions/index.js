@@ -123,7 +123,7 @@ exports.syncSavedataToFirestore = functions
       // if (!["GET", "POST"].includes(req.method)) return res.status(405).send("Method Not Allowed");
 
       // ✅ 1) CONFIG
-      const SPREADSHEET_ID = "COLE_AQUI_O_ID_DA_PLANILHA";
+      const SPREADSHEET_ID = "1Z887EqYOatQ6ebMjYcjsCX4ZcTWi30F6Gf4zbCC_WZ8";
       const SHEET_NAME = "Página1";
 
       // ✅ 2) Autenticação: functions config
