@@ -32,10 +32,12 @@ exports.syncSavedataToFirestore = functions
           .send("Falta configurar gcp_sa (client_email/private_key) nas functions config.");
       }
 
+      const privateKey = String(gcpSa.private_key || "").replace(/\\n/g, "\n");
+
       const jwt = new google.auth.JWT(
         gcpSa.client_email,
         null,
-        gcpSa.private_key,
+        privateKey,
         ["https://www.googleapis.com/auth/spreadsheets.readonly"]
       );
 
