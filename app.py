@@ -6640,7 +6640,7 @@ def _gen_tiles_legacy(grid: int, theme_key: str, seed: int | None = None, no_wat
     def inside(r, c):
         return 1 <= r <= grid - 2 and 1 <= c <= grid - 2
 
-   # pedras leves em todos os temas (dá textura)
+    # pedras leves em todos os temas (dá textura)
     for _ in range(rng.randint(grid, grid * 2)):
         rr = rng.randint(1, grid - 2)
         cc = rng.randint(1, grid - 2)
@@ -20323,26 +20323,36 @@ elif page == "PvP – Arena Tática":
                     
                     no_water = st.checkbox("🚫 Gerar sem água", value=no_water_state, disabled=not is_player)
 
-# ✅ Se a sala já tem seed mas ainda não tem mapUrl no Firestore, publique o mapa (1 vez por sessão).
-try:
-    if seed is not None and not state.get("mapUrl") and is_player:
-        key_flag = f"pvp_map_published_{rid}_{seed}_{int(grid)}_{theme_key}_{int(bool(no_water_state))}"
-        if not st.session_state.get(key_flag):
-            _, bucket = init_firebase()
-            ensure_room_map_published(db, bucket, rid=str(rid), grid=int(grid), theme_key=str(theme_key), seed=int(seed), no_water=bool(no_water_state), show_grid=True)
-            st.session_state[key_flag] = True
-except Exception:
-    pass
+                    # ✅ Se a sala já tem seed mas ainda não tem mapUrl no Firestore, publique o mapa (1 vez por sessão).
+                    try:
+                        if seed is not None and not state.get("mapUrl") and is_player:
+                            key_flag = f"pvp_map_published_{rid}_{seed}_{int(grid)}_{theme_key}_{int(bool(no_water_state))}"
+                            if not st.session_state.get(key_flag):
+                                _, bucket = init_firebase()
+                                ensure_room_map_published(
+                                    db, bucket,
+                                    rid=str(rid), grid=int(grid), theme_key=str(theme_key),
+                                    seed=int(seed), no_water=bool(no_water_state),
+                                    show_grid=True
+                                )
+                                st.session_state[key_flag] = True
+                    except Exception:
+                        pass
 
-if seed is not None and not state.get("mapUrl") and is_player:
-    if st.button("📤 Publicar mapa no site", help="Gera e envia o mapa base ao Firebase Storage e grava mapUrl no public_state/state."):
-        try:
-            _, bucket = init_firebase()
-            ensure_room_map_published(db, bucket, rid=str(rid), grid=int(grid), theme_key=str(theme_key), seed=int(seed), no_water=bool(no_water_state), show_grid=True)
-            st.success("Mapa publicado! Recarregue o battle-site.")
-        except Exception as e:
-            st.error(f"Falha ao publicar mapa: {e}")
-        st.rerun()
+                    if seed is not None and not state.get("mapUrl") and is_player:
+                        if st.button("📤 Publicar mapa no site", help="Gera e envia o mapa base ao Firebase Storage e grava mapUrl no public_state/state."):
+                            try:
+                                _, bucket = init_firebase()
+                                ensure_room_map_published(
+                                    db, bucket,
+                                    rid=str(rid), grid=int(grid), theme_key=str(theme_key),
+                                    seed=int(seed), no_water=bool(no_water_state),
+                                    show_grid=True
+                                )
+                                st.success("Mapa publicado! Recarregue o battle-site.")
+                            except Exception as e:
+                                st.error(f"Falha ao publicar mapa: {e}")
+                            st.rerun()
 
                     
                     if seed is None:
