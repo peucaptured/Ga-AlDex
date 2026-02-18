@@ -205,3 +205,139 @@ exports.syncSavedataToFirestore = functions
       return res.status(500).send(String(err?.message || err));
     }
   });
+/**
+ * ✅ (3) ON-DEMAND (NÃO CLONA NO FIRESTORE)
+ * getTrainerParty (southamerica-east1)
+ *
+ * - Consulta a planilha SaveData_RPG e devolve a party atual do treinador.
+ * - Opcional: se enviar ?rid=..., também faz upsert em rooms/{rid}/players/{uid}
+ *   com party_snapshot (para sincronizar a sala sem o cliente escrever no Firestore).
+ *
+ * Query params:
+ * - trainer: string (obrigatório)
+ * - rid: string (opcional)
+ * - include_profile: "1"|"true" (opcional) — devolve trainer_profile (sem senha)
+ */
+exports.getTrainerParty = functions
+  .region("southamerica-east1")
+  .https
+  .onRequest(async (req, res) => {
+    // CORS simples (battle-site é HTML estático)
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type");
+    if (req.method === "OPTIONS") return res.status(204).send("");
+
+    try {
+      const trainer = String((req.query.trainer || req.body?.trainer || "")).trim();
+      const rid = String((req.query.rid || req.body?.rid || "")).trim();
+      const includeProfile = String((req.query.include_profile || req.body?.include_profile || "")).toLowerCase();
+      const wantProfile = includeProfile === "1" || includeProfile === "true" || includeProfile === "yes";
+
+      if (!trainer) return res.status(400).json({ ok: false, error: "missing trainer" });
+
+      // CONFIG: use o mesmo Spreadsheet/Sheet da sua sync function
+      const SPREADSHEET_ID = "1Z887EqYOatQ6ebMjYcjsCX4ZcTWi30F6Gf4zbCC_WZ8";
+      const SHEET_NAME = "Página1";
+
+      const gcpSa = functions.config().gcp_sa;
+      if (!gcpSa || !gcpSa.client_email || !gcpSa.private_key) {
+        return res.status(500).json({ ok: false, error: "missing gcp_sa functions config" });
+      }
+      const privateKey = String(gcpSa.private_key).replace(/\\n/g, "\n");
+
+      const jwt = new google.auth.JWT(
+        gcpSa.client_email,
+        null,
+        privateKey,
+        ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+      );
+      const sheets = google.sheets({ version: "v4", auth: jwt });
+
+      // Lê A:C (suporta ambos headers: Treinador/Dados/(Senha) OU Nome/JSON/(Senha))
+      const range = `${SHEET_NAME}!A:C`;
+      const resp = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
+      const rows = resp.data.values || [];
+      if (!rows.length) return res.status(200).json({ ok: false, error: "empty sheet" });
+
+      const header = rows[0].map((x) => String(x || "").trim());
+      const low = header.map((x) => x.toLowerCase());
+
+      const idxTrainer = low.indexOf("treinador") !== -1 ? low.indexOf("treinador") : low.indexOf("nome");
+      const idxData = low.indexOf("dados") !== -1 ? low.indexOf("dados") : low.indexOf("json");
+
+      // Se não tem header, assume A=Nome, B=JSON, C=Senha
+      const hasHeader = idxTrainer !== -1 && idxData !== -1;
+      const start = hasHeader ? 1 : 0;
+      const iTrainer = hasHeader ? idxTrainer : 0;
+      const iData = hasHeader ? idxData : 1;
+
+      const norm = (s) =>
+        String(s || "")
+          .trim()
+          .toLowerCase()
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+      const target = norm(trainer);
+      let found = null;
+
+      for (let i = start; i < rows.length; i++) {
+        const r = rows[i] || [];
+        const nameCell = r[iTrainer];
+        if (!nameCell) continue;
+        if (norm(nameCell) === target) {
+          found = r;
+          break;
+        }
+      }
+
+      if (!found) {
+        return res.status(404).json({ ok: false, error: "trainer not found", trainer });
+      }
+
+      const dataStr = String(found[iData] || "");
+      let dataObj = null;
+      try {
+        dataObj = JSON.parse(dataStr);
+      } catch {
+        dataObj = null;
+      }
+
+      const party = Array.isArray(dataObj?.party) ? dataObj.party : [];
+      // padroniza para strings (IDs da sua Dex)
+      const partySnapshot = party.map((pid) => ({ pid: String(pid) }));
+
+      const trainerId = safeId(trainer) || safeId(trainer); // mantém a mesma regra do projeto
+      const out = {
+        ok: true,
+        trainer,
+        uid: trainerId,
+        party: partySnapshot,
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (wantProfile) {
+        out.trainer_profile = (dataObj && typeof dataObj.trainer_profile === "object") ? dataObj.trainer_profile : null;
+      }
+
+      // Opcional: espelha SOMENTE party_snapshot para a sala (não copia SaveData inteira)
+      if (rid) {
+        const pRef = db.doc(`rooms/${rid}/players/${trainerId}`);
+        await pRef.set(
+          {
+            uid: trainerId,
+            trainer_name: trainer,
+            party_snapshot: partySnapshot,
+            updatedAt: TS,
+            source: "SaveData_RPG",
+          },
+          { merge: true }
+        );
+      }
+
+      return res.status(200).json(out);
+    } catch (err) {
+      functions.logger.error("getTrainerParty_ERROR", err);
+      return res.status(500).json({ ok: false, error: String(err?.message || err) });
+    }
+  });
