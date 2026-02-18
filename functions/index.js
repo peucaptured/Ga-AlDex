@@ -111,6 +111,76 @@ exports.applyRoomAction = functions
   });
 
 /**
+ * ✅ (1b) NOVA FUNCTION
+ * mirrorRoomPlayersToPublic (us-central1)
+ *
+ * Por que existe:
+ * - O battle-site (HTML estático) normalmente só tem leitura liberada para `rooms/{rid}/public_state/*`.
+ * - Já o roster do jogador está em `rooms/{rid}/players/{uid}`.
+ * - Resultado: o site vê o state (peças em campo), mas NÃO consegue ler a party_snapshot.
+ *
+ * Solução:
+ * - Espelha cada write em `rooms/{rid}/players/{uid}` para um doc público:
+ *   `rooms/{rid}/public_state/players`.
+ * - O battle-site passa a ler esse doc público como fonte de verdade da equipe.
+ */
+exports.mirrorRoomPlayersToPublic = functions
+  .region("us-central1")
+  .firestore
+  .document("rooms/{rid}/players/{uid}")
+  .onWrite(async (change, context) => {
+    const { rid, uid } = context.params;
+    const pubRef = db.doc(`rooms/${rid}/public_state/players`);
+
+    // Helper: apaga campos (merge) sem estourar o doc
+    const delField = admin.firestore.FieldValue.delete();
+
+    // Quando deletar o doc em rooms/{rid}/players/{uid}, não temos acesso aos dados.
+    // Então apagamos tanto a chave original quanto a normalizada.
+    if (!change.after.exists) {
+      const uidNorm = safeId(uid) || uid;
+      const patch = { byId: { [uid]: delField, [uidNorm]: delField }, updatedAt: TS };
+      await pubRef.set(patch, { merge: true });
+      return null;
+    }
+
+    const p = change.after.data() || {};
+    const trainerName = String(p.trainer_name || p.name || p.by || p.trainer || uid).trim();
+    const trainerId = safeId(p.uid || uid || trainerName) || safeId(trainerName) || uid;
+    const role = String(p.role || "player");
+    const avatar = p.avatar || null;
+    const partySnapshot = Array.isArray(p.party_snapshot) ? p.party_snapshot : [];
+
+    const payload = {
+      uid: trainerId,
+      trainer_name: trainerName,
+      role,
+      avatar,
+      party_snapshot: partySnapshot,
+      joinedAt: p.joinedAt || null,
+      lastSeenAt: p.lastSeenAt || null,
+      source: p.source || "rooms_players",
+      updatedAt: TS,
+    };
+
+    // Escreve no doc público usando ID normalizado (compatível com users_raw/{trainerId}).
+    await pubRef.set(
+      {
+        byId: { [trainerId]: payload },
+        updatedAt: TS,
+      },
+      { merge: true }
+    );
+
+    // Se o docId original não é o normalizado, remove a chave antiga (evita duplicidade).
+    if (uid !== trainerId) {
+      await pubRef.set({ byId: { [uid]: delField }, updatedAt: TS }, { merge: true });
+    }
+
+    return null;
+  });
+
+/**
  * ✅ (2) SUA NOVA FUNCTION
  * syncSavedataToFirestore (southamerica-east1)
  */
