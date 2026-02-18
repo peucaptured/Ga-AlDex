@@ -19,6 +19,75 @@ function safeId(name) {
 }
 
 /**
+ * ✅ (0) NOVO: espelha players privados -> public_state/players
+ *
+ * Problema: o Battle Site (HTML estático) geralmente não tem permissão para ler
+ * rooms/{rid}/players (privado), então ele só "enxerga" as peças em campo.
+ *
+ * Solução: toda vez que um documento em rooms/{rid}/players/{uid} muda,
+ * a function grava/atualiza rooms/{rid}/public_state/players.byId.<trainerId>
+ * com party_snapshot e metadados mínimos.
+ */
+exports.mirrorRoomPlayerToPublic = functions
+  .region("southamerica-east1")
+  .firestore
+  .document("rooms/{rid}/players/{uid}")
+  .onWrite(async (change, context) => {
+    const { rid, uid } = context.params;
+    const publicRef = db.doc(`rooms/${rid}/public_state/players`);
+
+    const before = change.before.exists ? (change.before.data() || {}) : null;
+    const after = change.after.exists ? (change.after.data() || {}) : null;
+
+    // helper: calcula a chave canônica (trainerId)
+    const calcKey = (obj) => {
+      const tn = String(obj?.trainer_name || obj?.name || obj?.by || uid || "").trim();
+      return safeId(tn) || safeId(uid) || String(uid || "").trim().toLowerCase();
+    };
+
+    // DELETE
+    if (!after) {
+      const key = calcKey(before);
+      try {
+        // garante que o doc exista
+        await publicRef.set({ updatedAt: TS }, { merge: true });
+        await publicRef.update({ [`byId.${key}`]: admin.firestore.FieldValue.delete(), updatedAt: TS });
+      } catch (e) {
+        // se o doc não existir ainda, não tem o que deletar
+        functions.logger.warn("mirrorRoomPlayerToPublic_DELETE_FAIL", { rid, uid, key, err: String(e?.message || e) });
+      }
+      return null;
+    }
+
+    // UPSERT
+    const key = calcKey(after);
+    const trainer_name = String(after.trainer_name || after.name || after.by || uid || "").trim();
+    const role = String(after.role || "player").trim() || "player";
+
+    const party_snapshot = Array.isArray(after.party_snapshot) ? after.party_snapshot : [];
+
+    const payload = {
+      uid: key,
+      src_uid: String(uid),
+      trainer_name,
+      role,
+      avatar: after.avatar || null,
+      party_snapshot,
+      updatedAt: TS,
+    };
+
+    await publicRef.set(
+      {
+        byId: { [key]: payload },
+        updatedAt: TS,
+      },
+      { merge: true }
+    );
+
+    return null;
+  });
+
+/**
  * ✅ (1) SUA FUNCTION EXISTENTE - NÃO REMOVER
  * applyRoomAction (us-central1)
  */
@@ -108,76 +177,6 @@ exports.applyRoomAction = functions
       await actionRef.set({ status: "error", error: String(e?.message || e) }, { merge: true });
       return null;
     }
-  });
-
-/**
- * ✅ (1b) NOVA FUNCTION
- * mirrorRoomPlayersToPublic (us-central1)
- *
- * Por que existe:
- * - O battle-site (HTML estático) normalmente só tem leitura liberada para `rooms/{rid}/public_state/*`.
- * - Já o roster do jogador está em `rooms/{rid}/players/{uid}`.
- * - Resultado: o site vê o state (peças em campo), mas NÃO consegue ler a party_snapshot.
- *
- * Solução:
- * - Espelha cada write em `rooms/{rid}/players/{uid}` para um doc público:
- *   `rooms/{rid}/public_state/players`.
- * - O battle-site passa a ler esse doc público como fonte de verdade da equipe.
- */
-exports.mirrorRoomPlayersToPublic = functions
-  .region("us-central1")
-  .firestore
-  .document("rooms/{rid}/players/{uid}")
-  .onWrite(async (change, context) => {
-    const { rid, uid } = context.params;
-    const pubRef = db.doc(`rooms/${rid}/public_state/players`);
-
-    // Helper: apaga campos (merge) sem estourar o doc
-    const delField = admin.firestore.FieldValue.delete();
-
-    // Quando deletar o doc em rooms/{rid}/players/{uid}, não temos acesso aos dados.
-    // Então apagamos tanto a chave original quanto a normalizada.
-    if (!change.after.exists) {
-      const uidNorm = safeId(uid) || uid;
-      const patch = { byId: { [uid]: delField, [uidNorm]: delField }, updatedAt: TS };
-      await pubRef.set(patch, { merge: true });
-      return null;
-    }
-
-    const p = change.after.data() || {};
-    const trainerName = String(p.trainer_name || p.name || p.by || p.trainer || uid).trim();
-    const trainerId = safeId(p.uid || uid || trainerName) || safeId(trainerName) || uid;
-    const role = String(p.role || "player");
-    const avatar = p.avatar || null;
-    const partySnapshot = Array.isArray(p.party_snapshot) ? p.party_snapshot : [];
-
-    const payload = {
-      uid: trainerId,
-      trainer_name: trainerName,
-      role,
-      avatar,
-      party_snapshot: partySnapshot,
-      joinedAt: p.joinedAt || null,
-      lastSeenAt: p.lastSeenAt || null,
-      source: p.source || "rooms_players",
-      updatedAt: TS,
-    };
-
-    // Escreve no doc público usando ID normalizado (compatível com users_raw/{trainerId}).
-    await pubRef.set(
-      {
-        byId: { [trainerId]: payload },
-        updatedAt: TS,
-      },
-      { merge: true }
-    );
-
-    // Se o docId original não é o normalizado, remove a chave antiga (evita duplicidade).
-    if (uid !== trainerId) {
-      await pubRef.set({ byId: { [uid]: delField }, updatedAt: TS }, { merge: true });
-    }
-
-    return null;
   });
 
 /**
