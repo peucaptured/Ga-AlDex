@@ -27,20 +27,17 @@ jobs:
       - name: Install Firebase CLI
         run: npm i -g firebase-tools
 
-      - name: Write service account key
+      - name: Write Firebase service account key
         run: |
-          cat > gcp-sa.json <<'EOF'
-          ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          EOF
+          printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > firebase-sa.json
 
       - name: Sanity check key file (no secret leak)
         run: |
-          node -e "const fs=require('fs'); const p='gcp-sa.json'; const s=fs.readFileSync(p,'utf8'); console.log('len=',s.length); JSON.parse(s); console.log('json ok');"
-
+          node -e "const fs=require('fs'); const s=fs.readFileSync('firebase-sa.json','utf8'); console.log('len=',s.length); JSON.parse(s); console.log('json ok');"
 
       - name: Deploy functions (verbose)
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-sa.json
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/firebase-sa.json
         run: |
           firebase --version
           firebase deploy --only functions --project batalhas-de-gaal --debug
