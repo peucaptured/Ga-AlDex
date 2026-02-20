@@ -60,6 +60,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 # ----------------------------
 # Utils
 # ----------------------------
+def _norm_pid(v) -> str:
+    s = str(v or "").strip().replace("#", "")
+    # caso "16.0", "16.00", etc
+    if re.fullmatch(r"\d+\.0+", s):
+        s = s.split(".", 1)[0]
+    return s
+    
 def _norm(s: str) -> str:
     import unicodedata
 
@@ -5263,7 +5270,7 @@ def _dex_build_uid_maps(df_local: pd.DataFrame) -> tuple[dict[str, str], dict[st
 
     for _, r in df_local.iterrows():
         try:
-            pid = str(r.get("Nº", "")).strip().replace("#", "")
+            pid = _norm_pid(r.get("Nº", ""))
         except Exception:
             pid = ""
         if not pid:
@@ -15295,18 +15302,41 @@ if page == "Trainer Hub (Meus Pokémons)":
         return str(pid).strip()
 
     def _get_pokemon_row(pid: str):
-        try:
-            hit = df[df["Nº"].astype(str) == str(pid)]
-            return hit.iloc[0] if not hit.empty else None
-        except Exception:
+        pidn = _norm_pid(pid)
+        # df é seu dataframe da dex
+        hit = df[df["Nº"].apply(_norm_pid) == pidn]
+        if len(hit) == 0:
             return None
+        return hit.iloc[0].to_dict()
 
     def _get_pokemon_name(pid: str) -> str:
-        if str(pid).startswith("EXT:"):
-            return str(pid).replace("EXT:", "").strip() or "Visitante"
-        row = _get_pokemon_row(pid)
-        return str(row["Nome"]) if row is not None and "Nome" in row else f"ID {pid}"
-
+        pid_str = str(pid)
+        if pid_str.startswith("EXT:"):
+            return pid_str.replace("EXT:", "").strip() or "Visitante"
+    
+        pidn = _norm_pid(pid_str)
+        row = _get_pokemon_row(pidn)
+        return str(row["Nome"]) if row is not None and "Nome" in row else f"ID {pidn}"
+    
+    
+    def _get_sprite(pid: str) -> str:
+        pid_str = str(pid)
+        if pid_str.startswith("EXT:"):
+            return get_pokemon_image_url(_get_pokemon_name(pid_str), api_name_map, mode="sprite", shiny=False)
+    
+        pidn = _norm_pid(pid_str)
+    
+        # shinies pode estar salvo como "16" ou "16.0" dependendo da versão antiga
+        shinies_norm = set(_norm_pid(x) for x in user_data.get("shinies", []))
+        is_shiny = pidn in shinies_norm
+    
+        # forms idem
+        forms_map = user_data.get("forms", {}) or {}
+        saved_form = forms_map.get(pidn) or forms_map.get(pid_str)
+        if saved_form:
+            return pokemon_pid_to_image(f"EXT:{saved_form}", mode="sprite", shiny=is_shiny)
+    
+        return pokemon_pid_to_image(pidn, mode="sprite", shiny=is_shiny)
     def _get_pokemon_type(pid: str) -> str:
         if str(pid).startswith("EXT:"):
             return "Visitante"
@@ -15319,19 +15349,7 @@ if page == "Trainer Hub (Meus Pokémons)":
         row = _get_pokemon_row(pid)
         return row.get("Nivel_Poder") if row is not None else "—"
 
-    def _get_sprite(pid: str) -> str:
-        if str(pid).startswith("EXT:"):
-            return get_pokemon_image_url(_get_pokemon_name(pid), api_name_map, mode="sprite", shiny=False)
-        
-        is_shiny = str(pid) in user_data.get("shinies", [])
-        
-        # ✅ NOVO: Verifica se tem forma salva
-        saved_form = user_data.get("forms", {}).get(str(pid))
-        if saved_form:
-            # Usa o prefixo EXT: para forçar a busca pelo nome da forma (ex: lycanroc-midnight)
-            return pokemon_pid_to_image(f"EXT:{saved_form}", mode="sprite", shiny=is_shiny)
-            
-        return pokemon_pid_to_image(str(pid), mode="sprite", shiny=is_shiny)
+
 
     def _get_artwork(pid: str) -> str:
         if str(pid).startswith("EXT:"):
