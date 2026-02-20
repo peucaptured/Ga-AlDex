@@ -1665,48 +1665,77 @@ def _mm_extract_text_from_pdf(pdf_bytes: bytes) -> str:
 
 def _mm_parse_powers_block(block: str) -> List[Dict[str, Any]]:
     """
-    No Hero Lab, o símbolo 'ü' aparece tanto no nome do poder quanto nas sublinhas.
-    Aqui a regra é:
-      - Se a linha tem '(X PP)', começa um novo power.
-      - Senão, vira linha dentro do power atual.
+    Parser mais robusto pro Hero Lab:
+    - Começa um novo power quando a linha "parece header" e contém "(X PP)" (com ou sem 'ü')
+    - Também considera "(alternate)" como header (pp_cost=None)
+    - Linhas tipo DC, Limited, Affects, Resisted by etc. entram como detalhes do power atual
     """
     block = (block or "").replace("\uf0fc", "ü")
-    parts = re.split(r"\n?ü\s*", block)
+    lines = [l.rstrip() for l in block.splitlines()]
+
+    def is_header(line: str) -> bool:
+        s = line.strip()
+        if not s:
+            return False
+        s2 = s[2:].strip() if s.startswith("ü") else s
+
+        # Headers típicos:
+        if re.search(r"\(\s*\d+\s*PP\s*\)\s*$", s2, flags=re.I):
+            return True
+        if re.search(r"\(\s*alternate\s*\)\s*$", s2, flags=re.I):
+            return True
+
+        return False
+
+    def clean_header(line: str) -> str:
+        s = line.strip()
+        return (s[2:].strip() if s.startswith("ü") else s)
 
     powers: List[Dict[str, Any]] = []
     cur: Optional[Dict[str, Any]] = None
 
-    for part in parts:
-        part = (part or "").strip()
-        if not part:
+    for raw in lines:
+        line = (raw or "").strip()
+        if not line:
             continue
 
-        header, *rest = part.splitlines()
-        header = (header or "").strip()
-        rest_lines = [l.strip() for l in rest if (l or "").strip()]
-
-        pp_m = re.search(r"\((\d+)\s*PP\)", header, flags=re.I)
-
-        # "Novo power" se achar "(X PP)" no header
-        if pp_m:
+        if is_header(line):
+            # fecha anterior
             if cur:
                 powers.append(cur)
 
-            pname = re.sub(r"\(\d+\s*PP\)", "", header, flags=re.I).strip()
-            cur = {"name": pname, "pp_cost": int(pp_m.group(1)), "lines": []}
-            cur["lines"].extend(rest_lines)
-        else:
-            # sublinha / detalhe do power atual
-            if not cur:
-                cur = {"name": "(sem nome)", "pp_cost": None, "lines": []}
-            cur["lines"].append(header)
-            cur["lines"].extend(rest_lines)
+            header = clean_header(line)
+            pp_m = re.search(r"\(\s*(\d+)\s*PP\s*\)\s*$", header, flags=re.I)
+            alt_m = re.search(r"\(\s*alternate\s*\)\s*$", header, flags=re.I)
+
+            if pp_m:
+                pp_cost = int(pp_m.group(1))
+                name = re.sub(r"\(\s*\d+\s*PP\s*\)\s*$", "", header, flags=re.I).strip()
+            elif alt_m:
+                pp_cost = None
+                name = re.sub(r"\(\s*alternate\s*\)\s*$", "", header, flags=re.I).strip()
+            else:
+                pp_cost = None
+                name = header.strip()
+
+            cur = {"name": name or "SemNome", "pp_cost": pp_cost, "lines": []}
+            continue
+
+        # linha “normal” (detalhe)
+        if not cur:
+            # se vier detalhe antes do primeiro header, cria um placeholder
+            cur = {"name": "(sem nome)", "pp_cost": None, "lines": []}
+
+        # remove 'ü ' interno
+        if line.startswith("ü"):
+            line = line[2:].strip()
+
+        cur["lines"].append(line)
 
     if cur:
         powers.append(cur)
 
     return powers
-
 def _mm_parse_skills_block(full_text: str) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
     """
     A tabela de skills do Hero Lab às vezes vem como:
