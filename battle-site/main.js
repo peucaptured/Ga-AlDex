@@ -628,10 +628,12 @@ function dexNameFromPid(pid) {
 function getSpriteUrlFromPid(pid) {
   const k = safeStr(pid);
   if (!k) return "";
-  if (/^\d+$/.test(k)) return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${Number(k)}.png`;
+  if (/^\d+$/.test(k)) {
+    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${Number(k)}.gif`;
+  }
   // slug -> id
   const slugMap = window.dexSlugToId;
-  if (slugMap && slugMap[k]) return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${Number(slugMap[k])}.png`;
+  if (slugMap && slugMap[k]) return `https://play.pokemonshowdown.com/sprites/ani/${encodeURIComponent(k)}.gif`;
   return "";
 }
 
@@ -666,8 +668,8 @@ function resolvePokemonNameFromPid(pid) {
 function spriteUrlFromPokemonName(name) {
   const slug = slugifyPokemonName(name);
   if (!slug) return "";
-  // Fonte estável para imagens em <img> (sem precisar chamar API)
-  return `https://img.pokemondb.net/sprites/home/normal/${slug}.png`;
+  // Sprite animado (GIF)
+  return `https://play.pokemonshowdown.com/sprites/ani/${encodeURIComponent(slug)}.gif`;
 }
 
 function getSpriteUrlForPiece(p) {
@@ -682,7 +684,7 @@ function getSpriteUrlForPiece(p) {
   // 3) Fallback: treat pid as NatDex number
   const pidRaw = Number(p?.pid);
   if (Number.isFinite(pidRaw) && pidRaw > 0 && pidRaw < 20000) {
-    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pidRaw}.png`;
+    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${pidRaw}.gif`;
   }
   return "";
 }
