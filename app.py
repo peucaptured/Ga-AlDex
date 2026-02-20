@@ -1593,6 +1593,26 @@ def upload_png_to_storage_with_token(bucket, png_bytes: bytes, storage_path: str
     url = f"https://firebasestorage.googleapis.com/v0/b/{bucket_name}/o/{enc_path}?alt=media&token={token}"
     return {"storage_path": storage_path, "token": token, "url": url}
 
+def upload_avatar_choice_to_storage(bucket, trainer_name: str, avatar_choice: str) -> dict | None:
+    """Publica o avatar escolhido do treinador no Storage e devolve metadados de acesso."""
+    if not avatar_choice:
+        return None
+
+    avatar_lookup = build_trainer_avatar_lookup()
+    avatar_info = avatar_lookup.get(avatar_choice) or {}
+    avatar_path = avatar_info.get("path")
+    if not avatar_path or not os.path.exists(avatar_path):
+        return None
+
+    try:
+        with open(avatar_path, "rb") as fp:
+            avatar_bytes = fp.read()
+    except Exception:
+        return None
+
+    storage_path = f"trainer_avatars/{safe_doc_id(trainer_name)}/avatar_{safe_doc_id(avatar_choice)}.png"
+    return upload_png_to_storage_with_token(bucket, avatar_bytes, storage_path)
+
 def ensure_room_map_published(db, bucket, rid: str, grid: int, theme_key: str, seed: int, no_water: bool, show_grid: bool = True):
     """Gera o mapa base (sem peças) e publica no Storage, salvando mapUrl/mapStoragePath em public_state/state."""
     try:
@@ -6361,6 +6381,8 @@ def _build_avatar_snapshot(user_data: dict) -> dict:
     return {
         "avatar_choice": prof.get("avatar_choice"),
         "photo_thumb_b64": prof.get("photo_thumb_b64"),
+        "avatar_storage_path": prof.get("avatar_storage_path"),
+        "avatar_url": prof.get("avatar_url"),
     }
 
 def sync_user_profile_to_firestore(db, trainer_name: str, user_data: dict):
@@ -16276,6 +16298,16 @@ if page == "Trainer Hub (Meus Pokémons)":
                             if st.button("✅ Escolher", key=f"trainer_pick_{section_id}_{base}"):
                                 profile["avatar_choice"] = selected_skin
                                 profile["avatar_base"] = base
+
+                                try:
+                                    _, bucket = init_firebase()
+                                    avatar_upload = upload_avatar_choice_to_storage(bucket, trainer_name, selected_skin)
+                                    if avatar_upload:
+                                        profile["avatar_storage_path"] = avatar_upload.get("storage_path")
+                                        profile["avatar_url"] = avatar_upload.get("url")
+                                except Exception:
+                                    pass
+
                                 save_data_cloud(trainer_name, user_data)
                                 st.success(f"Avatar selecionado: {selected_skin}.")
                                 st.rerun()
@@ -16306,6 +16338,16 @@ if page == "Trainer Hub (Meus Pokémons)":
                 if st.button("🔁 Atualizar skin"):
                     profile["avatar_choice"] = new_skin
                     profile["avatar_base"] = chosen_base
+
+                    try:
+                        _, bucket = init_firebase()
+                        avatar_upload = upload_avatar_choice_to_storage(bucket, trainer_name, new_skin)
+                        if avatar_upload:
+                            profile["avatar_storage_path"] = avatar_upload.get("storage_path")
+                            profile["avatar_url"] = avatar_upload.get("url")
+                    except Exception:
+                        pass
+
                     save_data_cloud(trainer_name, user_data)
                     st.success("Skin atualizada!")
                     st.rerun()
