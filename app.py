@@ -1648,7 +1648,288 @@ def save_sheet_to_firestore(db, trainer_name: str, sheet_payload: dict, sheet_id
 
     ref.set(sheet_payload, merge=True)
     return sheet_id
+# ==========================
+# IMPORTADOR DE FICHA M&M (PDF) — Hero Lab / Wolf Lair
+# ==========================
+from typing import Any, Dict, List, Tuple, Optional
+import re
 
+def _mm_extract_text_from_pdf(pdf_bytes: bytes) -> str:
+    """Extrai texto do PDF (sem OCR)."""
+    try:
+        import PyPDF2
+        reader = PyPDF2.PdfReader(io.BytesIO(pdf_bytes))
+        return "\n".join((p.extract_text() or "") for p in reader.pages)
+    except Exception:
+        return ""
+
+def _mm_parse_powers_block(block: str) -> List[Dict[str, Any]]:
+    """
+    No Hero Lab, o símbolo 'ü' aparece tanto no nome do poder quanto nas sublinhas.
+    Aqui a regra é:
+      - Se a linha tem '(X PP)', começa um novo power.
+      - Senão, vira linha dentro do power atual.
+    """
+    block = (block or "").replace("\uf0fc", "ü")
+    parts = re.split(r"\n?ü\s*", block)
+
+    powers: List[Dict[str, Any]] = []
+    cur: Optional[Dict[str, Any]] = None
+
+    for part in parts:
+        part = (part or "").strip()
+        if not part:
+            continue
+
+        header, *rest = part.splitlines()
+        header = (header or "").strip()
+        rest_lines = [l.strip() for l in rest if (l or "").strip()]
+
+        pp_m = re.search(r"\((\d+)\s*PP\)", header, flags=re.I)
+
+        # "Novo power" se achar "(X PP)" no header
+        if pp_m:
+            if cur:
+                powers.append(cur)
+
+            pname = re.sub(r"\(\d+\s*PP\)", "", header, flags=re.I).strip()
+            cur = {"name": pname, "pp_cost": int(pp_m.group(1)), "lines": []}
+            cur["lines"].extend(rest_lines)
+        else:
+            # sublinha / detalhe do power atual
+            if not cur:
+                cur = {"name": "(sem nome)", "pp_cost": None, "lines": []}
+            cur["lines"].append(header)
+            cur["lines"].extend(rest_lines)
+
+    if cur:
+        powers.append(cur)
+
+    return powers
+
+def _mm_parse_skills_block(full_text: str) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
+    """
+    A tabela de skills do Hero Lab às vezes vem como:
+      'Ability Total OtherSkills' / 'OtherSkills Ranks' etc.
+    Vamos capturar o bloco até 'Validation Report'.
+    """
+    skills: List[Dict[str, Any]] = []
+    combat_bonus: Dict[str, int] = {}
+
+    m = re.search(
+        r"(?:Total Ability Other Skills|Ability Total OtherSkills).*?\nRanks\n(.*?)(?=\nValidation Report|\nSettings:|\Z)",
+        full_text,
+        flags=re.I | re.S,
+    )
+    if not m:
+        return skills, combat_bonus
+
+    block = m.group(1)
+    for raw in block.splitlines():
+        line = re.sub(r"\s+", " ", (raw or "").strip())
+        if not line:
+            continue
+
+        # Exemplos:
+        # "- Acrobatics -"
+        m0 = re.match(r"^-\s+(.*?)\s+-$", line)
+        if m0:
+            sname = m0.group(1).strip()
+            skills.append({"name": sname, "total": 0, "ranks": 0})
+            continue
+
+        # "+0 Persuasion -"
+        m1 = re.match(r"^([+\-]?\d+)\s+(.*?)\s+-$", line)
+        if m1:
+            total = int(m1.group(1))
+            sname = m1.group(2).strip()
+            skills.append({"name": sname, "total": total, "ranks": 0})
+        else:
+            # "3 +3 Athletics -"
+            m2 = re.match(r"^(\d+)\s+([+\-]?\d+)\s+(.*?)\s+-$", line)
+            if m2:
+                ranks = int(m2.group(1))
+                total = int(m2.group(2))
+                sname = m2.group(3).strip()
+                skills.append({"name": sname, "total": total, "ranks": ranks})
+            else:
+                # "+4 Close Combat: Crunch 4"
+                m3 = re.match(r"^([+\-]?\d+)\s+(.*?)\s+(\d+)$", line)
+                if m3:
+                    total = int(m3.group(1))
+                    sname = m3.group(2).strip()
+                    ranks = int(m3.group(3))
+                    skills.append({"name": sname, "total": total, "ranks": ranks})
+                else:
+                    continue
+
+        # Mapear bônus de acerto por golpe
+        sname_l = skills[-1]["name"].lower()
+        if sname_l.startswith("close combat:"):
+            mv = skills[-1]["name"].split(":", 1)[1].strip().lower()
+            combat_bonus[mv] = int(skills[-1]["total"])
+        elif sname_l.startswith("ranged combat:"):
+            mv = skills[-1]["name"].split(":", 1)[1].strip().lower()
+            combat_bonus[mv] = int(skills[-1]["total"])
+
+    return skills, combat_bonus
+
+def _mm_infer_rank_from_lines(lines: List[str]) -> int:
+    """
+    Para golpes, o jeito mais robusto é:
+      - Pegar o maior 'DC XX' que aparece nas linhas do golpe
+      - Rank_total ~= DC - 15
+    (Serve para Damage, Affliction, Weaken etc.)
+    """
+    joined = " ".join(lines or [])
+    dcs = [int(x) for x in re.findall(r"\bDC\s*(\d+)\b", joined, flags=re.I)]
+    if dcs:
+        dc = max(dcs)
+        return max(0, dc - 15)
+
+    m = re.search(r"\bDamage\s*(\d+)\b", joined, flags=re.I)
+    if m:
+        return int(m.group(1))
+    return 0
+
+def _mm_is_combat_power(power: Dict[str, Any]) -> bool:
+    txt = " ".join(power.get("lines", [])).lower()
+    return any(k in txt for k in ["damage", "weaken", "affliction", "healing", "nullify", "create", "environment"])
+
+def import_mm_pdf_to_sheet_payload(pdf_bytes: bytes) -> Dict[str, Any]:
+    """
+    Retorna um payload no formato "amigável pro site":
+      - pokemon: {name, id}
+      - stats: stgr/int/dodge/parry/thg/fortitude/will (o que seu front já usa)
+      - moves: [{name, rank, build, pp_cost, accuracy, meta}]
+      - mm: dados crus (pl/pp_total/abilities/defenses/skills/advantages/powers)
+    """
+    txt = _mm_extract_text_from_pdf(pdf_bytes)
+    if not txt.strip():
+        raise ValueError("Não consegui extrair texto do PDF (talvez ele seja imagem/scan).")
+
+    # Detect simples do formato
+    is_herolab = ("Hero Lab" in txt) and ("Mutants & Masterminds" in txt)
+
+    # Nome: no Hero Lab, a linha antes de "Power Level ..." costuma ser o nome
+    name = ""
+    lines = [l.strip() for l in txt.splitlines() if l.strip()]
+    pl_idx = next((i for i, l in enumerate(lines) if l.lower().startswith("power level")), None)
+    if pl_idx is not None:
+        for j in range(pl_idx - 1, -1, -1):
+            cand = lines[j]
+            if any(k in cand.lower() for k in ["hero lab", "mutants", "registered trademarks", "free download"]):
+                continue
+            if re.search(r"\b(male|female|age|height|weight)\b", cand.lower()):
+                continue
+            if len(cand) <= 50 and not any(ch.isdigit() for ch in cand):
+                name = cand
+                break
+    if not name:
+        name = lines[0] if lines else "SemNome"
+
+    # PL / PP total
+    pl = None
+    pp_total = None
+    m = re.search(r"Power Level\s+(\d+),\s*([0-9]+)\s*PP", txt, flags=re.I)
+    if m:
+        pl = int(m.group(1))
+        pp_total = int(m.group(2))
+
+    # Abilities
+    abil_map = {
+        "Strength": "str", "Agility": "agi", "Fighting": "fgt", "Stamina": "sta",
+        "Dexterity": "dex", "Intellect": "int", "Awareness": "awe", "Presence": "pre",
+    }
+    abilities: Dict[str, int] = {}
+    for ab, key in abil_map.items():
+        m = re.search(rf"\b{ab}\s+(-?\d+)", txt, flags=re.I)
+        if m:
+            abilities[key] = int(m.group(1))
+
+    # Defenses
+    def_map = {"Dodge": "dodge", "Parry": "parry", "Fortitude": "fortitude", "Toughness": "toughness", "Will": "will"}
+    defenses: Dict[str, int] = {}
+    for df, key in def_map.items():
+        m = re.search(rf"\b{df}\s+(\d+)", txt, flags=re.I)
+        if m:
+            defenses[key] = int(m.group(1))
+
+    # Advantages (somente nomes)
+    adv: List[str] = []
+    m = re.search(r"\nAdvantages\n(.*?)(?=\nMovement\n|\nDefenses\n|\nBackground Information\n)", txt, flags=re.I | re.S)
+    if m:
+        for raw in m.group(1).splitlines():
+            line = raw.strip(" .")
+            if not line:
+                continue
+            adv_name = re.split(r"[:(]", line, maxsplit=1)[0].strip()
+            if adv_name and adv_name not in adv:
+                adv.append(adv_name)
+
+    # Powers: pegar o bloco real "Powers\n ... \nAdvantages"
+    powers: List[Dict[str, Any]] = []
+    m = re.search(r"\nPowers\n(.*?)(?=\nAdvantages\n|\nMovement\n|\nDefenses\n|\nBackground Information\n)", txt, flags=re.I | re.S)
+    if m:
+        powers = _mm_parse_powers_block(m.group(1))
+
+    # Skills + combate por golpe
+    skills, combat_bonus = _mm_parse_skills_block(txt)
+
+    # Converter para o “formato do site”
+    stats = {
+        "stgr": int(abilities.get("str", 0)),
+        "int": int(abilities.get("int", 0)),
+        "dodge": int(defenses.get("dodge", 0)),
+        "parry": int(defenses.get("parry", 0)),
+        "thg": int(defenses.get("toughness", 0)),
+        "fortitude": int(defenses.get("fortitude", 0)),
+        "will": int(defenses.get("will", 0)),
+    }
+
+    moves: List[Dict[str, Any]] = []
+    for p in powers:
+        if not _mm_is_combat_power(p):
+            continue
+        mv_name = p.get("name") or "SemNome"
+        mv_lines = p.get("lines") or []
+        acc = int(combat_bonus.get(mv_name.lower(), 0))
+        rank = int(_mm_infer_rank_from_lines(mv_lines))
+        build = "; ".join([l.strip() for l in mv_lines if (l or "").strip()])
+
+        moves.append({
+            "name": mv_name,
+            "rank": rank,
+            "build": build,
+            "pp_cost": int(p["pp_cost"]) if p.get("pp_cost") is not None else None,
+            "accuracy": acc,
+            "meta": {"source": "mm_pdf_herolab", "format_detected": "herolab" if is_herolab else "unknown"},
+        })
+
+    # id "estável" (você pode trocar depois)
+    pokemon_id = f"mm_{safe_doc_id(name)}"
+
+    payload = {
+        "pokemon": {
+            "name": name,
+            "id": pokemon_id,
+            "source": "mm_pdf",
+        },
+        "np": pl,  # se seu site usa NP, dá pra mapear PL -> NP
+        "stats": stats,
+        "moves": moves,
+        "mm": {
+            "format": "herolab_pdf" if is_herolab else "unknown_pdf",
+            "pl": pl,
+            "pp_total": pp_total,
+            "abilities": abilities,
+            "defenses": defenses,
+            "advantages": adv,
+            "skills": skills,
+            "powers_raw": powers,
+        }
+    }
+    return payload
 def save_sheet_with_pdf(db, bucket, trainer_name: str, sheet_payload: dict, pdf_bytes=None, sheet_id=None):
     storage_path = None
 
@@ -15976,6 +16257,26 @@ elif page == "Criação Guiada de Fichas":
     # ==========================
     if st.session_state["cg_view"] == "guided":
         st.subheader("🧬 Criação Guiada")
+        with st.expander("📄 Importar ficha M&M (PDF)", expanded=False):
+            mm_pdf = st.file_uploader("Envie a ficha (.pdf) exportada", type=["pdf"], key="mm_pdf_upl")
+    
+            if mm_pdf and st.button("Importar ficha M&M", type="primary", key="btn_import_mm_pdf"):
+                pdf_bytes = mm_pdf.read()
+    
+                try:
+                    sheet_payload = import_mm_pdf_to_sheet_payload(pdf_bytes)
+    
+                    db, bucket = init_firebase()
+                    trainer_name = st.session_state.get("trainer_name", "Treinador")
+    
+                    sheet_id, storage_path = save_sheet_with_pdf(
+                        db, bucket, trainer_name, sheet_payload, pdf_bytes=pdf_bytes
+                    )
+    
+                    st.success(f"Importado e salvo! sheet_id={sheet_id}")
+                    st.json(sheet_payload)  # debug
+                except Exception as e:
+                    st.error(f"Falha ao importar: {e}")
     
         # 1. Inicialização segura: Só executa se o draft não existir
         if "cg_draft" not in st.session_state:
