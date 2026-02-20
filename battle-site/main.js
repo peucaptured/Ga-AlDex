@@ -65,6 +65,7 @@ const colInput = $("col");
 const canvas = $("arena");
 const canvasWrap = $("arena_wrap");
 const arenaDom = $("arena_dom");
+const piecesLayer = $("pieces_layer");
 
 // Canvas pode falhar por CSP, webview, permissões, etc.
 let ctx = null;
@@ -941,6 +942,55 @@ const view = {
 // DOM fallback grid cache
 let domGridSize = 0;
 let domCells = []; // flat [row*gs+col] -> element
+const pieceSpriteNodes = new Map(); // pieceId -> HTMLImageElement
+
+function syncPiecesLayerLayout({ gs, tile, ox, oy, show }) {
+  if (!piecesLayer) return;
+  piecesLayer.style.display = show ? "block" : "none";
+  if (!show) return;
+
+  const usedIds = new Set();
+  for (const p of appState.pieces || []) {
+    if (safeStr(p?.status || "active") !== "active") continue;
+    const row = Number(p?.row);
+    const col = Number(p?.col);
+    if (!Number.isFinite(row) || !Number.isFinite(col)) continue;
+    if (row < 0 || col < 0 || row >= gs || col >= gs) continue;
+    const pieceId = safeStr(p?.id);
+    if (!pieceId) continue;
+
+    const spriteUrl = getSpriteUrlForPiece(p);
+    let el = pieceSpriteNodes.get(pieceId);
+    if (!el) {
+      el = document.createElement("img");
+      el.className = "piece-sprite";
+      el.loading = "lazy";
+      el.alt = "sprite";
+      pieceSpriteNodes.set(pieceId, el);
+      piecesLayer.appendChild(el);
+    }
+
+    if (spriteUrl && el.src !== spriteUrl) el.src = spriteUrl;
+    el.style.display = spriteUrl ? "block" : "none";
+
+    const pad = Math.max(6, Math.floor(tile * 0.12));
+    const x = ox + col * tile + pad;
+    const y = oy + row * tile + pad;
+    const size = Math.max(2, tile - pad * 2);
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.style.width = `${size}px`;
+    el.style.height = `${size}px`;
+    el.classList.toggle("selected", !!(safeStr(appState.selectedPieceId) && safeStr(appState.selectedPieceId) === pieceId));
+    usedIds.add(pieceId);
+  }
+
+  for (const [pieceId, el] of Array.from(pieceSpriteNodes.entries())) {
+    if (usedIds.has(pieceId)) continue;
+    el.remove();
+    pieceSpriteNodes.delete(pieceId);
+  }
+}
 
 function resizeCanvasToContainer() {
   const rect = canvasWrap.getBoundingClientRect();
@@ -1170,6 +1220,7 @@ function renderArenaDom() {
   // mostra DOM, esconde canvas
   if (canvas) canvas.style.display = "none";
   arenaDom.style.display = "grid";
+  syncPiecesLayerLayout({ gs: appState.gridSize || 10, tile: 0, ox: 0, oy: 0, show: false });
 
   const gs = domGridSize;
   // limpa tokens e classes
@@ -1194,8 +1245,13 @@ function renderArenaDom() {
     if (!cell) continue;
     const token = document.createElement("div");
     token.className = "token";
-    const label = (p?.revealed ? String(p?.pid ?? "?") : "?").slice(0, 4);
-    token.textContent = label;
+    const spriteUrl = getSpriteUrlForPiece(p);
+    if (spriteUrl) {
+      token.innerHTML = `<img class="mini" src="${escapeAttr(spriteUrl)}" alt="sprite" loading="lazy" style="width:100%;height:100%;padding:0;border:none;border-radius:10px;background:transparent"/>`;
+    } else {
+      const label = (p?.revealed ? String(p?.pid ?? "?") : "?").slice(0, 4);
+      token.textContent = label;
+    }
     cell.appendChild(token);
 
     if (safeStr(appState.selectedPieceId) && safeStr(appState.selectedPieceId) === safeStr(p?.id)) {
@@ -1456,7 +1512,7 @@ function draw() {
     ctx.stroke();
   }
 
-  // pieces
+  // pieces (token base / seleção)
   const pieces = appState.pieces || [];
   for (const p of pieces) {
     if (safeStr(p?.status || "active") !== "active") continue;
@@ -1472,14 +1528,9 @@ function draw() {
     ctx.fillStyle = isSel ? "rgba(56,189,248,0.22)" : "rgba(0,0,0,0.18)";
     ctx.fillRect(x + 2, y + 2, tile - 4, tile - 4);
 
-    // sprite
+    // fallback glyph (sprite animado é desenhado em camada DOM)
     const spriteUrl = getSpriteUrlForPiece(p);
-    const spr = spriteUrl ? loadSprite(spriteUrl) : null;
-    const pad = Math.max(6, Math.floor(tile * 0.12));
-    if (spr?.ready && !spr?.failed) {
-      ctx.drawImage(spr.img, x + pad, y + pad, tile - pad * 2, tile - pad * 2);
-    } else {
-      // fallback glyph
+    if (!spriteUrl) {
       ctx.fillStyle = "rgba(226,232,240,0.85)";
       ctx.font = `900 ${Math.max(10, Math.floor(tile * 0.22))}px system-ui`;
       ctx.textAlign = "center";
@@ -1501,6 +1552,8 @@ function draw() {
     ctx.arc(appState.drag.x, appState.drag.y, Math.max(10, tile * 0.32), 0, Math.PI * 2);
     ctx.fill();
   }
+
+  syncPiecesLayerLayout({ gs, tile, ox, oy, show: true });
 
   requestAnimationFrame(draw);
 }
