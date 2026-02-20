@@ -674,19 +674,23 @@ function spriteUrlFromPokemonName(name) {
 }
 
 function getSpriteUrlForPiece(p) {
-  // 1) Prefer explicit spriteUrl if present
+  // 1) Prefer explicit animated spriteUrl if present
   const direct = safeStr(p?.spriteUrl || p?.sprite_url || "");
-  if (direct) return direct;
+  if (direct && /\.(gif|webp)(\?|#|$)/i.test(direct)) return direct;
 
-  // 2) Try resolve by name via Dex mapping
+  // 2) Try resolve animated sprite by name via Dex mapping
   const name = resolvePokemonNameFromPid(p?.pid);
   if (name) return spriteUrlFromPokemonName(name);
 
-  // 3) Fallback: treat pid as NatDex number
+  // 3) Fallback: treat pid as NatDex number (animated BW sprite)
   const pidRaw = Number(p?.pid);
   if (Number.isFinite(pidRaw) && pidRaw > 0 && pidRaw < 20000) {
     return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${pidRaw}.gif`;
   }
+
+  // 4) Last fallback: explicit spriteUrl (normalmente PNG estático)
+  if (direct) return direct;
+
   return "";
 }
 
