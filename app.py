@@ -9203,6 +9203,7 @@ def pokemon_pid_to_image(pid: str, mode: str = "artwork", shiny: bool = False) -
     if not pid:
         return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
     pid_str = str(pid).strip()
+    pid_norm = _norm_pid(pid_str)
     
     # Caso 1: Visitante (EXT)
     if pid_str.startswith("EXT:"):
@@ -9215,7 +9216,8 @@ def pokemon_pid_to_image(pid: str, mode: str = "artwork", shiny: bool = False) -
         # Tenta pegar o df de onde estiver disponível
         local_df = st.session_state.get('df_data') if 'df_data' in st.session_state else df
         
-        row = local_df[local_df["Nº"].astype(str) == pid_str]
+        # Compara usando PID normalizado para evitar falhas em ids como "18" vs "18.0"
+        row = local_df[local_df["Nº"].apply(_norm_pid) == pid_norm]
         if not row.empty:
             # Pega o nome (ex: "MyStarter")
             real_name = row.iloc[0]["Nome"]
