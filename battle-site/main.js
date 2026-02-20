@@ -974,7 +974,14 @@ function syncPiecesLayerLayout({ gs, tile, ox, oy, show }) {
       piecesLayer.appendChild(el);
     }
 
-    if (spriteUrl && el.src !== spriteUrl) el.src = spriteUrl;
+    // Evita resetar o GIF a cada frame:
+    // `el.src` é normalizado pelo browser e pode divergir da string original,
+    // causando reatribuição contínua e travando animação no 1º frame.
+    if (spriteUrl && el.dataset.spriteUrl !== spriteUrl) {
+      el.src = spriteUrl;
+      el.dataset.spriteUrl = spriteUrl;
+    }
+    if (!spriteUrl && el.dataset.spriteUrl) delete el.dataset.spriteUrl;
     el.style.display = spriteUrl ? "block" : "none";
 
     const pad = Math.max(6, Math.floor(tile * 0.12));
