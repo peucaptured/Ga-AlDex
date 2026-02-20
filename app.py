@@ -1666,36 +1666,45 @@ def _mm_extract_text_from_pdf(pdf_bytes: bytes) -> str:
 def _mm_parse_powers_block(block: str) -> List[Dict[str, Any]]:
     """
     Parser mais robusto pro Hero Lab:
-    - Começa um novo power quando a linha "parece header" e contém "(X PP)" (com ou sem 'ü')
-    - Também considera "(alternate)" como header (pp_cost=None)
-    - Linhas tipo DC, Limited, Affects, Resisted by etc. entram como detalhes do power atual
+
+    Problemas comuns que ele resolve:
+    - Bullet do Hero Lab às vezes vem como "\uf0fc" ou como "ü" SEM espaço (ex.: "üDrain Punch").
+      Se você fizer line[2:], você perde a 1ª letra do nome ("rain Punch").
+    - Quebras de linha e linhas de detalhe ("DC", "Limited", "Affects"...)
+
+    Regras:
+    - Começa um novo power quando a linha "parece header" e contém "(X PP)" (com ou sem bullet).
+    - Também considera "(alternate)" como header (pp_cost=None).
+    - As demais linhas entram como detalhes do power atual.
     """
     block = (block or "").replace("\uf0fc", "ü")
+
+    # bullets comuns em PDFs
+    _BULLET_RE = re.compile(r"^[\s\u2022\u25cf\u00b7\uf0b7\uf0fcü•\-]+", flags=re.U)
+
+    def strip_bullet(s: str) -> str:
+        s = (s or "").strip()
+        s = re.sub(_BULLET_RE, "", s)
+        return s.lstrip()
+
     lines = [l.rstrip() for l in block.splitlines()]
 
     def is_header(line: str) -> bool:
-        s = line.strip()
+        s = strip_bullet(line)
         if not s:
             return False
-        s2 = s[2:].strip() if s.startswith("ü") else s
-
         # Headers típicos:
-        if re.search(r"\(\s*\d+\s*PP\s*\)\s*$", s2, flags=re.I):
+        if re.search(r"\(\s*\d+\s*PP\s*\)\s*$", s, flags=re.I):
             return True
-        if re.search(r"\(\s*alternate\s*\)\s*$", s2, flags=re.I):
+        if re.search(r"\(\s*alternate\s*\)\s*$", s, flags=re.I):
             return True
-
         return False
-
-    def clean_header(line: str) -> str:
-        s = line.strip()
-        return (s[2:].strip() if s.startswith("ü") else s)
 
     powers: List[Dict[str, Any]] = []
     cur: Optional[Dict[str, Any]] = None
 
     for raw in lines:
-        line = (raw or "").strip()
+        line = strip_bullet(raw)
         if not line:
             continue
 
@@ -1704,7 +1713,7 @@ def _mm_parse_powers_block(block: str) -> List[Dict[str, Any]]:
             if cur:
                 powers.append(cur)
 
-            header = clean_header(line)
+            header = line
             pp_m = re.search(r"\(\s*(\d+)\s*PP\s*\)\s*$", header, flags=re.I)
             alt_m = re.search(r"\(\s*alternate\s*\)\s*$", header, flags=re.I)
 
@@ -1723,12 +1732,7 @@ def _mm_parse_powers_block(block: str) -> List[Dict[str, Any]]:
 
         # linha “normal” (detalhe)
         if not cur:
-            # se vier detalhe antes do primeiro header, cria um placeholder
             cur = {"name": "(sem nome)", "pp_cost": None, "lines": []}
-
-        # remove 'ü ' interno
-        if line.startswith("ü"):
-            line = line[2:].strip()
 
         cur["lines"].append(line)
 
@@ -1821,9 +1825,54 @@ def _mm_infer_rank_from_lines(lines: List[str]) -> int:
         return int(m.group(1))
     return 0
 
+def _mm_clean_move_name(raw_name: str) -> str:
+    """
+    Tenta converter headers do Hero Lab em nomes “de golpe”.
+
+    Exemplos:
+      "Surf (TM): Line Area Damage 14" -> "Surf"
+      "Knock Off: Strength-based Damage 4" -> "Knock Off"
+      "Swords Dance (TM): Enhanced Strength 2" -> "Swords Dance"
+      "üDrain Punch" -> "Drain Punch"
+    """
+    s = (raw_name or "").strip().replace("\uf0fc", "ü")
+
+    # remove bullets comuns
+    s = re.sub(r"^[\s\u2022\u25cf\u00b7\uf0b7\uf0fcü•\-]+", "", s).lstrip()
+
+    # se tiver ":" e depois vier claramente “descrição mecânica”, pega só o lado esquerdo
+    if ":" in s:
+        left, right = s.split(":", 1)
+        right_l = right.lower()
+        if any(k in right_l for k in ["damage", "weaken", "affliction", "healing", "enhanced", "senses", "teleport", "leaping", "swimming", "area", "perception"]):
+            s = left.strip()
+
+    # remove (TM)
+    s = re.sub(r"\(\s*tm\s*\)", "", s, flags=re.I).strip()
+    # normaliza espaços
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+def _mm_is_probably_internal_power(name: str) -> bool:
+    """
+    Evita importar sub-powers genéricos do Hero Lab como se fossem golpes.
+    (Ex.: "Dano", "Cura", "Weaken", "Pulo"...)
+    """
+    s = (name or "").strip().lower()
+    bad_prefixes = (
+        "dano", "cura", "weaken", "retorno a pokebola", "pulo", "nada bem",
+        "panda da noite", "senses", "teleport", "leaping", "swimming"
+    )
+    return s.startswith(bad_prefixes)
+
 def _mm_is_combat_power(power: Dict[str, Any]) -> bool:
-    txt = " ".join(power.get("lines", [])).lower()
-    return any(k in txt for k in ["damage", "weaken", "affliction", "healing", "nullify", "create", "environment"])
+    # 🔧 Inclui também o header, porque no Hero Lab muitas vezes “Damage X” fica no NOME do power
+    # (ex.: "Surf (TM): Line Area Damage 14 (29 PP)") e as linhas só trazem "DC 29..."
+    header = str(power.get("name", "") or "")
+    txt = (header + " " + " ".join(power.get("lines", []) or [])).lower()
+    return any(k in txt for k in [
+        "damage", "weaken", "affliction", "healing", "nullify", "create", "environment", "enhanced"
+    ])
 
 def import_mm_pdf_to_sheet_payload(pdf_bytes: bytes) -> Dict[str, Any]:
     """
@@ -1917,14 +1966,52 @@ def import_mm_pdf_to_sheet_payload(pdf_bytes: bytes) -> Dict[str, Any]:
     }
 
     moves: List[Dict[str, Any]] = []
+    # Para ficar robusto:
+    # - limpa nomes (bullet sem espaço, sufixos mecânicos após ":")
+    # - não depende de "damage" estar nas linhas; também olha o header
+    # - evita importar sub-powers genéricos (Dano/Cura/Weaken/Pulo...)
+    # - tenta mapear bônus de acerto mesmo quando o nome do power vem com descrição
+    import difflib
+
+    def _best_accuracy(move_name: str) -> int:
+        key = (move_name or "").strip().lower()
+        if not key:
+            return 0
+        if key in combat_bonus:
+            return int(combat_bonus[key])
+
+        # tenta match aproximado
+        options = list(combat_bonus.keys())
+        close = difflib.get_close_matches(key, options, n=1, cutoff=0.84)
+        if close:
+            return int(combat_bonus.get(close[0], 0))
+        return 0
+
     for p in powers:
         if not _mm_is_combat_power(p):
             continue
-        mv_name = p.get("name") or "SemNome"
+
+        raw_header = p.get("name") or "SemNome"
+        mv_name = _mm_clean_move_name(raw_header)
+
+        if _mm_is_probably_internal_power(mv_name):
+            continue
+
         mv_lines = p.get("lines") or []
-        acc = int(combat_bonus.get(mv_name.lower(), 0))
-        rank = int(_mm_infer_rank_from_lines(mv_lines))
-        build = "; ".join([l.strip() for l in mv_lines if (l or "").strip()])
+
+        # accuracy: usa o nome limpo
+        acc = _best_accuracy(mv_name)
+
+        # rank: considera também o header (às vezes vem "Damage 14" nele)
+        rank = int(_mm_infer_rank_from_lines(list(mv_lines) + [str(raw_header)]))
+
+        # build: inclui o header se ele carregar "ingredientes" (Damage/Area/etc)
+        header_has_rules = bool(re.search(r"\b(damage|weaken|affliction|healing|environment|enhanced|area|perception)\b", str(raw_header), flags=re.I))
+        build_parts: List[str] = []
+        if header_has_rules and str(raw_header).strip() and str(raw_header).strip() != mv_name:
+            build_parts.append(str(raw_header).strip())
+        build_parts.extend([l.strip() for l in mv_lines if (l or "").strip()])
+        build = "; ".join(build_parts)
 
         moves.append({
             "name": mv_name,
@@ -1932,10 +2019,13 @@ def import_mm_pdf_to_sheet_payload(pdf_bytes: bytes) -> Dict[str, Any]:
             "build": build,
             "pp_cost": int(p["pp_cost"]) if p.get("pp_cost") is not None else None,
             "accuracy": acc,
-            "meta": {"source": "mm_pdf_herolab", "format_detected": "herolab" if is_herolab else "unknown"},
+            "meta": {
+                "source": "mm_pdf_herolab",
+                "format_detected": "herolab" if is_herolab else "unknown",
+                "raw_power_name": raw_header,
+            },
         })
-
-    # id "estável" (você pode trocar depois)
+# id "estável" (você pode trocar depois)
     pokemon_id = f"mm_{safe_doc_id(name)}"
 
     payload = {
@@ -2131,11 +2221,12 @@ def parse_sheet_pdf(pdf_bytes: bytes) -> dict:
         raise ValueError("Não foi possível identificar nome ou NP no PDF.")
 
     return {
-        "pokemon": {"name": pname, "types": types, "abilities": abilities},
+        "pokemon": {"name": pname, "id": f"pdf_{safe_doc_id(pname)}", "types": types, "abilities": abilities},
         "np": np_value,
         "stats": stats,
         "advantages": advantages,
         "moves": moves,
+        "meta": {"source": "site_pdf"},
     }
 
 
@@ -16293,7 +16384,17 @@ elif page == "Criação Guiada de Fichas":
                 pdf_bytes = mm_pdf.read()
     
                 try:
-                    sheet_payload = import_mm_pdf_to_sheet_payload(pdf_bytes)
+                    # 1) tenta primeiro o PDF gerado pelo próprio site (padrão Blastoise)
+                    try:
+                        sheet_payload = parse_sheet_pdf(pdf_bytes)
+                        # garante id no pokemon (alguns PDFs antigos podem não ter)
+                        sheet_payload.setdefault("pokemon", {})
+                        if "id" not in sheet_payload["pokemon"]:
+                            sheet_payload["pokemon"]["id"] = f"pdf_{safe_doc_id(sheet_payload['pokemon'].get('name','pokemon'))}"
+                    except Exception:
+                        # 2) fallback: Hero Lab / M&M
+                        sheet_payload = import_mm_pdf_to_sheet_payload(pdf_bytes)
+
     
                     db, bucket = init_firebase()
                     trainer_name = st.session_state.get("trainer_name", "Treinador")
