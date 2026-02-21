@@ -10,7 +10,8 @@
       "Bash(git -C \"C:/Users/joaop/Documents/mapa 2/Ga-AlDex\" ls-tree -r --name-only HEAD)",
       "Bash(python3:*)",
       "Bash(python:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(cd:*)"
     ]
   }
 }
