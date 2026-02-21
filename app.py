@@ -107,11 +107,18 @@ def _mv_tags_from_move(m: dict) -> list[str]:
 
     tags = []
 
-    # Meta/flags que você já usa
+    # Meta/flags
+    if meta.get("is_reaction"):
+        tags.append("⚡ Reaction")
     if meta.get("perception_area"):
-        tags.append("Área")
+        tags.append("👁️ Área")
     if meta.get("ranged"):
-        tags.append("Ranged")
+        tags.append("🎯 Ranged")
+    if meta.get("area_type") and meta.get("area_type") != "—":
+        ext_label = " Extended" if meta.get("area_extended") else ""
+        tags.append(f"🔴 {meta['area_type']}{ext_label}")
+    if meta.get("resist_stat") and meta.get("resist_stat") not in ("— (padrão)", "Thg"):
+        tags.append(f"Resiste: {meta['resist_stat']}")
 
     # Heurística pelo build (não altera lógica; só UI)
     if "damage" in build:
@@ -2290,7 +2297,7 @@ def apply_imported_sheet_to_session(sheet: dict):
             "int": int(stats.get("int", 0) or 0),
             "dodge": dodge_val,
             "parry": int(stats.get("parry", dodge_val) or 0),
-            "thg": int(stats.get("thg", max(0, cap - dodge_val)) or 0),
+            "thg": int(stats.get("thg") or max(0, cap - dodge_val)),
             "fortitude": int(stats.get("fortitude", 0) or 0),
             "will": int(stats.get("will", 0) or 0),
         },
@@ -2374,7 +2381,7 @@ def apply_sheet_to_session(sheet: dict, sheet_id: str | None = None):
             "int": int(stats.get("int", 0) or 0),
             "dodge": int(stats.get("dodge", 0) or 0),
             "parry": int(stats.get("parry", stats.get("dodge", 0)) or 0),
-            "thg": int(stats.get("thg", max(0, cap - int(stats.get("dodge", 0) or 0))) or 0),
+            "thg": int(stats.get("thg") or max(0, cap - int(stats.get("dodge", 0) or 0))),
             "fortitude": int(stats.get("fortitude", 0) or 0),
             "will": int(stats.get("will", 0) or 0),
         },
@@ -17073,7 +17080,7 @@ elif page == "Criação Guiada de Fichas":
                                     st.success(f"Adicionados: {added} golpe(s).")
                                     st.rerun()
                             with col2:
-                                st.caption("Dica: se algum golpe ficar sem PP ou com Rank muito alto, preencha em **Lista & ajustes**.")
+                                st.caption("Dica: para personalizar Reaction, Área, Extended, Resist — use a busca abaixo ou **Lista & ajustes**.")
                         else:
                             st.info("Não encontrei golpes do learnset no banco atual. Use a busca abaixo ou o assistente.")
 
@@ -17104,42 +17111,71 @@ elif page == "Criação Guiada de Fichas":
                         if results:
                             existing = {_norm(m.get("name", "")) for m in st.session_state.get("cg_moves", [])}
                             for mv in results:
-                                with st.container():
-                                    st.write(f"**{mv.name}** — {getattr(mv,'tipo','—')} / {getattr(mv,'categoria','—')}")
-                                    bullets = _summarize_build(getattr(mv, "build", ""))
-                                    if bullets:
-                                        st.caption(" • ".join(bullets))
-
-                                    pp_auto = None
-                                    try:
-                                        tmp = mv.pp_cost(int(rank_default))
-                                        if isinstance(tmp, tuple):
-                                            pp_auto = tmp[0]
-                                    except Exception:
-                                        pp_auto = None
-
-                                    c1, c2, c3 = st.columns([2, 2, 2])
-                                    with c1:
-                                        st.caption(f"Rank: {rank_default}")
-                                    with c2:
-                                        if pp_auto is not None:
-                                            st.caption(f"PP sugerido: **{int(pp_auto)}**")
-                                        else:
-                                            st.caption("PP: **manual**")
-                                    with c3:
-                                        key_base = f"{_norm(mv.name)}_{rank_default}"
+                                key_base = f"{_norm(mv.name)}_{rank_default}"
+                                with st.container(border=True):
+                                    hc1, hc2 = st.columns([7, 3])
+                                    with hc1:
+                                        st.write(f"**{mv.name}** — {getattr(mv,'tipo','—')} / {getattr(mv,'categoria','—')}")
+                                        bullets = _summarize_build(getattr(mv, "build", ""))
+                                        if bullets:
+                                            st.caption(" • ".join(bullets))
+                                    with hc2:
                                         if _norm(mv.name) in existing:
                                             st.button("✅ Já na ficha", disabled=True, key=f"cg_quick_already_{key_base}")
-                                        else:
-                                            if pp_auto is None:
-                                                pp_manual = st.number_input("PP", min_value=1, value=1, step=1, key=f"cg_quick_pp_{key_base}")
-                                                if st.button("➕ Adicionar", key=f"cg_quick_add_{key_base}"):
-                                                    st.session_state["cg_moves"].append(_cg_confirm_move(mv, int(rank_default), pp_override=int(pp_manual)))
-                                                    st.rerun()
-                                            else:
-                                                if st.button("➕ Adicionar", key=f"cg_quick_add_{key_base}"):
-                                                    st.session_state["cg_moves"].append(_cg_confirm_move(mv, int(rank_default), pp_override=int(pp_auto)))
-                                                    st.rerun()
+
+                                    if _norm(mv.name) not in existing:
+                                        with st.expander("⚙️ Personalizar antes de adicionar", expanded=False):
+                                            pp_auto = None
+                                            try:
+                                                tmp = mv.pp_cost(int(rank_default))
+                                                if isinstance(tmp, tuple):
+                                                    pp_auto = tmp[0]
+                                            except Exception:
+                                                pp_auto = None
+
+                                            pc1, pc2, pc3 = st.columns(3)
+                                            with pc1:
+                                                cust_rank = st.number_input("Rank", min_value=1, max_value=30, value=int(rank_default), step=1, key=f"cg_q_rank_{key_base}")
+                                                cust_pp_val = int(pp_auto) if pp_auto is not None else 1
+                                                try:
+                                                    tmp2 = mv.pp_cost(int(cust_rank))
+                                                    if isinstance(tmp2, tuple) and tmp2[0] is not None:
+                                                        cust_pp_val = int(tmp2[0])
+                                                except Exception:
+                                                    pass
+                                                cust_pp = st.number_input("PP", min_value=1, value=cust_pp_val, step=1, key=f"cg_q_pp_{key_base}")
+                                            with pc2:
+                                                cust_is_reaction = st.checkbox("⚡ É uma Reaction", value=False, key=f"cg_q_react_{key_base}")
+                                                cust_ranged = st.checkbox("🎯 Ranged", value=bool(getattr(mv, "ranged", False)), key=f"cg_q_ranged_{key_base}")
+                                                cust_perception = st.checkbox("👁️ Perception Area", value=bool(getattr(mv, "perception_area", False)), key=f"cg_q_perc_{key_base}")
+                                            with pc3:
+                                                cust_area = st.selectbox("Área", ["—", "Burst", "Cone", "Line", "Cloud"], index=0, key=f"cg_q_area_{key_base}")
+                                                cust_area_ext = st.checkbox("Área Extended (+1r)", value=False, key=f"cg_q_areaext_{key_base}")
+                                                cust_resist = st.selectbox("Resiste via", ["— (padrão)", "Thg", "Dodge", "Will", "Fortitude"], index=0, key=f"cg_q_resist_{key_base}")
+
+                                            if st.button("➕ Adicionar com personalização", key=f"cg_quick_add_{key_base}", type="primary"):
+                                                move_entry = _cg_confirm_move(mv, int(cust_rank), pp_override=int(cust_pp))
+                                                move_entry["meta"]["is_reaction"] = bool(cust_is_reaction)
+                                                move_entry["meta"]["ranged"] = bool(cust_ranged)
+                                                move_entry["meta"]["perception_area"] = bool(cust_perception)
+                                                if cust_area != "—":
+                                                    move_entry["meta"]["area_type"] = cust_area
+                                                    move_entry["meta"]["area_extended"] = bool(cust_area_ext)
+                                                if cust_resist != "— (padrão)":
+                                                    move_entry["meta"]["resist_stat"] = cust_resist
+                                                # Aplica extras na build
+                                                build_extra = move_entry.get("build", "")
+                                                if cust_area != "—":
+                                                    area_rank = 2 if cust_area_ext else 1
+                                                    if f"[Area:" not in build_extra:
+                                                        build_extra = build_extra.rstrip("; ") + f" [Area: {cust_area} {area_rank}]"
+                                                if cust_is_reaction and "[Reaction]" not in build_extra:
+                                                    build_extra = build_extra.rstrip("; ") + " [Reaction]"
+                                                if cust_resist not in ("— (padrão)", "Thg") and "(Resisted by" not in build_extra:
+                                                    build_extra = build_extra.rstrip("; ") + f" (Resisted by {cust_resist})"
+                                                move_entry["build"] = build_extra.strip()
+                                                st.session_state["cg_moves"].append(move_entry)
+                                                st.rerun()
                         else:
                             st.info("Nada encontrado. Tente outra palavra ou use o Assistente para montar o efeito.")
                     else:
@@ -17750,14 +17786,75 @@ elif page == "Criação Guiada de Fichas":
                                         m_gv["accuracy"] = int(new_acc)
                                         st.rerun()
                 
+                                    # --- Propriedades do golpe ---
+                                    _meta_gv = m_gv.setdefault("meta", {})
+
+                                    # Reaction
+                                    is_reaction = st.checkbox(
+                                        "⚡ Reaction",
+                                        value=bool(_meta_gv.get("is_reaction", False)),
+                                        key=f"mv_reaction_{ui_id}",
+                                        help="Golpe usado como reação (não consome a ação do turno)",
+                                    )
+                                    if is_reaction != bool(_meta_gv.get("is_reaction", False)):
+                                        _meta_gv["is_reaction"] = bool(is_reaction)
+
+                                    # Ranged
+                                    is_ranged = st.checkbox(
+                                        "🎯 Ranged",
+                                        value=bool(_meta_gv.get("ranged", False)),
+                                        key=f"mv_ranged_{ui_id}",
+                                    )
+                                    if is_ranged != bool(_meta_gv.get("ranged", False)):
+                                        _meta_gv["ranged"] = bool(is_ranged)
+
+                                    # Perception Area
                                     area_checked = st.checkbox(
-                                        "Golpe em área",
-                                        value=bool(m_gv.get("meta", {}).get("perception_area", False)),
+                                        "👁️ Perception Area",
+                                        value=bool(_meta_gv.get("perception_area", False)),
                                         key=f"mv_area_{ui_id}",
                                     )
-                                    if area_checked != bool(m_gv.get("meta", {}).get("perception_area", False)):
-                                        m_gv.setdefault("meta", {})["perception_area"] = bool(area_checked)
-                
+                                    if area_checked != bool(_meta_gv.get("perception_area", False)):
+                                        _meta_gv["perception_area"] = bool(area_checked)
+
+                                    # Tipo de área
+                                    _area_opts = ["—", "Burst", "Cone", "Line", "Cloud"]
+                                    _cur_area = str(_meta_gv.get("area_type") or "—")
+                                    _cur_area_idx = _area_opts.index(_cur_area) if _cur_area in _area_opts else 0
+                                    new_area_type = st.selectbox(
+                                        "Tipo de área",
+                                        _area_opts,
+                                        index=_cur_area_idx,
+                                        key=f"mv_areatype_{ui_id}",
+                                    )
+                                    if new_area_type != _cur_area:
+                                        _meta_gv["area_type"] = new_area_type if new_area_type != "—" else None
+
+                                    # Extended Area
+                                    area_ext = st.checkbox(
+                                        "Área Extended (+1r)",
+                                        value=bool(_meta_gv.get("area_extended", False)),
+                                        key=f"mv_areaext_{ui_id}",
+                                        help="Compra 1 rank extra de área (Extended Area)",
+                                        disabled=(new_area_type == "—"),
+                                    )
+                                    if area_ext != bool(_meta_gv.get("area_extended", False)):
+                                        _meta_gv["area_extended"] = bool(area_ext)
+
+                                    # Resist stat override
+                                    _resist_opts = ["— (padrão)", "Thg", "Dodge", "Will", "Fortitude"]
+                                    _cur_resist = str(_meta_gv.get("resist_stat") or "— (padrão)")
+                                    _cur_resist_idx = _resist_opts.index(_cur_resist) if _cur_resist in _resist_opts else 0
+                                    new_resist = st.selectbox(
+                                        "Resiste via",
+                                        _resist_opts,
+                                        index=_cur_resist_idx,
+                                        key=f"mv_resist_{ui_id}",
+                                        help="Substitui a defesa usada para resistir este golpe",
+                                    )
+                                    if new_resist != _cur_resist:
+                                        _meta_gv["resist_stat"] = new_resist if new_resist != "— (padrão)" else None
+
                                     # Se o golpe está sem PP, mantém fix manual
                                     if m_gv.get("pp_cost") is None:
                                         pp_fix = st.number_input(
@@ -17853,7 +17950,7 @@ elif page == "Criação Guiada de Fichas":
                     payload_fs = {
                         "pokemon": {"id": int(pid_save), "name": pname, "types": types, "abilities": chosen_abilities},
                         "np": int(np_), "pp_budget_total": int(pp_total), "pp_spent_total": float(pp_spent_total),
-                        "stats": {"stgr": int(stgr), "int": int(intellect), "dodge": int(dodge), "parry": int(parry), "fortitude": int(fortitude), "will": int(will)},
+                        "stats": {"stgr": int(stgr), "int": int(intellect), "dodge": int(dodge), "parry": int(parry), "thg": int(thg), "fortitude": int(fortitude), "will": int(will)},
                         "advantages": chosen_adv,
                         "skills": skills_payload,
                         "moves": st.session_state.get("cg_moves", [])
@@ -17921,25 +18018,24 @@ elif page == "Minhas Fichas":
         pid = str(pid_value).strip()
         if not pid:
             return "Pokémon inválido"
-    
+
         # Visitante fora da dex
         if pid.startswith("EXT:"):
             return pid.replace("EXT:", "", 1).strip() or "Pokémon Externo"
         if pid.startswith("PID:"):
             pid = pid.replace("PID:", "", 1).strip()
-    
-        pid_no_zero = pid.lstrip("0") or "0"
-    
-        # Busca no df da Pokédex (colunas Nº e Nome)
+
+        # Busca no df da Pokédex usando _norm_pid para normalizar corretamente
         try:
-            hit = df[df["Nº"].astype(str) == pid_no_zero]
+            pid_norm = _norm_pid(pid)
+            hit = df[df["Nº"].apply(_norm_pid) == pid_norm]
             if not hit.empty:
                 name = str(hit.iloc[0].get("Nome") or "").strip()
                 if name:
                     return name
         except Exception:
             pass
-    
+
         return "Pokémon desconhecido"
     
     def _hub_pid_label(pid_value: str) -> str:

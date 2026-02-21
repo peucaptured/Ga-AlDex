@@ -8,7 +8,9 @@
       "Bash(git -C \"C:/Users/joaop/Documents/mapa 2/Ga-AlDex\" show b56ecf2:app.py)",
       "Bash(git -C \"C:/Users/joaop/Documents/mapa 2/Ga-AlDex\" diff b56ecf2^..b56ecf2 -- app.py)",
       "Bash(git -C \"C:/Users/joaop/Documents/mapa 2/Ga-AlDex\" ls-tree -r --name-only HEAD)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)"
     ]
   }
 }
