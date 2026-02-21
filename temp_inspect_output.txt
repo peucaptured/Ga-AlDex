@@ -1,0 +1,104 @@
+Columns: ['Treinador', 'Dados', 'Senha']
+Shape: (109, 3)
+
+=== TRAINER: row_0 ===
+  party: ['EXT:Bronzong', '266', '024']
+  caught (first 10): ['002', '011', '021', '003', '279', '031', '297', '146', '232', '266']  (total 16)
+  __dex_uid party: ['EXT:Bronzong', 'UID:corviknight|baixo deserto', "UID:nidoqueen|chifre de ga'al"]
+  __dex_uid caught (first 10): ['UID:ivysaur|campos longos/coracao verde', 'UID:pidgeotto|campos longos / baixo deserto', 'UID:sandslash-a|terras fluviais', 'UID:venusaur|campos longos/coracao verde', 'UID:carkol|deserto irrigado', 'UID:golbat|baia morta', 'UID:grookey|coracao verde', "UID:skorupi|baia morta / chifre de ga'al", 'UID:mantine|terras fluviais', 'UID:corviknight|baixo deserto']  (total 16)
+
+=== TRAINER: row_1 ===
+  party: ['EXT:Sawsbuck', 'EXT:Rowlet', 'EXT:Noctowl', '017', '040', '064', '180']
+  caught (first 10): ['EXT:Sawsbuck', 'EXT:Rowlet', 'EXT:Noctowl', '017', '040', '180', '064']  (total 7)
+  __dex_uid party: ['EXT:Sawsbuck', 'EXT:Rowlet', 'EXT:Noctowl', 'UID:pichu|campos longos / baia morta', 'UID:primeape|baixo deserto/baia morta', 'UID:rhyhorn|safari / coracao verde', 'UID:drifloon|baia morta']
+  __dex_uid caught (first 10): ['EXT:Sawsbuck', 'EXT:Rowlet', 'EXT:Noctowl', 'UID:pichu|campos longos / baia morta', 'UID:primeape|baixo deserto/baia morta', 'UID:drifloon|baia morta', 'UID:rhyhorn|safari / coracao verde']  (total 7)
+
+=== TRAINER: row_2 ===
+  party: ['162', '188', '089']
+  caught (first 10): ['162', '188', '089', '294', '268']  (total 5)
+  __dex_uid party: ["UID:tropius|coracao verde / chifre de ga'al", 'UID:horsea|baia morta', 'UID:seedot|terras fluviais']
+  __dex_uid caught (first 10): ["UID:tropius|coracao verde / chifre de ga'al", 'UID:horsea|baia morta', 'UID:seedot|terras fluviais', 'UID:salandit|deserto irrigado', 'UID:wooloo|terras fluviais']  (total 5)
+
+=== TRAINER: row_3 ===
+  party: ['019', '218', '300', '295']
+  caught (first 10): ['295', '019', '218', '300']  (total 4)
+  __dex_uid party: ['UID:raichu|baia morta', 'UID:toxel|campos longos', 'UID:purrloin|baia morta', 'UID:salazzle|deserto irrigado']
+  __dex_uid caught (first 10): ['UID:salazzle|deserto irrigado', 'UID:raichu|baia morta', 'UID:toxel|campos longos', 'UID:purrloin|baia morta']  (total 4)
+
+=== TRAINER: row_4 ===
+  party: ['135', '127']
+  caught (first 10): ['135', '127']  (total 2)
+  __dex_uid party: ['UID:shinx|baia morta', 'UID:chimchar|baixo deserto']
+  __dex_uid caught (first 10): ['UID:shinx|baia morta', 'UID:chimchar|baixo deserto']  (total 2)
+
+=== TRAINER: row_5 ===
+  party: ['22', '58', 'EXT:Espeon', 'EXT:empoleon', '32', '172']
+  caught (first 10): ['22', '32', '58', '56', '80', '172', '243', '266', 'EXT:ponyta', 'EXT:golem']  (total 10)
+  __dex_uid party: ["UID:nidoran♀|terras fluviais / chifre de ga'al", "UID:doduo|chifre de ga'al", 'EXT:Espeon', 'EXT:empoleon', 'UID:crobat|baia morta', 'UID:ferrothorn|deserto sem fim']
+  __dex_uid caught (first 10): ["UID:nidoran♀|terras fluviais / chifre de ga'al", 'UID:crobat|baia morta', "UID:doduo|chifre de ga'al", 'UID:magneton|campos longos', "UID:magikarp|toda ga'al", 'UID:ferrothorn|deserto sem fim', 'UID:vivillon|jardins reais', 'UID:corvisquire|baixo deserto', 'EXT:ponyta', 'EXT:golem']  (total 10)
+
+=== TRAINER: row_6 ===
+  party: ['EXT:Braixen', 'EXT:Charmeleon', '247', '025', '294', '179']
+  caught (first 10): ['001', '025', '179', 'EXT:Braixen', 'EXT:Charmeleon', '247', '300', '294']  (total 8)
+  __dex_uid party: ['EXT:Braixen', 'EXT:Charmeleon', 'UID:steenee|jardins reais', "UID:nidoran♂|terras fluviais / chifre de ga'al", 'UID:salandit|deserto irrigado', 'UID:wigglytuff|campos longos']
+  __dex_uid caught (first 10): ['UID:bulbasaur|campos longos/coracao verde', "UID:nidoran♂|terras fluviais / chifre de ga'al", 'UID:wigglytuff|campos longos', 'EXT:Braixen', 'EXT:Charmeleon', 'UID:steenee|jardins reais', 'UID:purrloin|baia morta', 'UID:salandit|deserto irrigado']  (total 8)
+
+=== TRAINER: row_7 ===
+  party: ['46', '182', '83', 'EXT:Charmander']
+  caught (first 10): ['46', '182', '83', 'EXT:Charmander']  (total 4)
+  __dex_uid party: []
+  __dex_uid caught (first 10): []  (total 0)
+
+=== TRAINER: row_8 ===
+  party: ['53', '30']
+  caught (first 10): ['30', '53']  (total 2)
+  __dex_uid party: []
+  __dex_uid caught (first 10): []  (total 0)
+
+=== TRAINER: row_9 ===
+  party: ['82', '43', '295']
+  caught (first 10): ['82', '43', '295', '88']  (total 4)
+  __dex_uid party: []
+  __dex_uid caught (first 10): []  (total 0)
+
+=== TRAINER: row_10 ===
+  party: ['6', '18', 'EXT:Darkrai', 'EXT:Dragonite', 'EXT:Victreebel', '130', '133', 'EXT:magmortar']
+  caught (first 10): ['6', '18', 'EXT:Darkrai', 'EXT:Dragonite', 'EXT:Victreebel', '130', '133', 'EXT:magmortar']  (total 8)
+  __dex_uid party: ['UID:blastoise|baia morta / terras fluviais', 'UID:pikachu|campos longos/coracao verde', 'EXT:Darkrai', 'EXT:Dragonite', 'EXT:Victreebel', 'UID:infernape|baixo deserto', 'UID:staraptor|baia morta', 'EXT:magmortar']
+  __dex_uid caught (first 10): ['UID:blastoise|baia morta / terras fluviais', 'UID:pikachu|campos longos/coracao verde', 'EXT:Darkrai', 'EXT:Dragonite', 'EXT:Victreebel', 'UID:infernape|baixo deserto', 'UID:staraptor|baia morta', 'EXT:magmortar']  (total 8)
+
+=== TRAINER: row_11 ===
+  party: []
+  caught (first 10): []  (total 0)
+  __dex_uid party: []
+  __dex_uid caught (first 10): []  (total 0)
+
+=== TRAINER: row_12 ===
+  party: []
+  caught (first 10): []  (total 0)
+  __dex_uid party: []
+  __dex_uid caught (first 10): []  (total 0)
+
+=== TRAINER: row_13 ===
+  party: []
+  caught (first 10): ['18', 'EXT:Bronzong']  (total 2)
+  __dex_uid party: []
+  __dex_uid caught (first 10): []  (total 0)
+
+=== TRAINER: row_14 ===
+  party: []
+  caught (first 10): ['136']  (total 1)
+  __dex_uid party: []
+  __dex_uid caught (first 10): []  (total 0)
+
+=== TRAINER: row_107 ===
+  party: []
+  caught (first 10): []  (total 0)
+  __dex_uid party: []
+  __dex_uid caught (first 10): []  (total 0)
+
+=== TRAINER: row_108 ===
+  party: ['009', '006']
+  caught (first 10): ['009', '006']  (total 2)
+  __dex_uid party: ['UID:butterfree|campos longos/coracao verde', 'UID:blastoise|baia morta / terras fluviais']
+  __dex_uid caught (first 10): ['UID:butterfree|campos longos/coracao verde', 'UID:blastoise|baia morta / terras fluviais']  (total 2)
