@@ -1610,6 +1610,28 @@ def upload_png_to_storage_with_token(bucket, png_bytes: bytes, storage_path: str
     url = f"https://firebasestorage.googleapis.com/v0/b/{bucket_name}/o/{enc_path}?alt=media&token={token}"
     return {"storage_path": storage_path, "token": token, "url": url}
 
+
+
+def upload_json_to_storage_with_token(bucket, json_bytes: bytes, storage_path: str) -> dict:
+    """Upload JSON ao Firebase Storage com download token e retorna {storage_path, token, url}."""
+    blob = bucket.blob(storage_path)
+    token = uuid.uuid4().hex
+    try:
+        blob.metadata = (blob.metadata or {})
+        blob.metadata["firebaseStorageDownloadTokens"] = token
+    except Exception:
+        pass
+    blob.upload_from_string(json_bytes, content_type="application/json")
+    try:
+        blob.patch()
+    except Exception:
+        pass
+
+    bucket_name = getattr(bucket, "name", None) or "batalhas-de-gaal.firebasestorage.app"
+    enc_path = urllib.parse.quote(storage_path, safe="")
+    url = f"https://firebasestorage.googleapis.com/v0/b/{bucket_name}/o/{enc_path}?alt=media&token={token}"
+    return {"storage_path": storage_path, "token": token, "url": url}
+
 def upload_avatar_choice_to_storage(bucket, trainer_name: str, avatar_choice: str) -> dict | None:
     """Publica o avatar escolhido do treinador no Storage e devolve metadados de acesso."""
     if not avatar_choice:
@@ -1631,20 +1653,55 @@ def upload_avatar_choice_to_storage(bucket, trainer_name: str, avatar_choice: st
     return upload_png_to_storage_with_token(bucket, avatar_bytes, storage_path)
 
 def ensure_room_map_published(db, bucket, rid: str, grid: int, theme_key: str, seed: int, no_water: bool, show_grid: bool = True):
-    """Gera o mapa base (sem peças) e publica no Storage, salvando mapUrl/mapStoragePath em public_state/state."""
+    """Gera o mapa base (sem peças) e publica no Storage, salvando mapUrl/mapStoragePath em public_state/state.
+
+    Além do PNG, também publica um JSON com a saída do BiomeGenerator (terrain_grid + decorations),
+    para que outros clientes (ex.: battle-site) possam consumir os dados estruturados do mapa.
+    """
     try:
+        # 1) Gera o PNG do mapa (pode incluir grade visual, se show_grid=True)
         img = render_biome_map_png(grid, theme_key, seed, no_water, show_grid=show_grid).convert("RGB")
         import io
         buf = io.BytesIO()
         img.save(buf, format="PNG")
-        storage_path = f"rooms/{rid}/maps/{grid}x{grid}_{theme_key}_{seed}_{'nowater' if no_water else 'water'}{'_grid' if show_grid else ''}.png"
-        out = upload_png_to_storage_with_token(bucket, buf.getvalue(), storage_path)
+
+        # 2) Define paths estáveis no Storage (PNG + JSON)
+        water_tag = "nowater" if no_water else "water"
+        png_path = f"rooms/{rid}/maps/{grid}x{grid}_{theme_key}_{seed}_{water_tag}{'_grid' if show_grid else ''}.png"
+        json_path = f"rooms/{rid}/maps/{grid}x{grid}_{theme_key}_{seed}_{water_tag}.json"
+
+        # 3) Upload do PNG
+        out_png = upload_png_to_storage_with_token(bucket, buf.getvalue(), png_path)
+
+        # 4) Export estruturado do BiomeGenerator (do último generate()) e upload do JSON
+        try:
+            generator = get_biome_generator()
+            map_data = generator.export_map_data() or {}
+            # garante metadados mínimos úteis ao consumidor
+            map_data.setdefault("theme_key", str(theme_key))
+            map_data.setdefault("no_water", bool(no_water))
+            map_data.setdefault("rid", str(rid))
+            map_data_bytes = json.dumps(map_data, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            out_json = upload_json_to_storage_with_token(bucket, map_data_bytes, json_path)
+        except Exception:
+            out_json = None
+
+        # 5) Salva URLs no Firestore (mantém campos antigos; adiciona mapDataUrl para novos clientes)
         state_ref = db.collection("rooms").document(str(rid)).collection("public_state").document("state")
-        state_ref.set(
-            {"mapStoragePath": out["storage_path"], "mapUrl": out["url"], "mapUpdatedAt": firestore.SERVER_TIMESTAMP},
-            merge=True,
-        )
-        return out
+        payload = {
+            "mapStoragePath": out_png["storage_path"],
+            "mapUrl": out_png["url"],
+            "mapUpdatedAt": firestore.SERVER_TIMESTAMP,
+        }
+        if out_json:
+            payload.update({
+                "mapDataStoragePath": out_json["storage_path"],
+                "mapDataUrl": out_json["url"],
+                "mapDataUpdatedAt": firestore.SERVER_TIMESTAMP,
+            })
+        state_ref.set(payload, merge=True)
+
+        return {"png": out_png, "json": out_json}
     except Exception as e:
         try:
             st.warning(f"Falha ao publicar mapa no Storage: {e}")
@@ -6743,26 +6800,45 @@ def get_biome_generator():
 
 
 def map_theme_to_biome(theme_key: str, no_water: bool) -> str:
+    """Converte a 'theme' da sala (UI) para o 'biome' do BiomeGenerator v2.
+
+    IMPORTANTE:
+      - Esta função retorna *chaves* válidas de BIOME_CONFIG do biome_generator.py
+        (ex.: grasslands, deepforest, desert, beach, snowlands, cave, mines, temple,
+         seafloor, interior, lake, river).
+      - O parâmetro no_water força biomas aquáticos a virarem um equivalente terrestre.
+    """
     key = (theme_key or "").lower().strip()
+
+    # --- Florestas / campos
     if key in ["forest", "biome_forest"]:
-        return "forest"
-    if key in ["plains", "biome_grass", "biome_meadow", "biome_mix"]:
-        return "prairie"
-    if key in ["dirt"]:
-        return "dirt"
+        return "deepforest"
+    if key in ["plains", "biome_grass", "biome_meadow", "biome_mix", "biome_forest_floor"]:
+        return "grasslands"
+
+    # --- Deserto / neve / montanha
     if key in ["biome_desert"]:
         return "desert"
-    if key in ["cave_water", "biome_cave"]:
+    if key in ["biome_snow"]:
+        return "snowlands"
+    if key in ["mountain_slopes", "biome_mountain", "dirt", "stone"]:
+        # Não existe 'mountain' separado no BIOME_CONFIG: 'mines' dá o visual rochoso.
+        return "mines"
+
+    # --- Caverna
+    if key in ["cave_water", "biome_cave", "cave"]:
         return "cave"
-    if key in ["mountain_slopes", "biome_mountain", "biome_snow"]:
-        return "dirt"
+
+    # --- Água (com fallback para terrestre)
     if key in ["river"]:
-        return "prairie" if no_water else "river"
-    if key in ["center_lake"]:
-        return "prairie" if no_water else "center_lake"
-    if key in ["sea_coast", "biome_water"]:
-        return "desert" if no_water else "sea"
-    return "prairie" if no_water else "prairie"
+        return "grasslands" if no_water else "river"
+    if key in ["center_lake", "lake"]:
+        return "grasslands" if no_water else "lake"
+    if key in ["sea_coast", "biome_water", "sea", "coast"]:
+        return "desert" if no_water else "beach"
+
+    # Padrão
+    return "grasslands"
 
 def generate_biome_seed(seed: int | None = None) -> int:
     if seed is not None:
@@ -7964,6 +8040,23 @@ def render_biome_map_png(grid: int, theme_key: str, seed: int, no_water: bool, s
         tile_px=TILE_SIZE,
         seed=int(seed or 0),
     ).convert("RGBA")
+
+
+def battle_site_url_for_room(rid: str, trainer_name: str | None = None) -> str:
+    base = "https://peucaptured.github.io/battle-site/"
+    params = {"rid": str(rid)}
+    if trainer_name:
+        params["trainer"] = str(trainer_name)
+    return base + "?" + urllib.parse.urlencode(params)
+
+def redirect_to_battle_site(rid: str, trainer_name: str | None = None) -> None:
+    url = battle_site_url_for_room(rid, trainer_name)
+    # Tenta redirecionar a janela "top" (fora do iframe do Streamlit). Se falhar, cai no location local.
+    components.html(
+        "<script>(function(){const u=" + json.dumps(url) + "; try{window.top.location.href=u;}catch(e){window.location.href=u;}})();</script>",
+        height=0, width=0
+    )
+    st.stop()
 
     if show_grid:
         _draw_tactical_grid(img, grid, TILE_SIZE)
@@ -20759,45 +20852,33 @@ elif page == "PvP – Arena Tática":
                         if st.button("🗺️ Gerar mapa (pixel art)", disabled=not is_player):
                             seed = generate_biome_seed()
                             state_ref.set({
-                                "gridSize": grid, "theme": theme_key, "seed": seed, 
+                                "gridSize": grid, "theme": theme_key, "seed": seed,
                                 "tilesPacked": None, "noWater": bool(no_water),
                                 "updatedAt": firestore.SERVER_TIMESTAMP,
                             }, merge=True)
-                            # ✅ publica mapa base no Storage para o battle-site consumir (mapUrl)
+
+                            # ✅ publica mapa base no Storage + JSON estruturado (mapUrl/mapDataUrl)
                             try:
                                 _, bucket = init_firebase()
-                                ensure_room_map_published(db, bucket, rid=str(rid), grid=int(grid), theme_key=str(theme_key), seed=int(seed), no_water=bool(no_water), show_grid=True)
+                                ensure_room_map_published(
+                                    db, bucket,
+                                    rid=str(rid), grid=int(grid), theme_key=str(theme_key),
+                                    seed=int(seed), no_water=bool(no_water),
+                                    show_grid=True
+                                )
                             except Exception:
                                 pass
 
-                            st.session_state["pvp_view"] = "battle"
+                            # ✅ redireciona para o battle-site (o outro site consome o mapa)
+                            redirect_to_battle_site(str(rid), trainer_name)
 
-                            # limpa qualquer query param antigo (compendium/login/etc)
-                            try:
-                                st.query_params.clear()
-                            except Exception:
-                                try:
-                                    st.experimental_set_query_params()
-                                except Exception:
-                                    pass
-                            
-                            st.rerun()
                     else:
                         show_grid = st.checkbox("Mostrar grade tática", value=False, key=f"show_grid_preview_{rid}")
                         img = render_map_with_pieces(grid, theme_key, seed, no_water_state, pieces, trainer_name, room, show_grid=show_grid)
                         st.image(img, caption="Prévia do Campo")
                         
                         if st.button("⚔️ IR PARA O CAMPO DE BATALHA", type="primary"):
-                            st.session_state["pvp_view"] = "battle"
-
-                            # limpa qualquer query param antigo (compendium/login/etc)
-                            try:
-                                st.query_params.clear()
-                            except Exception:
-                                try:
-                                    st.experimental_set_query_params()
-                                except Exception:
-                                    pass
+                            redirect_to_battle_site(str(rid), trainer_name)
                             
                             st.rerun()
                                                     
