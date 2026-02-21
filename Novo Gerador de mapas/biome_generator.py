@@ -85,6 +85,7 @@ _BIOME_EXCLUSION_TILES: Dict[str, List[Tuple[int, int, int, int]]] = {
     "desert": [
         (9, 0, 23, 6),       # Egyptian structures: coins, sphinx, sarcophagus, tablets
         (8, 2, 9, 6),        # temple entrance extends left below cactus
+        (0, 6, 23, 14),      # lower terrain layers (edge fragments leak as decor)
     ],
     "beach": [
         (11, 0, 14, 2),      # tiki tent / cabana with green leaf roof
@@ -103,11 +104,19 @@ _BIOME_EXCLUSION_TILES: Dict[str, List[Tuple[int, int, int, int]]] = {
     ],
     "cave": [
         (12, 0, 14, 2),      # wooden signs / posts
-        (10, 2, 14, 7),      # stone rune tablet, gargoyle statue, runic circle
+        (7, 3, 14, 7),       # crystal pillar lanterns, rune tablet, gargoyle, runic circle
+        (0, 5, 7, 7),        # bottom terrain edge fragments
     ],
     "seafloor": [
         (7, 9, 11, 11),      # stone arch ruins
     ],
+}
+
+# Per-biome dilation size override.  Default = 3.
+# Larger values bridge wider gaps between sprite fragments (e.g. thin
+# mushroom stems in deepforest).
+_BIOME_DILATION_SIZE: Dict[str, int] = {
+    "deepforest": 7,         # pink mushroom stems need wide bridging
 }
 
 
@@ -463,7 +472,8 @@ def extract_biome_decor(autotile: AutotileSet,
     content = (alpha > 40) & (~terrain_mask)
 
     # Dilate to bridge small gaps, then re-exclude terrain area
-    dilated = _dilate_mask(content, size=3)
+    dil_size = _BIOME_DILATION_SIZE.get(biome_name, 3)
+    dilated = _dilate_mask(content, size=dil_size)
     dilated = dilated & (~terrain_mask)
 
     labels, num = _label_components(dilated)
@@ -517,7 +527,6 @@ BIOME_CONFIG: Dict[str, dict] = {
         "noise_blur": 3,
         "threshold": 0.70,
         "decor": [
-            ("biome",   0.03, 2000),
             ("rocks",   0.04, 2500),
             ("stumps",  0.02, 1200),
         ],
@@ -551,6 +560,7 @@ BIOME_CONFIG: Dict[str, dict] = {
         "arena_margin": 1,
         "decor": [
             ("biome",  0.02, 200),
+            ("rocks",  0.02, 200),
         ],
     },
     "mines": {
@@ -591,6 +601,33 @@ BIOME_CONFIG: Dict[str, dict] = {
         "arena_margin": 1,
         "decor": [
             ("biome",  0.015, 300),
+        ],
+    },
+    # ── New water biomes ──
+    "lake": {
+        "tileset": "grasslands",
+        "mode": "lake",
+        "decor": [
+            ("trees",       0.14, 4000),
+            ("bushes",      0.08, 3000),
+            ("nature",      0.06, 3000),
+            ("rocks",       0.03, 2000),
+            ("mushrooms",   0.02, 1000),
+            ("water_flora", 0.04, 1500),
+            ("biome",       0.03, 2000),
+        ],
+    },
+    "river": {
+        "tileset": "grasslands",
+        "mode": "river",
+        "decor": [
+            ("trees",       0.14, 4000),
+            ("bushes",      0.08, 3000),
+            ("nature",      0.06, 3000),
+            ("rocks",       0.03, 2000),
+            ("mushrooms",   0.02, 1000),
+            ("water_flora", 0.04, 1500),
+            ("biome",       0.03, 2000),
         ],
     },
 }
@@ -641,17 +678,30 @@ class BiomeGenerator:
             else:
                 self.universal[key] = extract_sprites_from_sheet(path)
 
-        # ── Load water frame (first frame from ocean anim) ──
+        # ── Load water frame (find bluest tile from ocean anim) ──
         water_path = self.root / "ocean-autotiles-anim.png"
         if water_path.exists():
             water_img = Image.open(water_path).convert("RGBA")
-            # Extract a representative water tile (first 32x32 of pure water)
-            # The sheet has multiple frames; take a central water tile
             ww, wh = water_img.size
-            # Sample a tile from the middle area (likely pure water)
-            cx = min(ww - TILE_SIZE, max(0, ww // 2))
-            cy = min(wh - TILE_SIZE, 0)
-            self.water_tile = water_img.crop((cx, cy, cx + TILE_SIZE, cy + TILE_SIZE)).copy()
+            # Scan all tiles and pick the one with highest "blue score"
+            best_tile = None
+            best_score = -999.0
+            for ty in range(0, wh - TILE_SIZE + 1, TILE_SIZE):
+                for tx in range(0, ww - TILE_SIZE + 1, TILE_SIZE):
+                    tile = water_img.crop((tx, ty, tx + TILE_SIZE, ty + TILE_SIZE))
+                    arr = np.array(tile).astype(float)
+                    avg = arr.mean(axis=(0, 1))
+                    # Blue dominance weighted by opacity
+                    score = (avg[2] - max(avg[0], avg[1])) * (avg[3] / 255.0)
+                    if score > best_score:
+                        best_score = score
+                        best_tile = tile
+            # Pre-composite on a solid blue background (ocean anim tiles
+            # are semi-transparent layers meant to overlay a base)
+            bg = Image.new("RGBA", (TILE_SIZE, TILE_SIZE), (40, 80, 160, 255))
+            if best_tile is not None:
+                bg.alpha_composite(best_tile)
+            self.water_tile = bg
         else:
             self.water_tile = Image.new("RGBA", (TILE_SIZE, TILE_SIZE), (50, 120, 200, 255))
 
@@ -894,6 +944,69 @@ class BiomeGenerator:
 
         return grid
 
+    def _make_lake_terrain(self, H: int, W: int,
+                           rng: random.Random) -> np.ndarray:
+        """Inland lake: 0=grass, 1=shore/secondary grass, 2=water.
+
+        Creates an organic lake shape using a radial gradient modulated
+        by value noise.  The shore band sits between water and grass.
+        """
+        cy, cx = H / 2.0, W / 2.0
+        yy, xx = np.mgrid[0:H, 0:W]
+
+        # Normalised distance from center (0 at center, ~1.0 at edge)
+        dist = np.sqrt(((yy - cy) / (H / 2.0)) ** 2 +
+                       ((xx - cx) / (W / 2.0)) ** 2)
+
+        # Noise gives organic edges
+        noise = value_noise(H, W, rng, scale=6, blur=2)
+
+        # Water where radial gradient + noise is low
+        water_mask = (dist - noise * 0.45) < 0.55
+
+        # Shore = land cells within 2 cells of water
+        water_edge_dist = self._distance_to_mask(water_mask)
+        shore = (~water_mask) & (water_edge_dist <= 2.0)
+
+        grid = np.zeros((H, W), dtype=np.int8)
+        grid[water_mask] = 2
+        grid[shore] = 1
+        return grid
+
+    def _make_river_terrain(self, H: int, W: int,
+                            rng: random.Random) -> np.ndarray:
+        """River crossing the map: 0=grass, 1=riverbank, 2=water.
+
+        Generates a sinusoidal river flowing left→right with noise-
+        modulated width for organic, natural-looking banks.
+        """
+        noise = value_noise(H, W, rng, scale=7, blur=3)
+        yy, xx = np.mgrid[0:H, 0:W]
+
+        # Sinusoidal center-line parameters
+        freq = rng.uniform(0.6, 1.4) * 2.0 * math.pi / W
+        phase = rng.uniform(0, 2.0 * math.pi)
+        amplitude = H * 0.18
+
+        center_y = H / 2.0 + amplitude * np.sin(freq * xx + phase)
+
+        # River width varies with noise (base ≈ 8 % of map height)
+        base_width = max(2.0, H * 0.08)
+        width = base_width * (1.0 + 0.5 * noise)   # 1.0×–1.5×
+
+        # Water where vertical distance from center-line < width
+        dist_to_river = np.abs(yy - center_y)
+        water_mask = dist_to_river < width
+
+        # Riverbank = land cells within 2 cells of water
+        water_edge_dist = self._distance_to_mask(water_mask)
+        bank = (~water_mask) & (water_edge_dist <= 2.0)
+
+        grid = np.zeros((H, W), dtype=np.int8)
+        grid[water_mask] = 2
+        grid[bank] = 1
+        return grid
+
     # ────── Main generate ──────
 
     def generate(
@@ -928,6 +1041,10 @@ class BiomeGenerator:
             )
         elif mode == "beach":
             grid = self._make_beach(grid_h, grid_w, rng)
+        elif mode == "lake":
+            grid = self._make_lake_terrain(grid_h, grid_w, rng)
+        elif mode == "river":
+            grid = self._make_river_terrain(grid_h, grid_w, rng)
         elif mode == "arena":
             grid = self._make_arena(grid_h, grid_w, rng,
                                     margin=cfg.get("arena_margin", 1))
@@ -988,7 +1105,7 @@ class BiomeGenerator:
             for y in range(grid_h):
                 for x in range(grid_w):
                     t = int(grid[y, x])
-                    if mode == "beach" and t == 2:
+                    if mode in ("beach", "lake", "river") and t == 2:
                         blit(x, y, water_tile)
                     else:
                         base = autotile.get_tile(0, 0, rng)
@@ -1000,7 +1117,7 @@ class BiomeGenerator:
                     t = int(grid[y, x])
                     if t == 0:
                         continue  # base terrain, already painted
-                    if mode == "beach" and t == 2:
+                    if mode in ("beach", "lake", "river") and t == 2:
                         continue  # water, already painted
                     layer = min(t, num_layers - 1)
                     if layer == 0:
@@ -1042,7 +1159,7 @@ class BiomeGenerator:
             else:
                 center[:, :] = True
             allowed_floor = is_floor & center
-        elif mode == "beach":
+        elif mode in ("beach", "lake", "river"):
             allowed_floor = (grid != 2) & (~cliff_mask)
         else:
             allowed_floor = np.ones((grid_h, grid_w), dtype=bool) & (~cliff_mask)

@@ -2468,14 +2468,9 @@ def _normalize_hub_pid(pid_value) -> str:
     if s.startswith("EXT:"):
         return s
     
-    # Aceita UID:/PID: (se seu dex-guard tiver esse helper)
-    if s.startswith(("UID:", "PID:")):
-        try:
-            uid_to_pid = st.session_state.get("_dex_uid_to_pid") or {}
-            s2 = _dex_uid_to_pid(s, uid_to_pid)  # usa seu mapper existente
-            s = str(s2).strip() if s2 else s
-        except Exception:
-            pass
+    # Strip prefixos residuais PID:
+    if s.startswith("PID:"):
+        s = s.replace("PID:", "", 1).strip()
     
     # Aceita "283", "0283", "283.0", int, float etc.
     try:
@@ -5124,9 +5119,6 @@ def save_data_cloud(trainer_name, data):
             prof.pop("photo_b64", None)
 
         # ✅ reduz tamanho do JSON
-        # 🛡️ blindagem de IDs da Pokédex (UID + migração)
-        _dex_uid_sync(data)
-
         json_str = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
 
         row_num = find_user_row(sheet, trainer_name)
@@ -5235,256 +5227,83 @@ def get_empty_user_data():
         "forms": {},
         "stats": {},
         "notes": {},
-        "__dex_uid": {
-            "version": 1,
-            "seen": [],
-            "caught": [],
-            "party": [],
-            "shinies": [],
-            "wishlist": [],
-            "stats": {},
-            "favorite_moves": {},
-            "forms": {},
-        },
     }
 
 
 # ============================================================
-# 🛡️ BLINDAGEM DE IDs DA POKÉDEX (duas opções no mesmo código)
-# ------------------------------------------------------------
-# Opção 1 (recomendada): salvar um ID estável por NOME (UID) em data["__dex_uid"]
-#                        e sempre reconstruir os IDs atuais a partir dele.
-# Opção 2 (migração): se existir uma pokédex "legada" no projeto (ex.: pokedex_old.xlsx
-#                    ou pokedex Nova.xlsx), o app converte automaticamente IDs antigos
-#                    (coluna "Nº") para os IDs novos, sem trocar o Pokémon do jogador.
-#
-# Isso evita que, ao mudar o "Nº" na planilha, o Trainer Hub e a Pokédex "embaralhem"
-# os pokémons do jogador.
+# LIMPEZA ÚNICA: remove resquícios do antigo sistema __dex_uid
+# Roda uma vez por sessão e depois nunca mais interfere.
 # ============================================================
 
-def _dex_uid_from_row(name: str, region: str | None = None) -> str:
-    base = _norm(str(name))
-    reg = _norm(str(region)) if region not in (None, "", "-", "—") else ""
-    if reg:
-        base = f"{base}|{reg}"
-    return f"UID:{base}"
-
-def _dex_build_uid_maps(df_local: pd.DataFrame) -> tuple[dict[str, str], dict[str, str]]:
-    pid_to_uid: dict[str, str] = {}
-    uid_to_pid: dict[str, str] = {}
-    if df_local is None or df_local.empty:
-        return pid_to_uid, uid_to_pid
-
-    cols = set(map(str, df_local.columns))
-    has_region = "Região" in cols or "Regiao" in cols
-
-    for _, r in df_local.iterrows():
-        try:
-            pid = _norm_pid(r.get("Nº", ""))
-        except Exception:
-            pid = ""
-        if not pid:
-            continue
-
-        name = str(r.get("Nome", "")).strip()
-        region = None
-        if has_region:
-            region = r.get("Região", r.get("Regiao", None))
-
-        uid = _dex_uid_from_row(name, region)
-        pid_to_uid[pid] = uid
-        if uid not in uid_to_pid:
-            uid_to_pid[uid] = pid
-
-    return pid_to_uid, uid_to_pid
-
-def _dex_try_load_legacy_df() -> pd.DataFrame | None:
-    # Lista de nomes comuns para manter a dex velha junto do projeto
-    # (IMPORTANTE: não incluir a pokédex NOVA aqui — ela é tratada como "current".)
-    candidates = [
-        "pokedex_old.xlsx",
-        "pokedex_velha.xlsx",
-        "pokedex_legacy.xlsx",
-        "pokedex.xlsx.old",
-        "pokedex.xlsx.bak",
-        "pokedex velha.xlsx",
-    ]
-
-    for name in candidates:
-        try:
-            p = None
-            if "_resolve_asset_path" in globals():
-                p = _resolve_asset_path(name)
-            if not p:
-                p = name
-            if p and os.path.exists(p):
-                return pd.read_excel(p)
-        except Exception:
-            continue
-    return None
-
-def _dex_ensure_uid_store(data: dict) -> dict:
-    store = data.setdefault("__dex_uid", {})
-    if not isinstance(store, dict):
-        store = {}
-        data["__dex_uid"] = store
-
-    store.setdefault("version", 1)
-    for k in ("seen", "caught", "party", "shinies", "wishlist"):
-        if not isinstance(store.get(k), list):
-            store[k] = []
-    for k in ("stats", "favorite_moves", "forms"):
-        if not isinstance(store.get(k), dict):
-            store[k] = {}
-    return store
-
-def _dex_to_uid(item: str, pid_to_uid: dict[str, str], legacy_pid_to_uid: dict[str, str] | None = None) -> str:
-    s = str(item).strip()
-    if not s:
-        return s
-    if s.startswith("UID:") or s.startswith("EXT:") or s.startswith("PID:"):
-        return s
-    if s.isdigit():
-        if legacy_pid_to_uid and s in legacy_pid_to_uid:
-            return legacy_pid_to_uid[s]
-        if s in pid_to_uid:
-            return pid_to_uid[s]
-        return f"PID:{s}"  # fallback estável (sem nome)
-    return s  # wishlist por texto etc.
-
-def _dex_uid_to_pid(item: str, uid_to_pid: dict[str, str]) -> str | None:
-    s = str(item).strip()
-    if not s:
-        return None
-    if s.startswith("EXT:"):
-        return s
-    if s.startswith("UID:"):
-        return uid_to_pid.get(s)
-    if s.startswith("PID:"):
-        return s.replace("PID:", "", 1)
-    # texto livre (wishlist manual)
-    return s
-
-def _dex_uid_sync(data: dict) -> None:
-    # Atualiza data["__dex_uid"] antes de salvar.
+def _dex_cleanup_once(data: dict, df_current: pd.DataFrame) -> None:
+    """Remove __dex_uid e converte quaisquer entradas UID:/PID: residuais."""
     if not isinstance(data, dict):
         return
+    if st.session_state.get("_dex_cleanup_done"):
+        return
 
-    pid_to_uid = st.session_state.get("_dex_pid_to_uid") or {}
-    legacy_pid_to_uid = st.session_state.get("_dex_legacy_pid_to_uid") or {}
+    # Mapa UID -> PID atual (para resolver entradas UID: que sobraram)
+    uid_to_pid: dict[str, str] = {}
+    if df_current is not None and not df_current.empty:
+        cols = set(map(str, df_current.columns))
+        has_region = "Região" in cols or "Regiao" in cols
+        for _, r in df_current.iterrows():
+            try:
+                pid = _norm_pid(r.get("Nº", ""))
+            except Exception:
+                pid = ""
+            if not pid:
+                continue
+            name = str(r.get("Nome", "")).strip()
+            region = None
+            if has_region:
+                region = r.get("Região", r.get("Regiao", None))
+            base = _norm(str(name))
+            reg = _norm(str(region)) if region not in (None, "", "-", "—") else ""
+            if reg:
+                base = f"{base}|{reg}"
+            uid_key = f"UID:{base}"
+            if uid_key not in uid_to_pid:
+                uid_to_pid[uid_key] = pid
 
-    # Se ainda não temos mapas na sessão, tenta construir a partir do df carregado
-    if not pid_to_uid:
-        try:
-            df_local = st.session_state.get("df_data")
-            if df_local is not None:
-                pid_to_uid, uid_to_pid = _dex_build_uid_maps(df_local)
-                st.session_state["_dex_pid_to_uid"] = pid_to_uid
-                st.session_state["_dex_uid_to_pid"] = uid_to_pid
-        except Exception:
-            pass
+    def _resolve(s: str) -> str | None:
+        s = str(s).strip()
+        if not s:
+            return None
+        if s.startswith("UID:"):
+            return uid_to_pid.get(s)
+        if s.startswith("PID:"):
+            return s.replace("PID:", "", 1)
+        return s
 
-    store = _dex_ensure_uid_store(data)
-
-    # Listas
+    # Limpa listas
     for k in ("seen", "caught", "party", "shinies", "wishlist"):
-        cur = data.get(k, [])
+        cur = data.get(k)
         if not isinstance(cur, list):
             continue
-        store[k] = [_dex_to_uid(x, pid_to_uid, legacy_pid_to_uid) for x in cur]
+        cleaned = []
+        for item in cur:
+            resolved = _resolve(item)
+            if resolved:
+                cleaned.append(resolved)
+        data[k] = cleaned
 
-    # Dicionários por PID
+    # Limpa dicts
     for dk in ("stats", "favorite_moves", "forms"):
-        curd = data.get(dk, {})
+        curd = data.get(dk)
         if not isinstance(curd, dict):
             continue
         newd = {}
-        for pid_key, val in curd.items():
-            uid = _dex_to_uid(str(pid_key), pid_to_uid, legacy_pid_to_uid)
-            newd[uid] = val
-        store[dk] = newd
+        for key, val in curd.items():
+            resolved = _resolve(key)
+            if resolved:
+                newd[resolved] = val
+        data[dk] = newd
 
-def _dex_apply_migration(data: dict, df_current: pd.DataFrame) -> None:
-    # Converte tudo para UID (se necessário) e reconstrói os PIDs atuais.
-    if not isinstance(data, dict) or df_current is None:
-        return
+    # Remove o store __dex_uid
+    data.pop("__dex_uid", None)
 
-    # Mapas atuais
-    pid_to_uid, uid_to_pid = _dex_build_uid_maps(df_current)
-    st.session_state["_dex_pid_to_uid"] = pid_to_uid
-    st.session_state["_dex_uid_to_pid"] = uid_to_pid
-
-    # Mapas legados (para converter PID antigo -> UID por nome)
-    legacy_pid_to_uid = st.session_state.get("_dex_legacy_pid_to_uid")
-    if legacy_pid_to_uid is None:
-        legacy_df = _dex_try_load_legacy_df()
-        if legacy_df is not None and not legacy_df.empty:
-            legacy_pid_to_uid, _ = _dex_build_uid_maps(legacy_df)
-        else:
-            legacy_pid_to_uid = {}
-        st.session_state["_dex_legacy_pid_to_uid"] = legacy_pid_to_uid
-
-    store = _dex_ensure_uid_store(data)
-
-    # Se store vazio, cria a partir dos dados atuais (primeira vez após o patch)
-    if (not store.get("caught")) and isinstance(data.get("caught"), list) and data.get("caught"):
-        _dex_uid_sync(data)
-        store = _dex_ensure_uid_store(data)
-
-    # Reconstrói listas usando UID -> PID atual
-    for k in ("seen", "caught", "party", "shinies"):
-        uids = store.get(k, [])
-        if not isinstance(uids, list):
-            continue
-        rebuilt = []
-        for u in uids:
-            pid = _dex_uid_to_pid(u, uid_to_pid)
-            if pid is None or pid == "":
-                continue
-            rebuilt.append(str(pid))
-        data[k] = rebuilt
-
-    # wishlist pode ter mistura (UID/PID/EXT/texto)
-    uids = store.get("wishlist", [])
-    if isinstance(uids, list):
-        rebuilt = []
-        for u in uids:
-            pid = _dex_uid_to_pid(u, uid_to_pid)
-            if pid is None or pid == "":
-                continue
-            rebuilt.append(str(pid))
-        data["wishlist"] = rebuilt
-
-    # Reconstrói dicts por PID atual
-    for dk in ("stats", "favorite_moves", "forms"):
-        uidd = store.get(dk, {})
-        if not isinstance(uidd, dict):
-            continue
-        rebuilt = {}
-        for u, val in uidd.items():
-            pid = _dex_uid_to_pid(u, uid_to_pid)
-            if not pid:
-                continue
-            rebuilt[str(pid)] = val
-        data[dk] = rebuilt
-
-def _dex_guard_once(data: dict, df_current: pd.DataFrame) -> None:
-    # Roda uma vez por trainer + assinatura da dex
-    try:
-        tn = st.session_state.get("trainer_name") or st.session_state.get("trainer") or ""
-    except Exception:
-        tn = ""
-
-    try:
-        sig = (tn, int(df_current.shape[0]), str(df_current.get("Nº").iloc[0]), str(df_current.get("Nº").iloc[-1]))
-    except Exception:
-        sig = (tn, id(df_current))
-
-    if st.session_state.get("_dex_guard_sig") == sig:
-        return
-
-    _dex_apply_migration(data, df_current)
-    st.session_state["_dex_guard_sig"] = sig
+    st.session_state["_dex_cleanup_done"] = True
 
 
 def _npc_pokemon_list(npc_obj: dict) -> list[str]:
@@ -5698,18 +5517,8 @@ def render_login_menu(trainer_name: str, user_data: dict):
     # Party (sprites) — usa a MESMA lógica do Trainer Hub:
     # - respeita shiny
     # - respeita forma salva (user_data["forms"][pid] => ex: "ponyta-galar", "lycanroc-midnight")
-    # - aceita UID:/PID: caso algum dado antigo apareça aqui
     raw_party = user_data.get("party") or []
-    party_ids: list[str] = []
-    uid_to_pid = st.session_state.get("_dex_uid_to_pid") or {}
-    for p in raw_party:
-        s = str(p).strip()
-        if not s:
-            continue
-        if s.startswith("UID:") or s.startswith("PID:"):
-            s2 = _dex_uid_to_pid(s, uid_to_pid)
-            s = str(s2).strip() if s2 else s
-        party_ids.append(s)
+    party_ids: list[str] = [str(p).strip() for p in raw_party if str(p).strip()]
 
     party_sprites: list[str] = []
     shinies = set(str(x).strip() for x in (user_data.get("shinies") or []) if str(x).strip())
@@ -9247,11 +9056,10 @@ df = st.session_state['df_data']
 cols_map = st.session_state.get('cols_map', {})
 
 # =========================
-# DEX GUARD antes do CONTINUE
-# (garante party/seen/caught/forms migrados antes de renderizar o menu)
+# Limpeza única: remove resquícios do sistema __dex_uid
 # =========================
 try:
-    _dex_guard_once(user_data, df)
+    _dex_cleanup_once(user_data, df)
 except Exception:
     pass
 
@@ -14608,9 +14416,8 @@ if page == "Pokédex (Busca)":
             st.markdown(f"<div class='pokedex-tags'>{tags_html}</div>", unsafe_allow_html=True)
 
         def render_status_controls():
-            # 🛡️ garante que IDs antigos sejam migrados para a dex atual
             try:
-                _dex_guard_once(user_data, df)
+                _dex_cleanup_once(user_data, df)
             except Exception:
                 pass
             # precisa existir no save
@@ -15296,9 +15103,8 @@ if page == "Trainer Hub (Meus Pokémons)":
     user_data.setdefault("shinies", [])
     user_data.setdefault("favorite_moves", {}) # {pid: [move_name,...]}
     user_data.setdefault("forms", {})
-    # 🛡️ garante que IDs antigos sejam migrados para a dex atual
     try:
-        _dex_guard_once(user_data, df)
+        _dex_cleanup_once(user_data, df)
     except Exception:
         pass
 
