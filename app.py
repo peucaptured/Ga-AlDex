@@ -65,6 +65,9 @@ def _norm_pid(v) -> str:
     # caso "16.0", "16.00", etc
     if re.fullmatch(r"\d+\.0+", s):
         s = s.split(".", 1)[0]
+    # remove zeros à esquerda para comparação consistente: "019" -> "19", "076" -> "76"
+    if re.fullmatch(r"\d+", s):
+        s = str(int(s))
     return s
     
 def _norm(s: str) -> str:
@@ -5528,7 +5531,8 @@ def _npc_pokemon_ids_to_names(ids: list[str]) -> list[str]:
             names.append(pid_str.replace("EXT:", "").strip())
             continue
         if df is not None:
-            row = df[df["Nº"].astype(str) == pid_str]
+            pid_norm = _norm_pid(pid_str)
+            row = df[df["Nº"].apply(_norm_pid) == pid_norm]
             if not row.empty:
                 names.append(str(row.iloc[0]["Nome"]))
                 continue
@@ -5552,9 +5556,10 @@ def _npc_user_pokemon_names(user_data: dict) -> list[str]:
             if pid_str.startswith("EXT:"):
                 names.append(pid_str.replace("EXT:", "").strip())
                 continue
-            if pid_str.isdigit():
+            if pid_str.isdigit() or re.fullmatch(r"\d{3}", pid_str):
                 if df is not None:
-                    row = df[df["Nº"].astype(str) == pid_str]
+                    pid_norm = _norm_pid(pid_str)
+                    row = df[df["Nº"].apply(_norm_pid) == pid_norm]
                     if not row.empty:
                         names.append(str(row.iloc[0]["Nome"]))
                         continue

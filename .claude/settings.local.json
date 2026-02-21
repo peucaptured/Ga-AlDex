@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"C:/Users/joaop/Documents/mapa 2/Ga-AlDex\" ls-files)",
+      "Bash(git -C \"C:/Users/joaop/Documents/mapa 2/Ga-AlDex\" ls-files --full-name)",
+      "Bash(ls:*)",
+      "Bash(git -C \"C:/Users/joaop/Documents/mapa 2/Ga-AlDex\" log --oneline -20)",
+      "Bash(git -C \"C:/Users/joaop/Documents/mapa 2/Ga-AlDex\" show b56ecf2:app.py)",
+      "Bash(git -C \"C:/Users/joaop/Documents/mapa 2/Ga-AlDex\" diff b56ecf2^..b56ecf2 -- app.py)",
+      "Bash(git -C \"C:/Users/joaop/Documents/mapa 2/Ga-AlDex\" ls-tree -r --name-only HEAD)",
+      "Bash(python3:*)"
+    ]
+  }
+}
