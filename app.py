@@ -1659,11 +1659,8 @@ def ensure_room_map_published(db, bucket, rid: str, grid: int, theme_key: str, s
     para que outros clientes (ex.: battle-site) possam consumir os dados estruturados do mapa.
     """
     try:
-        # 1) Gera o PNG do mapa (pode incluir grade visual, se show_grid=True)
-        img = render_biome_map_png(grid, theme_key, seed, no_water, show_grid=show_grid).convert("RGB")
-        import io
-        buf = io.BytesIO()
-        img.save(buf, format="PNG")
+        # 1) Gera PNG + dados estruturados num único passo cacheado
+        png_bytes, map_data = _generate_map_cached(grid, theme_key, seed, no_water, show_grid=show_grid)
 
         # 2) Define paths estáveis no Storage (PNG + JSON)
         water_tag = "nowater" if no_water else "water"
@@ -1671,13 +1668,11 @@ def ensure_room_map_published(db, bucket, rid: str, grid: int, theme_key: str, s
         json_path = f"rooms/{rid}/maps/{grid}x{grid}_{theme_key}_{seed}_{water_tag}.json"
 
         # 3) Upload do PNG
-        out_png = upload_png_to_storage_with_token(bucket, buf.getvalue(), png_path)
+        out_png = upload_png_to_storage_with_token(bucket, png_bytes, png_path)
 
-        # 4) Export estruturado do BiomeGenerator (do último generate()) e upload do JSON
+        # 4) Upload do JSON estruturado (terrain_grid + decorations)
         try:
-            generator = get_biome_generator()
-            map_data = generator.export_map_data() or {}
-            # garante metadados mínimos úteis ao consumidor
+            map_data = dict(map_data)  # cópia para não mutar o cache
             map_data.setdefault("theme_key", str(theme_key))
             map_data.setdefault("no_water", bool(no_water))
             map_data.setdefault("rid", str(rid))
@@ -6793,7 +6788,7 @@ THEMES = {
 @st.cache_resource(show_spinner=False)
 def get_biome_generator():
     base_dir = Path(__file__).resolve().parent
-    assets_root = base_dir / "Assets" / "map"
+    assets_root = base_dir / "Novo Gerador de mapas"
     return BiomeGenerator(assets_root=assets_root)
 
 
@@ -8030,10 +8025,17 @@ def draw_tile_asset(img, r, c, tiles, assets, rng):
 
 
 @st.cache_data(show_spinner=False)
-def render_biome_map_png(grid: int, theme_key: str, seed: int, no_water: bool, show_grid: bool = True):
+def _generate_map_cached(grid: int, theme_key: str, seed: int, no_water: bool, show_grid: bool = True):
+    """Gera o mapa e retorna (png_bytes, map_data).
+
+    Armazenado em cache por parâmetros, então png_bytes e map_data sempre
+    correspondem ao mesmo generate() – sem race condition com o singleton.
+    """
+    import io as _io
     biome = map_theme_to_biome(theme_key, no_water)
     generator = get_biome_generator()
     img = None
+    map_data: dict = {}
     try:
         generated = generator.generate(
             biome=biome,
@@ -8042,10 +8044,11 @@ def render_biome_map_png(grid: int, theme_key: str, seed: int, no_water: bool, s
             tile_px=TILE_SIZE,
             seed=int(seed or 0),
         )
+        map_data = generator.export_map_data() or {}
         if generated is not None:
             img = generated.convert("RGBA")
     except Exception as e:
-        print(f"[render_biome_map_png] generate failed: biome={biome} grid={grid} seed={seed} error={e}")
+        print(f"[_generate_map_cached] generate failed: biome={biome} grid={grid} seed={seed} error={e}")
 
     if img is None:
         img = Image.new("RGBA", (max(1, grid) * TILE_SIZE, max(1, grid) * TILE_SIZE), (16, 24, 40, 255))
@@ -8053,7 +8056,15 @@ def render_biome_map_png(grid: int, theme_key: str, seed: int, no_water: bool, s
     if show_grid:
         _draw_tactical_grid(img, grid, TILE_SIZE)
 
-    return img.convert("RGB")
+    buf = _io.BytesIO()
+    img.convert("RGB").save(buf, format="PNG")
+    return buf.getvalue(), map_data
+
+
+def render_biome_map_png(grid: int, theme_key: str, seed: int, no_water: bool, show_grid: bool = True):
+    import io as _io
+    png_bytes, _ = _generate_map_cached(grid, theme_key, seed, no_water, show_grid)
+    return Image.open(_io.BytesIO(png_bytes)).convert("RGB")
 
 
 def battle_site_url_for_room(rid: str, trainer_name: str | None = None) -> str:
