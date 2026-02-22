@@ -8033,13 +8033,22 @@ def draw_tile_asset(img, r, c, tiles, assets, rng):
 def render_biome_map_png(grid: int, theme_key: str, seed: int, no_water: bool, show_grid: bool = True):
     biome = map_theme_to_biome(theme_key, no_water)
     generator = get_biome_generator()
-    img = generator.generate(
-        biome=biome,
-        grid_w=grid,
-        grid_h=grid,
-        tile_px=TILE_SIZE,
-        seed=int(seed or 0),
-    ).convert("RGBA")
+    img = None
+    try:
+        generated = generator.generate(
+            biome=biome,
+            grid_w=grid,
+            grid_h=grid,
+            tile_px=TILE_SIZE,
+            seed=int(seed or 0),
+        )
+        if generated is not None:
+            img = generated.convert("RGBA")
+    except Exception as e:
+        print(f"[render_biome_map_png] generate failed: biome={biome} grid={grid} seed={seed} error={e}")
+
+    if img is None:
+        img = Image.new("RGBA", (max(1, grid) * TILE_SIZE, max(1, grid) * TILE_SIZE), (16, 24, 40, 255))
 
     if show_grid:
         _draw_tactical_grid(img, grid, TILE_SIZE)
