@@ -8041,6 +8041,11 @@ def render_biome_map_png(grid: int, theme_key: str, seed: int, no_water: bool, s
         seed=int(seed or 0),
     ).convert("RGBA")
 
+    if show_grid:
+        _draw_tactical_grid(img, grid, TILE_SIZE)
+
+    return img.convert("RGB")
+
 
 def battle_site_url_for_room(rid: str, trainer_name: str | None = None) -> str:
     base = "https://peucaptured.github.io/battle-site/"
@@ -8057,12 +8062,6 @@ def redirect_to_battle_site(rid: str, trainer_name: str | None = None) -> None:
         height=0, width=0
     )
     st.stop()
-
-    if show_grid:
-        _draw_tactical_grid(img, grid, TILE_SIZE)
-
-    return img.convert("RGB")
-
 
 def render_map_with_pieces(grid, theme_key, seed, no_water, pieces, viewer_name, room, effects=None, show_grid: bool = True):
     
