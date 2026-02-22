@@ -222,7 +222,35 @@ def _draw_tactical_grid(img, grid, tile_size: int):
         draw.line([(0, py), (w * tile_size, py)], fill=(0, 0, 0, 90), width=1)
 
 
-def _move_based_stat_from_meta(move_meta: dict | None) -> str:
+def _infer_based_from_text(*texts: str) -> str | None:
+    blob = " ".join(str(t or "") for t in texts).lower()
+
+    if not blob:
+        return None
+
+    if "status" in blob:
+        return "—"
+
+    int_tokens = (
+        "intelect based", "intellect based", "int based", "special-based", "special based",
+        "especial", "special", "intelect", "intellect"
+    )
+    stgr_tokens = (
+        "stgr based", "strength based", "strength-based", "physical-based", "physical based",
+        "físico", "fisico", "physical", "stgr", "strength"
+    )
+
+    if any(t in blob for t in int_tokens):
+        return "Int"
+    if any(t in blob for t in stgr_tokens):
+        return "Stgr"
+
+    return None
+
+
+def _move_based_stat_from_meta(move_like: dict | None) -> str:
+    move_like = move_like or {}
+    move_meta = move_like.get("meta") if any(k in move_like for k in ("meta", "name", "build", "description")) else move_like
     move_meta = move_meta or {}
     cat_meta = str(move_meta.get("category", "") or "").strip().lower()
 
@@ -238,11 +266,21 @@ def _move_based_stat_from_meta(move_meta: dict | None) -> str:
     if "físico" in cat_meta or "fisico" in cat_meta or "physical" in cat_meta:
         return "Stgr"
 
+    text_based = _infer_based_from_text(
+        move_like.get("name", ""),
+        move_like.get("build", ""),
+        move_like.get("description", ""),
+        move_meta.get("raw_power_name", ""),
+        move_meta.get("category", ""),
+    )
+    if text_based:
+        return text_based
+
     return "Stgr"
 
 
-def _move_stat_value(move_meta: dict | None, stats: dict) -> tuple[str, int]:
-    based = _move_based_stat_from_meta(move_meta)
+def _move_stat_value(move_like: dict | None, stats: dict) -> tuple[str, int]:
+    based = _move_based_stat_from_meta(move_like)
     if based == "Int":
         return based, int(stats.get("int", 0) or 0)
     if based == "Stgr":
@@ -255,7 +293,7 @@ def _move_stat_value(move_meta: dict | None, stats: dict) -> tuple[str, int]:
 
 def _move_accuracy_limit(move: dict, np_value: int, stats: dict) -> int:
     rank = int(move.get("rank", 0) or 0)
-    _, stat_val = _move_stat_value(move.get("meta") or {}, stats)
+    _, stat_val = _move_stat_value(move, stats)
     return max(0, (2 * int(np_value)) - rank - stat_val)
 
 
@@ -15677,31 +15715,16 @@ if page == "Trainer Hub (Meus Pokémons)":
                     except Exception:
                         mvdb = None
 
-                    def _based_stat(move_name: str, move_meta: dict | None = None) -> str:
-                        move_meta = move_meta or {}
-                        cat_meta = str(move_meta.get("category", "") or "").strip().lower()
-                    
-                        # 1) Se veio do golpe “criado do zero” (meta)
-                        if move_meta.get("is_special") is True:
-                            return "Int"
-                        if move_meta.get("is_special") is False:
-                            return "Stgr"
-                    
-                        # 2) Pela categoria salva no meta
-                        if "status" in cat_meta:
-                            return "—"
-                        if "especial" in cat_meta or "special" in cat_meta:
-                            return "Int"
-                        if "físico" in cat_meta or "fisico" in cat_meta or "physical" in cat_meta:
-                            return "Stgr"
-                    
-                        # 3) Fallback: buscar no banco (Excel) se disponível
-                        if mvdb is None:
-                            return "Stgr"
+                    def _based_stat(move_name: str, move_meta: dict | None = None, move_obj: dict | None = None) -> str:
+                        move_obj = move_obj or {"name": move_name, "meta": (move_meta or {})}
+                        b = _move_based_stat_from_meta(move_obj)
+                        if b != "Stgr" or mvdb is None:
+                            return b
+
                         mv = mvdb.get_by_name(move_name)
                         if mv is None:
-                            return "Stgr"
-                    
+                            return b
+
                         cat = (mv.categoria or "").strip().lower()
                         if "status" in cat:
                             return "—"
@@ -15709,13 +15732,13 @@ if page == "Trainer Hub (Meus Pokémons)":
                             return "Int"
                         if "físico" in cat or "fisico" in cat or "physical" in cat:
                             return "Stgr"
-                    
-                        return "Stgr"
-                    
-                    
+
+                        return b
+
+
                     def _final_rank(m: dict) -> tuple[int, str]:
                         base = int(m.get("rank", 0) or 0)
-                        bstat = _based_stat(m.get("name", ""), m.get("meta") or {})
+                        bstat = _based_stat(m.get("name", ""), m.get("meta") or {}, m)
                     
                         if bstat == "Stgr":
                             bonus = int(stats.get("stgr", 0) or 0)
@@ -17569,7 +17592,7 @@ elif page == "Criação Guiada de Fichas":
                             accuracy = int(m.get("accuracy", 0) or 0)
                             pp_here = int(m.get("pp_cost") or 0) if m.get("pp_cost") is not None else 0
                             base_rank = int(m.get("rank", 0) or 0)
-                            based_label, stat_val = _move_stat_value(meta, stats_now)
+                            based_label, stat_val = _move_stat_value(m, stats_now)
                             final_rank = base_rank + int(stat_val)
                             mod_acerto = accuracy + final_rank
                 
@@ -17631,7 +17654,7 @@ elif page == "Criação Guiada de Fichas":
                             acc_limit = _move_accuracy_limit(m_gv, np_value, stats_now)
                             current_acc = int(m_gv.get("accuracy", 0) or 0)
                             base_rank = int(m_gv.get("rank", 0) or 0)
-                            based_label, stat_val = _move_stat_value(meta, stats_now)
+                            based_label, stat_val = _move_stat_value(m_gv, stats_now)
                             final_rank = base_rank + int(stat_val)
                             mod_acerto = current_acc + final_rank
                 
@@ -19005,7 +19028,7 @@ elif page == "PvP – Arena Tática":
                                     mv = moves[idx]
                                     name = mv.get("name", "Golpe")
                                     rank = int(mv.get("rank", 0) or 0)
-                                    based, stat_val = _move_stat_value(mv.get("meta") or {}, attacker_stats)
+                                    based, stat_val = _move_stat_value(mv, attacker_stats)
                                     damage = rank + stat_val
                                     acc = int(mv.get("accuracy", 0) or 0)
                                     return f"{name}. Acerto: {acc}. Dano {damage}"
@@ -19022,7 +19045,7 @@ elif page == "PvP – Arena Tática":
                                     selected_move = moves[int(move_choice)]
                                     selected_accuracy = int(selected_move.get("accuracy", 0) or 0)
                                     rank = int(selected_move.get("rank", 0) or 0)
-                                    based, stat_val = _move_stat_value(selected_move.get("meta") or {}, attacker_stats)
+                                    based, stat_val = _move_stat_value(selected_move, attacker_stats)
                                     selected_damage = rank + stat_val
                                     move_payload = {
                                         "name": selected_move.get("name", "Golpe"),
@@ -20265,7 +20288,7 @@ elif page == "PvP – Arena Tática":
                 stats = stats or {}
                 base_rank = int(mv.get("rank") or mv.get("Rank") or 0)
                 acc_base  = int(mv.get("accuracy") or mv.get("Accuracy") or mv.get("acerto") or 0)
-                based_label, stat_val = _move_stat_value(mv.get("meta") or {}, stats)
+                based_label, stat_val = _move_stat_value(mv, stats)
                 stat_val = int(stat_val or 0)
                 rank_total = int(base_rank) + int(stat_val)
                 return rank_total, acc_base, str(based_label), stat_val, _mv_is_area(mv)
