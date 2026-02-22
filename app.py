@@ -8170,6 +8170,41 @@ def normalize_text(text):
     if not isinstance(text, str): return str(text)
     return unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
 
+
+
+def resolve_pokemon_pid(df_pokedex: pd.DataFrame, pname: str) -> str:
+    """Resolve o PID numérico da Pokédex por nome, com fallback normalizado."""
+    name = str(pname or "").strip()
+    if not name or df_pokedex is None or df_pokedex.empty:
+        return "0"
+
+    if "Nome" not in df_pokedex.columns or "Nº" not in df_pokedex.columns:
+        return "0"
+
+    try:
+        nomes = df_pokedex["Nome"].astype(str)
+
+        # 1) match exato sem espaços extras
+        hit = df_pokedex[nomes.str.strip().str.lower() == name.lower()]
+        if not hit.empty:
+            return str(int(float(hit.iloc[0]["Nº"])))
+
+        # 2) match por normalização (acentos/símbolos)
+        nkey = normalize_text(name)
+        hit = df_pokedex[nomes.apply(normalize_text) == nkey]
+        if not hit.empty:
+            return str(int(float(hit.iloc[0]["Nº"])))
+
+        # 3) match por nome canônico da API (útil para variações de escrita)
+        api_key = to_pokeapi_name(name)
+        if api_key:
+            hit = df_pokedex[nomes.apply(lambda x: to_pokeapi_name(str(x))) == api_key]
+            if not hit.empty:
+                return str(int(float(hit.iloc[0]["Nº"])))
+    except Exception:
+        return "0"
+
+    return "0"
 def get_pid_from_name(user_name: str, name_map: dict) -> str | None:
     if not isinstance(user_name, str):
         return None
@@ -16468,8 +16503,7 @@ elif page == "Criação Guiada de Fichas":
             st.session_state["cg_draft"]["pname"] = pname
     
             # Busca ID no Excel
-            row = df[df["Nome"].str.lower() == pname.lower()]
-            pid = str(int(row.iloc[0]["Nº"])) if not row.empty else "0"
+            pid = resolve_pokemon_pid(df, pname)
     
             # Busca dados na API
             with st.spinner("Buscando dados do Pokémon online (stats + ability + tipos)..."):
@@ -17840,7 +17874,7 @@ elif page == "Criação Guiada de Fichas":
                 
                     try:
                         # tenta resolver pelo nome (padrão EXT), ex: "EXT:Zoroark"
-                        resolved = _resolve_base_pid(f"EXT:{pname}", pname)
+                        resolved = resolve_pokemon_pid(df, pname)
                         if resolved is not None and str(resolved).isdigit():
                             pid_save = int(resolved)
                     except Exception:
