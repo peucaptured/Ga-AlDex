@@ -1236,23 +1236,13 @@
       "sprite_key": "rocks"
     },
     {
-      "grid_x": 28,
-      "grid_y": 19,
-      "tiles_w": 2,
-      "tiles_h": 2,
-      "size_class": "medium",
-      "px_x": 897,
-      "px_y": 611,
-      "sprite_key": "rocks"
-    },
-    {
       "grid_x": 14,
       "grid_y": 20,
       "tiles_w": 1,
       "tiles_h": 1,
       "size_class": "micro",
-      "px_x": 455,
-      "px_y": 659,
+      "px_x": 450,
+      "px_y": 641,
       "sprite_key": "rocks"
     },
     {
@@ -1261,28 +1251,18 @@
       "tiles_w": 1,
       "tiles_h": 1,
       "size_class": "micro",
-      "px_x": 839,
-      "px_y": 627,
+      "px_x": 841,
+      "px_y": 631,
       "sprite_key": "rocks"
     },
     {
       "grid_x": 15,
-      "grid_y": 19,
-      "tiles_w": 3,
-      "tiles_h": 1,
-      "size_class": "medium",
-      "px_x": 495,
-      "px_y": 612,
-      "sprite_key": "rocks"
-    },
-    {
-      "grid_x": 7,
       "grid_y": 6,
-      "tiles_w": 2,
+      "tiles_w": 1,
       "tiles_h": 1,
-      "size_class": "medium",
-      "px_x": 239,
-      "px_y": 205,
+      "size_class": "micro",
+      "px_x": 480,
+      "px_y": 207,
       "sprite_key": "rocks"
     },
     {
@@ -1291,8 +1271,8 @@
       "tiles_w": 1,
       "tiles_h": 1,
       "size_class": "micro",
-      "px_x": 775,
-      "px_y": 275,
+      "px_x": 776,
+      "px_y": 277,
       "sprite_key": "rocks"
     },
     {
@@ -1301,8 +1281,8 @@
       "tiles_w": 1,
       "tiles_h": 1,
       "size_class": "micro",
-      "px_x": 837,
-      "px_y": 743,
+      "px_x": 839,
+      "px_y": 758,
       "sprite_key": "rocks"
     },
     {
@@ -1311,8 +1291,8 @@
       "tiles_w": 1,
       "tiles_h": 1,
       "size_class": "micro",
-      "px_x": 552,
-      "px_y": 853,
+      "px_x": 553,
+      "px_y": 855,
       "sprite_key": "rocks"
     },
     {
@@ -1321,8 +1301,8 @@
       "tiles_w": 1,
       "tiles_h": 1,
       "size_class": "micro",
-      "px_x": 485,
-      "px_y": 903,
+      "px_x": 487,
+      "px_y": 918,
       "sprite_key": "rocks"
     },
     {
@@ -1331,8 +1311,8 @@
       "tiles_w": 1,
       "tiles_h": 1,
       "size_class": "micro",
-      "px_x": 744,
-      "px_y": 211,
+      "px_x": 745,
+      "px_y": 213,
       "sprite_key": "rocks"
     },
     {
@@ -1341,8 +1321,8 @@
       "tiles_w": 1,
       "tiles_h": 1,
       "size_class": "micro",
-      "px_x": 103,
-      "px_y": 723,
+      "px_x": 104,
+      "px_y": 725,
       "sprite_key": "rocks"
     },
     {
@@ -1351,8 +1331,28 @@
       "tiles_w": 1,
       "tiles_h": 1,
       "size_class": "micro",
-      "px_x": 392,
-      "px_y": 561,
+      "px_x": 393,
+      "px_y": 563,
+      "sprite_key": "rocks"
+    },
+    {
+      "grid_x": 15,
+      "grid_y": 21,
+      "tiles_w": 1,
+      "tiles_h": 1,
+      "size_class": "micro",
+      "px_x": 481,
+      "px_y": 674,
+      "sprite_key": "rocks"
+    },
+    {
+      "grid_x": 18,
+      "grid_y": 25,
+      "tiles_w": 2,
+      "tiles_h": 2,
+      "size_class": "medium",
+      "px_x": 580,
+      "px_y": 817,
       "sprite_key": "rocks"
     }
   ]

@@ -190,12 +190,52 @@ def _sprites_from_labels(img: Image.Image, labels: np.ndarray,
 
         # Reject overly elongated blobs (likely fused row/column)
         aspect = max(bw, bh) / max(1, min(bw, bh))
-        if aspect > 2.5:
+        if aspect > 2.0:
             continue
 
         crop = img.crop((x0, y0, x1, y1)).copy()
         tw = max(1, math.ceil(bw / TILE_SIZE))
         th = max(1, math.ceil(bh / TILE_SIZE))
+
+        # Reject oversized blobs (likely several adjacent sprites fused by dilation)
+        if tw > 3 or th > 3:
+            continue
+
+        # Reject sprites that are mostly transparent (bounding box >> actual pixels).
+        # These produce ugly hollow-outline or single-pixel artifacts on the map.
+        crop_arr = np.array(crop)
+        opaque_px = int((crop_arr[:, :, 3] > 40).sum())
+        fill_ratio = opaque_px / max(1, bw * bh)
+        if fill_ratio < 0.25:
+            continue
+
+        # Reject ring/frame-shaped sprites (hollow interior = terrain tile fragment).
+        # For sprites >= 1 tile: if the central quarter area is nearly empty while
+        # the bounding box has decent coverage, it's a hollow frame artifact.
+        if bw >= TILE_SIZE and bh >= TILE_SIZE:
+            cy0, cy1 = bh // 4, (bh * 3) // 4
+            cx0, cx1 = bw // 4, (bw * 3) // 4
+            if cy1 > cy0 and cx1 > cx0:
+                center_op = int((crop_arr[cy0:cy1, cx0:cx1, 3] > 40).sum())
+                center_fill = center_op / max(1, (cy1 - cy0) * (cx1 - cx0))
+                if center_fill < 0.15:
+                    continue  # hollow ring — likely an autotile edge fragment
+
+        # Reject fully tile-aligned solid sprites (terrain tiles extracted by mistake).
+        # Decorations never perfectly fill an exact N×M tile bounding box at 95%+.
+        is_tile_aligned = (bw == tw * TILE_SIZE) and (bh == th * TILE_SIZE)
+        if is_tile_aligned and fill_ratio > 0.95:
+            continue
+
+        # Reject nearly-solid sprites with very low color variance.
+        # Legitimate decoration sprites (flowers, lily pads, etc.) have varied
+        # colors; flat-fill terrain tiles are nearly uniform.
+        if fill_ratio > 0.90:
+            opaque_px_arr = crop_arr[crop_arr[:, :, 3] > 40][:, :3].astype(float)
+            if len(opaque_px_arr) > 64:
+                color_std = float(opaque_px_arr.std(axis=0).mean())
+                if color_std < 32.0:
+                    continue  # solid-color terrain tile extracted by mistake
 
         # Auto-classify by tile area
         area = tw * th
@@ -214,13 +254,14 @@ def _sprites_from_labels(img: Image.Image, labels: np.ndarray,
 def extract_sprites_from_sheet(sheet_path: Path) -> List[DecorSprite]:
     """Extract individual sprites from a Topdown RPG 32×32 sprite sheet.
     Uses alpha dilation (MaxFilter) to merge fragments of the same sprite
-    before connected-component labeling."""
+    before connected-component labeling.
+    Dilation=1 bridges within-sprite 1px gaps without fusing adjacent sprites."""
     if not sheet_path.exists():
         return []
     img = Image.open(sheet_path).convert("RGBA")
     alpha = np.array(img)[:, :, 3]
     raw_mask = alpha > 40
-    dilated = _dilate_mask(raw_mask, size=3)
+    dilated = _dilate_mask(raw_mask, size=1)
     labels, num = _label_components(dilated)
     return _sprites_from_labels(img, labels, num, min_px=6, max_px=2000)
 
@@ -237,9 +278,10 @@ def _extract_water_flora(sheet_path: Path) -> List[DecorSprite]:
     img = img.crop((crop_x, 0, img.width, img.height))
     alpha = np.array(img)[:, :, 3]
     raw_mask = alpha > 40
-    dilated = _dilate_mask(raw_mask, size=3)
+    dilated = _dilate_mask(raw_mask, size=1)
     labels, num = _label_components(dilated)
-    return _sprites_from_labels(img, labels, num, min_px=6, max_px=2000)
+    # Use higher min_px to exclude stray terrain-edge fragments that bleed in
+    return _sprites_from_labels(img, labels, num, min_px=20, max_px=2000)
 
 
 # ────── Autotile loading via positional 3×3 block detection ──────
@@ -280,7 +322,10 @@ def _check_3x3(ts_arr: np.ndarray, sr: int, sc: int,
         return False
     for dr in range(3):
         for dc in range(3):
-            if _cell_alpha(ts_arr, sr + dr, sc + dc) < 50:
+            if dr == 1 and dc == 1:
+                continue  # center already verified above
+            # Edge/corner tiles can be partially transparent (transition tiles)
+            if _cell_alpha(ts_arr, sr + dr, sc + dc) < 20:
                 return False
     return True
 
@@ -491,19 +536,20 @@ def extract_biome_decor(autotile: AutotileSet,
 # Scatter (micro+medium) fills up to density; 1 set-piece per rule max.
 
 BIOME_CONFIG: Dict[str, dict] = {
+    # Dense natural forest — most of the map is trees and undergrowth.
     "grasslands": {
         "tileset": "grasslands",
         "mode": "open",
-        "noise_scale": 9,
-        "noise_blur": 3,
-        "threshold": 0.55,
+        "noise_scale": 8,
+        "noise_blur": 2,
+        "threshold": 0.65,   # more primary terrain → bigger contiguous clearings for trees
         "decor": [
-            ("trees",      0.18, 5000),
-            ("bushes",     0.10, 4000),
-            ("rocks",      0.03, 2000),
-            ("nature",     0.08, 4000),
-            ("mushrooms",  0.03, 1500),
-            ("biome",      0.04, 3000),
+            ("trees",  0.35, 9000),   # very dense canopy
+            ("bushes", 0.18, 6000),
+            ("stumps", 0.04, 2000),   # forest floor debris
+            ("rocks",  0.03, 2000),
+            ("nature", 0.12, 5000),   # ferns, vines, small flora
+            ("biome",  0.05, 3000),
         ],
     },
     "deepforest": {
@@ -513,11 +559,12 @@ BIOME_CONFIG: Dict[str, dict] = {
         "noise_blur": 3,
         "threshold": 0.65,
         "decor": [
-            ("trees",      0.20, 8000),
-            ("mushrooms",  0.05, 3000),
-            ("biome",      0.06, 3000),
-            ("stumps",     0.03, 1500),
-            ("nature",     0.04, 2000),
+            ("trees",  0.30, 9000),
+            ("bushes", 0.12, 5000),
+            ("biome",  0.08, 4000),
+            ("stumps", 0.05, 2500),
+            ("nature", 0.08, 4000),
+            ("rocks",  0.02, 1000),
         ],
     },
     "desert": {
@@ -531,14 +578,20 @@ BIOME_CONFIG: Dict[str, dict] = {
             ("stumps",  0.02, 1200),
         ],
     },
+    # Tropical beach — natural vegetation, driftwood, rocks; no man-made objects.
+    # Tileset "grasslands" is used as the terrain base (beach tileset has ocean
+    # as layer-0 which breaks standard rendering).  The actual beach sand tiles
+    # are composited separately via _beach_sand_at in generate().
     "beach": {
-        "tileset": "beach",
+        "tileset": "grasslands",
         "mode": "beach",
         "decor": [
-            ("biome",        0.04, 2500),
-            ("rocks",        0.03, 1500),
-            ("stumps",       0.02, 1000),
-            ("water_flora",  0.03, 1000),
+            ("trees",        0.06, 2500),   # palm-like trees on grass/sand
+            ("rocks",        0.05, 2000),   # rocks scattered on shore
+            ("stumps",       0.04, 1500),   # driftwood
+            ("bushes",       0.03, 1500),
+            ("nature",       0.04, 2000),   # small natural details
+            ("water_flora",  0.04, 1500),   # aquatic plants
         ],
     },
     "snowlands": {
@@ -608,26 +661,24 @@ BIOME_CONFIG: Dict[str, dict] = {
         "tileset": "grasslands",
         "mode": "lake",
         "decor": [
-            ("trees",       0.14, 4000),
-            ("bushes",      0.08, 3000),
-            ("nature",      0.06, 3000),
+            ("trees",       0.18, 5000),
+            ("bushes",      0.10, 4000),
+            ("nature",      0.08, 3500),
             ("rocks",       0.03, 2000),
-            ("mushrooms",   0.02, 1000),
-            ("water_flora", 0.04, 1500),
-            ("biome",       0.03, 2000),
+            ("water_flora", 0.05, 2000),
+            ("biome",       0.04, 2500),
         ],
     },
     "river": {
         "tileset": "grasslands",
         "mode": "river",
         "decor": [
-            ("trees",       0.14, 4000),
-            ("bushes",      0.08, 3000),
-            ("nature",      0.06, 3000),
+            ("trees",       0.18, 5000),
+            ("bushes",      0.10, 4000),
+            ("nature",      0.08, 3500),
             ("rocks",       0.03, 2000),
-            ("mushrooms",   0.02, 1000),
-            ("water_flora", 0.04, 1500),
-            ("biome",       0.03, 2000),
+            ("water_flora", 0.05, 2000),
+            ("biome",       0.04, 2500),
         ],
     },
 }
@@ -678,32 +729,38 @@ class BiomeGenerator:
             else:
                 self.universal[key] = extract_sprites_from_sheet(path)
 
-        # ── Load water frame (find bluest tile from ocean anim) ──
-        water_path = self.root / "ocean-autotiles-anim.png"
-        if water_path.exists():
+        # ── Load water tiles (collect top variants for per-cell variation) ──
+        # Try calm-water first (gentler look), fallback to ocean.
+        bg_color = (45, 110, 185, 255)   # vivid, saturated blue
+        self.water_tiles: List[Image.Image] = []
+        for water_file in ("calm-water-autotiles-anim.png", "ocean-autotiles-anim.png"):
+            water_path = self.root / water_file
+            if not water_path.exists():
+                continue
             water_img = Image.open(water_path).convert("RGBA")
             ww, wh = water_img.size
-            # Scan all tiles and pick the one with highest "blue score"
-            best_tile = None
-            best_score = -999.0
+            scored: List[Tuple[float, Image.Image]] = []
             for ty in range(0, wh - TILE_SIZE + 1, TILE_SIZE):
                 for tx in range(0, ww - TILE_SIZE + 1, TILE_SIZE):
                     tile = water_img.crop((tx, ty, tx + TILE_SIZE, ty + TILE_SIZE))
                     arr = np.array(tile).astype(float)
                     avg = arr.mean(axis=(0, 1))
-                    # Blue dominance weighted by opacity
+                    if avg[3] < 20:
+                        continue   # skip fully transparent frames
                     score = (avg[2] - max(avg[0], avg[1])) * (avg[3] / 255.0)
-                    if score > best_score:
-                        best_score = score
-                        best_tile = tile
-            # Pre-composite on a solid blue background (ocean anim tiles
-            # are semi-transparent layers meant to overlay a base)
-            bg = Image.new("RGBA", (TILE_SIZE, TILE_SIZE), (40, 80, 160, 255))
-            if best_tile is not None:
-                bg.alpha_composite(best_tile)
-            self.water_tile = bg
-        else:
-            self.water_tile = Image.new("RGBA", (TILE_SIZE, TILE_SIZE), (50, 120, 200, 255))
+                    if score > 0:
+                        scored.append((score, tile))
+            if scored:
+                scored.sort(key=lambda s: -s[0])
+                for _, best_tile in scored[:8]:   # up to 8 tile variants
+                    bg = Image.new("RGBA", (TILE_SIZE, TILE_SIZE), bg_color)
+                    bg.alpha_composite(best_tile)
+                    self.water_tiles.append(bg)
+                break   # use first working water animation file
+        if not self.water_tiles:
+            self.water_tiles = [Image.new("RGBA", (TILE_SIZE, TILE_SIZE), bg_color)]
+        # Backward-compat alias
+        self.water_tile = self.water_tiles[0]
 
     # ────── Static math methods (preserved) ──────
 
@@ -903,7 +960,7 @@ class BiomeGenerator:
 
         ocean = vis
         dist = self._distance_to_mask(~ocean)
-        sand = (~ocean) & (dist <= 2.5)
+        sand = (~ocean) & (dist <= 2.5)   # beach sand band
         grass = (~ocean) & (~sand)
 
         grid = np.zeros((H, W), dtype=np.int8)
@@ -1052,17 +1109,20 @@ class BiomeGenerator:
             grid = np.zeros((grid_h, grid_w), dtype=np.int8)
 
         # ── Prepare canvas ──
-        # Pre-fill canvas with base terrain's average color so semi-transparent
-        # base tiles (e.g. beach sand) blend naturally instead of showing
-        # through to a black/transparent background.
-        _base_sample = autotile.get_tile(0, 0, random.Random(seed ^ 0xBEEF))
-        _barr = np.array(_base_sample)
-        _opm = _barr[:, :, 3] > 50
-        if _opm.any():
-            _avc = _barr[_opm][:, :3].mean(axis=0).astype(int)
-            bg_fill = (int(_avc[0]), int(_avc[1]), int(_avc[2]), 255)
+        # Beach mode uses water as the bottom layer — sand tiles have transparent
+        # edges designed to blend *over* water, not grass.  All other modes use
+        # the primary terrain color as background.
+        if mode == "beach":
+            bg_fill = (45, 110, 185, 255)   # water blue — revealed by sand edge tiles
         else:
-            bg_fill = (40, 40, 40, 255)
+            _base_sample = autotile.get_tile(0, 0, random.Random(seed ^ 0xBEEF))
+            _barr = np.array(_base_sample)
+            _opm = _barr[:, :, 3] > 50
+            if _opm.any():
+                _avc = _barr[_opm][:, :3].mean(axis=0).astype(int)
+                bg_fill = (int(_avc[0]), int(_avc[1]), int(_avc[2]), 255)
+            else:
+                bg_fill = (40, 40, 40, 255)
         canvas = Image.new("RGBA", (grid_w * tile_px, grid_h * tile_px), bg_fill)
         scale_factor = tile_px / TILE_SIZE
 
@@ -1078,8 +1138,16 @@ class BiomeGenerator:
         wall_rgba = autotile.wall_color(0)
         wall_tile = Image.new("RGBA", (TILE_SIZE, TILE_SIZE), wall_rgba)
 
-        # ── Water tile for beach mode ──
-        water_tile = self.water_tile
+        # ── Water tiles for beach/lake/river (multiple variants for variation) ──
+        water_tiles = self.water_tiles
+        _n_water = len(water_tiles)
+
+        # ── Beach: use beach tileset for sand cells (layer 0 = sand, layer 1 = ocean) ──
+        _beach_sand_at = None
+        if mode == "beach":
+            _bat = self.autotiles.get("beach")
+            if _bat is not None and len(_bat.layers) >= 1:
+                _beach_sand_at = _bat
 
         # ── Ground layer ──
         if mode == "arena":
@@ -1101,12 +1169,23 @@ class BiomeGenerator:
             # the terrain below.  We must paint the base layer first, then
             # composite overlay terrain on top.
 
-            # Pass 1: base terrain (layer 0 center tile) on every non-water cell
+            # Pass 1: base terrain on every cell
             for y in range(grid_h):
                 for x in range(grid_w):
                     t = int(grid[y, x])
                     if mode in ("beach", "lake", "river") and t == 2:
-                        blit(x, y, water_tile)
+                        # Deterministic per-cell water variation without consuming RNG
+                        w_idx = (x * 3 + y * 7) % _n_water
+                        blit(x, y, water_tiles[w_idx])
+                    elif mode == "beach" and t == 1 and _beach_sand_at is not None:
+                        # Sand zone: beach autotile layer 0 = tan/beige sand tiles.
+                        # Transparent edges blend naturally over the water background.
+                        base = _beach_sand_at.get_tile(0, 0, rng)
+                        blit(x, y, base)
+                    elif mode in ("lake", "river") and t == 1 and num_layers > 1:
+                        # Riverbank / shoreline: secondary grasslands layer
+                        base = autotile.get_tile(1, 0, rng)
+                        blit(x, y, base)
                     else:
                         base = autotile.get_tile(0, 0, rng)
                         blit(x, y, base)
@@ -1119,6 +1198,16 @@ class BiomeGenerator:
                         continue  # base terrain, already painted
                     if mode in ("beach", "lake", "river") and t == 2:
                         continue  # water, already painted
+
+                    # Beach sand: beach autotile layer 0 with bitmask for sand edges.
+                    # Transparent edge areas blend over the water-colored background.
+                    if mode == "beach" and t == 1 and _beach_sand_at is not None:
+                        cell_val = t
+                        mask = self._mask4(grid, y, x, lambda v: v != cell_val)
+                        tile = _beach_sand_at.get_tile(0, mask, rng)
+                        blit(x, y, tile)
+                        continue
+
                     layer = min(t, num_layers - 1)
                     if layer == 0:
                         continue  # only 1 layer detected, nothing to overlay

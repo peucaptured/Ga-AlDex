@@ -4,7 +4,10 @@
       "Bash(python biome_generator.py:*)",
       "Bash(pip install:*)",
       "Bash(python -c:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(for biome in grasslands deepforest beach snowlands cave mines temple seafloor lake river)",
+      "Bash(do python biome_generator.py $biome 42)",
+      "Bash(done)"
     ]
   }
 }
