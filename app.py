@@ -35,7 +35,7 @@ import mimetypes
 from PIL import Image, ImageDraw, ImageEnhance
 
 from pathlib import Path
-from biome_generator import BiomeGenerator
+from biome_generator import BiomeGenerator, BIOME_CONFIG
 from streamlit.runtime import scriptrunner # <--- IMPORTANTE: Importar o módulo inteiro
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 from streamlit.errors import StreamlitAPIException
@@ -6804,6 +6804,15 @@ def map_theme_to_biome(theme_key: str, no_water: bool) -> str:
       - O parâmetro no_water força biomas aquáticos a virarem um equivalente terrestre.
     """
     key = (theme_key or "").lower().strip()
+
+    # Quando a sala já usa as chaves nativas do BiomeGenerator,
+    # mantém o bioma exatamente como selecionado.
+    if key in BIOME_CONFIG:
+        if no_water and key in ["river", "lake"]:
+            return "grasslands"
+        if no_water and key in ["beach", "seafloor"]:
+            return "desert"
+        return key
 
     # --- Florestas / campos
     if key in ["forest", "biome_forest"]:
@@ -20706,6 +20715,20 @@ elif page == "PvP – Arena Tática":
                 "biome_water": "Água (rio/lago/mar) (bioma)",
                 "biome_cave": "Caverna / Dungeon (bioma)",
                 "biome_mix": "Mix (rotas variadas) (bioma)",
+
+                # --- BIOMAS nativos do BiomeGenerator ---
+                "grasslands": "Grasslands / Campos",
+                "deepforest": "Deep Forest / Floresta densa",
+                "desert": "Desert / Árido",
+                "beach": "Beach / Costa",
+                "snowlands": "Snowlands / Neve",
+                "cave": "Cave / Caverna",
+                "mines": "Mines / Rochoso",
+                "temple": "Temple / Ruínas",
+                "seafloor": "Seafloor / Fundo do mar",
+                "interior": "Interior / Arena",
+                "lake": "Lake / Lago",
+                "river": "River / Rio",
             }
     
             # ==========================================
@@ -20718,23 +20741,26 @@ elif page == "PvP – Arena Tática":
             with c1:
                 grid = st.selectbox("Tamanho do grid", [6, 8, 10, 12], index=0)
             with c2:
-                    # --- Seletor reduzido: agrupa biomas tematicamente iguais ---
-                    SELECTOR_THEMES = {
-                        "Floresta": "biome_forest",
-                        "Campos / Rotas": "biome_grass",
-                        "Deserto / Costa": "biome_desert",
-                        "Montanha / Neve": "biome_mountain",
-                        "Caverna": "biome_cave",
-                        "Água (rio / lago / mar)": "biome_water",
+                    # Usa os mesmos biomas disponíveis no BiomeGenerator.
+                    BIOME_LABELS = {
+                        "grasslands": "Grasslands / Campos",
+                        "deepforest": "Deep Forest / Floresta densa",
+                        "desert": "Desert / Árido",
+                        "beach": "Beach / Costa",
+                        "snowlands": "Snowlands / Neve",
+                        "cave": "Cave / Caverna",
+                        "mines": "Mines / Rochoso",
+                        "temple": "Temple / Ruínas",
+                        "seafloor": "Seafloor / Fundo do mar",
+                        "interior": "Interior / Arena",
+                        "lake": "Lake / Lago",
+                        "river": "River / Rio",
                     }
-                    theme_label = st.selectbox("Tema / Bioma", list(SELECTOR_THEMES.keys()), index=0)
-                    theme = SELECTOR_THEMES[theme_label]
-
-                    # (Opcional) detalhar o tipo de água sem poluir a lista principal
-                    if theme == "biome_water":
-                        with st.expander("Opções avançadas (água)", expanded=False):
-                            water_kind = st.selectbox("Tipo de água", ["Rio", "Lago", "Costa/Mar"], index=0)
-                            theme = {"Rio": "river", "Lago": "center_lake", "Costa/Mar": "sea_coast"}.get(water_kind, theme)
+                    selector_options = [
+                        f"{BIOME_LABELS.get(b, b)} ({b})" for b in BIOME_CONFIG.keys()
+                    ]
+                    selected_option = st.selectbox("Tema / Bioma", selector_options, index=0)
+                    theme = selected_option.rsplit("(", 1)[-1].rstrip(")")
             with c3:
                 st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
                 if st.button("🆕 Criar arena", type="primary"):
