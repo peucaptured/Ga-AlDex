@@ -8033,13 +8033,24 @@ def draw_tile_asset(img, r, c, tiles, assets, rng):
 def render_biome_map_png(grid: int, theme_key: str, seed: int, no_water: bool, show_grid: bool = True):
     biome = map_theme_to_biome(theme_key, no_water)
     generator = get_biome_generator()
-    img = generator.generate(
-        biome=biome,
-        grid_w=grid,
-        grid_h=grid,
-        tile_px=TILE_SIZE,
-        seed=int(seed or 0),
-    ).convert("RGBA")
+    try:
+        base = generator.generate(
+            biome=biome,
+            grid_w=grid,
+            grid_h=grid,
+            tile_px=TILE_SIZE,
+            seed=int(seed or 0),
+        )
+    except Exception as e:
+        print(f"Erro ao gerar bioma '{biome}': {e}")
+        base = None
+
+    if not isinstance(base, Image.Image):
+        # Fallback seguro para não quebrar o preview mesmo se o gerador falhar.
+        side = max(1, int(grid)) * TILE_SIZE
+        base = Image.new("RGBA", (side, side), (40, 40, 40, 255))
+
+    img = base.convert("RGBA")
 
     if show_grid:
         _draw_tactical_grid(img, grid, TILE_SIZE)
@@ -8066,7 +8077,11 @@ def redirect_to_battle_site(rid: str, trainer_name: str | None = None) -> None:
 def render_map_with_pieces(grid, theme_key, seed, no_water, pieces, viewer_name, room, effects=None, show_grid: bool = True):
     
     # 1. Base do Mapa (Cacheada)␊
-    img = render_biome_map_png(grid, theme_key, seed, no_water, show_grid=show_grid).convert("RGBA")
+    base_map = render_biome_map_png(grid, theme_key, seed, no_water, show_grid=show_grid)
+    if not isinstance(base_map, Image.Image):
+        side = max(1, int(grid)) * TILE_SIZE
+        base_map = Image.new("RGBA", (side, side), (40, 40, 40, 255))
+    img = base_map.convert("RGBA")
     draw = ImageDraw.Draw(img)
     
     # 2. CAMADA DE EFEITOS (Agora usando Imagens Reais)
