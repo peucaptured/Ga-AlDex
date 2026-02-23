@@ -1768,6 +1768,11 @@ def save_sheet_to_firestore(db, trainer_name: str, sheet_payload: dict, sheet_id
         .document(sheet_id)
     )
 
+    pokemon_block = sheet_payload.get("pokemon")
+    if isinstance(pokemon_block, dict):
+        pokemon_name = pokemon_block.get("name", "")
+        pokemon_block["id"] = normalize_sheet_pokemon_id(pokemon_block.get("id"), pokemon_name)
+
     now = _utc_now_iso()
     sheet_payload.setdefault("created_at", now)
     sheet_payload["updated_at"] = now
@@ -2153,7 +2158,7 @@ def import_mm_pdf_to_sheet_payload(pdf_bytes: bytes) -> Dict[str, Any]:
             },
         })
 # id "estável" (você pode trocar depois)
-    pokemon_id = f"mm_{safe_doc_id(name)}"
+    pokemon_id = normalize_sheet_pokemon_id(f"mm_{safe_doc_id(name)}", name)
 
     payload = {
         "pokemon": {
@@ -2348,7 +2353,7 @@ def parse_sheet_pdf(pdf_bytes: bytes) -> dict:
         raise ValueError("Não foi possível identificar nome ou NP no PDF.")
 
     return {
-        "pokemon": {"name": pname, "id": f"pdf_{safe_doc_id(pname)}", "types": types, "abilities": abilities},
+        "pokemon": {"name": pname, "id": normalize_sheet_pokemon_id(f"pdf_{safe_doc_id(pname)}", pname), "types": types, "abilities": abilities},
         "np": np_value,
         "stats": stats,
         "advantages": advantages,
@@ -2570,6 +2575,52 @@ def _normalize_hub_pid(pid_value) -> str:
         pass
     
     return s
+
+
+def normalize_sheet_pokemon_id(pid_value, pokemon_name: str = ""):
+    """Normaliza o ID da ficha para o mesmo padrão usado nas fichas geradas no sistema.
+
+    Regras:
+    - IDs numéricos viram int (ex.: "0283", "283.0" -> 283)
+    - IDs externos ficam como "EXT:<nome>"
+    - placeholders legados (MM_/mm_/pdf_) tentam resolver pelo nome
+    """
+    raw = str(pid_value or "").strip()
+    pname = str(pokemon_name or "").strip()
+
+    # IDs legados/importados (ex.: MM_Pikachu, mm_pikachu, pdf_pikachu)
+    legacy_placeholder = False
+    if raw:
+        low = raw.lower()
+        legacy_placeholder = low.startswith("mm_") or low.startswith("pdf_")
+
+    # Prioriza o valor informado quando ele já está em formato válido.
+    if raw and not legacy_placeholder:
+        if raw.startswith("EXT:"):
+            ext_name = raw.replace("EXT:", "", 1).strip()
+            return f"EXT:{ext_name}" if ext_name else (f"EXT:{pname}" if pname else "")
+
+        if raw.startswith("PID:"):
+            raw = raw.replace("PID:", "", 1).strip()
+
+        try:
+            if re.fullmatch(r"\d+(\.0+)?", raw):
+                return int(float(raw))
+        except Exception:
+            pass
+
+    # Resolve por nome para alinhar com fichas nativas (id numérico da Pokédex).
+    if pname:
+        try:
+            resolved = resolve_pokemon_pid(df, pname)
+            if resolved is not None and str(resolved).isdigit():
+                return int(resolved)
+        except Exception:
+            pass
+        return f"EXT:{pname}"
+
+    # Último fallback: mantém texto limpo para não perder referência.
+    return raw
 
 # ----------------------------
 # Helpers UX (Criação Guiada)
@@ -16449,7 +16500,8 @@ elif page == "Criação Guiada de Fichas":
                         # garante id no pokemon (alguns PDFs antigos podem não ter)
                         sheet_payload.setdefault("pokemon", {})
                         if "id" not in sheet_payload["pokemon"]:
-                            sheet_payload["pokemon"]["id"] = f"pdf_{safe_doc_id(sheet_payload['pokemon'].get('name','pokemon'))}"
+                            fallback_name = sheet_payload["pokemon"].get("name", "pokemon")
+                            sheet_payload["pokemon"]["id"] = normalize_sheet_pokemon_id(f"pdf_{safe_doc_id(fallback_name)}", fallback_name)
                     except Exception:
                         # 2) fallback: Hero Lab / M&M
                         sheet_payload = import_mm_pdf_to_sheet_payload(pdf_bytes)
