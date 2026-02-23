@@ -7535,5 +7535,7 @@
       "px_y": 936,
       "sprite_key": "biome"
     }
-  ]
+  ],
+  "water_animation": {},
+  "water_cells": []
 }

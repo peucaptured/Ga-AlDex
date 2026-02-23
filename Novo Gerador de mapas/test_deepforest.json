@@ -5835,5 +5835,7 @@
       "px_y": 981,
       "sprite_key": "rocks"
     }
-  ]
+  ],
+  "water_animation": {},
+  "water_cells": []
 }
