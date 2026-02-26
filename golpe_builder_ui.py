@@ -720,7 +720,7 @@ def _render_step2(prefix: str):
             flaw_keys = [f["key"] for f in _SIMPLE_FLAWS if f["label"] in sel_flaws]
 
             # Q8: Tipo pokémon
-            type_options = ["(nenhum)"] + [t["key"] for t in TYPE_DESCRIPTORS]
+            type_options = ["(nenhum)"] + list(TYPE_DESCRIPTORS.keys())
             type_sel = st.selectbox("7️⃣  Tipo do Pokémon?", type_options, key=_k(prefix, "s2s_type"))
             pokemon_type = "" if type_sel == "(nenhum)" else type_sel
 
@@ -815,6 +815,8 @@ def _render_step2(prefix: str):
             st.divider()
 
     # ── Configurações por efeito ──
+    if "selected_effects" not in dir():  # garante que existe no modo simples
+        selected_effects = []
     effect_configs: Dict[str, Dict] = {}
     for eff_key in selected_effects:
         eff = EFFECTS[eff_key]
@@ -1077,138 +1079,139 @@ def _render_step2(prefix: str):
 
             effect_configs[eff_key] = config
 
-            # ── Extras Rápidos (condicionais) ─────────────────────────────
-            st.divider()
-            st.markdown("### Modificadores Rápidos (Extras)")
-            st.caption("Mostra apenas extras relevantes para os efeitos selecionados.")
+    if mode == "advanced":
+        # ── Extras Rápidos (condicionais) ─────────────────────────────
+        st.divider()
+        st.markdown("### Modificadores Rápidos (Extras)")
+        st.caption("Mostra apenas extras relevantes para os efeitos selecionados.")
 
-            quick_extras: List[str] = []
-            has_attack = any(EFFECTS.get(k, {}).get("type") == "attack" for k in selected_effects)
-            has_area = False  # será True se algum area extra for marcado
+        quick_extras: List[str] = []
+        has_attack = any(EFFECTS.get(k, {}).get("type") == "attack" for k in selected_effects)
+        has_area = False  # será True se algum area extra for marcado
 
-            extras_range = [(k, v) for k, v in EXTRAS.items() if v.get("group") == "range"]
-            extras_area = [(k, v) for k, v in EXTRAS.items() if v.get("group") == "area"]
-            extras_other = [(k, v) for k, v in EXTRAS.items() if "group" not in v]
+        extras_range = [(k, v) for k, v in EXTRAS.items() if v.get("group") == "range"]
+        extras_area = [(k, v) for k, v in EXTRAS.items() if v.get("group") == "area"]
+        extras_other = [(k, v) for k, v in EXTRAS.items() if "group" not in v]
 
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.markdown("**Alcance**")
-                for key, ex in extras_range:
-                    if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", eff_key, key), help=f"**{ex['label_en']}** — {ex['desc_pt']}"):
-                        quick_extras.append(key)
-            with c2:
-                st.markdown("**Área**")
-                for key, ex in extras_area:
-                    checked = st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", eff_key, key), help=f"**{ex['label_en']}** — {ex['desc_pt']}")
-                    if checked:
-                        quick_extras.append(key)
-                        has_area = True
-            with c3:
-                st.markdown("**Outros**")
-                # Esconde extras irrelevantes: Selective só se há área; Accurate só se há ataque
-                common_extras = ["selective", "accurate", "counter", "reaction", "cumulative", "improved_critical"]
-                for key in common_extras:
-                    if key not in EXTRAS:
-                        continue
-                    # Escolhas condicionais
-                    if key == "selective" and not has_area:
-                        continue
-                    if key in ("accurate", "improved_critical", "counter") and not has_attack:
-                        continue
-                    ex = EXTRAS[key]
-                    if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", eff_key, key), help=f"**{ex['label_en']}** — {ex['desc_pt']}"):
-                        quick_extras.append(key)
-
-            # Extras avançados (compatíveis com ao menos um efeito selecionado)
-            relevant_remaining = []
-            for k, v in extras_other:
-                if k in common_extras:
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown("**Alcance**")
+            for key, ex in extras_range:
+                if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", key), help=f"**{ex['label_en']}** — {ex['desc_pt']}"):
+                    quick_extras.append(key)
+        with c2:
+            st.markdown("**Área**")
+            for key, ex in extras_area:
+                checked = st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", key), help=f"**{ex['label_en']}** — {ex['desc_pt']}")
+                if checked:
+                    quick_extras.append(key)
+                    has_area = True
+        with c3:
+            st.markdown("**Outros**")
+            # Esconde extras irrelevantes: Selective só se há área; Accurate só se há ataque
+            common_extras = ["selective", "accurate", "counter", "reaction", "cumulative", "improved_critical"]
+            for key in common_extras:
+                if key not in EXTRAS:
                     continue
-                compatible = v.get("compatible_effects")
-                if compatible is None or any(e in compatible for e in selected_effects):
-                    relevant_remaining.append((k, v))
-            if relevant_remaining:
-                with st.expander("Mais extras…"):
-                    for key, ex in relevant_remaining:
-                        if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", eff_key, key), help=f"**{ex['label_en']}** — {ex['desc_pt']}"):
-                            quick_extras.append(key)
+                # Escolhas condicionais
+                if key == "selective" and not has_area:
+                    continue
+                if key in ("accurate", "improved_critical", "counter") and not has_attack:
+                    continue
+                ex = EXTRAS[key]
+                if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", key), help=f"**{ex['label_en']}** — {ex['desc_pt']}"):
+                    quick_extras.append(key)
 
-            st.divider()
+        # Extras avançados (compatíveis com ao menos um efeito selecionado)
+        relevant_remaining = []
+        for k, v in extras_other:
+            if k in common_extras:
+                continue
+            compatible = v.get("compatible_effects")
+            if compatible is None or any(e in compatible for e in selected_effects):
+                relevant_remaining.append((k, v))
+        if relevant_remaining:
+            with st.expander("Mais extras…"):
+                for key, ex in relevant_remaining:
+                    if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", key), help=f"**{ex['label_en']}** — {ex['desc_pt']}"):
+                        quick_extras.append(key)
 
-            # ── Falhas Rápidas ──────────────────────────────────────────────
-            st.markdown("### Falhas (reduzem custo)")
-            quick_flaws: List[Dict] = []
-            common_flaws = ["limited", "tiring", "unreliable", "grab_based", "concentration", "side_effect"]
-            c1, c2 = st.columns(2)
-            half = len(common_flaws) // 2
+        st.divider()
 
-            def _render_flaw_check(key: str, col):
-                if key not in FLAWS:
-                    return
-                fl = FLAWS[key]
-                with col:
-                    if st.checkbox(fl["label_pt"], key=_k(prefix, "s2_qfl", eff_key, key), help=f"**{fl['label_en']}** — {fl['desc_pt']}"):
+        # ── Falhas Rápidas ──────────────────────────────────────────────
+        st.markdown("### Falhas (reduzem custo)")
+        quick_flaws: List[Dict] = []
+        common_flaws = ["limited", "tiring", "unreliable", "grab_based", "concentration", "side_effect"]
+        c1, c2 = st.columns(2)
+        half = len(common_flaws) // 2
+
+        def _render_flaw_check(key: str, col):
+            if key not in FLAWS:
+                return
+            fl = FLAWS[key]
+            with col:
+                if st.checkbox(fl["label_pt"], key=_k(prefix, "s2_qfl", key), help=f"**{fl['label_en']}** — {fl['desc_pt']}"):
+                    desc = ""
+                    if fl.get("has_description"):
+                        desc = st.text_input(f"Detalhe ({fl['label_en']})", key=_k(prefix, "s2_qfl_desc", key))
+                    quick_flaws.append({"key": key, "ranks": 1, "description": desc})
+
+        for key in common_flaws[:half + 1]:
+            _render_flaw_check(key, c1)
+        for key in common_flaws[half + 1:]:
+            _render_flaw_check(key, c2)
+
+        remaining_flaws = [k for k in FLAWS if k not in common_flaws]
+        if remaining_flaws:
+            with st.expander("Mais falhas…"):
+                for key in remaining_flaws:
+                    fl = FLAWS[key]
+                    if st.checkbox(fl["label_pt"], key=_k(prefix, "s2_qfl", key), help=f"**{fl['label_en']}** — {fl['desc_pt']}"):
                         desc = ""
                         if fl.get("has_description"):
                             desc = st.text_input(f"Detalhe ({fl['label_en']})", key=_k(prefix, "s2_qfl_desc", key))
                         quick_flaws.append({"key": key, "ranks": 1, "description": desc})
 
-            for key in common_flaws[:half + 1]:
-                _render_flaw_check(key, c1)
-            for key in common_flaws[half + 1:]:
-                _render_flaw_check(key, c2)
+        st.divider()
 
-            remaining_flaws = [k for k in FLAWS if k not in common_flaws]
-            if remaining_flaws:
-                with st.expander("Mais falhas…"):
-                    for key in remaining_flaws:
-                        fl = FLAWS[key]
-                        if st.checkbox(fl["label_pt"], key=_k(prefix, "s2_qfl", eff_key, key), help=f"**{fl['label_en']}** — {fl['desc_pt']}"):
-                            desc = ""
-                            if fl.get("has_description"):
-                                desc = st.text_input(f"Detalhe ({fl['label_en']})", key=_k(prefix, "s2_qfl_desc", key))
-                            quick_flaws.append({"key": key, "ranks": 1, "description": desc})
-
-            st.divider()
-
-            # ── Gerar Build (modo avançado) ─────────────────────────────────
-            if st.button("🚀 Gerar Build", key=_k(prefix, "s2_generate"), type="primary", disabled=not selected_effects):
-                components_adv: List[PowerComponent] = []
-                for i, eff_key in enumerate(selected_effects):
-                    cfg = effect_configs.get(eff_key, {})
-                    comp = PowerComponent(
-                        effect_key=eff_key,
-                        rank=int(cfg.get("rank", base_rank)),
-                        is_linked=(i > 0),
-                        conditions=cfg.get("conditions"),
-                        stat_targets=cfg.get("stat_targets", []),
-                        resist_override=cfg.get("resist"),
-                        immunity_items=cfg.get("immunity_items", []),
-                        sense_items=cfg.get("sense_items", []),
-                        communication_type=cfg.get("communication_type", ""),
-                        communication_custom_sense=cfg.get("communication_custom_sense", ""),
-                        movement_types=cfg.get("movement_types", []),
-                    )
-                    if i == 0 or eff_key in ("damage", "affliction", "weaken"):
-                        for ex_key in quick_extras:
-                            comp.extras.append({"key": ex_key, "ranks": 1, "description": ""})
-                    if i == 0:
-                        for fl in quick_flaws:
-                            comp.flaws.append(dict(fl))
-                    components_adv.append(comp)
-
-                adv_draft = GolpeDraft(
-                    name=draft.name,
-                    category=draft.category,
-                    components=components_adv,
-                    pokemon_type=draft.pokemon_type,
+        # ── Gerar Build (modo avançado) ─────────────────────────────────
+        if st.button("🚀 Gerar Build", key=_k(prefix, "s2_generate"), type="primary", disabled=not selected_effects):
+            components_adv: List[PowerComponent] = []
+            for i, eff_key in enumerate(selected_effects):
+                cfg = effect_configs.get(eff_key, {})
+                comp = PowerComponent(
+                    effect_key=eff_key,
+                    rank=int(cfg.get("rank", base_rank)),
+                    is_linked=(i > 0),
+                    conditions=cfg.get("conditions"),
+                    stat_targets=cfg.get("stat_targets", []),
+                    resist_override=cfg.get("resist"),
+                    immunity_items=cfg.get("immunity_items", []),
+                    sense_items=cfg.get("sense_items", []),
+                    communication_type=cfg.get("communication_type", ""),
+                    communication_custom_sense=cfg.get("communication_custom_sense", ""),
+                    movement_types=cfg.get("movement_types", []),
                 )
-                _set_draft(prefix, adv_draft)
-                _set_step(prefix, 3)
-                st.rerun()
+                if i == 0 or eff_key in ("damage", "affliction", "weaken"):
+                    for ex_key in quick_extras:
+                        comp.extras.append({"key": ex_key, "ranks": 1, "description": ""})
+                if i == 0:
+                    for fl in quick_flaws:
+                        comp.flaws.append(dict(fl))
+                components_adv.append(comp)
 
-            if not selected_effects:
-                st.info("Selecione pelo menos um efeito para gerar a build.")
+            adv_draft = GolpeDraft(
+                name=draft.name,
+                category=draft.category,
+                components=components_adv,
+                pokemon_type=draft.pokemon_type,
+            )
+            _set_draft(prefix, adv_draft)
+            _set_step(prefix, 3)
+            st.rerun()
+
+        if not selected_effects:
+            st.info("Selecione pelo menos um efeito para gerar a build.")
 
         # ── Preview ao vivo — modo avançado ─────────────────────────────
         with col_prev:
