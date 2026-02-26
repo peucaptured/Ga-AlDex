@@ -1,4 +1,4 @@
-
+f
 # app_unificado.py
 # Arquivo ÚNICO: app.py + move_db.py + move_creator_ui.py (com cg_draft)
 
@@ -16668,6 +16668,27 @@ elif page == "Criação Guiada de Fichas":
     
             # Busca ID no Excel
             pid = resolve_pokemon_pid(df, pname)
+
+
+            # Linha da Pokédex para recursos contextuais (ex.: Viabilidade)
+            row = pd.DataFrame()
+            try:
+                pid_norm = _norm_pid(pid)
+                if pid_norm:
+                    row = df[df["Nº"].apply(_norm_pid) == pid_norm]
+
+                # fallback por nome quando o PID não resolve (formas/aliases)
+                if row.empty and "Nome" in df.columns:
+                    nomes = df["Nome"].astype(str)
+                    row = df[nomes.apply(normalize_text) == normalize_text(pname)]
+
+                if row.empty and "Nome" in df.columns:
+                    api_key = to_pokeapi_name(pname)
+                    if api_key:
+                        row = df[nomes.apply(lambda x: to_pokeapi_name(str(x))) == api_key]
+            except Exception:
+                row = pd.DataFrame()
+
     
             # Busca dados na API
             with st.spinner("Buscando dados do Pokémon online (stats + ability + tipos)..."):
