@@ -1078,6 +1078,9 @@ class BiomeGenerator:
                 "size_class": sp.size_class,
                 "px_x": int(draw_x),
                 "px_y": int(draw_y),
+                "_img": im_final,          # PIL Image; stripped before JSON serialisation
+                "_img_w": im_final.width,  # natural pixel size at generation tile_px
+                "_img_h": im_final.height,
             })
             return True
 
@@ -1249,7 +1252,19 @@ class BiomeGenerator:
         grid_h: int = 32,
         tile_px: int = 32,
         seed: int = 0,
+        legacy_mode: bool = False,
     ) -> Image.Image:
+        """Generate a biome map image.
+
+        Parameters
+        ----------
+        legacy_mode:
+            ``True``  – original behaviour: all decorations baked into the
+            returned canvas.  ``_last_map_data`` uses the v1 schema.
+            ``False`` (default) – terrain only in the returned canvas;
+            decoration sprites captured for separate export.
+            ``_last_map_data`` uses the v2 schema with ``layers`` + ``objects``.
+        """
         rng = random.Random(seed)
         biome = biome.lower().strip()
 
@@ -1468,6 +1483,18 @@ class BiomeGenerator:
             occ_wall = None
             allowed_wall = None
 
+        # ── Split-layers mode: keep terrain and objects on separate canvases ──
+        # legacy_mode=False  → decorations blitted to canvas_objects (transparent),
+        #                       canvas stays terrain-only; we composite at the end so
+        #                       the returned Image always looks correct.
+        # legacy_mode=True   → decorations blitted directly to canvas (old behaviour).
+        if not legacy_mode:
+            self._canvas_terrain = canvas.copy()            # snapshot: terrain only
+            _decor_canvas = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+        else:
+            self._canvas_terrain = None
+            _decor_canvas = canvas
+
         # Place decorations per config, collecting placement records
         all_placements: List[dict] = []
 
@@ -1489,7 +1516,7 @@ class BiomeGenerator:
 
                 if floor_sp:
                     recs = self._place_sprites(
-                        canvas, rng, floor_sp, occ, tile_px,
+                        _decor_canvas, rng, floor_sp, occ, tile_px,
                         attempts=attempts, density=density,
                         allowed_anchor=allowed_floor,
                     )
@@ -1498,7 +1525,7 @@ class BiomeGenerator:
                     all_placements.extend(recs)
                 if wall_sp and occ_wall is not None:
                     recs = self._place_sprites(
-                        canvas, rng, wall_sp, occ_wall, tile_px,
+                        _decor_canvas, rng, wall_sp, occ_wall, tile_px,
                         attempts=min(150, attempts),
                         density=density * 0.5,
                         allowed_anchor=allowed_wall,
@@ -1515,7 +1542,7 @@ class BiomeGenerator:
                 anchor = allowed_floor
 
             recs = self._place_sprites(
-                canvas, rng, sprites, occ, tile_px,
+                _decor_canvas, rng, sprites, occ, tile_px,
                 attempts=attempts,
                 density=density,
                 allowed_anchor=anchor,
@@ -1524,8 +1551,42 @@ class BiomeGenerator:
                 r["sprite_key"] = sprite_key
             all_placements.extend(recs)
 
+        # ── Composite objects onto main canvas so returned image is always complete ──
+        if not legacy_mode:
+            canvas.alpha_composite(_decor_canvas)
+            self._canvas_objects = _decor_canvas
+        else:
+            self._canvas_objects = None
+
+        # ── Build v2 objects list from placement records ──
+        _zero_row = [0] * grid_w
+        _objects_v2 = []
+        for i, p in enumerate(all_placements):
+            sk = p.get("sprite_key", "unknown")
+            # Derive a human-readable kind from the sprite key
+            kind = sk[: -len("_wall")] if sk.endswith("_wall") else sk
+            _objects_v2.append({
+                "id": f"obj_{i}",
+                "kind": kind,
+                "x": p["grid_x"],
+                "y": p["grid_y"],
+                "sprite": "",           # filled by generate_to_file / save_sprites
+                "anchor": {"ax": 0.5, "ay": 1.0},
+                "footprint": {"w": p["tiles_w"], "h": p["tiles_h"]},
+                "blocks": p["size_class"] != "micro",
+                "occludes": p["size_class"] == "setpiece",
+                "splitSprite": False,
+                "topSprite": "",
+                # Internal fields (stripped before serialisation)
+                "_img": p.get("_img"),
+                "_img_w": p.get("_img_w", 0),
+                "_img_h": p.get("_img_h", 0),
+                "_sprite_key": sk,
+            })
+
         # ── Store map data for JSON export ──
         self._last_map_data = {
+            # ── v1 fields (kept for backward compatibility) ──
             "biome": biome,
             "grid_w": grid_w,
             "grid_h": grid_h,
@@ -1538,41 +1599,108 @@ class BiomeGenerator:
             # land_mask uses the 4-bit bitmask: N=1, E=2, S=4, W=8.
             "water_animation": self.ocean_anim_info if mode in ("beach", "lake", "river") else {},
             "water_cells": _water_cells if mode in ("beach", "lake", "river") else [],
+            # ── v2 fields ──
+            "layers": {
+                "ground":     grid.tolist(),
+                "overlayLow": [list(_zero_row) for _ in range(grid_h)],
+                "overlayHigh": [list(_zero_row) for _ in range(grid_h)],
+            },
+            "objects": _objects_v2,
+            "meta": {"version": 2, "notes": "layers enabled"},
         }
 
         return canvas
 
     # ────── JSON export ──────
 
-    def export_map_data(self) -> dict:
+    # Internal set of keys that hold PIL Image objects and must never be serialised.
+    _STRIP_KEYS = frozenset({"_img", "_img_w", "_img_h", "_sprite_key"})
+
+    def export_map_data(self, export_legacy: bool = False) -> dict:
         """Return the map data dictionary from the last ``generate()`` call.
 
-        Structure::
+        Parameters
+        ----------
+        export_legacy:
+            ``True``  – return the v1 schema (``terrain_grid`` / ``decorations``).
+            ``False`` (default) – return the v2 schema (``layers`` / ``objects`` /
+            ``meta.version=2``).  Internal ``_img`` fields are stripped so the
+            result is JSON-serialisable.
+
+        v2 structure::
 
             {
               "biome": str,
-              "grid_w": int,
-              "grid_h": int,
-              "tile_px": int,
-              "seed": int,
-              "terrain_grid": [[int, ...], ...],   # 2D matrix of zone IDs
-              "decorations": [
-                {
-                  "sprite_key": str,
-                  "grid_x": int, "grid_y": int,
-                  "tiles_w": int, "tiles_h": int,
-                  "size_class": str,
-                  "px_x": int, "px_y": int,
-                },
+              "grid_w": int, "grid_h": int,
+              "tile_px": int, "seed": int,
+              "terrain_grid": ...,   # kept for backward compat (water anim etc.)
+              "water_cells": [...],
+              "water_animation": {...},
+              "layers": {
+                "ground":    [[tileId, ...], ...],
+                "overlayLow":  [[0, ...], ...],
+                "overlayHigh": [[0, ...], ...],
+              },
+              "objects": [
+                { "id": str, "kind": str, "x": int, "y": int,
+                  "sprite": str, "anchor": {...}, "footprint": {...},
+                  "blocks": bool, "occludes": bool,
+                  "splitSprite": bool, "topSprite": str },
                 ...
-              ]
+              ],
+              "meta": {"version": 2, "notes": "layers enabled"},
             }
         """
-        return getattr(self, "_last_map_data", {})
+        raw = getattr(self, "_last_map_data", {})
+        if not raw:
+            return {}
 
-    def export_map_json(self, json_path: str | Path) -> None:
-        """Save map data from the last ``generate()`` call to a JSON file."""
-        data = self.export_map_data()
+        def _strip(obj: dict) -> dict:
+            return {k: v for k, v in obj.items() if k not in self._STRIP_KEYS}
+
+        if export_legacy:
+            # v1: strip v2-only keys and internal fields
+            result = {k: v for k, v in raw.items()
+                      if k not in ("layers", "objects", "meta")}
+            result["decorations"] = [_strip(d) for d in result.get("decorations", [])]
+            return result
+
+        # v2: strip internal PIL image fields from objects and decorations
+        result = dict(raw)
+        result["objects"] = [_strip(o) for o in raw.get("objects", [])]
+        result["decorations"] = [_strip(d) for d in raw.get("decorations", [])]
+        return result
+
+    def save_sprites(self, sprites_dir: str | Path) -> None:
+        """Save each object's sprite crop to *sprites_dir* and update the
+        ``sprite`` field in ``_last_map_data["objects"]`` with a relative path.
+
+        Call this *before* ``export_map_json`` when using the v2 pipeline so
+        that the frontend can load individual object sprites for Y-sort rendering.
+        """
+        sprites_dir = Path(sprites_dir)
+        sprites_dir.mkdir(parents=True, exist_ok=True)
+        for obj in getattr(self, "_last_map_data", {}).get("objects", []):
+            img: Optional["Image.Image"] = obj.get("_img")
+            if img is None:
+                continue
+            idx = obj["id"]  # e.g. "obj_0"
+            fname = f"{idx}.png"
+            fpath = sprites_dir / fname
+            img.save(fpath)
+            obj["sprite"] = f"./{sprites_dir.name}/{fname}"
+
+    def export_map_json(self, json_path: str | Path,
+                        export_legacy: bool = False) -> None:
+        """Save map data from the last ``generate()`` call to a JSON file.
+
+        Parameters
+        ----------
+        export_legacy:
+            Passed through to ``export_map_data``; when ``True`` the written
+            JSON uses the v1 schema.
+        """
+        data = self.export_map_data(export_legacy=export_legacy)
         if not data:
             return
         json_path = Path(json_path)
@@ -1593,17 +1721,42 @@ def generate_to_file(
     grid_h: int = 32,
     tile_px: int = 32,
     seed: int = 0,
+    legacy: bool = False,
 ) -> None:
+    """Generate a biome map and save it to disk.
+
+    Parameters
+    ----------
+    legacy:
+        ``True``  – original behaviour: single combined PNG (terrain + baked
+        decorations) + v1 JSON schema.
+        ``False`` (default) – terrain-only PNG + per-object sprite crops in a
+        ``{stem}_sprites/`` sub-directory + v2 JSON schema with ``layers`` /
+        ``objects`` / ``meta.version=2``.
+    """
     gen = BiomeGenerator(assets_root)
     img = gen.generate(biome=biome, grid_w=grid_w, grid_h=grid_h,
-                       tile_px=tile_px, seed=seed)
+                       tile_px=tile_px, seed=seed, legacy_mode=legacy)
     out_png = Path(out_png)
     out_png.parent.mkdir(parents=True, exist_ok=True)
-    img.save(out_png)
 
-    # Also export companion JSON with terrain grid + decoration data
+    if legacy:
+        # v1: save combined image as-is
+        img.save(out_png)
+    else:
+        # v2: save terrain-only PNG (decorations rendered separately by the game)
+        terrain_img = gen._canvas_terrain
+        if terrain_img is not None:
+            terrain_img.save(out_png)
+        else:
+            img.save(out_png)  # fallback: no terrain canvas captured
+
+        # Save per-object sprite crops for Y-sort rendering in main.js
+        sprites_dir = out_png.parent / (out_png.stem + "_sprites")
+        gen.save_sprites(sprites_dir)
+
     json_path = out_png.with_suffix(".json")
-    gen.export_map_json(json_path)
+    gen.export_map_json(json_path, export_legacy=legacy)
 
 
 if __name__ == "__main__":
