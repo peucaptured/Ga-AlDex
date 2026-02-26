@@ -1094,12 +1094,12 @@ def _render_step2(prefix: str):
             with c1:
                 st.markdown("**Alcance**")
                 for key, ex in extras_range:
-                    if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", key), help=f"**{ex['label_en']}** — {ex['desc_pt']}"):
+                    if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", eff_key, key), help=f"**{ex['label_en']}** — {ex['desc_pt']}"):
                         quick_extras.append(key)
             with c2:
                 st.markdown("**Área**")
                 for key, ex in extras_area:
-                    checked = st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", key), help=f"**{ex['label_en']}** — {ex['desc_pt']}")
+                    checked = st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", eff_key, key), help=f"**{ex['label_en']}** — {ex['desc_pt']}")
                     if checked:
                         quick_extras.append(key)
                         has_area = True
@@ -1116,7 +1116,7 @@ def _render_step2(prefix: str):
                     if key in ("accurate", "improved_critical", "counter") and not has_attack:
                         continue
                     ex = EXTRAS[key]
-                    if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", key), help=f"**{ex['label_en']}** — {ex['desc_pt']}"):
+                    if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", eff_key, key), help=f"**{ex['label_en']}** — {ex['desc_pt']}"):
                         quick_extras.append(key)
 
             # Extras avançados (compatíveis com ao menos um efeito selecionado)
@@ -1130,7 +1130,7 @@ def _render_step2(prefix: str):
             if relevant_remaining:
                 with st.expander("Mais extras…"):
                     for key, ex in relevant_remaining:
-                        if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", key), help=f"**{ex['label_en']}** — {ex['desc_pt']}"):
+                        if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", eff_key, key), help=f"**{ex['label_en']}** — {ex['desc_pt']}"):
                             quick_extras.append(key)
 
             st.divider()
@@ -1147,7 +1147,7 @@ def _render_step2(prefix: str):
                     return
                 fl = FLAWS[key]
                 with col:
-                    if st.checkbox(fl["label_pt"], key=_k(prefix, "s2_qfl", key), help=f"**{fl['label_en']}** — {fl['desc_pt']}"):
+                    if st.checkbox(fl["label_pt"], key=_k(prefix, "s2_qfl", eff_key, key), help=f"**{fl['label_en']}** — {fl['desc_pt']}"):
                         desc = ""
                         if fl.get("has_description"):
                             desc = st.text_input(f"Detalhe ({fl['label_en']})", key=_k(prefix, "s2_qfl_desc", key))
@@ -1163,7 +1163,7 @@ def _render_step2(prefix: str):
                 with st.expander("Mais falhas…"):
                     for key in remaining_flaws:
                         fl = FLAWS[key]
-                        if st.checkbox(fl["label_pt"], key=_k(prefix, "s2_qfl", key), help=f"**{fl['label_en']}** — {fl['desc_pt']}"):
+                        if st.checkbox(fl["label_pt"], key=_k(prefix, "s2_qfl", eff_key, key), help=f"**{fl['label_en']}** — {fl['desc_pt']}"):
                             desc = ""
                             if fl.get("has_description"):
                                 desc = st.text_input(f"Detalhe ({fl['label_en']})", key=_k(prefix, "s2_qfl_desc", key))
