@@ -1,4 +1,4 @@
-f
+
 # app_unificado.py
 # Arquivo ÚNICO: app.py + move_db.py + move_creator_ui.py (com cg_draft)
 
