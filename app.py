@@ -40,6 +40,22 @@ from streamlit.runtime import scriptrunner # <--- IMPORTANTE: Importar o módulo
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 from streamlit.errors import StreamlitAPIException
 
+# ─── Golpe Builder MM3e (criador avançado de golpes) ─────────────────────────
+try:
+    from golpe_builder_ui import render_golpe_builder as _gb_render_builder
+    from golpe_builder import (
+        parse_build_string as _gb_parse_build,
+        calculate_total_pp as _gb_calc_pp,
+        GolpeDraft as _GolpeDraft,
+    )
+    _GB_AVAILABLE = True
+except Exception:  # ImportError, ModuleNotFoundError, etc.
+    _GB_AVAILABLE = False
+    _gb_render_builder = None
+    _gb_parse_build = None
+    _gb_calc_pp = None
+    _GolpeDraft = None
+
 
 # ================================
 # MOVE DB + MOVE CREATOR (UNIFICADO)
@@ -2800,6 +2816,40 @@ def _cg_confirm_move(mv, rank: int, pp_override: int | None = None, accuracy: in
             "ranged": bool(getattr(mv, "ranged", False)),
             "perception_area": bool(getattr(mv, "perception_area", False)),
             "category": str(getattr(mv, "categoria", "") or ""),
+        },
+    }
+
+
+def _cg_confirm_move_with_engine(mv, rank: int, accuracy: int | None = None) -> dict:
+    """Como _cg_confirm_move, mas usa parse_build_string para calcular PP com o motor MM3e."""
+    build_str = mv.render_build(int(rank))
+    pp: int | None = None
+    if _GB_AVAILABLE and _gb_parse_build is not None:
+        try:
+            comps = _gb_parse_build(build_str, default_rank=int(rank))
+            draft = _GolpeDraft(name=mv.name, components=comps)
+            pp_raw, _ = _gb_calc_pp(draft)
+            pp = int(pp_raw) if pp_raw is not None else None
+        except Exception:
+            pp = None
+    if pp is None:
+        try:
+            tmp = mv.pp_cost(int(rank))
+            pp = int(tmp[0]) if isinstance(tmp, tuple) else (int(tmp) if tmp is not None else None)
+        except Exception:
+            pp = None
+    acc = int(accuracy) if accuracy is not None else _default_accuracy_from_raw(mv)
+    return {
+        "name": mv.name,
+        "rank": int(rank),
+        "build": build_str,
+        "pp_cost": pp,
+        "accuracy": acc,
+        "meta": {
+            "ranged": bool(getattr(mv, "ranged", False)),
+            "perception_area": bool(getattr(mv, "perception_area", False)),
+            "category": str(getattr(mv, "categoria", "") or ""),
+            "engine_pp": True,
         },
     }
 
@@ -9112,7 +9162,9 @@ def _viab_apply_to_session(
         k = _norm(mv.name)
         if not k or k in existing:
             continue
-        st.session_state["cg_moves"].append(_cg_confirm_move(mv, int(rank_default)))
+        # Usa o motor MM3e para calcular PP quando disponível
+        move_entry = _cg_confirm_move_with_engine(mv, int(rank_default))
+        st.session_state["cg_moves"].append(move_entry)
         existing.add(k)
         added_names.append(mv.name)
 
@@ -9233,6 +9285,7 @@ _SVG_POKEBALL = """<svg viewBox='0 0 24 24' width='16' height='16' fill='none' x
 _SVG_STAR = """<svg viewBox='0 0 24 24' width='16' height='16' fill='white' xmlns='http://www.w3.org/2000/svg'><path d='M12 17.3l-6.18 3.25 1.18-6.88L1.99 8.95l6.91-1 3.1-6.26 3.1 6.26 6.91 1-5 4.72 1.18 6.88z'/></svg>"""
 _SVG_EYE = """<svg viewBox='0 0 24 24' width='16' height='16' fill='none' xmlns='http://www.w3.org/2000/svg'><path d='M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z' stroke='white' stroke-width='2'/><circle cx='12' cy='12' r='3' fill='white'/></svg>"""
 
+@st.cache_data(ttl=7200, show_spinner=False)
 def load_excel_data():
     # Preferência: usar a pokédex nova se estiver no projeto com esse nome.
     # Mantém compatibilidade com o nome antigo (pokedex.xlsx).
@@ -9294,6 +9347,8 @@ def pokemon_pid_to_image(pid: str, mode: str = "artwork", shiny: bool = False) -
     return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
 
 
+# load_excel_data já tem @st.cache_data – basta chamar diretamente
+# (result é cacheado em memória entre reruns e sessões; session_state serve só de alias)
 if 'df_data' not in st.session_state:
     st.session_state['df_data'], st.session_state['cols_map'] = load_excel_data()
 
@@ -9327,7 +9382,9 @@ if st.sidebar.button("🚪 Sair (Logout)"):
 
 
 if st.sidebar.button("🔄 Recarregar Excel"):
-    st.session_state['df_data'], st.session_state['cols_map'] = load_excel_data()
+    load_excel_data.clear()  # limpa cache do @st.cache_data
+    st.session_state.pop('df_data', None)
+    st.session_state.pop('cols_map', None)
     st.rerun()
 
 # --- navegação programática (antes do radio key="page") ---
@@ -16462,24 +16519,36 @@ elif page == "Criação Guiada de Fichas":
             st.rerun()
 
     # ==========================
-    # A) CRIAÇÃO DE GOLPES (REAL)
+    # A) CRIAÇÃO DE GOLPES (Golpe Builder MM3e)
     # ==========================
     if st.session_state["cg_view"] == "moves":
-        st.subheader("⚔️ Criação de Golpes")
+        trainer_name_gb = st.session_state.get("trainer_name", "Treinador")
+        return_to_view_gb = st.session_state.get("cg_return_to")
+        if return_to_view_gb != "guided":
+            return_to_view_gb = None
 
-        # ✅ CHAMA O COMPONENTE QUE VOCÊ JÁ CRIOU (move_creator_ui.py)
-        return_to_view = st.session_state.get("cg_return_to")
-        if return_to_view != "guided":
-            return_to_view = None
-        render_move_creator(
-            excel_path="golpes_pokemon_MM_reescritos.xlsx",
-            state_key_prefix="cg_moves_ui",
-            return_to_view=return_to_view,
-        )
-        # botão voltar
-        if st.button("⬅️ Voltar para a ficha", key="btn_back_to_sheet"):
-            st.session_state["cg_view"] = st.session_state.get("cg_return_to", "menu")
-            st.rerun()
+        if _GB_AVAILABLE:
+            _gb_render_builder(
+                excel_path=_resolve_asset_path("golpes_pokemon_MM_reescritos.xlsx"),
+                state_key_prefix="cg_gb_main",
+                return_to_view=return_to_view_gb,
+                trainer_name=trainer_name_gb,
+            )
+        else:
+            st.subheader("⚔️ Criação de Golpes")
+            st.warning("Módulo golpe_builder_ui não encontrado. Usando criador legado.")
+            return_to_view = return_to_view_gb
+            render_move_creator(
+                excel_path=_resolve_asset_path("golpes_pokemon_MM_reescritos.xlsx"),
+                state_key_prefix="cg_moves_ui",
+                return_to_view=return_to_view,
+            )
+
+        # botão voltar (fallback se render_golpe_builder não mostrar o próprio)
+        if not _GB_AVAILABLE:
+            if st.button("⬅️ Voltar para a ficha", key="btn_back_to_sheet"):
+                st.session_state["cg_view"] = st.session_state.get("cg_return_to", "menu")
+                st.rerun()
 
 
     # ==========================
@@ -17367,39 +17436,42 @@ elif page == "Criação Guiada de Fichas":
                         if "cg_u_loaded_raw" not in st.session_state:
                             st.session_state["cg_u_loaded_raw"] = None
                 
+                        def _cg_u_load_model_cb() -> None:
+                            opt_val = st.session_state.get("cg_u_pick", "")
+                            if not opt_val:
+                                return
+                            mv_obj = db_moves_guided.get_by_name(opt_val) if db_moves_guided else None
+                            if mv_obj:
+                                st.session_state["cg_u_loaded_raw"] = getattr(mv_obj, "raw", {})
+                                st.session_state["cg_u_name"] = mv_obj.name
+                                cat_map = {
+                                    "fisico": "Físico (Stgr)", "físico": "Físico (Stgr)",
+                                    "especial": "Especial (Int)", "status": "Status",
+                                }
+                                st.session_state["cg_u_cat"] = cat_map.get((mv_obj.categoria or "").strip().lower(), "Status")
+                                st.session_state["cg_u_build"] = (mv_obj.build or "").strip()
+                                st.session_state["cg_u_build_pending"] = st.session_state["cg_u_build"]
+
+                        def _cg_u_load_paste_cb() -> None:
+                            pasted_val = st.session_state.get("cg_u_paste", "").strip()
+                            st.session_state["cg_u_loaded_raw"] = None
+                            st.session_state["cg_u_build"] = pasted_val
+                            st.session_state["cg_u_build_pending"] = pasted_val
+
                         if src_kind.startswith("Golpe existente"):
                             q = st.text_input("Buscar modelo pelo nome (prefixo)", key="cg_u_q")
-                            hits = db.search_by_name_prefix(q) if q else []
+                            hits = db_moves_guided.search_by_name_prefix(q) if q and db_moves_guided else []
                             if hits:
-                                opt = st.selectbox("Selecione um golpe", [m.name for m in hits[:50]], key="cg_u_pick")
-                                if st.button("⬇️ Carregar modelo", key="cg_u_load_model", type="primary"):
-                                    mv = db.get_by_name(opt)
-                                    if mv:
-                                        st.session_state["cg_u_loaded_raw"] = getattr(mv, "raw", {})
-                                        st.session_state["cg_u_name"] = mv.name
-                                        # tenta mapear categoria -> radio
-                                        cat_map = {
-                                            "fisico": "Físico (Stgr)",
-                                            "físico": "Físico (Stgr)",
-                                            "especial": "Especial (Int)",
-                                            "status": "Status",
-                                        }
-                                        st.session_state["cg_u_cat"] = cat_map.get((mv.categoria or "").strip().lower(), "Status")
-                                        st.session_state["cg_u_build"] = (mv.build or "").strip()
-                                        st.session_state["cg_u_build_pending"] = st.session_state.get("cg_u_build", "")
-                                        st.success("Modelo carregado. Você pode editar a build abaixo.")
-                                        st.rerun()
+                                st.selectbox("Selecione um golpe", [m.name for m in hits[:50]], key="cg_u_pick")
+                                st.button("⬇️ Carregar modelo", key="cg_u_load_model", type="primary",
+                                          on_click=_cg_u_load_model_cb)
                             else:
                                 st.info("Digite o início do nome para listar modelos.")
                 
                         elif src_kind.startswith("Colar"):
-                            pasted = st.text_area("Cole a build aqui", height=140, key="cg_u_paste")
-                            if st.button("⬇️ Carregar build colada", key="cg_u_load_paste", type="primary"):
-                                st.session_state["cg_u_loaded_raw"] = None
-                                st.session_state["cg_u_build"] = (pasted or "").strip()
-                                st.session_state["cg_u_build_pending"] = st.session_state.get("cg_u_build", "")
-                                st.success("Build carregada no editor.")
-                                st.rerun()
+                            st.text_area("Cole a build aqui", height=140, key="cg_u_paste")
+                            st.button("⬇️ Carregar build colada", key="cg_u_load_paste", type="primary",
+                                      on_click=_cg_u_load_paste_cb)
                 
                         else:
                             st.caption("Em branco: você vai montar a build a partir dos atalhos abaixo.")
@@ -17442,88 +17514,71 @@ elif page == "Criação Guiada de Fichas":
 
                             st.session_state["cg_u_build"] = (build_u or "").strip()
                 
+                        # ── on_click callbacks (elimina double-rerun por botão) ───────
+                        def _cg_u_append(text: str) -> None:
+                            cur = (st.session_state.get('cg_u_build') or '').rstrip()
+                            updated = (cur + ' ' + text).strip()
+                            st.session_state['cg_u_build'] = updated
+                            st.session_state['cg_u_build_pending'] = updated
+
+                        def _cg_u_insert_effect_cb() -> None:
+                            _base   = st.session_state.get('cg_u_base', 'Damage')
+                            _rank_b = int(st.session_state.get('cg_u_base_rank', 1) or 1)
+                            _area   = st.session_state.get('cg_u_area', '—')
+                            _etxt   = (st.session_state.get('cg_u_extras_txt') or '').strip()
+                            _ftxt   = (st.session_state.get('cg_u_flaws_txt') or '').strip()
+                            _linked = bool(st.session_state.get('cg_u_next_linked', False))
+                            piece = f"{_base} {_rank_b}"
+                            if _area != '—':
+                                piece += f" [Area: {_area}]"
+                            if _etxt:
+                                piece += ' ' + _etxt
+                            if _ftxt:
+                                piece += ' ' + _ftxt
+                            if _linked:
+                                piece = 'Linked ' + piece
+                            cur = (st.session_state.get('cg_u_build') or '').strip()
+                            if cur:
+                                if not cur.endswith(';'):
+                                    cur += ';'
+                                cur += ' ' + piece
+                            else:
+                                cur = piece
+                            st.session_state['cg_u_build'] = cur
+                            st.session_state['cg_u_build_pending'] = cur
+
+                        def _cg_u_clear_cb() -> None:
+                            st.session_state['cg_u_build'] = ''
+                            st.session_state['cg_u_build_pending'] = ''
+
+                        def _cg_u_undo_cb() -> None:
+                            cur = (st.session_state.get('cg_u_build') or '').strip()
+                            cur = cur.rsplit(';', 1)[0].strip() if ';' in cur else ''
+                            st.session_state['cg_u_build'] = cur
+                            st.session_state['cg_u_build_pending'] = cur
+
                         with cR:
                             st.markdown('**Atalhos (opcionais):**')
                             st.caption('Eles só **inserem texto** na build (não mudam suas fórmulas).')
-                            linked = st.checkbox("Prefixar com 'Linked' no próximo efeito-base", value=False, key='cg_u_next_linked')
-                            base = st.selectbox('Inserir efeito-base', ['Damage','Affliction','Weaken','Healing','Nullify','Create','Environment','Teleport','Dazzle','Concealment','Deflect','Immunity','Enhanced Trait','Feature','Movement'], index=0, key='cg_u_base')
-                            rank_b = st.number_input('Rank do efeito-base', min_value=0, max_value=30, value=int(st.session_state.get('cg_u_rank', 1)), step=1, key='cg_u_base_rank')
-                            area = st.selectbox('Área (opcional)', ['—','Burst','Cone','Line','Cloud','Perception Area','Shapeable','Selective'], index=0, key='cg_u_area')
-                            extras_txt = st.text_input('Extras (texto, opcional)', key='cg_u_extras_txt', placeholder='Ex.: [Extra: Increased Range 1] [Extra: Improved Critical 1]')
-                            flaws_txt = st.text_input('Flaws/Limites (texto, opcional)', key='cg_u_flaws_txt', placeholder='Ex.: [Flaw: Limited - Objects] [Flaw: Distracting]')
-                            if st.button('➕ Inserir efeito na build', key='cg_u_insert_base'):
-                                piece = f"{base} {int(rank_b)}"
-                                if area != '—':
-                                    piece += f" [Area: {area}]"
-                                if extras_txt.strip():
-                                    piece += ' ' + extras_txt.strip()
-                                if flaws_txt.strip():
-                                    piece += ' ' + flaws_txt.strip()
-                                if linked:
-                                    piece = 'Linked ' + piece
-                                cur = (st.session_state.get('cg_u_build') or '').strip()
-                                if cur:
-                                    if not cur.endswith(';'):
-                                        cur += ';'
-                                    cur += ' ' + piece
-                                else:
-                                    cur = piece
-                                st.session_state['cg_u_build'] = cur
-                                st.session_state['cg_u_build_pending'] = cur
-                                st.rerun()
+                            st.checkbox("Prefixar com 'Linked' no próximo efeito-base", value=False, key='cg_u_next_linked')
+                            st.selectbox('Inserir efeito-base', ['Damage','Affliction','Weaken','Healing','Nullify','Create','Environment','Teleport','Dazzle','Concealment','Deflect','Immunity','Enhanced Trait','Feature','Movement'], index=0, key='cg_u_base')
+                            st.number_input('Rank do efeito-base', min_value=0, max_value=30, value=int(st.session_state.get('cg_u_rank', 1)), step=1, key='cg_u_base_rank')
+                            st.selectbox('Área (opcional)', ['—','Burst','Cone','Line','Cloud','Perception Area','Shapeable','Selective'], index=0, key='cg_u_area')
+                            st.text_input('Extras (texto, opcional)', key='cg_u_extras_txt', placeholder='Ex.: [Extra: Increased Range 1] [Extra: Improved Critical 1]')
+                            st.text_input('Flaws/Limites (texto, opcional)', key='cg_u_flaws_txt', placeholder='Ex.: [Flaw: Limited - Objects] [Flaw: Distracting]')
+                            st.button('➕ Inserir efeito na build', key='cg_u_insert_base', on_click=_cg_u_insert_effect_cb)
                             st.markdown('**Inserir modificadores comuns:**')
                             m1, m2 = st.columns(2)
-                            if m1.button('[Ranged]', key='cg_u_m_ranged'):
-                                cur = (st.session_state.get('cg_u_build') or '').rstrip()
-                                cur = (cur + ' [Ranged]').strip()
-                                st.session_state['cg_u_build'] = cur
-                                st.session_state['cg_u_build_pending'] = cur
-                                st.rerun()
-                            if m1.button('[Perception]', key='cg_u_m_perception'):
-                                cur = (st.session_state.get('cg_u_build') or '').rstrip()
-                                cur = (cur + ' [Perception]').strip()
-                                st.session_state['cg_u_build'] = cur
-                                st.session_state['cg_u_build_pending'] = cur
-                                st.rerun()
-                            if m1.button('[Extra: Increased Range 1]', key='cg_u_m_inc_range'):
-                                cur = (st.session_state.get('cg_u_build') or '').rstrip()
-                                cur = (cur + ' [Extra: Increased Range 1]').strip()
-                                st.session_state['cg_u_build'] = cur
-                                st.session_state['cg_u_build_pending'] = cur
-                                st.rerun()
-                            if m2.button('[Extra: Improved Critical 1]', key='cg_u_m_imp_crit'):
-                                cur = (st.session_state.get('cg_u_build') or '').rstrip()
-                                cur = (cur + ' [Extra: Improved Critical 1]').strip()
-                                st.session_state['cg_u_build'] = cur
-                                st.session_state['cg_u_build_pending'] = cur
-                                st.rerun()
-                            if m2.button('[Flaw: Limited - Objects]', key='cg_u_m_lim_obj'):
-                                cur = (st.session_state.get('cg_u_build') or '').rstrip()
-                                cur = (cur + ' [Flaw: Limited - Objects]').strip()
-                                st.session_state['cg_u_build'] = cur
-                                st.session_state['cg_u_build_pending'] = cur
-                                st.rerun()
-                            if m2.button('[Affect Others]', key='cg_u_m_affect_others'):
-                                cur = (st.session_state.get('cg_u_build') or '').rstrip()
-                                cur = (cur + ' [Affect Others]').strip()
-                                st.session_state['cg_u_build'] = cur
-                                st.session_state['cg_u_build_pending'] = cur
-                                st.rerun()
+                            m1.button('[Ranged]',                    key='cg_u_m_ranged',       on_click=_cg_u_append, args=('[Ranged]',))
+                            m1.button('[Perception]',                key='cg_u_m_perception',   on_click=_cg_u_append, args=('[Perception]',))
+                            m1.button('[Extra: Increased Range 1]',  key='cg_u_m_inc_range',    on_click=_cg_u_append, args=('[Extra: Increased Range 1]',))
+                            m2.button('[Extra: Improved Critical 1]',key='cg_u_m_imp_crit',     on_click=_cg_u_append, args=('[Extra: Improved Critical 1]',))
+                            m2.button('[Flaw: Limited - Objects]',   key='cg_u_m_lim_obj',      on_click=_cg_u_append, args=('[Flaw: Limited - Objects]',))
+                            m2.button('[Affect Others]',             key='cg_u_m_affect_others',on_click=_cg_u_append, args=('[Affect Others]',))
                             st.markdown('**Ferramentas rápidas:**')
                             t1, t2 = st.columns(2)
-                            if t1.button('🧹 Limpar build', key='cg_u_clear'):
-                                st.session_state['cg_u_build'] = ''
-                                st.session_state['cg_u_build_pending'] = ''
-                                st.rerun()
-                            if t2.button('↩️ Desfazer última peça', key='cg_u_undo'):
-                                cur = (st.session_state.get('cg_u_build') or '').strip()
-                                if ';' in cur:
-                                    cur = cur.rsplit(';', 1)[0].strip()
-                                else:
-                                    cur = ''
-                                st.session_state['cg_u_build'] = cur
-                                st.session_state['cg_u_build_pending'] = cur
-                                st.rerun()
+                            t1.button('🧹 Limpar build',         key='cg_u_clear', on_click=_cg_u_clear_cb)
+                            t2.button('↩️ Desfazer última peça', key='cg_u_undo',  on_click=_cg_u_undo_cb)
                         st.markdown("---")
                         st.markdown("#### Resultado")
                         final_build = (st.session_state.get("cg_u_build") or "").strip()
@@ -17547,14 +17602,30 @@ elif page == "Criação Guiada de Fichas":
                                 tags=[],
                                 raw=raw,
                             )
+                            # Usa motor MM3e se disponível, fallback para heurística
+                            pp_engine = None
+                            if _GB_AVAILABLE and _gb_parse_build is not None and final_build:
+                                try:
+                                    _comps = _gb_parse_build(final_build, default_rank=int(rank_u))
+                                    _draft = _GolpeDraft(name=tmp_mv.name, components=_comps)
+                                    _pp_raw, _ = _gb_calc_pp(_draft)
+                                    pp_engine = int(_pp_raw) if _pp_raw is not None else None
+                                except Exception:
+                                    pp_engine = None
+
                             pp_auto, why = tmp_mv.pp_cost(int(rank_u))
-                            if pp_auto is not None:
+                            if pp_engine is not None:
+                                st.info(f"PP calculado pelo motor MM3e: **{pp_engine}** PP")
+                                pp_default = pp_engine
+                            elif pp_auto is not None:
                                 st.info(f"PP sugerido: **{int(pp_auto)}** — {why}")
+                                pp_default = int(pp_auto)
                             else:
                                 st.warning(f"PP não definido automaticamente — {why}. Informe manualmente.")
-                
-                            pp_final = int(st.number_input("PP total do golpe", min_value=1, value=int(pp_auto) if pp_auto else 1, step=1, key="cg_u_pp_final"))
-                
+                                pp_default = 1
+
+                            pp_final = int(st.number_input("PP total do golpe", min_value=1, value=pp_default, step=1, key="cg_u_pp_final"))
+
                             if st.button("➕ Adicionar este poder na ficha", key="cg_u_add", type="primary"):
                                 st.session_state["cg_moves"].append({
                                     "name": tmp_mv.name,
@@ -17567,32 +17638,44 @@ elif page == "Criação Guiada de Fichas":
                                         "ranged": bool(tmp_mv.ranged),
                                         "perception_area": bool(tmp_mv.perception_area),
                                         "category": tmp_mv.categoria,
+                                        "engine_pp": pp_engine is not None,
                                     },
                                 })
                                 st.success("Golpe adicionado! Vá em **Lista & ajustes** para revisar acerto/PP.")
                                 st.rerun()
-# (C) Criador completo (sua tela existente)
+# (C) Criador completo — Golpe Builder MM3e
                 # --------------------------
                 with sub_tabs[2]:
-                    st.caption("Modo avançado: use a tela completa de criação e edição de golpes.")
-                    disabled_add = pp_spent_moves_live >= pp_cap_moves
-                    if disabled_add:
-                        st.error("Limite atingido (mesmo limite do total gasto).")
-
-                    show_full = st.checkbox("Abrir o criador completo aqui (avançado)", value=False, key="cg_show_full_creator_inline")
-                    if show_full:
-                        render_move_creator(
+                    if _GB_AVAILABLE:
+                        st.caption(
+                            "Golpe Builder completo (MM3e): busca, modo simples/avançado, preview em tempo real, "
+                            "templates e histórico. Golpes confirmados vão direto para sua lista acima."
+                        )
+                        trainer_name_inline = st.session_state.get("trainer_name", "Treinador")
+                        _gb_render_builder(
                             excel_path=_resolve_asset_path("golpes_pokemon_MM_reescritos.xlsx"),
-                            state_key_prefix="cg_moves_inline",
+                            state_key_prefix="cg_gb_inline",
                             return_to_view=None,
+                            trainer_name=trainer_name_inline,
                         )
                     else:
-                        st.info("Marque a caixa acima para abrir o criador completo nesta aba. Se preferir, abra pelo menu **Criação de Golpes**.")
-
-                    if st.button("Abrir pelo menu Criação de Golpes", key="cg_go_creator_menu"):
-                        st.session_state["cg_view"] = "moves"
-                        st.session_state["cg_return_to"] = "guided"
-                        st.rerun()
+                        st.caption("Modo avançado: use a tela completa de criação e edição de golpes.")
+                        show_full = st.checkbox(
+                            "Abrir o criador completo aqui (avançado)",
+                            value=False, key="cg_show_full_creator_inline"
+                        )
+                        if show_full:
+                            render_move_creator(
+                                excel_path=_resolve_asset_path("golpes_pokemon_MM_reescritos.xlsx"),
+                                state_key_prefix="cg_moves_inline",
+                                return_to_view=None,
+                            )
+                        else:
+                            st.info("Marque a caixa acima para abrir o criador completo nesta aba.")
+                        if st.button("Abrir pelo menu Criação de Golpes", key="cg_go_creator_menu"):
+                            st.session_state["cg_view"] = "moves"
+                            st.session_state["cg_return_to"] = "guided"
+                            st.rerun()
 
                 # --------------------------
                 # (D) Lista & ajustes

@@ -1324,6 +1324,127 @@ STAT_TARGETS = [
 RESIST_STATS = ["Toughness", "Fortitude", "Will", "Dodge", "Parry"]
 
 # =============================================
+# IMMUNITY OPTIONS  (chave, label, custo em PP)
+# rank de Immunity = soma dos custos dos itens escolhidos
+# =============================================
+IMMUNITY_OPTIONS = [
+    # ── 1 PP cada ──
+    {"key": "sleep",           "label_pt": "Sono (Sleep)",                  "cost": 1},
+    {"key": "poison",          "label_pt": "Veneno (Poison)",               "cost": 1},
+    {"key": "disease",         "label_pt": "Doença (Disease)",              "cost": 1},
+    {"key": "aging",           "label_pt": "Envelhecimento (Aging)",        "cost": 1},
+    {"key": "starvation",      "label_pt": "Fome e Sede (Starvation)",      "cost": 1},
+    {"key": "cold_env",        "label_pt": "Frio Ambiental",                "cost": 1},
+    {"key": "heat_env",        "label_pt": "Calor Ambiental",               "cost": 1},
+    {"key": "pressure",        "label_pt": "Alta Pressão",                  "cost": 1},
+    {"key": "radiation_env",   "label_pt": "Radiação Ambiental",            "cost": 1},
+    {"key": "vacuum",          "label_pt": "Vácuo",                         "cost": 1},
+    {"key": "suffocation_one", "label_pt": "Um Tipo de Asfixia",            "cost": 1},
+    # ── 2 PP cada ──
+    {"key": "critical_hits",   "label_pt": "Acertos Críticos",              "cost": 2},
+    {"key": "suffocation_all", "label_pt": "Asfixia Total",                 "cost": 2},
+    {"key": "uncommon_desc",   "label_pt": "Descritor Incomum (especificar)","cost": 2},
+    # ── 5 PP cada ──
+    {"key": "alteration",      "label_pt": "Efeitos de Alteração",          "cost": 5},
+    {"key": "sense_affliction","label_pt": "Aflições Sensoriais",           "cost": 5},
+    {"key": "emotion",         "label_pt": "Efeitos Emocionais",            "cost": 5},
+    {"key": "traps",           "label_pt": "Armadilhas / Agarrar",          "cost": 5},
+    {"key": "fatigue",         "label_pt": "Efeitos de Fadiga",             "cost": 5},
+    {"key": "interaction",     "label_pt": "Perícias de Interação",         "cost": 5},
+    {"key": "fire_dmg",        "label_pt": "Dano de Fogo (Fire Damage)",    "cost": 5},
+    {"key": "cold_dmg",        "label_pt": "Dano de Frio (Cold Damage)",    "cost": 5},
+    {"key": "electric_dmg",    "label_pt": "Dano Elétrico",                 "cost": 5},
+    {"key": "sonic_dmg",       "label_pt": "Dano Sônico (Sonic Damage)",    "cost": 5},
+    {"key": "magic_dmg",       "label_pt": "Dano Mágico (Magic Damage)",    "cost": 5},
+    {"key": "falling_dmg",     "label_pt": "Dano de Queda (Falling Damage)","cost": 5},
+    # ── 10 PP cada ──
+    {"key": "life_support",    "label_pt": "Suporte de Vida (Life Support)","cost": 10},
+    {"key": "common_fire",     "label_pt": "Fogo – Descritor Completo",     "cost": 10},
+    {"key": "common_cold",     "label_pt": "Frio – Descritor Completo",     "cost": 10},
+    {"key": "common_electric", "label_pt": "Eletricidade – Descritor Completo","cost": 10},
+    {"key": "common_radiation","label_pt": "Radiação – Descritor Completo", "cost": 10},
+    # ── 20 PP cada ──
+    {"key": "bludgeoning",     "label_pt": "Impacto Físico (Bludgeoning)",  "cost": 20},
+    {"key": "energy",          "label_pt": "Energia (Energy)",              "cost": 20},
+    # ── 30 PP cada ──
+    {"key": "all_fortitude",   "label_pt": "Todos os Efeitos Fortitude",    "cost": 30},
+    {"key": "all_will",        "label_pt": "Todos os Efeitos Vontade",      "cost": 30},
+    # ── Personalizado (custo definido pelo usuário) ──
+    {"key": "custom",          "label_pt": "Personalizado…",                "cost": 0},
+]
+
+# =============================================
+# SENSES OPTIONS  (chave, label, custo em PP)
+# rank de Senses = soma dos custos dos sentidos escolhidos
+# Sentidos com per_rank=True permitem adicionar ranks extras
+# =============================================
+SENSES_OPTIONS = [
+    # ── 1 PP cada (fixo) ──
+    {"key": "danger_sense",    "label_pt": "Sentido de Perigo (Danger Sense)",     "cost": 1, "per_rank": False},
+    {"key": "direction_sense", "label_pt": "Senso de Direção (Direction Sense)",   "cost": 1, "per_rank": False},
+    {"key": "distance_sense",  "label_pt": "Senso de Distância (Distance Sense)",  "cost": 1, "per_rank": False},
+    {"key": "low_light",       "label_pt": "Visão com Pouca Luz (Low-light Vision)","cost": 1, "per_rank": False},
+    {"key": "infravision",     "label_pt": "Infravermelho (Infravision)",           "cost": 1, "per_rank": False},
+    {"key": "ultra_hearing",   "label_pt": "Ultra-Audição (Ultra-hearing)",         "cost": 1, "per_rank": False},
+    {"key": "ultra_vision",    "label_pt": "Ultra-Visão (Ultra-vision)",            "cost": 1, "per_rank": False},
+    {"key": "tremorsense",     "label_pt": "Tremorsense / Vibração",                "cost": 1, "per_rank": False},
+    {"key": "radius",          "label_pt": "Sentido Radial (Radius)",               "cost": 1, "per_rank": False},
+    {"key": "ranged_touch",    "label_pt": "Toque à Distância (Ranged Touch)",      "cost": 1, "per_rank": False},
+    {"key": "radio",           "label_pt": "Recepção de Rádio (Radio)",             "cost": 1, "per_rank": False},
+    # ── 1 PP por rank (per_rank=True) ──
+    {"key": "awareness",       "label_pt": "Percepção Especial (Awareness)",        "cost": 1, "per_rank": True},
+    {"key": "acute",           "label_pt": "Sentido Aguçado (Acute)",               "cost": 1, "per_rank": True},
+    {"key": "analytical",      "label_pt": "Sentido Analítico (Analytical)",        "cost": 1, "per_rank": True},
+    {"key": "extended",        "label_pt": "Sentido Estendido (Extended)",           "cost": 1, "per_rank": True},
+    {"key": "tracking",        "label_pt": "Rastreamento (Tracking)",               "cost": 1, "per_rank": True},
+    {"key": "rapid",           "label_pt": "Sentido Rápido (Rapid)",                "cost": 1, "per_rank": True},
+    {"key": "microscopic",     "label_pt": "Visão Microscópica (Microscopic Vision)","cost": 1, "per_rank": True},
+    # ── 2 PP fixo ──
+    {"key": "darkvision",           "label_pt": "Visão no Escuro (Darkvision)",             "cost": 2, "per_rank": False},
+    {"key": "counters_concealment", "label_pt": "Ignora Ocultação (Counters Concealment)",  "cost": 2, "per_rank": False},
+    {"key": "counters_illusions",   "label_pt": "Ignora Ilusões (Counters Illusions)",      "cost": 2, "per_rank": False},
+    # ── 4 PP fixo ──
+    {"key": "penetrates_concealment","label_pt": "Penetra Ocultação Total",                 "cost": 4, "per_rank": False},
+    {"key": "postcognition",        "label_pt": "Pós-cognição (Postcognition)",             "cost": 4, "per_rank": False},
+    {"key": "precognition",         "label_pt": "Pré-cognição (Precognition)",              "cost": 4, "per_rank": False},
+    # ── Personalizado ──
+    {"key": "custom",               "label_pt": "Personalizado…",                           "cost": 0, "per_rank": False},
+]
+
+# =============================================
+# COMMUNICATION TYPES
+# =============================================
+COMMUNICATION_TYPES = [
+    {"key": "mental",    "label_pt": "Mental (Telepatia)"},
+    {"key": "auditory",  "label_pt": "Auditivo (Som / Ultrassom)"},
+    {"key": "radio",     "label_pt": "Rádio (AM/FM/Ondas)"},
+    {"key": "visual",    "label_pt": "Visual (Laser / Luz)"},
+    {"key": "olfactory", "label_pt": "Olfativo (Feromônios)"},
+    {"key": "tactile",   "label_pt": "Tátil (Vibração)"},
+    {"key": "custom",    "label_pt": "Personalizado (Tipo de Sentido Customizado)"},
+]
+
+# =============================================
+# MOVEMENT OPTIONS  (cada opção = 1 rank = 2 PP)
+# =============================================
+MOVEMENT_OPTIONS = [
+    {"key": "env_adaptation",   "label_pt": "Adaptação Ambiental (subaquático, gravidade-zero, etc.)"},
+    {"key": "wall_crawling",    "label_pt": "Escalar Paredes e Tetos (Wall Crawling)"},
+    {"key": "swing",            "label_pt": "Balanço / Teia (Swing)"},
+    {"key": "slide",            "label_pt": "Deslizamento Prono (Slide)"},
+    {"key": "walk_water_stand", "label_pt": "Caminhar na Água – em pé (Walk on Water, 1 rank)"},
+    {"key": "walk_water_prone", "label_pt": "Caminhar na Água – também deitado (Walk on Water, 2 ranks)"},
+    {"key": "sure_footed",      "label_pt": "Terreno Difícil sem Penalidade (Sure-Footed)"},
+    {"key": "trackless",        "label_pt": "Sem Rastros (Trackless)"},
+    {"key": "space_travel_1",   "label_pt": "Viagem Espacial – outros planetas do sistema solar"},
+    {"key": "space_travel_2",   "label_pt": "Viagem Espacial – outros sistemas estelares"},
+    {"key": "space_travel_3",   "label_pt": "Viagem Espacial – galáxias distantes"},
+    {"key": "time_travel_1",    "label_pt": "Viagem no Tempo – ponto fixo"},
+    {"key": "time_travel_2",    "label_pt": "Viagem no Tempo – passado OU futuro"},
+    {"key": "time_travel_3",    "label_pt": "Viagem no Tempo – qualquer época"},
+]
+
+# =============================================
 # VANTAGENS DE COMBATE
 # =============================================
 COMBAT_ADVANTAGES = [

@@ -22,6 +22,10 @@ from powers_data import (
     ADAPTATION_RULES,
     TYPE_DESCRIPTORS,
     PRESET_KITS,
+    IMMUNITY_OPTIONS,
+    SENSES_OPTIONS,
+    COMMUNICATION_TYPES,
+    MOVEMENT_OPTIONS,
 )
 from golpe_builder import (
     PowerComponent,
@@ -34,6 +38,7 @@ from golpe_builder import (
     draft_to_move_json,
     draft_to_firestore_doc,
     validate_draft,
+    parse_build_string,
 )
 
 
@@ -71,79 +76,462 @@ def _set_step(prefix: str, step: int):
 
 
 # ─────────────────────────────────────────────
+# Histórico & Templates
+# ─────────────────────────────────────────────
+_HISTORY_KEY  = "gb_global_history"
+_TEMPLATE_KEY = "gb_global_templates"
+_MAX_HISTORY  = 10
+
+
+def _get_history() -> List[dict]:
+    return st.session_state.get(_HISTORY_KEY, [])
+
+
+def _save_to_history(draft: GolpeDraft):
+    if not draft.name or not draft.components:
+        return
+    h = st.session_state.get(_HISTORY_KEY, [])
+    h = [x for x in h if x.get("name") != draft.name]  # dedup por nome
+    h.append(draft.to_dict())
+    st.session_state[_HISTORY_KEY] = h[-_MAX_HISTORY:]
+
+
+def _get_templates() -> List[dict]:
+    return st.session_state.get(_TEMPLATE_KEY, [])
+
+
+def _save_template(draft: GolpeDraft):
+    t = st.session_state.get(_TEMPLATE_KEY, [])
+    t = [x for x in t if x.get("name") != draft.name]
+    t.append(draft.to_dict())
+    st.session_state[_TEMPLATE_KEY] = t
+
+
+def _delete_template(idx: int):
+    t = st.session_state.get(_TEMPLATE_KEY, [])
+    if 0 <= idx < len(t):
+        t.pop(idx)
+    st.session_state[_TEMPLATE_KEY] = t
+
+
+# ─────────────────────────────────────────────
+# Preview em tempo real
+# ─────────────────────────────────────────────
+
+def _render_live_preview(draft: Optional[GolpeDraft], compact: bool = False):
+    """Renderiza um card de preview com build + PP + complexidade."""
+    if not draft or not draft.components:
+        st.info("Configure o golpe ao lado para ver o preview.")
+        return
+
+    build = generate_build_string(draft)
+    pp, _ = calculate_total_pp(draft)
+    n_comps = len(draft.components)
+    n_extras = sum(len(c.extras) for c in draft.components)
+
+    complexity_score = n_comps + n_extras
+    if complexity_score <= 2:
+        complexity = "🟢 Simples"
+    elif complexity_score <= 5:
+        complexity = "🟡 Médio"
+    else:
+        complexity = "🔴 Complexo"
+
+    st.markdown("#### 👁️ Preview em Tempo Real")
+    st.code(build, language="text")
+
+    col_pp, col_cx = st.columns(2)
+    with col_pp:
+        st.metric("PP Total", int(pp))
+    with col_cx:
+        st.markdown(f"**{complexity}**")
+
+    if not compact:
+        for item in generate_explanation(draft):
+            st.caption(f"**{item['component']}** — {item['cost']} PP: {item['explanation_pt'].split(chr(10))[0]}")
+
+
+# ─────────────────────────────────────────────
+# Modo Simples — mapeamentos e lógica
+# ─────────────────────────────────────────────
+
+# O que o golpe faz → efeitos
+_WHAT_OPTIONS: List[Dict] = [
+    {"label": "⚔️ Causa Dano",                       "effects": ["damage"],         "show_conditions": False, "show_targets": False},
+    {"label": "🌀 Impõe Condição / Status",            "effects": ["affliction"],      "show_conditions": True,  "show_targets": False},
+    {"label": "⚔️🌀 Dano + Condição",                 "effects": ["damage","affliction"], "show_conditions": True, "show_targets": False},
+    {"label": "💊 Cura / Recupera HP",                "effects": ["healing"],         "show_conditions": False, "show_targets": False},
+    {"label": "⚔️💊 Drena (Dano + Cura)",             "effects": ["damage","healing"],"show_conditions": False, "show_targets": False},
+    {"label": "⬇️ Enfraquece Atributo",               "effects": ["weaken"],          "show_conditions": False, "show_targets": True },
+    {"label": "⬆️ Melhora Atributo (próprio/aliado)", "effects": ["enhanced_trait"],  "show_conditions": False, "show_targets": True },
+    {"label": "🌿 Altera o Campo (Clima/Terreno)",    "effects": ["environment"],     "show_conditions": False, "show_targets": False},
+    {"label": "✈️ Voo",                               "effects": ["flight"],          "show_conditions": False, "show_targets": False},
+    {"label": "🔀 Teleporte",                          "effects": ["teleport"],        "show_conditions": False, "show_targets": False},
+    {"label": "🧠 Sentidos Especiais",                 "effects": ["senses"],          "show_conditions": False, "show_targets": False},
+    {"label": "🛡️ Imunidade",                         "effects": ["immunity"],        "show_conditions": False, "show_targets": False},
+    {"label": "🚶 Movimento Especial",                 "effects": ["movement"],        "show_conditions": False, "show_targets": False},
+    {"label": "🔕 Nulifica Poder",                     "effects": ["nullify"],         "show_conditions": False, "show_targets": False},
+    {"label": "🔋 Regeneração",                        "effects": ["regeneration"],    "show_conditions": False, "show_targets": False},
+]
+
+# Alvo/alcance → extras
+_TARGET_OPTIONS: List[Dict] = [
+    {"label": "🎯 1 alvo — Corpo a corpo",          "extras": []},
+    {"label": "🎯 1 alvo — À distância (Ranged)",   "extras": ["ranged"]},
+    {"label": "💥 Explosão em área (Burst)",         "extras": ["area_burst"]},
+    {"label": "📐 Cone de efeito",                   "extras": ["area_cone"]},
+    {"label": "➖ Linha reta",                       "extras": ["area_line"]},
+    {"label": "🌫️ Nuvem / Campo (Cloud)",           "extras": ["area_cloud"]},
+    {"label": "👁️ Percepção — todos que percebem", "extras": ["area_perception"]},
+    {"label": "✋ Si mesmo / Aliado próximo",        "extras": []},
+]
+
+# Extras simplificados
+_SIMPLE_EXTRAS: List[Dict] = [
+    {"label": "⚡ Efeito secundário (Secondary Effect)",  "key": "secondary_effect"},
+    {"label": "📈 Progressivo (piora a cada turno)",      "key": "progressive"},
+    {"label": "🔁 Cumulativo",                            "key": "cumulative"},
+    {"label": "🎯 Preciso (+2 no ataque)",                "key": "accurate"},
+    {"label": "💀 Penetrante (ignora parte da defesa)",   "key": "penetrating"},
+    {"label": "⚡ Reação (Triggered/Reaction)",           "key": "reaction"},
+    {"label": "🔗 Contagioso (Contagious)",               "key": "contagious"},
+    {"label": "🔮 Resistência Alternativa",               "key": "alternate_resistance"},
+]
+
+# Falhas simplificadas
+_SIMPLE_FLAWS: List[Dict] = [
+    {"label": "💤 Cansativo (gasta energia extra)",   "key": "tiring"},
+    {"label": "✊ Só corpo a corpo (Grab-based)",     "key": "grab_based"},
+    {"label": "🎲 Pouco confiável (Unreliable)",      "key": "unreliable"},
+    {"label": "📌 Limitado (Limited)",                "key": "limited"},
+    {"label": "🧘 Requer concentração (Concentration)","key": "concentration"},
+    {"label": "💥 Efeito colateral em si (Side Effect)","key": "side_effect"},
+]
+
+
+def _simple_mode_to_draft(what_label: str, target_label: str,
+                           extra_keys: List[str], flaw_keys: List[str],
+                           conditions: Optional[Dict[str, str]],
+                           stat_targets: List[str],
+                           rank: int, category: str,
+                           pokemon_type: str) -> GolpeDraft:
+    """Converte respostas do modo simples em GolpeDraft."""
+    what_data = next((w for w in _WHAT_OPTIONS if w["label"] == what_label), _WHAT_OPTIONS[0])
+    target_data = next((t for t in _TARGET_OPTIONS if t["label"] == target_label), _TARGET_OPTIONS[0])
+
+    effects = what_data["effects"]
+    base_extras = target_data["extras"]
+
+    components: List[PowerComponent] = []
+    for i, eff_key in enumerate(effects):
+        comp = PowerComponent(
+            effect_key=eff_key,
+            rank=rank,
+            is_linked=(i > 0),
+        )
+        # Extras de área/alcance (só no primeiro componente de ataque)
+        if i == 0:
+            for ex_key in base_extras:
+                comp.extras.append({"key": ex_key, "ranks": 1, "description": ""})
+            for ex_key in extra_keys:
+                if ex_key not in {e["key"] for e in comp.extras}:
+                    comp.extras.append({"key": ex_key, "ranks": 1, "description": ""})
+            for fl_key in flaw_keys:
+                comp.flaws.append({"key": fl_key, "ranks": 1, "description": ""})
+
+        if eff_key == "affliction" and conditions:
+            comp.conditions = {k: v for k, v in conditions.items() if v}
+        if eff_key in ("weaken", "enhanced_trait") and stat_targets:
+            comp.stat_targets = list(stat_targets)
+
+        components.append(comp)
+
+    return GolpeDraft(
+        name="",
+        category=category,
+        components=components,
+        pokemon_type=pokemon_type,
+    )
+
+
+# ─────────────────────────────────────────────
+# Botão Mágico — keyword → draft
+# ─────────────────────────────────────────────
+
+# (keyword_list, {effects, extras, conditions, pokemon_type})
+_KW_MAP: List[tuple] = [
+    (["dano", "ataque", "golpe", "pancada", "impacto", "bate"],           {"effects": ["damage"]}),
+    (["paralisa", "paralisia"],                                            {"effects": ["affliction"], "conditions": {"degree_1": "Dazed", "degree_2": "Immobile", "degree_3": "Paralyzed"}}),
+    (["dorme", "sono", "adormece", "sleep"],                              {"effects": ["affliction"], "conditions": {"degree_3": "Asleep"}}),
+    (["confunde", "confusão"],                                             {"effects": ["affliction"], "conditions": {"degree_1": "Dazed", "degree_2": "Stunned"}}),
+    (["queima", "queimadura", "burn"],                                     {"effects": ["affliction"], "conditions": {"degree_1": "Impaired"}, "pokemon_type": "fire"}),
+    (["drena", "drenar", "roubar vida", "absorve vida"],                  {"effects": ["damage", "healing"]}),
+    (["cura", "curar", "recupera", "hp"],                                 {"effects": ["healing"]}),
+    (["enfraquece", "reduz atributo", "diminui"],                         {"effects": ["weaken"]}),
+    (["fortalece", "melhora atributo", "aumenta"],                        {"effects": ["enhanced_trait"]}),
+    (["clima", "chuva", "granizo", "nevasca", "tempestade"],              {"effects": ["environment"]}),
+    (["voa", "voar", "voo"],                                              {"effects": ["flight"]}),
+    (["teleporta", "teleporte", "teletransporte"],                        {"effects": ["teleport"]}),
+    (["nulifica", "cancela poder", "nullify"],                            {"effects": ["nullify"]}),
+    (["regenera", "regeneração", "cura contínua"],                        {"effects": ["regeneration"]}),
+    (["área", "explosão", "todos próximos", "em volta"],                  {"extras": ["area_burst"]}),
+    (["cone", "sopra", "bafo"],                                           {"extras": ["area_cone"]}),
+    (["linha", "raio direto"],                                            {"extras": ["area_line"]}),
+    (["percepção", "visual", "todos que veem"],                           {"extras": ["area_perception"]}),
+    (["distância", "longe", "arremessa", "lança", "projétil"],            {"extras": ["ranged"]}),
+    (["progressivo", "piora a cada turno"],                               {"extras": ["progressive"]}),
+    (["secundário", "efeito adicional"],                                  {"extras": ["secondary_effect"]}),
+    (["fogo", "chama", "flamejante"],                                     {"pokemon_type": "fire"}),
+    (["água", "aqua", "hidro"],                                           {"pokemon_type": "water"}),
+    (["elétrico", "trovão", "relâmpago"],                                 {"pokemon_type": "electric"}),
+    (["grama", "planta", "folha"],                                        {"pokemon_type": "grass"}),
+    (["gelo", "cryo", "glacial"],                                         {"pokemon_type": "ice"}),
+    (["psíquico", "psico", "mental", "telepatia"],                        {"pokemon_type": "psychic"}),
+    (["dragão"],                                                           {"pokemon_type": "dragon"}),
+    (["noite", "sombra", "escuro", "dark"],                               {"pokemon_type": "dark"}),
+    (["fantasma", "espectro"],                                            {"pokemon_type": "ghost"}),
+]
+
+
+def _keyword_to_draft(text: str, rank: int) -> GolpeDraft:
+    """Converte texto livre em GolpeDraft usando mapeamento de keywords."""
+    text_lower = text.lower()
+    effects: List[str] = []
+    extras: List[str] = []
+    conditions: Dict[str, str] = {}
+    pokemon_type = ""
+
+    for keywords, mapping in _KW_MAP:
+        if any(kw in text_lower for kw in keywords):
+            for eff in mapping.get("effects", []):
+                if eff not in effects:
+                    effects.append(eff)
+            for ex in mapping.get("extras", []):
+                if ex not in extras:
+                    extras.append(ex)
+            if mapping.get("conditions"):
+                conditions.update(mapping["conditions"])
+            if mapping.get("pokemon_type") and not pokemon_type:
+                pokemon_type = mapping["pokemon_type"]
+
+    if not effects:
+        effects = ["damage"]
+
+    # Detecta categoria
+    category = "status"
+    if "damage" in effects:
+        category = "fisico"
+    elif any(e in effects for e in ("healing", "enhanced_trait", "regeneration", "immunity", "senses", "flight", "teleport", "movement")):
+        category = "status"
+
+    components: List[PowerComponent] = []
+    for i, eff_key in enumerate(effects):
+        comp = PowerComponent(effect_key=eff_key, rank=rank, is_linked=(i > 0))
+        if i == 0:
+            for ex_key in extras:
+                comp.extras.append({"key": ex_key, "ranks": 1, "description": ""})
+        if eff_key == "affliction" and conditions:
+            comp.conditions = conditions
+        components.append(comp)
+
+    return GolpeDraft(
+        name="",
+        category=category,
+        components=components,
+        pokemon_type=pokemon_type,
+    )
+
+
+# ─────────────────────────────────────────────
 # Passo 1: Busca por Nome
 # ─────────────────────────────────────────────
 
+def _render_move_card(mv, rank: int, prefix: str, card_key: str):
+    """Renderiza um card de Move com ações de usar/personalizar + PP via engine."""
+    build = mv.render_build(rank)
+
+    # ── PP via engine (parse_build_string) ────────────────────────
+    try:
+        comps = parse_build_string(build, default_rank=rank)
+        if comps:
+            from golpe_builder import GolpeDraft as _GD
+            _d = _GD(components=comps)
+            from golpe_builder import calculate_total_pp as _ctp
+            pp_engine, _ = _ctp(_d)
+            pp_display = int(pp_engine)
+            pp_label = f"**{pp_display} PP** (calculado pela engine)"
+        else:
+            pp_raw, pp_why = mv.pp_cost(rank)
+            pp_display = int(pp_raw) if pp_raw else 0
+            pp_label = f"**{pp_display} PP** (estimativa: {pp_why})"
+    except Exception:
+        pp_raw, pp_why = mv.pp_cost(rank)
+        pp_display = int(pp_raw) if pp_raw else 0
+        pp_label = f"**{pp_display} PP** (estimativa)"
+
+    st.code(build, language="text")
+    col_meta, col_pp = st.columns([3, 1])
+    with col_meta:
+        st.caption(f"**Tipo:** {mv.tipo or '—'}  |  **Categoria:** {mv.categoria or '—'}")
+        if mv.descricao:
+            st.caption(mv.descricao[:200])
+    with col_pp:
+        st.metric("PP", pp_display)
+
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("✅ Usar como está", key=_k(prefix, card_key, "use")):
+            move_json = {
+                "name": mv.name,
+                "rank": int(rank),
+                "build": build,
+                "pp_cost": pp_display,
+                "accuracy": 0,
+                "meta": {
+                    "ranged": bool(mv.ranged),
+                    "perception_area": bool(mv.perception_area),
+                    "category": str(mv.categoria or ""),
+                },
+                "_ui_id": uuid.uuid4().hex,
+            }
+            st.session_state[_k(prefix, "final_move")] = move_json
+            _set_step(prefix, 5)
+            st.rerun()
+    with c2:
+        if st.button("✏️ Personalizar", key=_k(prefix, card_key, "edit")):
+            draft = _existing_move_to_draft(mv, rank)
+            _set_draft(prefix, draft)
+            _set_step(prefix, 4)
+            st.rerun()
+
+
 def _render_step1(prefix: str, move_db):
-    """Busca o golpe pelo nome na base existente."""
-    st.subheader("Passo 1: Buscar golpe existente")
-    st.caption("Digite o nome do golpe. Se existir na base, você pode usá-lo como está ou personalizá-lo.")
+    """Busca o golpe pelo nome, mostra sugestões fuzzy, histórico, templates e botão mágico."""
+    st.subheader("Passo 1: Buscar ou Criar golpe")
 
-    name = st.text_input("Nome do golpe", key=_k(prefix, "s1_name"))
-    rank = st.slider("Rank base", 1, 20, 10, key=_k(prefix, "s1_rank"))
+    # ══ Layout principal ═════════════════════════════════════════════
+    col_search, col_magic = st.columns([3, 2])
 
-    col1, col2 = st.columns(2)
-    with col1:
-        search_clicked = st.button("Buscar", key=_k(prefix, "s1_search"), type="primary")
-    with col2:
-        skip_clicked = st.button("Pular para criador (golpe novo)", key=_k(prefix, "s1_skip"))
+    with col_search:
+        st.markdown("##### 🔍 Buscar golpe existente")
+        name = st.text_input("Nome do golpe", key=_k(prefix, "s1_name"),
+                             placeholder="Ex: Surf, Flamethrower, Parting Shot…")
+        rank = st.slider("Rank base", 1, 20, 10, key=_k(prefix, "s1_rank"))
 
-    if skip_clicked:
-        draft = GolpeDraft(name=name)
-        _set_draft(prefix, draft)
-        _set_step(prefix, 2)
-        st.rerun()
-        return
+        c1, c2 = st.columns(2)
+        with c1:
+            search_clicked = st.button("🔍 Buscar", key=_k(prefix, "s1_search"), type="primary")
+        with c2:
+            skip_clicked = st.button("✨ Criar novo", key=_k(prefix, "s1_skip"))
 
+        if skip_clicked:
+            draft = GolpeDraft(name=name)
+            _set_draft(prefix, draft)
+            _set_step(prefix, 2)
+            st.rerun()
+            return
+
+    with col_magic:
+        st.markdown("##### 🪄 Botão Mágico — descreva em 1 frase")
+        magic_text = st.text_input(
+            "Ex: uma rajada de fogo em cone que pode queimar",
+            key=_k(prefix, "s1_magic_text"),
+            label_visibility="collapsed",
+            placeholder="Ex: golpe d'água que drena HP e paralisa…",
+        )
+        magic_rank = st.number_input("Rank", 1, 20, 10, key=_k(prefix, "s1_magic_rank"))
+        magic_clicked = st.button("🪄 Gerar Rascunho", key=_k(prefix, "s1_magic_btn"))
+
+        if magic_clicked and magic_text.strip():
+            magic_draft = _keyword_to_draft(magic_text.strip(), int(magic_rank))
+            magic_draft.name = magic_text.strip()[:40]
+            _set_draft(prefix, magic_draft)
+            _set_step(prefix, 2)
+            st.rerun()
+            return
+
+    st.divider()
+
+    # ══ Busca por nome ═══════════════════════════════════════════════
     result_key = _k(prefix, "s1_result")
     if search_clicked and move_db is not None:
         mv = move_db.get_by_name(name)
         if mv:
             st.session_state[result_key] = mv.name
+            st.session_state[_k(prefix, "s1_suggestions")] = []
         else:
             st.session_state[result_key] = None
-            st.warning("Golpe não encontrado na base. Use o botão acima para criar um novo.")
+            # Busca fuzzy automática
+            suggestions = move_db.suggest_by_description(name, top_k=5) if name.strip() else []
+            st.session_state[_k(prefix, "s1_suggestions")] = [(m.name, sc) for m, sc in suggestions]
+            if not suggestions:
+                st.warning("Golpe não encontrado na base. Crie um novo ou use o Botão Mágico.")
+    elif search_clicked and move_db is None:
+        st.session_state[result_key] = None
+        st.warning("Base de golpes não carregada.")
 
-    # Mostrar resultado persistente
+    # ── Resultado exato ───────────────────────────────────────────────
     found_name = st.session_state.get(result_key)
     if found_name and move_db is not None:
         mv = move_db.get_by_name(found_name)
         if mv:
-            st.success(f"Encontrado: **{mv.name}** ({mv.tipo} / {mv.categoria})")
-            build = mv.render_build(rank)
-            st.code(build, language="text")
-            st.write(f"**Descrição:** {mv.descricao or '—'}")
-            pp, why = mv.pp_cost(rank)
-            if pp:
-                st.info(f"PP: **{pp}** — {why}")
+            st.success(f"✅ **{mv.name}**")
+            _render_move_card(mv, rank, prefix, "exact")
 
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("Usar como está", key=_k(prefix, "s1_use_asis")):
-                    # Salva diretamente como JSON no formato existente
-                    move_json = {
-                        "name": mv.name,
-                        "rank": int(rank),
-                        "build": build,
-                        "pp_cost": int(pp) if pp else 0,
-                        "accuracy": 0,
-                        "meta": {
-                            "ranged": bool(mv.ranged),
-                            "perception_area": bool(mv.perception_area),
-                            "category": str(mv.categoria or ""),
-                        },
-                        "_ui_id": uuid.uuid4().hex,
-                    }
-                    st.session_state[_k(prefix, "final_move")] = move_json
-                    _set_step(prefix, 5)
-                    st.rerun()
-            with c2:
-                if st.button("Personalizar este golpe", key=_k(prefix, "s1_customize")):
-                    # Criar draft a partir do golpe existente
-                    draft = _existing_move_to_draft(mv, rank)
-                    _set_draft(prefix, draft)
-                    _set_step(prefix, 4)
-                    st.rerun()
+    # ── Sugestões fuzzy ───────────────────────────────────────────────
+    suggestions = st.session_state.get(_k(prefix, "s1_suggestions"), [])
+    if suggestions:
+        st.markdown("##### 🔎 Você quis dizer…")
+        for i, (mv_name, score) in enumerate(suggestions):
+            mv = move_db.get_by_name(mv_name)
+            if mv:
+                score_pct = int(score * 100)
+                with st.expander(f"**{mv.name}** — {mv.tipo} / {mv.categoria}  _(similaridade {score_pct}%)_"):
+                    _render_move_card(mv, rank, prefix, f"sug_{i}")
+
+    st.divider()
+
+    # ══ Histórico & Templates ═════════════════════════════════════════
+    col_hist, col_tpl = st.columns(2)
+
+    with col_hist:
+        history = _get_history()
+        if history:
+            with st.expander(f"⏱️ Últimos {len(history)} golpes criados"):
+                for j, d in enumerate(reversed(history)):
+                    nm = d.get("name", "?")
+                    cat = d.get("category", "")
+                    st.markdown(f"**{nm}** _{cat}_")
+                    if st.button("↩️ Clonar", key=_k(prefix, "s1_hist_clone", str(j))):
+                        cloned = GolpeDraft.from_dict(d)
+                        cloned.name = f"Cópia de {cloned.name}"
+                        _set_draft(prefix, cloned)
+                        _set_step(prefix, 4)
+                        st.rerun()
+                    st.caption("")
+        else:
+            st.caption("_Sem histórico ainda._")
+
+    with col_tpl:
+        templates = _get_templates()
+        if templates:
+            with st.expander(f"📋 Meus Templates ({len(templates)})"):
+                for j, d in enumerate(templates):
+                    nm = d.get("name", "?")
+                    st.markdown(f"**{nm}**")
+                    c_use, c_del = st.columns(2)
+                    with c_use:
+                        if st.button("▶️ Usar", key=_k(prefix, "s1_tpl_use", str(j))):
+                            tpl = GolpeDraft.from_dict(d)
+                            _set_draft(prefix, tpl)
+                            _set_step(prefix, 4)
+                            st.rerun()
+                    with c_del:
+                        if st.button("🗑️", key=_k(prefix, "s1_tpl_del", str(j))):
+                            _delete_template(j)
+                            st.rerun()
+        else:
+            st.caption("_Sem templates salvos._")
 
 
 def _existing_move_to_draft(mv, rank: int) -> GolpeDraft:
@@ -220,74 +608,211 @@ def _existing_move_to_draft(mv, rank: int) -> GolpeDraft:
 
 
 # ─────────────────────────────────────────────
-# Passo 2: Seleção de Palavras-Chave
+# Passo 2: Assistente / Editor de Efeitos
 # ─────────────────────────────────────────────
 
 def _render_step2(prefix: str):
-    """Sopa de letrinhas: seleção de efeitos, extras, falhas por categoria."""
-    st.subheader("Passo 2: Selecione os efeitos do golpe")
-    st.caption("Marque tudo que o seu golpe faz. Depois o sistema monta a build automaticamente.")
+    """Modo Simples (assistente guiado) ou Avançado (editor completo), com preview em tempo real."""
+    st.subheader("Passo 2: Definir Efeitos")
 
     draft = _get_draft(prefix)
 
-    # Nome e configurações básicas
-    col_n, col_c, col_r = st.columns([3, 2, 1])
-    with col_n:
-        draft.name = st.text_input("Nome do golpe", value=draft.name, key=_k(prefix, "s2_name"))
-    with col_c:
-        cat_options = list(ADAPTATION_RULES["category_map"].keys())
-        cat_labels = [ADAPTATION_RULES["category_map"][c]["label_pt"] for c in cat_options]
-        cat_idx = cat_options.index(draft.category) if draft.category in cat_options else 0
-        sel_cat = st.selectbox("Categoria", cat_labels, index=cat_idx, key=_k(prefix, "s2_cat"))
-        draft.category = cat_options[cat_labels.index(sel_cat)]
-    with col_r:
-        base_rank = st.number_input("Rank base", 1, 20, 10, key=_k(prefix, "s2_rank"))
+    # ── Toggle de modo ────────────────────────────────────────────
+    mode_key = _k(prefix, "s2_mode")
+    mode = st.session_state.get(mode_key, "simple")
+    col_tog1, col_tog2, col_spacer = st.columns([1, 1, 4])
+    with col_tog1:
+        if st.button(
+            "🧭 Simples" + (" ◀" if mode == "simple" else ""),
+            key=_k(prefix, "s2_btn_simple"),
+            type="primary" if mode == "simple" else "secondary",
+        ):
+            st.session_state[mode_key] = "simple"
+            st.rerun()
+    with col_tog2:
+        if st.button(
+            "⚙️ Avançado" + (" ◀" if mode == "advanced" else ""),
+            key=_k(prefix, "s2_btn_advanced"),
+            type="primary" if mode == "advanced" else "secondary",
+        ):
+            st.session_state[mode_key] = "advanced"
+            st.rerun()
 
     st.divider()
 
-    # ── Efeitos Principais ──
-    st.markdown("### Efeitos Principais")
-    st.caption("O que o golpe FAZ? Selecione um ou mais efeitos.")
+    # Layout: esquerda = formulário / direita = preview
+    col_form, col_prev = st.columns([3, 2])
 
-    # Organizar por tipo
-    effects_by_type = {"attack": [], "support": [], "utility": [], "movement": [], "sensory": []}
-    for key, eff in EFFECTS.items():
-        effects_by_type.setdefault(eff["type"], []).append((key, eff))
+    # ══════════════════════════════════════════════════════════════
+    # MODO SIMPLES
+    # ══════════════════════════════════════════════════════════════
+    if mode == "simple":
+        with col_form:
+            st.markdown("#### 🧭 Assistente de Criação")
 
-    selected_effects: List[str] = []
+            # Nome e rank
+            col_n, col_r = st.columns([3, 1])
+            with col_n:
+                simple_name = st.text_input("Nome do golpe", value=draft.name, key=_k(prefix, "s2s_name"))
+            with col_r:
+                simple_rank = st.number_input("Rank", 1, 20, max(1, draft.components[0].rank if draft.components else 10), key=_k(prefix, "s2s_rank"))
 
-    col_atk, col_sup, col_util = st.columns(3)
-    with col_atk:
-        st.markdown("**Ataque**")
-        for key, eff in effects_by_type.get("attack", []):
-            if st.checkbox(eff["label_pt"], key=_k(prefix, "s2_eff", key), help=eff["desc_pt"]):
-                selected_effects.append(key)
+            # Q1: O que o golpe faz?
+            what_labels = [w["label"] for w in _WHAT_OPTIONS]
+            what_sel = st.selectbox("1️⃣  O que o golpe faz?", what_labels, key=_k(prefix, "s2s_what"))
+            what_data = next(w for w in _WHAT_OPTIONS if w["label"] == what_sel)
 
-    with col_sup:
-        st.markdown("**Suporte**")
-        for key, eff in effects_by_type.get("support", []):
-            if st.checkbox(eff["label_pt"], key=_k(prefix, "s2_eff", key), help=eff["desc_pt"]):
-                selected_effects.append(key)
+            # Q2: Alvo / Alcance
+            target_labels = [t["label"] for t in _TARGET_OPTIONS]
+            target_sel = st.selectbox("2️⃣  Como o golpe alcança o alvo?", target_labels, key=_k(prefix, "s2s_target"))
 
-    with col_util:
-        st.markdown("**Utilidade**")
-        for key, eff in effects_by_type.get("utility", []):
-            if st.checkbox(eff["label_pt"], key=_k(prefix, "s2_eff", key), help=eff["desc_pt"]):
-                selected_effects.append(key)
+            # Q3: Categoria (só se "Causa Dano")
+            cat_options = list(ADAPTATION_RULES["category_map"].keys())
+            cat_labels_map = [ADAPTATION_RULES["category_map"][c]["label_pt"] for c in cat_options]
+            if "damage" in what_data["effects"]:
+                cat_sel = st.selectbox("3️⃣  Categoria do dano?", cat_labels_map, key=_k(prefix, "s2s_cat"))
+                simple_category = cat_options[cat_labels_map.index(cat_sel)]
+            else:
+                simple_category = "status"
 
-    col_mov, col_sens = st.columns(2)
-    with col_mov:
-        st.markdown("**Movimento**")
-        for key, eff in effects_by_type.get("movement", []):
-            if st.checkbox(eff["label_pt"], key=_k(prefix, "s2_eff", key), help=eff["desc_pt"]):
-                selected_effects.append(key)
-    with col_sens:
-        st.markdown("**Sensorial**")
-        for key, eff in effects_by_type.get("sensory", []):
-            if st.checkbox(eff["label_pt"], key=_k(prefix, "s2_eff", key), help=eff["desc_pt"]):
-                selected_effects.append(key)
+            # Q4: Condições (se Affliction selecionado)
+            simple_conditions: Dict[str, str] = {}
+            if what_data["show_conditions"]:
+                st.markdown("4️⃣  **Graus da condição de status:**")
+                for deg_key, deg_data in AFFLICTION_CONDITIONS.items():
+                    opts = ["(nenhum)"] + [o["label_en"] for o in deg_data["options"]]
+                    sel_c = st.selectbox(
+                        deg_data["label_pt"],
+                        opts,
+                        key=_k(prefix, "s2s_cond", deg_key),
+                    )
+                    if sel_c != "(nenhum)":
+                        simple_conditions[deg_key] = sel_c
 
-    st.divider()
+            # Q5: Atributos (se Weaken/Enhanced)
+            simple_stat_targets: List[str] = []
+            if what_data["show_targets"]:
+                target_opts = [t["label_en"] for t in STAT_TARGETS]
+                simple_stat_targets = st.multiselect(
+                    "4️⃣  Atributo(s) afetado(s)?",
+                    target_opts,
+                    key=_k(prefix, "s2s_targets"),
+                )
+
+            # Q6: Extras rápidos
+            st.markdown("5️⃣  **Extras adicionais?** _(opcional)_")
+            sel_extras = st.multiselect(
+                "Extras",
+                [e["label"] for e in _SIMPLE_EXTRAS],
+                key=_k(prefix, "s2s_extras"),
+                label_visibility="collapsed",
+            )
+            extra_keys = [e["key"] for e in _SIMPLE_EXTRAS if e["label"] in sel_extras]
+
+            # Q7: Falhas
+            st.markdown("6️⃣  **Falhas que reduzem custo?** _(opcional)_")
+            sel_flaws = st.multiselect(
+                "Falhas",
+                [f["label"] for f in _SIMPLE_FLAWS],
+                key=_k(prefix, "s2s_flaws"),
+                label_visibility="collapsed",
+            )
+            flaw_keys = [f["key"] for f in _SIMPLE_FLAWS if f["label"] in sel_flaws]
+
+            # Q8: Tipo pokémon
+            type_options = ["(nenhum)"] + [t["key"] for t in TYPE_DESCRIPTORS]
+            type_sel = st.selectbox("7️⃣  Tipo do Pokémon?", type_options, key=_k(prefix, "s2s_type"))
+            pokemon_type = "" if type_sel == "(nenhum)" else type_sel
+
+            # Build preview draft em tempo real
+            preview_draft = _simple_mode_to_draft(
+                what_sel, target_sel, extra_keys, flaw_keys,
+                simple_conditions, simple_stat_targets,
+                int(simple_rank), simple_category, pokemon_type,
+            )
+            preview_draft.name = simple_name or "Novo Golpe"
+
+            # Botão gerar
+            st.divider()
+            if st.button("🚀 Criar Rascunho e Ir para Editor", key=_k(prefix, "s2s_generate"), type="primary"):
+                preview_draft.name = simple_name or "Novo Golpe"
+                _set_draft(prefix, preview_draft)
+                _set_step(prefix, 4)
+                st.rerun()
+
+            if st.button("👁️ Ver Preview Completo", key=_k(prefix, "s2s_preview")):
+                _set_draft(prefix, preview_draft)
+                _set_step(prefix, 3)
+                st.rerun()
+
+        # Preview ao vivo (coluna direita)
+        with col_prev:
+            try:
+                _render_live_preview(preview_draft)
+            except Exception:
+                pass
+
+    # ══════════════════════════════════════════════════════════════
+    # MODO AVANÇADO
+    # ══════════════════════════════════════════════════════════════
+    else:
+        with col_form:
+            st.markdown("#### ⚙️ Seletor de Efeitos")
+
+            # Nome e configurações básicas
+            col_n, col_c, col_r = st.columns([3, 2, 1])
+            with col_n:
+                draft.name = st.text_input("Nome do golpe", value=draft.name, key=_k(prefix, "s2_name"))
+            with col_c:
+                cat_options = list(ADAPTATION_RULES["category_map"].keys())
+                cat_labels = [ADAPTATION_RULES["category_map"][c]["label_pt"] for c in cat_options]
+                cat_idx = cat_options.index(draft.category) if draft.category in cat_options else 0
+                sel_cat = st.selectbox("Categoria", cat_labels, index=cat_idx, key=_k(prefix, "s2_cat"))
+                draft.category = cat_options[cat_labels.index(sel_cat)]
+            with col_r:
+                base_rank = st.number_input("Rank base", 1, 20, 10, key=_k(prefix, "s2_rank"))
+
+            st.divider()
+
+            # ── Efeitos Principais ──
+            st.markdown("### Efeitos Principais")
+            st.caption("O que o golpe FAZ? Selecione um ou mais efeitos.")
+
+            effects_by_type: Dict[str, List] = {"attack": [], "support": [], "utility": [], "movement": [], "sensory": []}
+            for key, eff in EFFECTS.items():
+                effects_by_type.setdefault(eff["type"], []).append((key, eff))
+
+            selected_effects: List[str] = []
+
+            col_atk, col_sup, col_util = st.columns(3)
+            with col_atk:
+                st.markdown("**Ataque**")
+                for key, eff in effects_by_type.get("attack", []):
+                    if st.checkbox(eff["label_pt"], key=_k(prefix, "s2_eff", key), help=f"**{eff['label_en']}** — {eff['desc_pt']}"):
+                        selected_effects.append(key)
+            with col_sup:
+                st.markdown("**Suporte**")
+                for key, eff in effects_by_type.get("support", []):
+                    if st.checkbox(eff["label_pt"], key=_k(prefix, "s2_eff", key), help=f"**{eff['label_en']}** — {eff['desc_pt']}"):
+                        selected_effects.append(key)
+            with col_util:
+                st.markdown("**Utilidade**")
+                for key, eff in effects_by_type.get("utility", []):
+                    if st.checkbox(eff["label_pt"], key=_k(prefix, "s2_eff", key), help=f"**{eff['label_en']}** — {eff['desc_pt']}"):
+                        selected_effects.append(key)
+            col_mov, col_sens = st.columns(2)
+            with col_mov:
+                st.markdown("**Movimento**")
+                for key, eff in effects_by_type.get("movement", []):
+                    if st.checkbox(eff["label_pt"], key=_k(prefix, "s2_eff", key), help=f"**{eff['label_en']}** — {eff['desc_pt']}"):
+                        selected_effects.append(key)
+            with col_sens:
+                st.markdown("**Sensorial**")
+                for key, eff in effects_by_type.get("sensory", []):
+                    if st.checkbox(eff["label_pt"], key=_k(prefix, "s2_eff", key), help=f"**{eff['label_en']}** — {eff['desc_pt']}"):
+                        selected_effects.append(key)
+
+            st.divider()
 
     # ── Configurações por efeito ──
     effect_configs: Dict[str, Dict] = {}
@@ -296,189 +821,426 @@ def _render_step2(prefix: str):
         with st.expander(f"Configurar: {eff['label_pt']}", expanded=True):
             config: Dict[str, Any] = {}
 
-            # Rank individual
-            config["rank"] = st.number_input(
-                f"Rank de {eff['label_en']}", 1, 20, int(base_rank),
-                key=_k(prefix, "s2_eff_rank", eff_key)
-            )
+            # ════════════════════════════════════════════════
+            # IMMUNITY — seleção de itens com custo dinâmico
+            # ════════════════════════════════════════════════
+            if eff_key == "immunity":
+                st.markdown(
+                    "Escolha os itens de imunidade. "
+                    "O **rank total** é calculado automaticamente como a soma dos custos."
+                )
+                immunity_items: List[Dict] = []
 
-            # Condições para Affliction
-            if eff.get("has_conditions"):
-                st.markdown("**Condições (escolha uma por grau):**")
-                for deg_key, deg_data in AFFLICTION_CONDITIONS.items():
-                    options = ["(nenhuma)"] + [o["label_en"] for o in deg_data["options"]]
-                    descs = [""] + [o["desc_pt"] for o in deg_data["options"]]
-                    sel = st.selectbox(
-                        deg_data["label_pt"],
-                        options,
-                        key=_k(prefix, "s2_cond", eff_key, deg_key),
-                        help=None,
+                # Multiselect de opções padrão (exceto "custom")
+                std_options = [o for o in IMMUNITY_OPTIONS if o["key"] != "custom"]
+                std_labels  = [f"{o['label_pt']} ({o['cost']} PP)" for o in std_options]
+                selected_labels = st.multiselect(
+                    "Imunidades padrão",
+                    std_labels,
+                    key=_k(prefix, "s2_imm_sel", eff_key),
+                )
+                label_to_option = {f"{o['label_pt']} ({o['cost']} PP)": o for o in std_options}
+                for lbl in selected_labels:
+                    opt = label_to_option[lbl]
+                    immunity_items.append({
+                        "key": opt["key"],
+                        "label_pt": opt["label_pt"],
+                        "cost": opt["cost"],
+                    })
+
+                # Seção de imunidades personalizadas
+                st.markdown("**Imunidades personalizadas** (status ou descritores únicos do seu jogo):")
+                n_custom = st.number_input(
+                    "Quantidade de itens personalizados",
+                    min_value=0, max_value=10, value=0,
+                    key=_k(prefix, "s2_imm_ncustom", eff_key),
+                )
+                for i in range(int(n_custom)):
+                    c1, c2 = st.columns([3, 1])
+                    with c1:
+                        custom_lbl = st.text_input(
+                            f"Nome #{i+1}", key=_k(prefix, "s2_imm_clbl", eff_key, str(i))
+                        )
+                    with c2:
+                        custom_cost = st.number_input(
+                            f"PP #{i+1}", min_value=1, max_value=30, value=1,
+                            key=_k(prefix, "s2_imm_ccost", eff_key, str(i))
+                        )
+                    if custom_lbl:
+                        immunity_items.append({
+                            "key": "custom",
+                            "label_pt": custom_lbl,
+                            "custom_label": custom_lbl,
+                            "cost": int(custom_cost),
+                        })
+
+                total_rank = sum(it["cost"] for it in immunity_items)
+                st.info(f"**Rank calculado: {total_rank} PP** ({len(immunity_items)} item(s))")
+                config["immunity_items"] = immunity_items
+                config["rank"] = max(1, total_rank)
+
+            # ════════════════════════════════════════════════
+            # SENSES — seleção de sentidos com custo dinâmico
+            # ════════════════════════════════════════════════
+            elif eff_key == "senses":
+                st.markdown(
+                    "Escolha os sentidos. "
+                    "O **rank total** é calculado automaticamente."
+                )
+                sense_items: List[Dict] = []
+
+                # Divide em fixos vs per_rank para melhor apresentação
+                fixed_opts   = [o for o in SENSES_OPTIONS if not o["per_rank"] and o["key"] != "custom"]
+                perrank_opts = [o for o in SENSES_OPTIONS if o["per_rank"]]
+
+                st.markdown("**Sentidos de custo fixo:**")
+                fixed_labels = [f"{o['label_pt']} ({o['cost']} PP)" for o in fixed_opts]
+                sel_fixed = st.multiselect(
+                    "Sentidos fixos",
+                    fixed_labels,
+                    key=_k(prefix, "s2_sens_fixed", eff_key),
+                )
+                fl_map = {f"{o['label_pt']} ({o['cost']} PP)": o for o in fixed_opts}
+                for lbl in sel_fixed:
+                    opt = fl_map[lbl]
+                    sense_items.append({
+                        "key": opt["key"],
+                        "label_pt": opt["label_pt"],
+                        "cost": opt["cost"],
+                        "per_rank": False,
+                        "ranks": 1,
+                    })
+
+                st.markdown("**Sentidos por rank** (escolha e defina quantos ranks):")
+                pr_labels = [o["label_pt"] for o in perrank_opts]
+                sel_pr = st.multiselect(
+                    "Sentidos por rank",
+                    pr_labels,
+                    key=_k(prefix, "s2_sens_pr", eff_key),
+                )
+                pr_map = {o["label_pt"]: o for o in perrank_opts}
+                for lbl in sel_pr:
+                    opt = pr_map[lbl]
+                    r = st.number_input(
+                        f"Ranks — {lbl}",
+                        min_value=1, max_value=20, value=1,
+                        key=_k(prefix, "s2_sens_prrank", eff_key, opt["key"]),
                     )
-                    config.setdefault("conditions", {})[deg_key] = sel if sel != "(nenhuma)" else ""
+                    sense_items.append({
+                        "key": opt["key"],
+                        "label_pt": opt["label_pt"],
+                        "cost": opt["cost"],
+                        "per_rank": True,
+                        "ranks": int(r),
+                    })
 
-            # Alvos para Weaken / Enhanced Trait
-            if eff.get("has_targets"):
-                target_options = [t["label_en"] for t in STAT_TARGETS]
-                selected_targets = st.multiselect(
-                    "Atributos alvo",
-                    target_options,
-                    key=_k(prefix, "s2_targets", eff_key),
+                # Sentidos personalizados
+                st.markdown("**Sentidos personalizados:**")
+                n_custom_s = st.number_input(
+                    "Quantidade de sentidos personalizados",
+                    min_value=0, max_value=10, value=0,
+                    key=_k(prefix, "s2_sens_ncustom", eff_key),
                 )
-                config["stat_targets"] = selected_targets
+                for i in range(int(n_custom_s)):
+                    c1, c2, c3 = st.columns([3, 1, 1])
+                    with c1:
+                        slbl = st.text_input(
+                            f"Nome #{i+1}", key=_k(prefix, "s2_sens_clbl", eff_key, str(i))
+                        )
+                    with c2:
+                        scost = st.number_input(
+                            f"PP #{i+1}", min_value=1, max_value=10, value=1,
+                            key=_k(prefix, "s2_sens_ccost", eff_key, str(i))
+                        )
+                    with c3:
+                        sranks = st.number_input(
+                            f"Ranks #{i+1}", min_value=1, max_value=10, value=1,
+                            key=_k(prefix, "s2_sens_cranks", eff_key, str(i))
+                        )
+                    if slbl:
+                        sense_items.append({
+                            "key": "custom",
+                            "label_pt": slbl,
+                            "custom_label": slbl,
+                            "cost": int(scost),
+                            "per_rank": int(sranks) > 1,
+                            "ranks": int(sranks),
+                        })
 
-            # Resistência override
-            resist_default = eff.get("default_resist") or "Toughness"
-            from powers_data import RESIST_STATS
-            resist_options = RESIST_STATS
-            resist_idx = resist_options.index(resist_default) if resist_default in resist_options else 0
-            if eff.get("default_resist"):
-                config["resist"] = st.selectbox(
-                    "Resistido por",
-                    resist_options,
-                    index=resist_idx,
-                    key=_k(prefix, "s2_resist", eff_key),
+                total_sense_rank = sum(
+                    it["cost"] * (it.get("ranks", 1) if it.get("per_rank") else 1)
+                    for it in sense_items
                 )
+                st.info(f"**Rank calculado: {total_sense_rank} PP** ({len(sense_items)} sentido(s))")
+                config["sense_items"] = sense_items
+                config["rank"] = max(1, total_sense_rank)
+
+            # ════════════════════════════════════════════════
+            # COMMUNICATION — tipo + sentido customizado
+            # ════════════════════════════════════════════════
+            elif eff_key == "communication":
+                comm_type_labels = [ct["label_pt"] for ct in COMMUNICATION_TYPES]
+                sel_ct = st.selectbox(
+                    "Tipo de Comunicação",
+                    comm_type_labels,
+                    key=_k(prefix, "s2_comm_type", eff_key),
+                )
+                comm_type_map = {ct["label_pt"]: ct["key"] for ct in COMMUNICATION_TYPES}
+                config["communication_type"] = comm_type_map[sel_ct]
+
+                if comm_type_map[sel_ct] == "custom":
+                    config["communication_custom_sense"] = st.text_input(
+                        "Nome do tipo de sentido personalizado (ex: Pesadelos, Sonhos)",
+                        key=_k(prefix, "s2_comm_custom", eff_key),
+                    )
+                else:
+                    # Campo opcional para sentido customizado mesmo em tipos padrão
+                    extra_sense = st.text_input(
+                        "Sense Type específico (opcional, ex: nome de sentido temático)",
+                        key=_k(prefix, "s2_comm_extra", eff_key),
+                    )
+                    config["communication_custom_sense"] = extra_sense
+
+                config["rank"] = st.number_input(
+                    "Rank de Communication (determina o alcance)",
+                    1, 20, int(base_rank),
+                    key=_k(prefix, "s2_comm_rank", eff_key),
+                )
+
+            # ════════════════════════════════════════════════
+            # MOVEMENT — seleção de tipos de movimento
+            # ════════════════════════════════════════════════
+            elif eff_key == "movement":
+                st.markdown(
+                    "Cada tipo de movimento = **1 rank = 2 PP**. "
+                    "O rank total é calculado automaticamente."
+                )
+                mv_labels = [m["label_pt"] for m in MOVEMENT_OPTIONS]
+                sel_mv = st.multiselect(
+                    "Tipos de movimento",
+                    mv_labels,
+                    key=_k(prefix, "s2_mov_sel", eff_key),
+                )
+                mv_map_rev = {m["label_pt"]: m["key"] for m in MOVEMENT_OPTIONS}
+                movement_types = [mv_map_rev[lbl] for lbl in sel_mv]
+                total_mv_rank = len(movement_types)
+                if total_mv_rank:
+                    st.info(f"**Rank calculado: {total_mv_rank}** → {total_mv_rank * 2} PP")
+                config["movement_types"] = movement_types
+                config["rank"] = max(1, total_mv_rank)
+
+            # ════════════════════════════════════════════════
+            # TODOS OS OUTROS EFEITOS — configuração genérica
+            # ════════════════════════════════════════════════
+            else:
+                # Rank individual
+                config["rank"] = st.number_input(
+                    f"Rank de {eff['label_en']}", 1, 20, int(base_rank),
+                    key=_k(prefix, "s2_eff_rank", eff_key)
+                )
+
+                # Condições para Affliction
+                if eff.get("has_conditions"):
+                    st.markdown("**Condições (escolha uma por grau):**")
+                    for deg_key, deg_data in AFFLICTION_CONDITIONS.items():
+                        options = ["(nenhuma)"] + [o["label_en"] for o in deg_data["options"]]
+                        sel = st.selectbox(
+                            deg_data["label_pt"],
+                            options,
+                            key=_k(prefix, "s2_cond", eff_key, deg_key),
+                            help=None,
+                        )
+                        config.setdefault("conditions", {})[deg_key] = sel if sel != "(nenhuma)" else ""
+
+                # Alvos para Weaken / Enhanced Trait
+                if eff.get("has_targets"):
+                    target_options = [t["label_en"] for t in STAT_TARGETS]
+                    selected_targets = st.multiselect(
+                        "Atributos alvo",
+                        target_options,
+                        key=_k(prefix, "s2_targets", eff_key),
+                    )
+                    config["stat_targets"] = selected_targets
+
+                # Resistência override
+                resist_default = eff.get("default_resist") or "Toughness"
+                from powers_data import RESIST_STATS
+                resist_options = RESIST_STATS
+                resist_idx = resist_options.index(resist_default) if resist_default in resist_options else 0
+                if eff.get("default_resist"):
+                    config["resist"] = st.selectbox(
+                        "Resistido por",
+                        resist_options,
+                        index=resist_idx,
+                        key=_k(prefix, "s2_resist", eff_key),
+                    )
 
             effect_configs[eff_key] = config
 
-    st.divider()
+            # ── Extras Rápidos (condicionais) ─────────────────────────────
+            st.divider()
+            st.markdown("### Modificadores Rápidos (Extras)")
+            st.caption("Mostra apenas extras relevantes para os efeitos selecionados.")
 
-    # ── Extras Rápidos ──
-    st.markdown("### Modificadores Rápidos (Extras)")
-    st.caption("Marque os extras que se aplicam ao golpe todo.")
+            quick_extras: List[str] = []
+            has_attack = any(EFFECTS.get(k, {}).get("type") == "attack" for k in selected_effects)
+            has_area = False  # será True se algum area extra for marcado
 
-    quick_extras: List[str] = []
-    # Organizar por grupo
-    extras_range = [(k, v) for k, v in EXTRAS.items() if v.get("group") == "range"]
-    extras_area = [(k, v) for k, v in EXTRAS.items() if v.get("group") == "area"]
-    extras_other = [(k, v) for k, v in EXTRAS.items() if "group" not in v]
+            extras_range = [(k, v) for k, v in EXTRAS.items() if v.get("group") == "range"]
+            extras_area = [(k, v) for k, v in EXTRAS.items() if v.get("group") == "area"]
+            extras_other = [(k, v) for k, v in EXTRAS.items() if "group" not in v]
 
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown("**Alcance**")
-        for key, ex in extras_range:
-            if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", key), help=ex["desc_pt"]):
-                quick_extras.append(key)
-    with c2:
-        st.markdown("**Área**")
-        for key, ex in extras_area:
-            if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", key), help=ex["desc_pt"]):
-                quick_extras.append(key)
-    with c3:
-        st.markdown("**Outros Extras**")
-        # Mostrar primeiros 6 extras mais comuns
-        common_extras = ["selective", "accurate", "counter", "reaction", "cumulative", "improved_critical"]
-        for key in common_extras:
-            if key in EXTRAS:
-                ex = EXTRAS[key]
-                if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", key), help=ex["desc_pt"]):
-                    quick_extras.append(key)
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.markdown("**Alcance**")
+                for key, ex in extras_range:
+                    if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", key), help=f"**{ex['label_en']}** — {ex['desc_pt']}"):
+                        quick_extras.append(key)
+            with c2:
+                st.markdown("**Área**")
+                for key, ex in extras_area:
+                    checked = st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", key), help=f"**{ex['label_en']}** — {ex['desc_pt']}")
+                    if checked:
+                        quick_extras.append(key)
+                        has_area = True
+            with c3:
+                st.markdown("**Outros**")
+                # Esconde extras irrelevantes: Selective só se há área; Accurate só se há ataque
+                common_extras = ["selective", "accurate", "counter", "reaction", "cumulative", "improved_critical"]
+                for key in common_extras:
+                    if key not in EXTRAS:
+                        continue
+                    # Escolhas condicionais
+                    if key == "selective" and not has_area:
+                        continue
+                    if key in ("accurate", "improved_critical", "counter") and not has_attack:
+                        continue
+                    ex = EXTRAS[key]
+                    if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", key), help=f"**{ex['label_en']}** — {ex['desc_pt']}"):
+                        quick_extras.append(key)
 
-    # Extras adicionais em expander
-    remaining_extras = [
-        (k, v) for k, v in extras_other
-        if k not in common_extras
-    ]
-    if remaining_extras:
-        with st.expander("Mais extras..."):
-            for key, ex in remaining_extras:
-                if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", key), help=ex["desc_pt"]):
-                    quick_extras.append(key)
+            # Extras avançados (compatíveis com ao menos um efeito selecionado)
+            relevant_remaining = []
+            for k, v in extras_other:
+                if k in common_extras:
+                    continue
+                compatible = v.get("compatible_effects")
+                if compatible is None or any(e in compatible for e in selected_effects):
+                    relevant_remaining.append((k, v))
+            if relevant_remaining:
+                with st.expander("Mais extras…"):
+                    for key, ex in relevant_remaining:
+                        if st.checkbox(ex["label_pt"], key=_k(prefix, "s2_qex", key), help=f"**{ex['label_en']}** — {ex['desc_pt']}"):
+                            quick_extras.append(key)
 
-    st.divider()
+            st.divider()
 
-    # ── Falhas Rápidas ──
-    st.markdown("### Falhas (reduzem custo)")
-    st.caption("Falhas tornam o golpe mais barato mas com restrições.")
+            # ── Falhas Rápidas ──────────────────────────────────────────────
+            st.markdown("### Falhas (reduzem custo)")
+            quick_flaws: List[Dict] = []
+            common_flaws = ["limited", "tiring", "unreliable", "grab_based", "concentration", "side_effect"]
+            c1, c2 = st.columns(2)
+            half = len(common_flaws) // 2
 
-    quick_flaws: List[Dict] = []
-    common_flaws = ["limited", "tiring", "unreliable", "grab_based", "concentration", "side_effect"]
-    c1, c2 = st.columns(2)
-    flaw_keys_list = list(FLAWS.keys())
-    half = len(common_flaws) // 2
-
-    with c1:
-        for key in common_flaws[:half + 1]:
-            if key in FLAWS:
+            def _render_flaw_check(key: str, col):
+                if key not in FLAWS:
+                    return
                 fl = FLAWS[key]
-                if st.checkbox(fl["label_pt"], key=_k(prefix, "s2_qfl", key), help=fl["desc_pt"]):
-                    desc = ""
-                    if fl.get("has_description"):
-                        desc = st.text_input(
-                            f"Descreva a limitação ({fl['label_en']})",
-                            key=_k(prefix, "s2_qfl_desc", key),
-                        )
-                    quick_flaws.append({"key": key, "ranks": 1, "description": desc})
-    with c2:
-        for key in common_flaws[half + 1:]:
-            if key in FLAWS:
-                fl = FLAWS[key]
-                if st.checkbox(fl["label_pt"], key=_k(prefix, "s2_qfl", key), help=fl["desc_pt"]):
-                    desc = ""
-                    if fl.get("has_description"):
-                        desc = st.text_input(
-                            f"Descreva a limitação ({fl['label_en']})",
-                            key=_k(prefix, "s2_qfl_desc", key),
-                        )
-                    quick_flaws.append({"key": key, "ranks": 1, "description": desc})
+                with col:
+                    if st.checkbox(fl["label_pt"], key=_k(prefix, "s2_qfl", key), help=f"**{fl['label_en']}** — {fl['desc_pt']}"):
+                        desc = ""
+                        if fl.get("has_description"):
+                            desc = st.text_input(f"Detalhe ({fl['label_en']})", key=_k(prefix, "s2_qfl_desc", key))
+                        quick_flaws.append({"key": key, "ranks": 1, "description": desc})
 
-    remaining_flaws = [k for k in FLAWS if k not in common_flaws]
-    if remaining_flaws:
-        with st.expander("Mais falhas..."):
-            for key in remaining_flaws:
-                fl = FLAWS[key]
-                if st.checkbox(fl["label_pt"], key=_k(prefix, "s2_qfl", key), help=fl["desc_pt"]):
-                    desc = ""
-                    if fl.get("has_description"):
-                        desc = st.text_input(
-                            f"Descreva ({fl['label_en']})",
-                            key=_k(prefix, "s2_qfl_desc", key),
-                        )
-                    quick_flaws.append({"key": key, "ranks": 1, "description": desc})
+            for key in common_flaws[:half + 1]:
+                _render_flaw_check(key, c1)
+            for key in common_flaws[half + 1:]:
+                _render_flaw_check(key, c2)
 
+            remaining_flaws = [k for k in FLAWS if k not in common_flaws]
+            if remaining_flaws:
+                with st.expander("Mais falhas…"):
+                    for key in remaining_flaws:
+                        fl = FLAWS[key]
+                        if st.checkbox(fl["label_pt"], key=_k(prefix, "s2_qfl", key), help=f"**{fl['label_en']}** — {fl['desc_pt']}"):
+                            desc = ""
+                            if fl.get("has_description"):
+                                desc = st.text_input(f"Detalhe ({fl['label_en']})", key=_k(prefix, "s2_qfl_desc", key))
+                            quick_flaws.append({"key": key, "ranks": 1, "description": desc})
+
+            st.divider()
+
+            # ── Gerar Build (modo avançado) ─────────────────────────────────
+            if st.button("🚀 Gerar Build", key=_k(prefix, "s2_generate"), type="primary", disabled=not selected_effects):
+                components_adv: List[PowerComponent] = []
+                for i, eff_key in enumerate(selected_effects):
+                    cfg = effect_configs.get(eff_key, {})
+                    comp = PowerComponent(
+                        effect_key=eff_key,
+                        rank=int(cfg.get("rank", base_rank)),
+                        is_linked=(i > 0),
+                        conditions=cfg.get("conditions"),
+                        stat_targets=cfg.get("stat_targets", []),
+                        resist_override=cfg.get("resist"),
+                        immunity_items=cfg.get("immunity_items", []),
+                        sense_items=cfg.get("sense_items", []),
+                        communication_type=cfg.get("communication_type", ""),
+                        communication_custom_sense=cfg.get("communication_custom_sense", ""),
+                        movement_types=cfg.get("movement_types", []),
+                    )
+                    if i == 0 or eff_key in ("damage", "affliction", "weaken"):
+                        for ex_key in quick_extras:
+                            comp.extras.append({"key": ex_key, "ranks": 1, "description": ""})
+                    if i == 0:
+                        for fl in quick_flaws:
+                            comp.flaws.append(dict(fl))
+                    components_adv.append(comp)
+
+                adv_draft = GolpeDraft(
+                    name=draft.name,
+                    category=draft.category,
+                    components=components_adv,
+                    pokemon_type=draft.pokemon_type,
+                )
+                _set_draft(prefix, adv_draft)
+                _set_step(prefix, 3)
+                st.rerun()
+
+            if not selected_effects:
+                st.info("Selecione pelo menos um efeito para gerar a build.")
+
+        # ── Preview ao vivo — modo avançado ─────────────────────────────
+        with col_prev:
+            if selected_effects:
+                try:
+                    preview_comps: List[PowerComponent] = []
+                    for i, eff_key in enumerate(selected_effects):
+                        cfg = effect_configs.get(eff_key, {})
+                        preview_comps.append(PowerComponent(
+                            effect_key=eff_key,
+                            rank=int(cfg.get("rank", base_rank)),
+                            is_linked=(i > 0),
+                            conditions=cfg.get("conditions"),
+                            stat_targets=cfg.get("stat_targets", []),
+                            immunity_items=cfg.get("immunity_items", []),
+                            sense_items=cfg.get("sense_items", []),
+                            movement_types=cfg.get("movement_types", []),
+                        ))
+                    preview_d = GolpeDraft(
+                        name=draft.name or "Novo Golpe",
+                        category=draft.category,
+                        components=preview_comps,
+                    )
+                    _render_live_preview(preview_d)
+                except Exception:
+                    pass
+            else:
+                st.info("Selecione efeitos para ver o preview.")
+
+    # ── Botão Voltar (fora do bloco de modo) ─────────────────────────
     st.divider()
-
-    # ── Gerar Build ──
-    if st.button("Gerar Build", key=_k(prefix, "s2_generate"), type="primary", disabled=not selected_effects):
-        # Montar componentes
-        components: List[PowerComponent] = []
-        for i, eff_key in enumerate(selected_effects):
-            cfg = effect_configs.get(eff_key, {})
-            comp = PowerComponent(
-                effect_key=eff_key,
-                rank=int(cfg.get("rank", base_rank)),
-                is_linked=(i > 0),
-                conditions=cfg.get("conditions"),
-                stat_targets=cfg.get("stat_targets", []),
-                resist_override=cfg.get("resist"),
-            )
-            # Aplicar extras rápidos ao primeiro componente de ataque
-            if i == 0 or eff_key in ("damage", "affliction", "weaken"):
-                for ex_key in quick_extras:
-                    comp.extras.append({"key": ex_key, "ranks": 1, "description": ""})
-
-            # Aplicar falhas rápidas ao primeiro componente
-            if i == 0:
-                for fl in quick_flaws:
-                    comp.flaws.append(dict(fl))
-
-            components.append(comp)
-
-        draft = GolpeDraft(
-            name=draft.name,
-            category=draft.category,
-            components=components,
-            pokemon_type=draft.pokemon_type,
-        )
-        _set_draft(prefix, draft)
-        _set_step(prefix, 3)
-        st.rerun()
-
-    if not selected_effects:
-        st.info("Selecione pelo menos um efeito para gerar a build.")
-
-    # Botão voltar
-    if st.button("Voltar ao Passo 1", key=_k(prefix, "s2_back")):
+    if st.button("← Voltar ao Passo 1", key=_k(prefix, "s2_back")):
         _set_step(prefix, 1)
         st.rerun()
 
@@ -936,7 +1698,18 @@ def _render_step5(prefix: str, trainer_name: str):
 
     st.divider()
 
-    # Botões de salvamento
+    # ── Template e Histórico ──────────────────────────────────────────────
+    col_tpl, col_hist = st.columns([1, 1])
+    with col_tpl:
+        if st.button("📋 Salvar como Template", key=_k(prefix, "s5_save_tpl"), use_container_width=True):
+            _save_template(draft)
+            st.success(f"Template '{draft.name}' salvo! Disponível no Passo 1.")
+    with col_hist:
+        st.caption(f"Histórico: {len(_get_history())}/{_MAX_HISTORY} golpes salvos")
+
+    st.divider()
+
+    # ── Botões de salvamento ──────────────────────────────────────────────
     c1, c2 = st.columns(2)
 
     with c1:
@@ -946,6 +1719,7 @@ def _render_step5(prefix: str, trainer_name: str):
             if "cg_moves" not in st.session_state:
                 st.session_state["cg_moves"] = []
             st.session_state["cg_moves"].append(move_json)
+            _save_to_history(draft)  # ← salva no histórico
             st.success(f"Golpe '{move_json['name']}' adicionado à ficha!")
             st.json(move_json)
 
@@ -966,12 +1740,13 @@ def _render_step5(prefix: str, trainer_name: str):
                       .document(move_id) \
                       .set(doc)
 
-                    # Também salvar no session_state
+                    # Também salvar no session_state e histórico
                     move_json = final_move or draft_to_move_json(draft, accuracy=accuracy)
                     move_json["accuracy"] = int(accuracy)
                     if "cg_moves" not in st.session_state:
                         st.session_state["cg_moves"] = []
                     st.session_state["cg_moves"].append(move_json)
+                    _save_to_history(draft)  # ← salva no histórico
 
                     st.success(f"Golpe '{draft.name}' salvo na nuvem e adicionado à ficha!")
                     st.json(doc)
@@ -980,20 +1755,23 @@ def _render_step5(prefix: str, trainer_name: str):
 
     st.divider()
 
-    # JSON final para copiar
+    # ── Live preview do golpe finalizado ─────────────────────────────────
+    _render_live_preview(draft, compact=True)
+
+    # ── JSON final para copiar ────────────────────────────────────────────
     if final_move:
         with st.expander("JSON do golpe (para copiar)"):
             st.json(final_move)
 
-    # Navegação
+    # ── Navegação ─────────────────────────────────────────────────────────
     c1, c2 = st.columns(2)
     with c1:
         if st.button("Voltar ao Editor", key=_k(prefix, "s5_back")):
             _set_step(prefix, 4)
             st.rerun()
     with c2:
-        if st.button("Criar outro golpe", key=_k(prefix, "s5_new")):
-            # Limpar state
+        if st.button("🔄 Criar outro golpe", key=_k(prefix, "s5_new")):
+            # Limpar state (preserva histórico e templates que estão em chaves globais)
             for key in list(st.session_state.keys()):
                 if key.startswith(prefix):
                     del st.session_state[key]
