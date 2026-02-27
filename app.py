@@ -56,6 +56,20 @@ except Exception:  # ImportError, ModuleNotFoundError, etc.
     _gb_calc_pp = None
     _GolpeDraft = None
 
+# ─── Encounter Generator (aba exclusiva Ezenek) ─────────────────────────────
+try:
+    from encounter_generator import (
+        carregar_pokedex as _enc_carregar_pokedex,
+        gerar_encontro as _enc_gerar_encontro,
+        CLIMAS_POR_REGIAO as _ENC_CLIMAS_POR_REGIAO,
+    )
+    _ENC_AVAILABLE = True
+except Exception:
+    _ENC_AVAILABLE = False
+    _enc_carregar_pokedex = None
+    _enc_gerar_encontro = None
+    _ENC_CLIMAS_POR_REGIAO = {}
+
 
 # ================================
 # MOVE DB + MOVE CREATOR (UNIFICADO)
@@ -9367,6 +9381,75 @@ if st.session_state.get("show_login_menu"):
     render_login_menu(trainer_name, user_data)
     st.stop()
 
+
+@st.cache_data(show_spinner=False)
+def _enc_load_pokedex_cached():
+    if not _ENC_AVAILABLE or _enc_carregar_pokedex is None:
+        return [], True
+    return _enc_carregar_pokedex()
+
+
+def _enc_region_options() -> list[str]:
+    if isinstance(_ENC_CLIMAS_POR_REGIAO, dict) and _ENC_CLIMAS_POR_REGIAO:
+        return sorted(_ENC_CLIMAS_POR_REGIAO.keys())
+    return []
+
+
+def _enc_biome_options(pokedex: list, regiao: str) -> list[str]:
+    biomas = set()
+    for p in pokedex or []:
+        regs = getattr(p, "regioes", []) or []
+        if any(str(regiao or "").strip().lower() in str(r).strip().lower() for r in regs):
+            for b in (getattr(p, "biomas", []) or []):
+                b = str(b).strip()
+                if b:
+                    biomas.add(b)
+    return sorted(biomas)
+
+
+def render_encounter_generator_page() -> None:
+    st.title("🎲 Gerador de Encontros")
+    st.caption("Ferramenta para criar encontros narrativos de Ga'Al usando a Pokédex.")
+
+    if trainer_name != "Ezenek":
+        st.warning("Esta aba é exclusiva do perfil Ezenek.")
+        return
+
+    if not _ENC_AVAILABLE:
+        st.error("Não foi possível carregar 'encounter_generator.py'.")
+        return
+
+    pokedex, is_mock = _enc_load_pokedex_cached()
+    if not pokedex:
+        st.error("Pokédex indisponível para gerar encontros.")
+        return
+
+    if is_mock:
+        st.info("Pokédex em modo mock (arquivo principal não encontrado).")
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        region_opts = _enc_region_options() or ["Deserto Irrigado"]
+        regiao = st.selectbox("Região", options=region_opts, index=0)
+
+    with col2:
+        biome_opts = _enc_biome_options(pokedex, regiao)
+        if not biome_opts:
+            biome_opts = ["Dunas"]
+        bioma = st.selectbox("Bioma", options=biome_opts, index=0)
+
+    with col3:
+        horario = st.selectbox("Horário", ["Manhã", "Tarde", "Anoitecer", "Noite", "Madrugada"], index=1)
+
+    quantidade = st.slider("Quantidade de encontros", min_value=1, max_value=5, value=1)
+
+    if st.button("🎲 Gerar encontros", type="primary"):
+        for i in range(quantidade):
+            txt = _enc_gerar_encontro(pokedex, regiao, bioma, horario)
+            if quantidade > 1:
+                st.markdown(f"### Encontro {i + 1}")
+            st.code(txt)
+
 # --- INTERFACE PRINCIPAL ---
 
 st.sidebar.title("📱 Menu")
@@ -9392,17 +9475,21 @@ if "nav_to" in st.session_state:
     st.session_state.update({"page": st.session_state.pop("nav_to")})
 
 st.sidebar.markdown("---")
+menu_pages = [
+    "Pokédex (Busca)",
+    "Trainer Hub (Meus Pokémons)",
+    "Criação Guiada de Fichas",
+    "Minhas Fichas",
+    "PvP – Arena Tática",
+    "Mochila",
+    "Compendium de Ga'Al",
+]
+if trainer_name == "Ezenek":
+    menu_pages.append("Gerador de Encontros")
+
 page = st.sidebar.radio(
     "Ir para:",
-    [
-        "Pokédex (Busca)",
-        "Trainer Hub (Meus Pokémons)",
-        "Criação Guiada de Fichas",
-        "Minhas Fichas",
-        "PvP – Arena Tática",
-        "Mochila",
-        "Compendium de Ga'Al",
-    ],
+    menu_pages,
     key="page",
 )
 # 👇 COLE AQUI (uma linha abaixo do radio)
@@ -20794,6 +20881,9 @@ elif page == "PvP – Arena Tática":
 
 elif page == "Compendium de Ga'Al":
     render_compendium_page()
+
+elif page == "Gerador de Encontros":
+    render_encounter_generator_page()
 
 elif page == "Mochila":
     if "backpack" not in user_data:
