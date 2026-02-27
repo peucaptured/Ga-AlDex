@@ -1550,7 +1550,10 @@ def cg_init(reset: bool = False):
                 "will": 0,
             },
             "moves": [],
+            "notas": "",
         }
+    # Garante que notas existe em drafts antigos sem esse campo
+    st.session_state["cg_draft"].setdefault("notas", "")
     # 🔗 alias: cg_moves aponta para a MESMA lista do draft
     st.session_state.setdefault("cg_moves", st.session_state["cg_draft"]["moves"])
     st.session_state["cg_draft"]["moves"] = st.session_state["cg_moves"]
@@ -1562,6 +1565,8 @@ def cg_sync_from_widgets():
         return
     if "cg_pname" in st.session_state:
         d["pname"] = st.session_state["cg_pname"]
+    if "cg_notas" in st.session_state:
+        d["notas"] = st.session_state["cg_notas"]
 
     for k_widget, k_stat in [
         ("cg_stgr", "stgr"),
@@ -16714,8 +16719,9 @@ elif page == "Criação Guiada de Fichas":
                     st.write(matches[["Nº", "Nome"]])
                     
             raw_name = pname.strip().lower()
-            
+
             is_nidoran_generic = raw_name in ["nidoran", "nidoran♀", "nidoran♂", "nidoran-f", "nidoran-m"]
+            is_lycanroc_any = "lycanroc" in raw_name
             is_lycanroc_generic = raw_name == "lycanroc"
 
             if is_nidoran_generic:
@@ -16728,14 +16734,24 @@ elif page == "Criação Guiada de Fichas":
                 poke_query = "nidoran-f" if "♀" in choice else "nidoran-m"
                 pname = "Nidoran ♀" if "♀" in choice else "Nidoran ♂"
 
-            elif is_lycanroc_generic:
-                lyc_choice = st.radio(
-                    "Qual forma do Lycanroc?",
-                    ["Midday (Dia)", "Midnight (Noite)", "Dusk (Crepúsculo)"],
-                    horizontal=True,
-                    key="lycanroc_choice"
-                )
-                
+            elif is_lycanroc_any:
+                # Nome genérico ("lycanroc") → mostra radio; nome com forma já salva → detecta forma
+                if is_lycanroc_generic:
+                    lyc_choice = st.radio(
+                        "Qual forma do Lycanroc?",
+                        ["Midday (Dia)", "Midnight (Noite)", "Dusk (Crepúsculo)"],
+                        horizontal=True,
+                        key="lycanroc_choice",
+                    )
+                else:
+                    # Forma já conhecida (ex: "Lycanroc (Midnight)") — detecta automaticamente
+                    if "midnight" in raw_name or "noite" in raw_name:
+                        lyc_choice = "Midnight (Noite)"
+                    elif "dusk" in raw_name or "crepúscul" in raw_name:
+                        lyc_choice = "Dusk (Crepúsculo)"
+                    else:
+                        lyc_choice = "Midday (Dia)"
+
                 if "Noite" in lyc_choice:
                     poke_query = "lycanroc-midnight"
                     pname = "Lycanroc (Midnight)"
@@ -16745,7 +16761,7 @@ elif page == "Criação Guiada de Fichas":
                 else:
                     poke_query = "lycanroc-midday"
                     pname = "Lycanroc (Midday)"
-                    
+
             else:
                 # Usa a função auxiliar apenas aqui
                 poke_query = to_pokeapi_name(pname)
@@ -16900,6 +16916,19 @@ elif page == "Criação Guiada de Fichas":
                     f"**Abilities escolhidas:** {', '.join(chosen_abilities)}"
                 )
                 st.info("Use as abas para preencher cada etapa. O total de PP gastos é somado automaticamente no final.")
+
+                # ── Anotações da ficha ──────────────────────────────────────
+                _notas_saved = st.session_state.get("cg_draft", {}).get("notas", "")
+                _notas_new = st.text_area(
+                    "📝 Anotações / Notas",
+                    value=_notas_saved,
+                    height=90,
+                    key="cg_notas",
+                    placeholder="Estratégia, personalidade, histórico do Pokémon, observações...",
+                    help="Notas livres salvas junto da ficha.",
+                )
+                if _notas_new != _notas_saved:
+                    st.session_state["cg_draft"]["notas"] = _notas_new
 
                 # --------------------------
                 # Preset por Viabilidade (Arquétipos)
@@ -17540,9 +17569,18 @@ elif page == "Criação Guiada de Fichas":
                             ui_id = e["ui_id"]
                             meta = m_gv.setdefault("meta", {})
                 
-                            desc_text = _mv_desc_for(db_moves_guided, m_gv.get("name"))
-                            preview = _mv_preview(desc_text, 200)
-                
+                            # Descrição: custom salva na ficha > banco/Excel > derivada da build
+                            _custom_desc = m_gv.get("descricao") or m_gv.get("meta", {}).get("descricao")
+                            desc_text = _custom_desc or _mv_desc_for(db_moves_guided, m_gv.get("name"))
+                            # Preview: usa descrição customizada ou derivada de build se não houver desc_text
+                            if desc_text:
+                                preview = _mv_preview(desc_text, 200)
+                            elif m_gv.get("build"):
+                                _bul = _summarize_build(m_gv.get("build", ""))
+                                preview = " • ".join(_bul[:5]) if _bul else "Criado via Criador Completo."
+                            else:
+                                preview = "Descrição não disponível."
+
                             # limites
                             acc_limit = _move_accuracy_limit(m_gv, np_value, stats_now)
                             current_acc = int(m_gv.get("accuracy", 0) or 0)
@@ -17550,26 +17588,28 @@ elif page == "Criação Guiada de Fichas":
                             based_label, stat_val = _move_stat_value(m_gv, stats_now)
                             final_rank = base_rank + int(stat_val)
                             mod_acerto = current_acc + final_rank
-                
+
                             # card
                             with st.container(border=True):
                                 left, right = st.columns([7, 3], vertical_alignment="top")
-                
+
                                 with left:
                                     st.markdown(f"### {order_i}. {m_gv.get('name','Golpe')}")
-                                    if e["tags"]:
-                                        chips_html = '<div class="mv-chips">' + "".join([f'<span class="mv-chip">{t}</span>' for t in e["tags"]]) + "</div>"
-                                        st.markdown(chips_html, unsafe_allow_html=True)
-                
+                                    # Chips: tipo do golpe + tags
+                                    _tipo_chip = f'<span class="mv-chip">🏷️ {m_gv["tipo"]}</span>' if m_gv.get("tipo") else ""
+                                    _tag_chips = "".join([f'<span class="mv-chip">{t}</span>' for t in e["tags"]])
+                                    if _tipo_chip or _tag_chips:
+                                        st.markdown(f'<div class="mv-chips">{_tipo_chip}{_tag_chips}</div>', unsafe_allow_html=True)
+
                                     # linha de KPIs (compacta, sem poluir)
                                     pp_here = m_gv.get("pp_cost")
                                     pp_show = "—" if pp_here is None else str(pp_here)
-                
+
                                     if based_label == "—":
                                         rank_label = f"Rank final {final_rank}"
                                     else:
                                         rank_label = f"Rank final {final_rank} (Base {base_rank} + {based_label} {stat_val})"
-                
+
                                     st.markdown(
                                         f"<div class='mv-kpi'>"
                                         f"<b>{rank_label}</b> &nbsp;•&nbsp; "
@@ -17579,33 +17619,65 @@ elif page == "Criação Guiada de Fichas":
                                         f"</div>",
                                         unsafe_allow_html=True,
                                     )
-                
+
                                     # avisos de leitura
                                     warn_lines = []
                                     if current_acc > int(acc_limit):
                                         warn_lines.append(f"Acerto acima do sugerido ({current_acc} > {acc_limit}).")
                                     if mod_acerto > target_total:
                                         warn_lines.append(f"Mod. acerto acima de 2×NP ({mod_acerto} > {target_total}).")
-                
+
                                     if warn_lines:
                                         st.markdown(
                                             "<div class='mv-warn mv-muted'>⚠️ " + " ".join(warn_lines) + "</div>",
                                             unsafe_allow_html=True,
                                         )
-                
+
                                     if not compact:
                                         st.caption(preview)
-                
-                                    # Detalhes (mantém tudo que existia)
+
+                                    # Detalhes
                                     with st.expander("📘 Detalhes", expanded=False):
-                                        st.markdown("**Descrição completa**")
-                                        st.write(desc_text or "Descrição não disponível.")
+                                        st.markdown("**Descrição**")
+                                        if desc_text:
+                                            st.write(desc_text)
+                                        elif m_gv.get("build"):
+                                            st.caption("_(criado via Criador Completo — descrição derivada da build)_")
+                                            _bul2 = _summarize_build(m_gv.get("build", ""))
+                                            if _bul2:
+                                                st.write(" • ".join(_bul2[:8]))
+                                        else:
+                                            st.caption("Descrição não disponível.")
                                         if m_gv.get("build"):
-                                            bullets = _summarize_build(m_gv.get("build", ""))
-                                            if bullets:
-                                                st.caption(" • ".join(bullets[:8]))
-                                            st.markdown("**Ingredientes / Build**")
+                                            st.markdown("**Build MM3e**")
                                             st.code(m_gv["build"], language="text")
+
+                                    # ── Editar nome / build / descrição ──────────────────
+                                    with st.expander("✏️ Editar golpe", expanded=False):
+                                        _en = st.text_input(
+                                            "Nome", value=m_gv.get("name", ""),
+                                            key=f"mv_edit_name_{ui_id}",
+                                        )
+                                        _eb = st.text_area(
+                                            "Build string (MM3e)",
+                                            value=m_gv.get("build", ""),
+                                            height=80,
+                                            key=f"mv_edit_build_{ui_id}",
+                                            help="Cole ou edite a build MM3e diretamente aqui.",
+                                        )
+                                        _ed = st.text_area(
+                                            "Descrição personalizada",
+                                            value=m_gv.get("descricao", ""),
+                                            height=60,
+                                            key=f"mv_edit_desc_{ui_id}",
+                                            help="Se preenchida, substitui a descrição do banco/Excel.",
+                                        )
+                                        if st.button("💾 Salvar edição", key=f"mv_edit_save_{ui_id}", type="primary"):
+                                            if _en.strip():
+                                                m_gv["name"] = _en.strip()
+                                            m_gv["build"] = _eb.strip()
+                                            m_gv["descricao"] = _ed.strip()
+                                            st.rerun()
                 
                                 with right:
                                     # Ajustes (mantém suas funções)
@@ -17722,6 +17794,23 @@ elif page == "Criação Guiada de Fichas":
                                     )
                                     if new_resist != _cur_resist:
                                         _meta_gv["resist_stat"] = new_resist if new_resist != "— (padrão)" else None
+
+                                    # Tipo do golpe (pokémon type)
+                                    _tipo_opts = ["—", "Normal", "Fire", "Water", "Electric", "Grass",
+                                                  "Ice", "Fighting", "Poison", "Ground", "Flying",
+                                                  "Psychic", "Bug", "Rock", "Ghost", "Dragon",
+                                                  "Dark", "Steel", "Fairy"]
+                                    _cur_tipo = str(m_gv.get("tipo") or "—")
+                                    _cur_tipo_idx = _tipo_opts.index(_cur_tipo) if _cur_tipo in _tipo_opts else 0
+                                    new_tipo = st.selectbox(
+                                        "Tipo do golpe",
+                                        _tipo_opts,
+                                        index=_cur_tipo_idx,
+                                        key=f"mv_tipo_{ui_id}",
+                                        help="Tipo Pokémon do golpe (exibido como chip no card)",
+                                    )
+                                    if new_tipo != _cur_tipo:
+                                        m_gv["tipo"] = new_tipo if new_tipo != "—" else None
 
                                     # Se o golpe está sem PP, mantém fix manual
                                     if m_gv.get("pp_cost") is None:

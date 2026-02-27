@@ -1035,6 +1035,15 @@ def _render_step2(prefix: str):
             # TODOS OS OUTROS EFEITOS — configuração genérica
             # ════════════════════════════════════════════════
             else:
+                # Feature: pede qual é a característica
+                if eff_key == "feature":
+                    config["feature_description"] = st.text_input(
+                        "Qual Feature / Característica?",
+                        key=_k(prefix, "s2_feature_desc", eff_key),
+                        placeholder="Ex: Swift Swim, Levitate, Regeneração, Infiltrator…",
+                        help="Nome ou descrição da habilidade especial. Usado como nome do golpe se não houver um customizado.",
+                    )
+
                 # Rank individual
                 config["rank"] = st.number_input(
                     f"Rank de {eff['label_en']}", 1, 20, int(base_rank),
@@ -1206,6 +1215,12 @@ def _render_step2(prefix: str):
                 components=components_adv,
                 pokemon_type=draft.pokemon_type,
             )
+            # Se o único efeito é Feature e o nome está genérico, usa a descrição da Feature
+            _draft_name = (adv_draft.name or "").strip()
+            if _draft_name in ("", "Novo Golpe") and "feature" in selected_effects:
+                _feat_desc = effect_configs.get("feature", {}).get("feature_description", "").strip()
+                if _feat_desc:
+                    adv_draft.name = f"Feature: {_feat_desc}"
             _set_draft(prefix, adv_draft)
             _set_step(prefix, 3)
             st.rerun()
