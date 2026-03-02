@@ -15606,8 +15606,12 @@ if page == "Trainer Hub (Meus Pokémons)":
 
     def _remove_from_party(pid: str):
         pid = _pid_key(pid)
+        user_data.setdefault("caught", [])
+        if pid not in [str(p) for p in user_data.get("caught", [])]:
+            user_data["caught"].append(pid)
         user_data["party"] = [p for p in user_data.get("party", []) if str(p) != pid]
         save_data_cloud(trainer_name, user_data)
+        st.success("Pokémon movido para a BOX.")
         st.rerun()
 
     def _delete_pokemon_from_hub(pid: str):
