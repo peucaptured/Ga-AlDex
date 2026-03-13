@@ -8349,6 +8349,78 @@ def normalize_text(text):
     return unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
 
 
+_LYCANROC_FORM_ALIASES = {
+    "midday": "lycanroc-midday",
+    "day": "lycanroc-midday",
+    "dia": "lycanroc-midday",
+    "midnight": "lycanroc-midnight",
+    "night": "lycanroc-midnight",
+    "noite": "lycanroc-midnight",
+    "dusk": "lycanroc-dusk",
+    "twilight": "lycanroc-dusk",
+    "crepusculo": "lycanroc-dusk",
+}
+
+
+def _pokemon_lookup_candidates(pname: str) -> list[tuple[str, str]]:
+    """Gera candidatos de busca para nomes com forma e fallback para a espécie base."""
+    raw = str(pname or "").strip()
+    if not raw:
+        return []
+
+    candidates: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+
+    def add(kind: str, value: str):
+        value = str(value or "").strip()
+        if not value:
+            return
+        token = (kind, value.lower())
+        if token in seen:
+            return
+        seen.add(token)
+        candidates.append((kind, value))
+
+    add("raw", raw)
+    add("normalized", normalize_text(raw))
+
+    api_name = to_pokeapi_name(raw)
+    add("api", api_name)
+
+    base_raw = ""
+    parsed = re.match(r"^(.*?)\s*\((.*?)\)\s*$", raw)
+    if parsed:
+        base_raw = parsed.group(1).strip()
+        form_raw = parsed.group(2).strip()
+        form_key = normalize_text(form_raw).replace(" ", "-")
+        base_api = to_pokeapi_name(base_raw)
+
+        region = REGION_ALIASES.get(form_key)
+        if region:
+            add("api", f"{base_api}-{region}")
+        elif normalize_text(base_raw) == "lycanroc":
+            lycanroc_alias = _LYCANROC_FORM_ALIASES.get(form_key)
+            if lycanroc_alias:
+                add("api", lycanroc_alias)
+
+    if api_name.startswith("lycanroc-"):
+        add("api", "lycanroc")
+        if not base_raw:
+            base_raw = "Lycanroc"
+
+    for region_suffix in ("-alola", "-galar", "-hisui", "-paldea"):
+        if api_name.endswith(region_suffix):
+            add("api", api_name[: -len(region_suffix)])
+            break
+
+    if base_raw:
+        add("raw", base_raw)
+        add("normalized", normalize_text(base_raw))
+        add("api", to_pokeapi_name(base_raw))
+
+    return candidates
+
+
 
 def resolve_pokemon_pid(df_pokedex: pd.DataFrame, pname: str) -> str:
     """Resolve o PID numérico da Pokédex por nome, com fallback normalizado."""
@@ -8383,6 +8455,50 @@ def resolve_pokemon_pid(df_pokedex: pd.DataFrame, pname: str) -> str:
         return "0"
 
     return "0"
+
+
+def resolve_pokemon_pid(df_pokedex: pd.DataFrame, pname: str) -> str:
+    """Resolve o PID numérico com suporte a formas salvas e fallback para a espécie base."""
+    name = str(pname or "").strip()
+    if not name or df_pokedex is None or df_pokedex.empty:
+        return "0"
+
+    if "Nome" in df_pokedex.columns:
+        for candidate in ("N\u00ba", "N\u00c2\u00ba", "N\u00c3\u0082\u00c2\u00ba"):
+            if candidate in df_pokedex.columns:
+                df_pokedex = df_pokedex.rename(columns={candidate: "N\u00c3\u0082\u00c2\u00ba"})
+                break
+
+    if "Nome" not in df_pokedex.columns or "NÂº" not in df_pokedex.columns:
+        return "0"
+
+    try:
+        nomes = df_pokedex["Nome"].astype(str)
+        nomes_lower = nomes.str.strip().str.lower()
+        nomes_norm = nomes.apply(normalize_text)
+        nomes_api = nomes.apply(lambda x: to_pokeapi_name(str(x)))
+
+        def _pid_from_hit(hit: pd.DataFrame) -> str:
+            return str(int(float(hit.iloc[0]["NÂº"])))
+
+        for kind, candidate in _pokemon_lookup_candidates(name):
+            if kind == "raw":
+                hit = df_pokedex[nomes_lower == candidate.lower()]
+            elif kind == "normalized":
+                hit = df_pokedex[nomes_norm == candidate]
+            elif kind == "api":
+                hit = df_pokedex[nomes_api == candidate]
+            else:
+                continue
+
+            if not hit.empty:
+                return _pid_from_hit(hit)
+    except Exception:
+        return "0"
+
+    return "0"
+
+
 def get_pid_from_name(user_name: str, name_map: dict) -> str | None:
     if not isinstance(user_name, str):
         return None
@@ -8520,6 +8636,379 @@ def get_image_from_name(user_name, name_map):
         return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{p_id}.png"
     else:
         return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
+
+
+_DEFAULT_POKEMON_API_FORMS = {
+    "mimikyu": "mimikyu-disguised",
+    "aegislash": "aegislash-blade",
+    "giratina": "giratina-origin",
+    "wishiwashi": "wishiwashi-solo",
+    "pumpkaboo": "pumpkaboo-average",
+    "gourgeist": "gourgeist-average",
+    "lycanroc": "lycanroc-midday",
+    "deoxys": "deoxys-normal",
+    "wormadam": "wormadam-plant",
+    "shaymin": "shaymin-land",
+    "toxtricity": "toxtricity-amped",
+    "eiscue": "eiscue-ice",
+    "indeedee": "indeedee-male",
+    "morpeko": "morpeko-full-belly",
+    "urshifu": "urshifu-single-strike",
+    "basculegion": "basculegion-male",
+    "enamorus": "enamorus-incarnate",
+    "keldeo": "keldeo-ordinary",
+    "meloetta": "meloetta-aria",
+    "darmanitan": "darmanitan-standard",
+    "minior": "minior-red-meteor",
+}
+
+_GENERIC_FORM_SUFFIX_ALIASES = {
+    "attack-forme": "attack",
+    "attack-form": "attack",
+    "defense-forme": "defense",
+    "defense-form": "defense",
+    "defence-forme": "defense",
+    "defence-form": "defense",
+    "speed-forme": "speed",
+    "speed-form": "speed",
+    "altered-forme": "altered",
+    "origin-forme": "origin",
+    "sky-forme": "sky",
+    "land-forme": "land",
+    "zen-mode": "zen",
+    "standard-mode": "standard",
+    "hero-form": "hero",
+    "school-form": "school",
+    "solo-form": "solo",
+    "lowkey": "low-key",
+    "full": "full-belly",
+}
+
+_POKEMON_FORM_SUFFIX_ALIASES = {
+    "lycanroc": {
+        "midday": "midday",
+        "day": "midday",
+        "dia": "midday",
+        "midnight": "midnight",
+        "night": "midnight",
+        "noite": "midnight",
+        "dusk": "dusk",
+        "twilight": "dusk",
+        "crepusculo": "dusk",
+    },
+    "deoxys": {
+        "normal": "normal",
+        "attack": "attack",
+        "defense": "defense",
+        "defence": "defense",
+        "speed": "speed",
+    },
+    "giratina": {
+        "altered": "altered",
+        "origin": "origin",
+    },
+    "shaymin": {
+        "land": "land",
+        "sky": "sky",
+    },
+    "wormadam": {
+        "plant": "plant",
+        "sandy": "sandy",
+        "trash": "trash",
+    },
+    "meloetta": {
+        "aria": "aria",
+        "pirouette": "pirouette",
+    },
+    "keldeo": {
+        "ordinary": "ordinary",
+        "resolute": "resolute",
+    },
+    "wishiwashi": {
+        "solo": "solo",
+        "school": "school",
+    },
+    "aegislash": {
+        "blade": "blade",
+        "shield": "shield",
+    },
+    "mimikyu": {
+        "disguised": "disguised",
+        "busted": "busted",
+    },
+    "toxtricity": {
+        "amped": "amped",
+        "low-key": "low-key",
+        "lowkey": "low-key",
+    },
+    "eiscue": {
+        "ice": "ice",
+        "noice": "noice",
+    },
+    "indeedee": {
+        "male": "male",
+        "female": "female",
+    },
+    "basculegion": {
+        "male": "male",
+        "female": "female",
+    },
+    "enamorus": {
+        "incarnate": "incarnate",
+        "therian": "therian",
+    },
+    "morpeko": {
+        "full-belly": "full-belly",
+        "hangry": "hangry",
+    },
+    "urshifu": {
+        "single-strike": "single-strike",
+        "rapid-strike": "rapid-strike",
+    },
+    "darmanitan": {
+        "standard": "standard",
+        "zen": "zen",
+        "galar": "galar-standard",
+        "galar-standard": "galar-standard",
+        "galar-zen": "galar-zen",
+    },
+    "minior": {
+        "red": "red-meteor",
+        "orange": "orange-meteor",
+        "yellow": "yellow-meteor",
+        "green": "green-meteor",
+        "blue": "blue-meteor",
+        "indigo": "indigo-meteor",
+        "violet": "violet-meteor",
+        "meteor": "red-meteor",
+        "core": "red",
+    },
+    "hoopa": {
+        "confined": "confined",
+        "unbound": "unbound",
+    },
+    "palafin": {
+        "zero": "zero",
+        "hero": "hero",
+    },
+    "oricorio": {
+        "baile": "baile",
+        "pom-pom": "pom-pom",
+        "pau": "pau",
+        "sensu": "sensu",
+    },
+    "rotom": {
+        "heat": "heat",
+        "wash": "wash",
+        "frost": "frost",
+        "fan": "fan",
+        "mow": "mow",
+    },
+    "zygarde": {
+        "10": "10",
+        "10-percent": "10",
+        "50": "50",
+        "complete": "complete",
+    },
+    "necrozma": {
+        "dusk-mane": "dusk",
+        "dawn-wings": "dawn",
+        "ultra": "ultra",
+    },
+    "floette": {
+        "eternal": "eternal",
+    },
+}
+
+_SPECIAL_FORM_CANONICAL_NAMES = {
+    "eternal-floette": "floette-eternal",
+    "floette-eternal-forme": "floette-eternal",
+    "floette-eternal-form": "floette-eternal",
+    "bloodmoon-ursaluna": "ursaluna-bloodmoon",
+    "blood-moon-ursaluna": "ursaluna-bloodmoon",
+    "ursaluna-blood-moon": "ursaluna-bloodmoon",
+}
+
+
+def _basic_pokeapi_slug(user_text: str) -> str:
+    s = (user_text or "").strip().lower()
+    s = (
+        s.replace("♀", " f")
+        .replace("♂", " m")
+        .replace("â™€", " f")
+        .replace("â™‚", " m")
+    )
+    s = re.sub(r"[\s_]+", "-", s)
+    s = re.sub(r"-{2,}", "-", s).strip("-")
+
+    if s in ("nidoran", "nidoran-"):
+        return "nidoran"
+    if s in ("nidoran-f", "nidoranf", "nidoran-female", "nidoran-fem", "nidoran-f."):
+        return "nidoran-f"
+    if s in ("nidoran-m", "nidoranm", "nidoran-male", "nidoran-masc", "nidoran-m."):
+        return "nidoran-m"
+
+    if re.match(r"^[aghp]-", s):
+        tag, base = s.split("-", 1)
+        region = REGION_ALIASES.get(tag)
+        if region and base:
+            return f"{base}-{region}"
+
+    m = re.match(r"^(.+)-([aghp])$", s)
+    if m:
+        base, tag = m.group(1), m.group(2)
+        region = REGION_ALIASES.get(tag)
+        if region:
+            return f"{base}-{region}"
+
+    parts = s.split("-")
+    if len(parts) >= 2:
+        last = parts[-1]
+        region = REGION_ALIASES.get(last)
+        if region:
+            base = "-".join(parts[:-1])
+            return f"{base}-{region}"
+
+    return s
+
+
+def _normalize_form_slug(form_text: str) -> str:
+    form = normalize_text(form_text).replace("%", " percent ")
+    form = form.replace("'", "").replace(".", " ").replace("/", " ").replace("_", " ")
+    form = re.sub(r"\bforme\b", "", form)
+    form = re.sub(r"\bform\b", "", form)
+    form = re.sub(r"\bmode\b", "", form)
+    form = re.sub(r"\s+", " ", form).strip()
+    form = form.replace(" percent", "")
+    return form.replace(" ", "-")
+
+
+def _canonical_pokemon_api_name(user_text: str, apply_default_form: bool = True) -> str:
+    raw = str(user_text or "").strip()
+    if not raw:
+        return ""
+
+    parsed = re.match(r"^(.*?)\s*\((.*?)\)\s*$", raw)
+    if parsed:
+        base_raw = parsed.group(1).strip()
+        form_raw = parsed.group(2).strip()
+        base_slug = _basic_pokeapi_slug(base_raw)
+        form_slug = _normalize_form_slug(form_raw)
+
+        if base_slug == "nidoran":
+            if form_slug in ("f", "female"):
+                return "nidoran-f"
+            if form_slug in ("m", "male"):
+                return "nidoran-m"
+
+        region = REGION_ALIASES.get(form_slug)
+        if region:
+            return f"{base_slug}-{region}"
+
+        species_forms = _POKEMON_FORM_SUFFIX_ALIASES.get(base_slug, {})
+        suffix = species_forms.get(form_slug)
+        if suffix is None:
+            suffix = _GENERIC_FORM_SUFFIX_ALIASES.get(form_slug, form_slug)
+
+        if suffix:
+            return suffix if suffix.startswith(f"{base_slug}-") else f"{base_slug}-{suffix}"
+        return base_slug
+
+    slug = _basic_pokeapi_slug(raw)
+    slug = _SPECIAL_FORM_CANONICAL_NAMES.get(slug, slug)
+
+    if apply_default_form:
+        slug = _DEFAULT_POKEMON_API_FORMS.get(slug, slug)
+
+    return slug
+
+
+def to_pokeapi_name(user_text: str) -> str:
+    return _canonical_pokemon_api_name(user_text, apply_default_form=True)
+
+
+def _find_pokedex_number_column(df_pokedex: pd.DataFrame) -> str | None:
+    for col in df_pokedex.columns:
+        compact = re.sub(r"[^a-z0-9]+", "", normalize_text(str(col)))
+        if compact in ("n", "no", "num", "numero", "nmero"):
+            return col
+    return None
+
+
+def resolve_pokemon_pid(df_pokedex: pd.DataFrame, pname: str) -> str:
+    """Resolve o PID numérico suportando nomes salvos com forma."""
+    name = str(pname or "").strip()
+    if not name or df_pokedex is None or df_pokedex.empty:
+        return "0"
+
+    num_col = _find_pokedex_number_column(df_pokedex)
+    if "Nome" not in df_pokedex.columns or not num_col:
+        return "0"
+
+    try:
+        nomes = df_pokedex["Nome"].astype(str)
+        nomes_lower = nomes.str.strip().str.lower()
+        nomes_norm = nomes.apply(normalize_text)
+        nomes_api = nomes.apply(lambda x: _canonical_pokemon_api_name(str(x), apply_default_form=False))
+
+        candidates = []
+        seen = set()
+
+        def add_candidate(value: str):
+            value = str(value or "").strip()
+            if not value:
+                return
+            token = value.lower()
+            if token in seen:
+                return
+            seen.add(token)
+            candidates.append(value)
+
+        add_candidate(name)
+        add_candidate(normalize_text(name))
+        add_candidate(_canonical_pokemon_api_name(name, apply_default_form=False))
+
+        parsed = re.match(r"^(.*?)\s*\((.*?)\)\s*$", name)
+        if parsed:
+            base_name = parsed.group(1).strip()
+            add_candidate(base_name)
+            add_candidate(normalize_text(base_name))
+            add_candidate(_canonical_pokemon_api_name(base_name, apply_default_form=False))
+
+        for candidate in candidates:
+            hit = df_pokedex[nomes_lower == candidate.lower()]
+            if hit.empty:
+                hit = df_pokedex[nomes_norm == candidate]
+            if hit.empty:
+                hit = df_pokedex[nomes_api == candidate]
+            if not hit.empty:
+                return str(int(float(hit.iloc[0][num_col])))
+    except Exception:
+        return "0"
+
+    return "0"
+
+
+def get_pid_from_name(user_name: str, name_map: dict) -> str | None:
+    if not isinstance(user_name, str):
+        return None
+
+    canonical_name = to_pokeapi_name(user_name)
+    p_id = name_map.get(canonical_name)
+    if not p_id:
+        base_name = canonical_name.split('-')[0]
+        p_id = name_map.get(base_name)
+    return p_id
+
+
+def get_image_from_name(user_name, name_map):
+    if not isinstance(user_name, str):
+        return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
+
+    p_id = get_pid_from_name(user_name, name_map)
+    if p_id:
+        return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{p_id}.png"
+    return "https://upload.wikimedia.org/wikipedia/commons/5/53/Pok%C3%A9_Ball_icon.svg"
 
 
 @st.cache_data
